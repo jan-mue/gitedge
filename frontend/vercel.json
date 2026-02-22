@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "relatedProjects": ["prj_dvjGJsgfdhW9dx1PXXg0YR7exv8Z"],
+  "git": {
+    "deploymentEnabled": {
+      "renovate/*": false
+    }
+  }
+}

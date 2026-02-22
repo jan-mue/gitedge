@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     FRONTEND_HOST: str = "http://localhost:5173"
-    ENVIRONMENT: Literal["local", "staging", "production"] = "local"
+    VERCEL_ENV: Literal["development", "preview", "production"] = "development"
 
     LOG_LEVEL: LogLevel = LogLevel.INFO
 
@@ -113,7 +113,7 @@ class Settings(BaseSettings):
                 f'The value of {var_name} is "changethis", '
                 "for security, please change it, at least for deployments."
             )
-            if self.ENVIRONMENT == "local":
+            if self.VERCEL_ENV == "development":
                 warnings.warn(message, stacklevel=1)
             else:
                 raise ValueError(message)

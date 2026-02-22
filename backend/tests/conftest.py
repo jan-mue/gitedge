@@ -13,7 +13,7 @@ from app.clients.items import SQLItemRepository
 from app.clients.users import SQLUserRepository
 from app.config import settings
 from app.constants import BACKEND_ROOT_DIR
-from app.main import app as global_app
+from app.index import app as global_app
 from app.services.crud import CrudService
 from app.utils.database import init_db
 from tests.utils.user import authentication_token_from_email
