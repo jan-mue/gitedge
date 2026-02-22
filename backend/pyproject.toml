@@ -101,4 +101,4 @@ module = [
 ignore_missing_imports = true
 
 [tool.vercel.scripts]
-build = "bash scripts/prestart.sh"
+build = "uv run bash scripts/prestart.sh"
