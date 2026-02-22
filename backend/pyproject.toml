@@ -14,10 +14,12 @@ dependencies = [
     "alembic<2.0.0,>=1.12.1",
     "httpx<1.0.0,>=0.25.1",
     "psycopg[binary]<4.0.0,>=3.1.13",
-    "sqlmodel<1.0.0,>=0.0.21",
+    "sqlalchemy<3.0.0,>=2.0.45",
     "pydantic-settings<3.0.0,>=2.2.1",
-    "sentry-sdk[fastapi]<2.0.0,>=1.40.6",
+    "sentry-sdk[fastapi]>=2.0.0,<3.0.0",
     "pyjwt<3.0.0,>=2.8.0",
+    "loguru<1.0.0,>=0.7.3",
+    "typing-extensions<5.0.0,>=4.15.0",
     "pwdlib[argon2,bcrypt]>=0.3.0",
 ]
 
@@ -28,6 +30,8 @@ dev = [
     "ruff<1.0.0,>=0.2.2",
     "prek>=0.2.24,<1.0.0",
     "coverage<8.0.0,>=7.4.3",
+    "pytest-mock<4.0.0,>=3.12.0",
+    "testcontainers[postgres]<5.0.0,>=4.13.2",
 ]
 
 [build-system]
@@ -37,6 +41,13 @@ build-backend = "hatchling.build"
 [tool.mypy]
 strict = true
 exclude = ["venv", ".venv", "alembic"]
+
+[[tool.mypy.overrides]]
+module = [
+    "emails",
+    "testcontainers.*",
+]
+ignore_missing_imports = true
 
 [tool.ruff]
 target-version = "py310"

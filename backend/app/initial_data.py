@@ -1,15 +1,11 @@
-import logging
+from loguru import logger
 
-from sqlmodel import Session
-
-from app.core.db import engine, init_db
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from app.clients.database import get_db_session
+from app.utils.database import init_db
 
 
 def init() -> None:
-    with Session(engine) as session:
+    with get_db_session() as session:
         init_db(session)
 
 

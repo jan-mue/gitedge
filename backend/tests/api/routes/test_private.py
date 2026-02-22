@@ -1,11 +1,10 @@
 from fastapi.testclient import TestClient
-from sqlmodel import Session, select
 
-from app.core.config import settings
-from app.models import User
+from app.config import settings
+from app.services.crud import CrudService
 
 
-def test_create_user(client: TestClient, db: Session) -> None:
+def test_create_user(client: TestClient, crud: CrudService) -> None:
     r = client.post(
         f"{settings.API_V1_STR}/private/users/",
         json={
@@ -19,7 +18,7 @@ def test_create_user(client: TestClient, db: Session) -> None:
 
     data = r.json()
 
-    user = db.exec(select(User).where(User.id == data["id"])).first()
+    user = crud.get_user_by_id(data["id"])
 
     assert user
     assert user.email == "pollo@listo.com"

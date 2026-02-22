@@ -196,7 +196,7 @@ export class LoginService {
      * HTML Content for Password Recovery
      * @param data The data for the request.
      * @param data.email
-     * @returns string Successful Response
+     * @returns unknown Successful Response
      * @throws ApiError
      */
     public static recoverPasswordHtmlContent(data: LoginRecoverPasswordHtmlContentData): CancelablePromise<LoginRecoverPasswordHtmlContentResponse> {

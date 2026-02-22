@@ -1,0 +1,81 @@
+import uuid
+
+from app.clients.items import ItemRepository
+from app.clients.users import UserRepository
+from app.entities.items import Item
+from app.entities.users import User
+from app.schemas.items import ItemCreate, ItemPublic
+from app.schemas.users import UserCreate, UserPublic, UserUpdate, UserUpdateMe
+from app.utils.security import get_password_hash, verify_password
+
+# Dummy hash to use for timing attack prevention when user is not found
+# This is an Argon2 hash of a random password, used to ensure constant-time comparison
+DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$MjQyZWE1MzBjYjJlZTI0Yw$YTU4NGM5ZTZmYjE2NzZlZjY0ZWY3ZGRkY2U2OWFjNjk"
+
+
+class CrudService:
+    def __init__(
+        self, user_repository: UserRepository, item_repository: ItemRepository
+    ):
+        self.user_repository = user_repository
+        self.item_repository = item_repository
+
+    def create_user(self, user_create: UserCreate) -> UserPublic:
+        user = User(
+            email=user_create.email,
+            full_name=user_create.full_name,
+            is_superuser=user_create.is_superuser,
+            is_active=user_create.is_active,
+            hashed_password=get_password_hash(user_create.password),
+        )
+        self.user_repository.add(user)
+        return UserPublic.model_validate(user)
+
+    def get_user_by_id(self, user_id: uuid.UUID) -> UserPublic | None:
+        user = self.user_repository.get(user_id)
+        if not user:
+            return None
+        return UserPublic.model_validate(user)
+
+    def get_user_by_email(self, email: str) -> UserPublic | None:
+        user = self.user_repository.get_by_email(email)
+        if not user:
+            return None
+        return UserPublic.model_validate(user)
+
+    def update_user(
+        self, db_user: User, user_in: UserUpdate | UserUpdateMe
+    ) -> UserPublic:
+        user_data = user_in.model_dump(exclude_unset=True)
+        if "password" in user_data:
+            password = user_data.pop("password")
+            hashed_password = get_password_hash(password)
+            user_data["hashed_password"] = hashed_password
+        self.user_repository.update(db_user, user_data)
+        return UserPublic.model_validate(db_user)
+
+    def authenticate(self, email: str, password: str) -> User | None:
+        db_user = self.user_repository.get_by_email(email)
+        if not db_user:
+            # Prevent timing attacks by running password verification even when user doesn't exist
+            # This ensures the response time is similar whether or not the email exists
+            verify_password(password, DUMMY_HASH)
+            return None
+        verified, updated_password_hash = verify_password(
+            password, db_user.hashed_password
+        )
+        if not verified:
+            return None
+        if updated_password_hash:
+            db_user.hashed_password = updated_password_hash
+            self.user_repository.update(db_user)
+        return db_user
+
+    def create_item(self, item_create: ItemCreate, owner_id: uuid.UUID) -> ItemPublic:
+        item = Item(
+            title=item_create.title,
+            description=item_create.description,
+            owner_id=owner_id,
+        )
+        self.item_repository.add(item)
+        return ItemPublic.model_validate(item)

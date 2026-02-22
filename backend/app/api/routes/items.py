@@ -1,112 +1,95 @@
 import uuid
-from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from sqlmodel import func, select
 
-from app.api.deps import CurrentUser, SessionDep
-from app.models import Item, ItemCreate, ItemPublic, ItemsPublic, ItemUpdate, Message
+from app.api.dependencies import CrudServiceDep, CurrentUser, ItemRepositoryDep
+from app.schemas.items import ItemCreate, ItemPublic, ItemsPublic, ItemUpdate, Message
 
 router = APIRouter(prefix="/items", tags=["items"])
 
 
-@router.get("/", response_model=ItemsPublic)
+@router.get("/")
 def read_items(
-    session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
-) -> Any:
+    item_repository: ItemRepositoryDep,
+    current_user: CurrentUser,
+    skip: int = 0,
+    limit: int = 100,
+) -> ItemsPublic:
     """
     Retrieve items.
     """
 
     if current_user.is_superuser:
-        count_statement = select(func.count()).select_from(Item)
-        count = session.exec(count_statement).one()
-        statement = (
-            select(Item).order_by(Item.created_at.desc()).offset(skip).limit(limit)
-        )
-        items = session.exec(statement).all()
+        count = item_repository.count()
+        items = item_repository.get_all(offset=skip, limit=limit)
     else:
-        count_statement = (
-            select(func.count())
-            .select_from(Item)
-            .where(Item.owner_id == current_user.id)
+        count = item_repository.count_by_owner_id(owner_id=current_user.id)
+        items = item_repository.get_all_by_owner_id(
+            owner_id=current_user.id, offset=skip, limit=limit
         )
-        count = session.exec(count_statement).one()
-        statement = (
-            select(Item)
-            .where(Item.owner_id == current_user.id)
-            .order_by(Item.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-        )
-        items = session.exec(statement).all()
 
-    return ItemsPublic(data=items, count=count)
+    return ItemsPublic(
+        data=[ItemPublic.model_validate(item) for item in items], count=count
+    )
 
 
-@router.get("/{id}", response_model=ItemPublic)
-def read_item(session: SessionDep, current_user: CurrentUser, id: uuid.UUID) -> Any:
+@router.get("/{id}")
+def read_item(
+    item_repository: ItemRepositoryDep, current_user: CurrentUser, id: uuid.UUID
+) -> ItemPublic:
     """
     Get item by ID.
     """
-    item = session.get(Item, id)
+    item = item_repository.get(id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     if not current_user.is_superuser and (item.owner_id != current_user.id):
         raise HTTPException(status_code=403, detail="Not enough permissions")
-    return item
+    return ItemPublic.model_validate(item)
 
 
-@router.post("/", response_model=ItemPublic)
+@router.post("/")
 def create_item(
-    *, session: SessionDep, current_user: CurrentUser, item_in: ItemCreate
-) -> Any:
+    *, crud_service: CrudServiceDep, current_user: CurrentUser, item_in: ItemCreate
+) -> ItemPublic:
     """
     Create new item.
     """
-    item = Item.model_validate(item_in, update={"owner_id": current_user.id})
-    session.add(item)
-    session.commit()
-    session.refresh(item)
-    return item
+    return crud_service.create_item(item_create=item_in, owner_id=current_user.id)
 
 
-@router.put("/{id}", response_model=ItemPublic)
+@router.put("/{id}")
 def update_item(
     *,
-    session: SessionDep,
+    item_repository: ItemRepositoryDep,
     current_user: CurrentUser,
     id: uuid.UUID,
     item_in: ItemUpdate,
-) -> Any:
+) -> ItemPublic:
     """
     Update an item.
     """
-    item = session.get(Item, id)
+    item = item_repository.get(id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     if not current_user.is_superuser and (item.owner_id != current_user.id):
         raise HTTPException(status_code=403, detail="Not enough permissions")
     update_dict = item_in.model_dump(exclude_unset=True)
-    item.sqlmodel_update(update_dict)
-    session.add(item)
-    session.commit()
-    session.refresh(item)
-    return item
+    item_repository.update(item, update_dict)
+    return ItemPublic.model_validate(item)
 
 
 @router.delete("/{id}")
 def delete_item(
-    session: SessionDep, current_user: CurrentUser, id: uuid.UUID
+    item_repository: ItemRepositoryDep, current_user: CurrentUser, id: uuid.UUID
 ) -> Message:
     """
     Delete an item.
     """
-    item = session.get(Item, id)
+    item = item_repository.get(id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     if not current_user.is_superuser and (item.owner_id != current_user.id):
         raise HTTPException(status_code=403, detail="Not enough permissions")
-    session.delete(item)
-    session.commit()
+    item_repository.delete(item)
     return Message(message="Item deleted successfully")

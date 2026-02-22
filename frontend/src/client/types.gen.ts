@@ -23,7 +23,6 @@ export type ItemPublic = {
     description?: (string | null);
     id: string;
     owner_id: string;
-    created_at?: (string | null);
 };
 
 export type ItemsPublic = {
@@ -76,7 +75,6 @@ export type UserPublic = {
     is_superuser?: boolean;
     full_name?: (string | null);
     id: string;
-    created_at?: (string | null);
 };
 
 export type UserRegister = {
@@ -107,6 +105,10 @@ export type ValidationError = {
     loc: Array<(string | number)>;
     msg: string;
     type: string;
+    input?: unknown;
+    ctx?: {
+        [key: string]: unknown;
+    };
 };
 
 export type ItemsReadItemsData = {
@@ -165,7 +167,7 @@ export type LoginRecoverPasswordHtmlContentData = {
     email: string;
 };
 
-export type LoginRecoverPasswordHtmlContentResponse = (string);
+export type LoginRecoverPasswordHtmlContentResponse = (unknown);
 
 export type PrivateCreateUserData = {
     requestBody: PrivateUserCreate;

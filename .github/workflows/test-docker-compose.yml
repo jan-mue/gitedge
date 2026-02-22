@@ -3,7 +3,7 @@ name: Test Docker Compose
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     types:
       - opened
@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - run: docker compose build
+      - run: docker compose build backend frontend adminer
       - run: docker compose down -v --remove-orphans
       - run: docker compose up -d --wait backend frontend adminer
       - name: Test backend is up

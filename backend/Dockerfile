@@ -29,9 +29,13 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY ./backend/scripts /app/backend/scripts
 
+COPY ./backend/resources /app/backend/resources
+
 COPY ./backend/pyproject.toml ./backend/alembic.ini /app/backend/
 
 COPY ./backend/app /app/backend/app
+
+COPY ./backend/migrations /app/backend/migrations
 
 # Sync the project
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
