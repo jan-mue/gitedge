@@ -36,14 +36,14 @@ def run_alembic_migrations() -> None:
 def db(monkeysession: pytest.MonkeyPatch) -> Generator[Session, None, None]:
     with PostgresContainer("postgres:17", driver="psycopg") as postgres:
         monkeysession.setattr(
-            settings, "POSTGRES_SERVER", postgres.get_container_host_ip()
+            settings, "POSTGRES_HOST", postgres.get_container_host_ip()
         )
         monkeysession.setattr(
             settings, "POSTGRES_PORT", postgres.get_exposed_port(postgres.port)
         )
         monkeysession.setattr(settings, "POSTGRES_USER", postgres.username)
         monkeysession.setattr(settings, "POSTGRES_PASSWORD", postgres.password)
-        monkeysession.setattr(settings, "POSTGRES_DB", postgres.dbname)
+        monkeysession.setattr(settings, "POSTGRES_DATABASE", postgres.dbname)
         connection_url = postgres.get_connection_url()
         engine = sqlalchemy.create_engine(connection_url)
         run_alembic_migrations()
