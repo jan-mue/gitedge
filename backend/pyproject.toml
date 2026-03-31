@@ -38,7 +38,7 @@ dev = [
     "pytest==9.0.2",
     "ruff==0.14.11",
     "testcontainers[postgres]==4.14.0",
-    "types-passlib==1.7.7.20250602",
+    "types-passlib==1.7.7.20260211",
 ]
 
 [tool.ruff]
