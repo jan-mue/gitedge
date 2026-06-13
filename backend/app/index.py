@@ -16,7 +16,7 @@ def custom_generate_unique_id(route: APIRoute) -> str:
 
 configure_logging()
 
-if settings.SENTRY_DSN and settings.ENVIRONMENT != "local":
+if settings.SENTRY_DSN and settings.VERCEL_ENV != "development":
     sentry_sdk.init(dsn=str(settings.SENTRY_DSN), enable_tracing=True)
 
 app = FastAPI(
