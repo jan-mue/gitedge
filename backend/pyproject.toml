@@ -12,40 +12,39 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "alembic==1.18.0",
+    "alembic==1.18.4",
     "emails==0.6",
-    "fastapi[standard]==0.128.0",
+    "fastapi[standard]==0.136.1",
     "jinja2==3.1.6",
     "loguru==0.7.3",
-    "psycopg[binary]==3.3.2",
+    "psycopg[binary]==3.3.4",
     "pwdlib[argon2,bcrypt]==0.3.0",
-    "pydantic==2.12.5",
-    "pydantic-settings==2.12.0",
-    "pyjwt==2.10.1",
-    "sentry-sdk==2.53.0",
-    "sqlalchemy==2.0.45",
-    "tenacity==9.1.2",
+    "pydantic==2.13.3",
+    "pydantic-settings==2.14.0",
+    "pyjwt==2.12.1",
+    "sentry-sdk==2.59.0",
+    "sqlalchemy==2.0.49",
+    "tenacity==9.1.4",
     "typing-extensions==4.15.0",
-    "uvicorn==0.40.0",
+    "uvicorn==0.46.0",
 ]
 
 [dependency-groups]
 dev = [
-    "coverage==7.13.1",
-    "deptry==0.24.0",
-    "mypy==1.19.1",
-    "pre-commit==4.5.1",
-    "pytest==9.0.2",
+    "coverage==7.13.5",
+    "deptry==0.25.1",
+    "mypy==1.20.2",
+    "pre-commit==4.6.0",
+    "pytest==9.0.3",
     "pytest-mock==3.15.1",
-    "ruff==0.14.11",
-    "testcontainers[postgres]==4.14.0",
-    "types-passlib==1.7.7.20250602",
+    "ruff==0.15.12",
+    "testcontainers[postgres]==4.14.2",
+    "types-passlib==1.7.7.20260211",
 ]
 
 [tool.ruff]
 target-version = "py310"
 exclude = [ "alembic" ]
-
 lint.select = [
     "ARG001", # unused arguments in functions
     "B",      # flake8-bugbear
@@ -69,8 +68,8 @@ lint.pyupgrade.keep-runtime-typing = true
 [tool.codespell]
 skip = "uv.lock"
 
-[tool.deptry.per_rule_ignores]
-DEP002 = [
+[tool.deptry]
+per_rule_ignores.DEP002 = [
     "psycopg", # used by SQLAlchemy
 ]
 
@@ -79,27 +78,20 @@ indent = 4
 column_width = 120
 keep_full_version = true
 
-[tool.coverage.run]
-source = [ "app" ]
-dynamic_context = "test_function"
-
-[tool.coverage.report]
-show_missing = true
-sort = "-Cover"
-
-[tool.coverage.html]
-show_contexts = true
-
 [tool.mypy]
 strict = true
 exclude = [ "venv", ".venv", "alembic" ]
-
-[[tool.mypy.overrides]]
-module = [
+overrides = [ { module = [
     "emails",
     "testcontainers.*",
-]
-ignore_missing_imports = true
+], ignore_missing_imports = true } ]
 
-[tool.vercel.scripts]
-build = "uv run bash scripts/prestart.sh"
+[tool.coverage]
+run.dynamic_context = "test_function"
+run.source = [ "app" ]
+report.show_missing = true
+report.sort = "-Cover"
+html.show_contexts = true
+
+[tool.vercel]
+scripts.build = "uv run bash scripts/prestart.sh"
