@@ -34,7 +34,7 @@ repos:
         args: [--write-changes]
         exclude: frontend/
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.37.2
+    rev: 0.37.4
     hooks:
       - id: check-renovate
   - repo: https://github.com/google/yamlfmt
