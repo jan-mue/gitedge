@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from fastapi.testclient import TestClient
     from pytest import MonkeyPatch
 
-PRODUCTION_ORIGIN = "https://gitedge.vercel.app"
+PRODUCTION_ORIGIN = "https://gitedge-app.vercel.app"
 
 
 def test_production_returns_only_production_frontend_origin(
