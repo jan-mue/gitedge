@@ -7,7 +7,7 @@ import { defineConfig } from "vite"
 // https://vitejs.dev/config/
 export default defineConfig({
   build: {
-    outDir: "../backend/app/frontend",
+    outDir: "dist",
     emptyOutDir: true,
   },
   resolve: {
