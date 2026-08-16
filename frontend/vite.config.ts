@@ -6,7 +6,7 @@ import react from "@vitejs/plugin-react-swc"
 import { defineConfig } from "vite"
 
 const DEV_API_URL = "http://localhost:8000"
-const BACKEND_PROJECT_NAME = "forgeless-backend"
+const BACKEND_PROJECT_NAME = "gitedge-backend"
 
 function normalizeApiUrl(value: string): string {
   const trimmed = value.trim()

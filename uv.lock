@@ -8,7 +8,7 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "forgeless",
+    "gitedge",
 ]
 
 [[package]]
@@ -482,7 +482,7 @@ wheels = [
 ]
 
 [[package]]
-name = "forgeless"
+name = "gitedge"
 version = "0.1.0"
 source = { virtual = "backend" }
 dependencies = [

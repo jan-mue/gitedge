@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from fastapi.testclient import TestClient
     from pytest import MonkeyPatch
 
-PRODUCTION_ORIGIN = "https://forgeless.vercel.app"
+PRODUCTION_ORIGIN = "https://gitedge-app.vercel.app"
 
 
 def test_production_returns_only_production_frontend_origin(
@@ -22,9 +22,7 @@ def test_production_returns_only_production_frontend_origin(
     monkeypatch.setattr(
         settings,
         "VERCEL_RELATED_PROJECTS",
-        json.dumps(
-            [{"preview": {"branch": "forgeless-frontend-git-feature.vercel.sh"}}]
-        ),
+        json.dumps([{"preview": {"branch": "gitedge-frontend-git-feature.vercel.sh"}}]),
     )
     assert settings.cors_origins == [PRODUCTION_ORIGIN]
 
@@ -39,18 +37,18 @@ def test_preview_extracts_branch_and_custom_environment(
         json.dumps(
             [
                 {
-                    "project": {"id": "prj_frontend", "name": "forgeless-frontend"},
+                    "project": {"id": "prj_frontend", "name": "gitedge-frontend"},
                     "preview": {
-                        "branch": "forgeless-frontend-git-main.vercel.sh",
-                        "customEnvironment": "forgeless-frontend-git-staging.vercel.sh",
+                        "branch": "gitedge-frontend-git-main.vercel.sh",
+                        "customEnvironment": "gitedge-frontend-git-staging.vercel.sh",
                     },
                 }
             ]
         ),
     )
     assert settings.cors_origins == [
-        "https://forgeless-frontend-git-staging.vercel.sh",
-        "https://forgeless-frontend-git-main.vercel.sh",
+        "https://gitedge-frontend-git-staging.vercel.sh",
+        "https://gitedge-frontend-git-main.vercel.sh",
     ]
 
 
@@ -87,17 +85,13 @@ def test_origins_are_normalized_and_deduplicated(monkeypatch: MonkeyPatch) -> No
         "VERCEL_RELATED_PROJECTS",
         json.dumps(
             [
-                {"preview": {"branch": "forgeless-frontend-git-main.vercel.sh"}},
-                {
-                    "preview": {
-                        "branch": "https://forgeless-frontend-git-main.vercel.sh"
-                    }
-                },
-                {"preview": {"branch": "forgeless-frontend-git-main.vercel.sh "}},
+                {"preview": {"branch": "gitedge-frontend-git-main.vercel.sh"}},
+                {"preview": {"branch": "https://gitedge-frontend-git-main.vercel.sh"}},
+                {"preview": {"branch": "gitedge-frontend-git-main.vercel.sh "}},
             ]
         ),
     )
-    assert settings.cors_origins == ["https://forgeless-frontend-git-main.vercel.sh"]
+    assert settings.cors_origins == ["https://gitedge-frontend-git-main.vercel.sh"]
 
 
 @pytest.mark.parametrize(
