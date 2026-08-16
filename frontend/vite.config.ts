@@ -19,10 +19,10 @@ function normalizeApiUrl(value: string): string {
 function resolveApiUrl(): string {
   const vercelEnv = process.env.VERCEL_ENV
   if (vercelEnv === "production") {
-    const productionUrl = process.env.API_PRODUCTION_URL
+    const productionUrl = process.env.VITE_API_URL
     if (!productionUrl) {
       throw new Error(
-        "Missing API_PRODUCTION_URL environment variable for a production build.",
+        "Missing VITE_API_URL environment variable for a production build.",
       )
     }
     return normalizeApiUrl(productionUrl)
