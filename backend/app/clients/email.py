@@ -30,7 +30,8 @@ class SMTPClient(EmailClient):
         self, email_to: str, subject: str = "", html_content: str = ""
     ) -> None:
         assert settings.emails_enabled, "no provided configuration for email variables"
-        message = emails.Message(
+        assert settings.EMAILS_FROM_EMAIL  # For type checker
+        message = emails.message.Message(
             subject=subject,
             html=html_content,
             mail_from=(settings.EMAILS_FROM_NAME, settings.EMAILS_FROM_EMAIL),

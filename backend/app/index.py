@@ -33,15 +33,12 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
-# Set all CORS enabled origins
-if settings.all_cors_origins:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.all_cors_origins,
-        allow_methods=["*"],
-        allow_credentials=True,
-        allow_headers=["authorization", "X-Requested-With", "X-Request-ID"],
-        expose_headers=["X-Request-ID"],
-    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.FRONTEND_HOST],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(api_router, prefix=settings.API_V1_STR)

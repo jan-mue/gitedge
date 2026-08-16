@@ -1,6 +1,6 @@
 import uuid
 from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from sqlalchemy import Engine, create_engine, func, select
 from sqlalchemy.orm import Session
@@ -16,7 +16,7 @@ def get_db_session() -> Session:
     global engine  # noqa: PLW0603
     if engine is None:
         engine = create_engine(
-            url=str(settings.SQLALCHEMY_DATABASE_URI),
+            url=str(settings.DATABASE_URL),
             pool_pre_ping=True,
             pool_size=5,
             max_overflow=10,
@@ -24,10 +24,7 @@ def get_db_session() -> Session:
     return Session(autocommit=False, autoflush=False, bind=engine)
 
 
-T = TypeVar("T", bound=Base)
-
-
-class CrudRepository(ABC, Generic[T]):
+class CrudRepository[T: Base](ABC):
     @abstractmethod
     def get(self, primary_key: uuid.UUID | str) -> T | None:
         pass
@@ -57,7 +54,7 @@ class CrudRepository(ABC, Generic[T]):
         pass
 
 
-class SQLRepository(CrudRepository[T]):
+class SQLRepository[T: Base](CrudRepository[T]):
     def __init__(self, db: Session, entity_class: type[T]):
         self.db = db
         self.entity_class = entity_class

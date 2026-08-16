@@ -12,7 +12,7 @@ from testcontainers.postgres import PostgresContainer
 from app.clients.items import SQLItemRepository
 from app.clients.users import SQLUserRepository
 from app.config import settings
-from app.constants import BACKEND_ROOT_DIR
+from app.constants import BACKEND_DIR
 from app.index import app as global_app
 from app.services.crud import CrudService
 from app.utils.database import init_db
@@ -21,30 +21,22 @@ from tests.utils.utils import get_superuser_token_headers
 
 
 @pytest.fixture(scope="session")
-def monkeysession() -> Generator[pytest.MonkeyPatch, None, None]:
+def monkeysession() -> Generator[pytest.MonkeyPatch]:
     with pytest.MonkeyPatch.context() as mp:
         yield mp
 
 
 def run_alembic_migrations() -> None:
-    config = Config(BACKEND_ROOT_DIR / "alembic.ini")
-    config.set_main_option("script_location", str(BACKEND_ROOT_DIR / "migrations"))
+    config = Config(BACKEND_DIR / "alembic.ini")
+    config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
     upgrade(config, "head")
 
 
 @pytest.fixture(scope="session", autouse=True)
-def db(monkeysession: pytest.MonkeyPatch) -> Generator[Session, None, None]:
+def db(monkeysession: pytest.MonkeyPatch) -> Generator[Session]:
     with PostgresContainer("postgres:17", driver="psycopg") as postgres:
-        monkeysession.setattr(
-            settings, "POSTGRES_HOST", postgres.get_container_host_ip()
-        )
-        monkeysession.setattr(
-            settings, "POSTGRES_PORT", postgres.get_exposed_port(postgres.port)
-        )
-        monkeysession.setattr(settings, "POSTGRES_USER", postgres.username)
-        monkeysession.setattr(settings, "POSTGRES_PASSWORD", postgres.password)
-        monkeysession.setattr(settings, "POSTGRES_DATABASE", postgres.dbname)
         connection_url = postgres.get_connection_url()
+        monkeysession.setattr(settings, "DATABASE_URL", connection_url)
         engine = sqlalchemy.create_engine(connection_url)
         run_alembic_migrations()
         with Session(engine) as session:
@@ -60,13 +52,13 @@ def crud(db: Session) -> CrudService:
 
 
 @pytest.fixture
-def app() -> Generator[FastAPI, None, None]:
+def app() -> Generator[FastAPI]:
     yield global_app
     global_app.dependency_overrides.clear()
 
 
 @pytest.fixture
-def client(app: FastAPI) -> Generator[TestClient, None, None]:
+def client(app: FastAPI) -> Generator[TestClient]:
     with TestClient(app) as c:
         yield c
 

@@ -19,7 +19,7 @@ target_metadata = Base.metadata
 
 config.set_main_option(
     "sqlalchemy.url",
-    str(settings.SQLALCHEMY_DATABASE_URI),
+    str(settings.DATABASE_URL),
 )
 
 
