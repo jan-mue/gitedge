@@ -29,12 +29,15 @@ jobs:
           version: "0.12.0"
           enable-cache: true
 
+      - name: Install dependencies
+        run: uv sync --locked
+
       - name: Run tests with pytest
         working-directory: backend
         run: |
-          uv run coverage run -m pytest tests/
-          uv run coverage report
-          uv run coverage html --title "${@-coverage}"
+          uv run --no-sync coverage run -m pytest tests
+          uv run --no-sync coverage xml
+          uv run --no-sync coverage html --title "${@-coverage}"
 
       - name: Store coverage files
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -29,6 +29,9 @@ jobs:
           version: "0.12.0"
           enable-cache: true
 
+      - name: Install dependencies
+        run: uv sync --locked
+
       - name: Cache mypy cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -39,4 +42,4 @@ jobs:
 
       - name: Run mypy
         working-directory: backend
-        run: uv run mypy app tests
+        run: uv run --no-sync mypy app tests
