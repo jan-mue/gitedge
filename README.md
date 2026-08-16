@@ -1,4 +1,4 @@
-# Forgeless
+# GitEdge
 
 Serverless Git forge deployed on Vercel.
 
@@ -42,7 +42,7 @@ and `*` is never used, so `allow_credentials=True` stays valid.
 
 ### Environment variables
 
-- `FRONTEND_HOST` — production frontend origin (`https://forgeless.vercel.app`).
+- `FRONTEND_HOST` — production frontend origin (`https://gitedge.vercel.app`).
   Required for strict production CORS; managed in `infra/vercel.tf`.
 
 ### Local development
