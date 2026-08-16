@@ -1,8 +1,11 @@
+import json
 import secrets
 import warnings
 from enum import StrEnum
 from typing import Literal, Self
+from urllib.parse import urlsplit
 
+from loguru import logger
 from pydantic import (
     EmailStr,
     HttpUrl,
@@ -12,6 +15,46 @@ from pydantic import (
     model_validator,
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Origin(s) allowed for local development (Vite dev server).
+DEV_FRONTEND_ORIGINS: tuple[str, ...] = (
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+)
+
+
+def _normalize_origin(value: str) -> str | None:
+    value = value.strip()
+    if "://" not in value:
+        value = f"https://{value}"
+    parsed = urlsplit(value)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return None
+    if parsed.path or parsed.query or parsed.fragment:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _preview_hosts(raw: str | None) -> list[str]:
+    if not raw:
+        return []
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("Ignoring malformed VERCEL_RELATED_PROJECTS")
+        return []
+    if not isinstance(payload, list):
+        return []
+    hosts: list[str] = []
+    for entry in payload:
+        preview = entry.get("preview") if isinstance(entry, dict) else None
+        if not isinstance(preview, dict):
+            continue
+        for field in ("customEnvironment", "branch"):
+            value = preview.get(field)
+            if isinstance(value, str) and value:
+                hosts.append(value)
+    return hosts
 
 
 class LogLevel(StrEnum):
@@ -37,6 +80,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     FRONTEND_HOST: str = "http://localhost:5173"
     VERCEL_ENV: Literal["development", "preview", "production"] = "development"
+    # Set by Vercel when `relatedProjects` is declared in vercel.json.
+    VERCEL_RELATED_PROJECTS: str | None = None
 
     LOG_LEVEL: LogLevel = LogLevel.INFO
 
@@ -100,6 +145,23 @@ class Settings(BaseSettings):
         )
 
         return self
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Allowed CORS origins for the current environment."""
+        if self.VERCEL_ENV == "production":
+            candidates = [self.FRONTEND_HOST]
+        elif self.VERCEL_ENV == "preview":
+            candidates = _preview_hosts(self.VERCEL_RELATED_PROJECTS)
+        else:
+            candidates = list(DEV_FRONTEND_ORIGINS)
+
+        origins: list[str] = []
+        for candidate in candidates:
+            normalized = _normalize_origin(candidate)
+            if normalized is not None and normalized not in origins:
+                origins.append(normalized)
+        return origins
 
 
 settings = Settings()  # ty: ignore[missing-argument]
