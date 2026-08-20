@@ -100,6 +100,7 @@ repos:
         language: system
         types: [text]
         files: ^frontend/
+        pass_filenames: false
 
       - id: generate-frontend-sdk
         name: Generate Frontend SDK
