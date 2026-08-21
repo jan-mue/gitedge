@@ -17,9 +17,7 @@ class PrivateUserCreate(BaseModel):
 
 
 @router.post("/users/", response_model=UserPublic)
-def create_user(
-    user_in: PrivateUserCreate, user_repository: UserRepositoryDep
-) -> UserPublic:
+def create_user(user_in: PrivateUserCreate, user_repository: UserRepositoryDep) -> UserPublic:
     """
     Create a new user.
     """

@@ -24,19 +24,13 @@ def read_items(
         items = item_repository.get_all(offset=skip, limit=limit)
     else:
         count = item_repository.count_by_owner_id(owner_id=current_user.id)
-        items = item_repository.get_all_by_owner_id(
-            owner_id=current_user.id, offset=skip, limit=limit
-        )
+        items = item_repository.get_all_by_owner_id(owner_id=current_user.id, offset=skip, limit=limit)
 
-    return ItemsPublic(
-        data=[ItemPublic.model_validate(item) for item in items], count=count
-    )
+    return ItemsPublic(data=[ItemPublic.model_validate(item) for item in items], count=count)
 
 
 @router.get("/{id}")
-def read_item(
-    item_repository: ItemRepositoryDep, current_user: CurrentUser, id: uuid.UUID
-) -> ItemPublic:
+def read_item(item_repository: ItemRepositoryDep, current_user: CurrentUser, id: uuid.UUID) -> ItemPublic:
     """
     Get item by ID.
     """
@@ -49,9 +43,7 @@ def read_item(
 
 
 @router.post("/")
-def create_item(
-    *, crud_service: CrudServiceDep, current_user: CurrentUser, item_in: ItemCreate
-) -> ItemPublic:
+def create_item(*, crud_service: CrudServiceDep, current_user: CurrentUser, item_in: ItemCreate) -> ItemPublic:
     """
     Create new item.
     """
@@ -80,9 +72,7 @@ def update_item(
 
 
 @router.delete("/{id}")
-def delete_item(
-    item_repository: ItemRepositoryDep, current_user: CurrentUser, id: uuid.UUID
-) -> Message:
+def delete_item(item_repository: ItemRepositoryDep, current_user: CurrentUser, id: uuid.UUID) -> Message:
     """
     Delete an item.
     """

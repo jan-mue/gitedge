@@ -6,9 +6,7 @@ from app.services.crud import CrudService
 from tests.utils.utils import random_email, random_lower_string
 
 
-def user_authentication_headers(
-    *, client: TestClient, email: str, password: str
-) -> dict[str, str]:
+def user_authentication_headers(*, client: TestClient, email: str, password: str) -> dict[str, str]:
     data = {"username": email, "password": password}
 
     r = client.post(f"{settings.API_V1_STR}/login/access-token", data=data)
@@ -26,9 +24,7 @@ def create_random_user(crud: CrudService) -> UserPublic:
     return user
 
 
-def authentication_token_from_email(
-    *, client: TestClient, email: str, crud: CrudService
-) -> dict[str, str]:
+def authentication_token_from_email(*, client: TestClient, email: str, crud: CrudService) -> dict[str, str]:
     """
     Return a valid token for the user with given email.
 

@@ -34,17 +34,13 @@ def login_access_token(
     """
     OAuth2 compatible token login, get an access token for future requests
     """
-    user = crud_service.authenticate(
-        email=form_data.username, password=form_data.password
-    )
+    user = crud_service.authenticate(email=form_data.username, password=form_data.password)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    return Token(
-        access_token=create_access_token(user.id, expires_delta=access_token_expires)
-    )
+    return Token(access_token=create_access_token(user.id, expires_delta=access_token_expires))
 
 
 @router.post("/login/test-token")
@@ -56,9 +52,7 @@ def test_token(current_user: CurrentUser) -> UserPublic:
 
 
 @router.post("/password-recovery/{email}")
-def recover_password(
-    email: str, crud_service: CrudServiceDep, email_client: EmailClientDep
-) -> Message:
+def recover_password(email: str, crud_service: CrudServiceDep, email_client: EmailClientDep) -> Message:
     """
     Password Recovery
     """
@@ -68,17 +62,13 @@ def recover_password(
     # Only send email if user actually exists
     if user:
         password_reset_token = generate_password_reset_token(email=email)
-        email_data = generate_reset_password_email(
-            email_to=user.email, email=email, token=password_reset_token
-        )
+        email_data = generate_reset_password_email(email_to=user.email, email=email, token=password_reset_token)
         email_client.send_email(
             email_to=user.email,
             subject=email_data.subject,
             html_content=email_data.html_content,
         )
-    return Message(
-        message="If that email is registered, we sent a password recovery link"
-    )
+    return Message(message="If that email is registered, we sent a password recovery link")
 
 
 @router.post("/reset-password/")
@@ -105,9 +95,7 @@ def reset_password(user_repository: UserRepositoryDep, body: NewPassword) -> Mes
     "/password-recovery-html-content/{email}",
     dependencies=[Depends(get_current_active_superuser)],
 )
-def recover_password_html_content(
-    email: str, crud_service: CrudServiceDep
-) -> HTMLResponse:
+def recover_password_html_content(email: str, crud_service: CrudServiceDep) -> HTMLResponse:
     """
     HTML Content for Password Recovery
     """
@@ -119,10 +107,6 @@ def recover_password_html_content(
             detail="The user with this username does not exist in the system.",
         )
     password_reset_token = generate_password_reset_token(email=email)
-    email_data = generate_reset_password_email(
-        email_to=user.email, email=email, token=password_reset_token
-    )
+    email_data = generate_reset_password_email(email_to=user.email, email=email, token=password_reset_token)
 
-    return HTMLResponse(
-        content=email_data.html_content, headers={"subject:": email_data.subject}
-    )
+    return HTMLResponse(content=email_data.html_content, headers={"subject:": email_data.subject})

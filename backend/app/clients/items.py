@@ -10,9 +10,7 @@ from app.entities.items import Item
 
 class ItemRepository(CrudRepository[Item], ABC):
     @abstractmethod
-    def get_all_by_owner_id(
-        self, owner_id: UUID | str, offset: int = 0, limit: int = 100
-    ) -> list[Item]:
+    def get_all_by_owner_id(self, owner_id: UUID | str, offset: int = 0, limit: int = 100) -> list[Item]:
         pass
 
     @abstractmethod
@@ -24,12 +22,8 @@ class SQLItemRepository(ItemRepository, SQLRepository[Item]):
     def __init__(self, db: Session):
         super().__init__(db, Item)
 
-    def get_all_by_owner_id(
-        self, owner_id: UUID | str, offset: int = 0, limit: int = 100
-    ) -> list[Item]:
-        query = (
-            select(Item).where(Item.owner_id == owner_id).offset(offset).limit(limit)
-        )
+    def get_all_by_owner_id(self, owner_id: UUID | str, offset: int = 0, limit: int = 100) -> list[Item]:
+        query = select(Item).where(Item.owner_id == owner_id).offset(offset).limit(limit)
         return list(self.db.scalars(query).all())
 
     def count_by_owner_id(self, owner_id: UUID | str) -> int:

@@ -65,9 +65,7 @@ def test_preview_extracts_branch_and_custom_environment(
         '["no dicts"]',
     ],
 )
-def test_preview_missing_or_malformed_data_does_not_crash(
-    monkeypatch: MonkeyPatch, raw: str | None
-) -> None:
+def test_preview_missing_or_malformed_data_does_not_crash(monkeypatch: MonkeyPatch, raw: str | None) -> None:
     monkeypatch.setattr(settings, "VERCEL_ENV", "preview")
     monkeypatch.setattr(settings, "VERCEL_RELATED_PROJECTS", raw)
     assert settings.cors_origins == []

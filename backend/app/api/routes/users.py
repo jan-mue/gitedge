@@ -30,24 +30,18 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/", dependencies=[Depends(get_current_active_superuser)])
-def read_users(
-    user_repository: UserRepositoryDep, skip: int = 0, limit: int = 100
-) -> UsersPublic:
+def read_users(user_repository: UserRepositoryDep, skip: int = 0, limit: int = 100) -> UsersPublic:
     """
     Retrieve users.
     """
     count = user_repository.count()
     users = user_repository.get_all(offset=skip, limit=limit)
 
-    return UsersPublic(
-        data=[UserPublic.model_validate(user) for user in users], count=count
-    )
+    return UsersPublic(data=[UserPublic.model_validate(user) for user in users], count=count)
 
 
 @router.post("/", dependencies=[Depends(get_current_active_superuser)])
-def create_user(
-    *, crud_service: CrudServiceDep, user_in: UserCreate, email_client: EmailClientDep
-) -> UserPublic:
+def create_user(*, crud_service: CrudServiceDep, user_in: UserCreate, email_client: EmailClientDep) -> UserPublic:
     """
     Create new user.
     """
@@ -72,9 +66,7 @@ def create_user(
 
 
 @router.patch("/me")
-def update_user_me(
-    *, crud_service: CrudServiceDep, user_in: UserUpdateMe, current_user: CurrentUser
-) -> UserPublic:
+def update_user_me(*, crud_service: CrudServiceDep, user_in: UserUpdateMe, current_user: CurrentUser) -> UserPublic:
     """
     Update own user.
     """
@@ -82,9 +74,7 @@ def update_user_me(
     if user_in.email:
         existing_user = crud_service.get_user_by_email(email=user_in.email)
         if existing_user and existing_user.id != current_user.id:
-            raise HTTPException(
-                status_code=409, detail="User with this email already exists"
-            )
+            raise HTTPException(status_code=409, detail="User with this email already exists")
     return crud_service.update_user(db_user=current_user, user_in=user_in)
 
 
@@ -102,9 +92,7 @@ def update_password_me(
     if not verified:
         raise HTTPException(status_code=400, detail="Incorrect password")
     if body.current_password == body.new_password:
-        raise HTTPException(
-            status_code=400, detail="New password cannot be the same as the current one"
-        )
+        raise HTTPException(status_code=400, detail="New password cannot be the same as the current one")
     hashed_password = get_password_hash(body.new_password)
     current_user.hashed_password = hashed_password
     user_repository.update(current_user)
@@ -125,9 +113,7 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Message:
     Delete own user.
     """
     if current_user.is_superuser:
-        raise HTTPException(
-            status_code=403, detail="Super users are not allowed to delete themselves"
-        )
+        raise HTTPException(status_code=403, detail="Super users are not allowed to delete themselves")
     # TODO: move to service
     statement = delete(Item).where(Item.owner_id == current_user.id)
     session.execute(statement)
@@ -153,9 +139,7 @@ def register_user(crud_service: CrudServiceDep, user_in: UserRegister) -> UserPu
 
 
 @router.get("/{user_id}")
-def read_user_by_id(
-    user_id: uuid.UUID, user_repository: UserRepositoryDep, current_user: CurrentUser
-) -> UserPublic:
+def read_user_by_id(user_id: uuid.UUID, user_repository: UserRepositoryDep, current_user: CurrentUser) -> UserPublic:
     """
     Get a specific user by id.
     """
@@ -191,9 +175,7 @@ def update_user(
     if user_in.email:
         existing_user = crud_service.get_user_by_email(email=user_in.email)
         if existing_user and existing_user.id != user_id:
-            raise HTTPException(
-                status_code=409, detail="User with this email already exists"
-            )
+            raise HTTPException(status_code=409, detail="User with this email already exists")
 
     return crud_service.update_user(db_user=db_user, user_in=user_in)
 
@@ -213,9 +195,7 @@ def delete_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if user == current_user:
-        raise HTTPException(
-            status_code=403, detail="Super users are not allowed to delete themselves"
-        )
+        raise HTTPException(status_code=403, detail="Super users are not allowed to delete themselves")
     statement = delete(Item).where(Item.owner_id == user_id)
     session.execute(statement)
     session.delete(user)

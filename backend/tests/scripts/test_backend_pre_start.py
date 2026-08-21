@@ -21,8 +21,6 @@ def test_init_successful_connection() -> None:
         except Exception:
             connection_successful = False
 
-        assert connection_successful, (
-            "The database connection should be successful and not raise an exception."
-        )
+        assert connection_successful, "The database connection should be successful and not raise an exception."
 
         session_mock.execute.assert_called_once_with(select1)
