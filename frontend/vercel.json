@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "relatedProjects": ["prj_dvjGJsgfdhW9dx1PXXg0YR7exv8Z"],
+  "relatedProjects": ["prj_Mo9JYgDx7MXkiPmHscPQgLpH3JN6"],
   "git": {
     "deploymentEnabled": {
       "renovate/*": false
