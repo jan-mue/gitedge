@@ -18,6 +18,4 @@ class User(Base):
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     hashed_password: Mapped[str] = mapped_column(Text, nullable=False)
-    items: Mapped[list[Item]] = relationship(
-        "Item", back_populates="owner", cascade="all, delete-orphan"
-    )
+    items: Mapped[list[Item]] = relationship("Item", back_populates="owner", cascade="all, delete-orphan")

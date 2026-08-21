@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "installCommand": "uv sync",
-  "relatedProjects": ["prj_92SvWxH1QhfvTMuCw6F7aMcvq895"],
+  "relatedProjects": ["prj_UJLLfQw7EHhXQXu9YWmotU2XnN83"],
   "git": {
     "deploymentEnabled": {
       "renovate/*": false

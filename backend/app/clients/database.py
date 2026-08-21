@@ -60,24 +60,17 @@ class SQLRepository[T: Base](CrudRepository[T]):
         self.entity_class = entity_class
 
     def get(self, primary_key: uuid.UUID | str) -> T | None:
-        return self.db.scalar(
-            select(self.entity_class).where(self.entity_class.id == primary_key)
-        )
+        return self.db.scalar(select(self.entity_class).where(self.entity_class.id == primary_key))
 
     def get_all(self, offset: int = 0, limit: int = 100) -> list[T]:
         return list(
             self.db.scalars(
-                select(self.entity_class)
-                .order_by(self.entity_class.created_at.desc())
-                .offset(offset)
-                .limit(limit)
+                select(self.entity_class).order_by(self.entity_class.created_at.desc()).offset(offset).limit(limit)
             ).all()
         )
 
     def count(self) -> int:
-        return self.db.execute(
-            select(func.count()).select_from(self.entity_class)
-        ).scalar_one()
+        return self.db.execute(select(func.count()).select_from(self.entity_class)).scalar_one()
 
     def add(self, obj: T) -> None:
         self.db.add(obj)

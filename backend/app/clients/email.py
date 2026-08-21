@@ -8,9 +8,7 @@ from app.config import settings
 
 class EmailClient(ABC):
     @abstractmethod
-    def send_email(
-        self, email_to: str, subject: str = "", html_content: str = ""
-    ) -> None:
+    def send_email(self, email_to: str, subject: str = "", html_content: str = "") -> None:
         pass
 
 
@@ -26,9 +24,7 @@ class SMTPClient(EmailClient):
         if settings.SMTP_PASSWORD:
             self.smtp_options["password"] = settings.SMTP_PASSWORD
 
-    def send_email(
-        self, email_to: str, subject: str = "", html_content: str = ""
-    ) -> None:
+    def send_email(self, email_to: str, subject: str = "", html_content: str = "") -> None:
         assert settings.emails_enabled, "no provided configuration for email variables"
         assert settings.EMAILS_FROM_EMAIL  # For type checker
         message = emails.message.Message(

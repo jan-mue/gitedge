@@ -14,9 +14,7 @@ DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$MjQyZWE1MzBjYjJlZTI0Yw$YTU4NGM5ZTZm
 
 
 class CrudService:
-    def __init__(
-        self, user_repository: UserRepository, item_repository: ItemRepository
-    ):
+    def __init__(self, user_repository: UserRepository, item_repository: ItemRepository):
         self.user_repository = user_repository
         self.item_repository = item_repository
 
@@ -43,9 +41,7 @@ class CrudService:
             return None
         return UserPublic.model_validate(user)
 
-    def update_user(
-        self, db_user: User, user_in: UserUpdate | UserUpdateMe
-    ) -> UserPublic:
+    def update_user(self, db_user: User, user_in: UserUpdate | UserUpdateMe) -> UserPublic:
         user_data = user_in.model_dump(exclude_unset=True)
         if "password" in user_data:
             password = user_data.pop("password")
@@ -61,9 +57,7 @@ class CrudService:
             # This ensures the response time is similar whether or not the email exists
             verify_password(password, DUMMY_HASH)
             return None
-        verified, updated_password_hash = verify_password(
-            password, db_user.hashed_password
-        )
+        verified, updated_password_hash = verify_password(password, db_user.hashed_password)
         if not verified:
             return None
         if updated_password_hash:

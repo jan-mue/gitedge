@@ -13,9 +13,7 @@ if TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
 
-def test_unhandled_exception_is_logged(
-    app: FastAPI, mocker: MockerFixture, capsys: CaptureFixture[str]
-) -> None:
+def test_unhandled_exception_is_logged(app: FastAPI, mocker: MockerFixture, capsys: CaptureFixture[str]) -> None:
     """Unhandled exceptions return 500 and are logged via loguru."""
     mock_settings = mocker.patch("app.utils.configure_logging.settings")
     mock_settings.LOG_LEVEL.value = "DEBUG"
