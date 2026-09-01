@@ -1,14 +1,25 @@
-from sqlalchemy.orm import Session
+"""Database initialization helpers."""
 
-from app.clients.items import SQLItemRepository
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from app.clients.users import SQLUserRepository
 from app.config import settings
 from app.schemas.users import UserCreate
 from app.services.crud import CrudService
 
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
 
 def init_db(session: Session) -> None:
-    crud_service = CrudService(SQLUserRepository(session), SQLItemRepository(session))
+    """Create the initial superuser if it does not already exist.
+
+    Args:
+        session: SQLAlchemy session to use.
+    """
+    crud_service = CrudService(SQLUserRepository(session))
     user = crud_service.get_user_by_email(email=settings.FIRST_SUPERUSER)
     if not user:
         user_in = UserCreate(
@@ -16,4 +27,4 @@ def init_db(session: Session) -> None:
             password=settings.FIRST_SUPERUSER_PASSWORD,
             is_superuser=True,
         )
-        user = crud_service.create_user(user_create=user_in)
+        crud_service.create_user(user_create=user_in)

@@ -1,7 +1,13 @@
-from fastapi.testclient import TestClient
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from app.config import settings
-from app.services.crud import CrudService
+
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
+
+    from app.services.crud import CrudService
 
 
 def test_create_user(client: TestClient, crud: CrudService) -> None:

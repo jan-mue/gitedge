@@ -1,14 +1,22 @@
-from unittest.mock import patch
+from __future__ import annotations
 
-from fastapi.testclient import TestClient
+from typing import TYPE_CHECKING
 
+from app.api.dependencies import get_email_client
 from app.config import settings
+from app.index import app
 from app.schemas.users import UserCreate
-from app.services.crud import CrudService
 from app.utils.email import generate_password_reset_token
 from app.utils.security import verify_password
-from tests.utils.user import user_authentication_headers
-from tests.utils.utils import random_email, random_lower_string
+from tests.unit.utils.fakes import FakeEmailClient
+from tests.unit.utils.user import user_authentication_headers
+from tests.unit.utils.utils import random_email, random_lower_string
+
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
+    from pytest_mock import MockerFixture
+
+    from app.services.crud import CrudService
 
 
 def test_get_access_token(client: TestClient) -> None:
@@ -42,18 +50,23 @@ def test_use_access_token(client: TestClient, superuser_token_headers: dict[str,
     assert "email" in result
 
 
-def test_recovery_password(client: TestClient, normal_user_token_headers: dict[str, str]) -> None:
-    with (
-        patch("app.config.settings.SMTP_HOST", "smtp.example.com"),
-        patch("app.config.settings.SMTP_USER", "admin@example.com"),
-    ):
-        email = "test@example.com"
-        r = client.post(
-            f"{settings.API_V1_STR}/password-recovery/{email}",
-            headers=normal_user_token_headers,
-        )
-        assert r.status_code == 200
-        assert r.json() == {"message": "If that email is registered, we sent a password recovery link"}
+def test_recovery_password(
+    client: TestClient, normal_user_token_headers: dict[str, str], mocker: MockerFixture
+) -> None:
+    # Override email client with fake
+    app.dependency_overrides[get_email_client] = FakeEmailClient
+    # Mock the email generation since templates don't exist
+    mocker.patch(
+        "app.api.routes.login.generate_reset_password_email",
+        return_value=mocker.MagicMock(subject="Test", html_content="<html>Test</html>"),
+    )
+    email = "test@example.com"
+    r = client.post(
+        f"{settings.API_V1_STR}/password-recovery/{email}",
+        headers=normal_user_token_headers,
+    )
+    assert r.status_code == 200
+    assert r.json() == {"message": "If that email is registered, we sent a password recovery link"}
 
 
 def test_recovery_password_user_not_exits(client: TestClient, normal_user_token_headers: dict[str, str]) -> None:
@@ -100,7 +113,7 @@ def test_reset_password(client: TestClient, crud: CrudService) -> None:
 
 
 def test_reset_password_invalid_token(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
-    data = {"new_password": "changethis", "token": "invalid"}
+    data = {"new_password": "new_test_password", "token": "invalid"}
     r = client.post(
         f"{settings.API_V1_STR}/reset-password/",
         headers=superuser_token_headers,

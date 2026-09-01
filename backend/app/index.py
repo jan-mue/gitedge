@@ -1,20 +1,32 @@
+"""FastAPI application setup and configuration."""
+
+import logging
+from typing import TYPE_CHECKING
+
 import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.routing import APIRoute
-from loguru import logger
 
 from app.api.main import api_router
+from app.api.routes import git
 from app.config import settings
-from app.utils.configure_logging import configure_logging
+from app.utils.setup_logging import setup_logging
+
+if TYPE_CHECKING:
+    from fastapi.routing import APIRoute
+
+logger = logging.getLogger(__name__)
+
+setup_logging(level=logging.DEBUG if settings.VERCEL_ENV == "development" else logging.INFO, logger_name="app")
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
-    return f"{route.tags[0]}-{route.name}"
+    """Generate a unique operation ID for each route based on tag and name."""
+    if route.tags:
+        return f"{route.tags[0]}-{route.name}"
+    return route.name
 
-
-configure_logging()
 
 if settings.SENTRY_DSN and settings.VERCEL_ENV != "development":
     sentry_sdk.init(dsn=str(settings.SENTRY_DSN), enable_tracing=True)
@@ -29,7 +41,7 @@ app = FastAPI(
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle all unhandled exceptions and log them with Loguru."""
-    logger.exception(f"Unhandled exception: {exc} - Path: {request.url.path}")
+    logger.error("Unhandled exception: %s - Path: %s", exc, request.url.path)
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
@@ -42,3 +54,8 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Mount git router at root level for git client access (e.g., /<owner>/<repo>.git/info/refs)
+# This allows git clients to use clean URLs without the /api/v1/ prefix.
+# Excluded from OpenAPI docs to avoid duplicate operation IDs with /api/v1/ routes.
+app.include_router(git.router, include_in_schema=False)

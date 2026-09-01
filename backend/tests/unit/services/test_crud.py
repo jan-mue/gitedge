@@ -1,9 +1,15 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from fastapi.encoders import jsonable_encoder
 
 from app.schemas.users import UserCreate, UserUpdate
-from app.services.crud import CrudService
 from app.utils.security import verify_password
-from tests.utils.utils import random_email, random_lower_string
+from tests.unit.utils.utils import random_email, random_lower_string
+
+if TYPE_CHECKING:
+    from app.services.crud import CrudService
 
 
 def test_create_user(crud: CrudService) -> None:

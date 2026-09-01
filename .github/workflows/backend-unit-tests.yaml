@@ -1,4 +1,4 @@
-name: Run tests
+name: Run backend unit tests
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  test:
+  backend-unit-tests:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -24,7 +24,7 @@ jobs:
           python-version-file: backend/pyproject.toml
 
       - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
         with:
           version: "0.12.5"
           enable-cache: true
@@ -32,16 +32,14 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
-      - name: Run tests with pytest
+      - name: Run unit tests
         working-directory: backend
         run: |
-          uv run --no-sync coverage run -m pytest tests
+          uv run --no-sync coverage run -m pytest tests/unit
           uv run --no-sync coverage xml
-          uv run --no-sync coverage html --title "${@-coverage}"
 
-      - name: Store coverage files
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
-          name: coverage-html
-          path: backend/htmlcov
-          include-hidden-files: true
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}

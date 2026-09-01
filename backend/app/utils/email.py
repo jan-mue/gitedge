@@ -1,3 +1,5 @@
+"""Email generation utilities."""
+
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -13,17 +15,35 @@ from app.utils import security
 
 @dataclass
 class EmailData:
+    """Data class for email content."""
+
     html_content: str
     subject: str
 
 
 def render_email_template(*, template_name: str, context: dict[str, Any]) -> str:
+    """Render an email template with the given context.
+
+    Args:
+        template_name: Name of the template file in email-templates.
+        context: Dictionary of variables to pass to the template.
+
+    Returns:
+        Rendered HTML content.
+    """
     template_str = (RESOURCES_DIR / "email-templates" / template_name).read_text()
-    html_content = Template(template_str).render(context)
-    return html_content
+    return Template(template_str).render(context)
 
 
 def generate_test_email(email_to: str) -> EmailData:
+    """Generate a test email.
+
+    Args:
+        email_to: Recipient email address.
+
+    Returns:
+        EmailData with subject and HTML content.
+    """
     project_name = settings.PROJECT_NAME
     subject = f"{project_name} - Test email"
     html_content = render_email_template(
@@ -34,6 +54,16 @@ def generate_test_email(email_to: str) -> EmailData:
 
 
 def generate_reset_password_email(email_to: str, email: str, token: str) -> EmailData:
+    """Generate a password reset email.
+
+    Args:
+        email_to: Recipient email address.
+        email: User's email for display.
+        token: Password reset token.
+
+    Returns:
+        EmailData with subject and HTML content.
+    """
     project_name = settings.PROJECT_NAME
     subject = f"{project_name} - Password recovery for user {email}"
     link = f"{settings.FRONTEND_HOST}/reset-password?token={token}"
@@ -51,6 +81,16 @@ def generate_reset_password_email(email_to: str, email: str, token: str) -> Emai
 
 
 def generate_new_account_email(email_to: str, username: str, password: str) -> EmailData:
+    """Generate a new account welcome email.
+
+    Args:
+        email_to: Recipient email address.
+        username: New user's username.
+        password: New user's password.
+
+    Returns:
+        EmailData with subject and HTML content.
+    """
     project_name = settings.PROJECT_NAME
     subject = f"{project_name} - New account for user {username}"
     html_content = render_email_template(
@@ -67,19 +107,34 @@ def generate_new_account_email(email_to: str, username: str, password: str) -> E
 
 
 def generate_password_reset_token(email: str) -> str:
+    """Generate a password reset token.
+
+    Args:
+        email: User's email address.
+
+    Returns:
+        JWT token for password reset.
+    """
     delta = timedelta(hours=settings.EMAIL_RESET_TOKEN_EXPIRE_HOURS)
     now = datetime.now(UTC)
     expires = now + delta
     exp = expires.timestamp()
-    encoded_jwt = jwt.encode(
+    return jwt.encode(
         {"exp": exp, "nbf": now, "sub": email},
         settings.SECRET_KEY,
         algorithm=security.ALGORITHM,
     )
-    return encoded_jwt
 
 
 def verify_password_reset_token(token: str) -> str | None:
+    """Verify a password reset token.
+
+    Args:
+        token: The JWT token to verify.
+
+    Returns:
+        The email address if valid, None otherwise.
+    """
     try:
         decoded_token = jwt.decode(token, settings.SECRET_KEY, algorithms=[security.ALGORITHM])
         return str(decoded_token["sub"])

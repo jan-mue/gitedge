@@ -1,16 +1,21 @@
-import uuid
-from unittest.mock import patch
+from __future__ import annotations
 
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
+import uuid
+from typing import TYPE_CHECKING
 
 from app.api.dependencies import get_email_client
 from app.config import settings
+from app.index import app
 from app.schemas.users import UserCreate
-from app.services.crud import CrudService
 from app.utils.security import verify_password
-from tests.utils.fakes import FakeEmailClient
-from tests.utils.utils import random_email, random_lower_string
+from tests.unit.utils.fakes import FakeEmailClient
+from tests.unit.utils.utils import random_email, random_lower_string
+
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
+    from pytest_mock import MockerFixture
+
+    from app.services.crud import CrudService
 
 
 def test_get_users_superuser_me(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
@@ -32,29 +37,24 @@ def test_get_users_normal_user_me(client: TestClient, normal_user_token_headers:
 
 
 def test_create_user_new_email(
-    app: FastAPI,
-    client: TestClient,
-    superuser_token_headers: dict[str, str],
-    crud: CrudService,
+    client: TestClient, superuser_token_headers: dict[str, str], crud: CrudService, mocker: MockerFixture
 ) -> None:
-    app.dependency_overrides[get_email_client] = lambda: FakeEmailClient()
-    with (
-        patch("app.config.settings.SMTP_HOST", "smtp.example.com"),
-        patch("app.config.settings.SMTP_USER", "admin@example.com"),
-    ):
-        username = random_email()
-        password = random_lower_string()
-        data = {"email": username, "password": password}
-        r = client.post(
-            f"{settings.API_V1_STR}/users/",
-            headers=superuser_token_headers,
-            json=data,
-        )
-        assert 200 <= r.status_code < 300
-        created_user = r.json()
-        user = crud.get_user_by_email(email=username)
-        assert user
-        assert user.email == created_user["email"]
+    app.dependency_overrides[get_email_client] = FakeEmailClient
+    mocker.patch.object(settings, "SMTP_HOST", "smtp.example.com")
+    mocker.patch.object(settings, "SMTP_USER", "admin@example.com")
+    username = random_email()
+    password = random_lower_string()
+    data = {"email": username, "password": password}
+    r = client.post(
+        f"{settings.API_V1_STR}/users/",
+        headers=superuser_token_headers,
+        json=data,
+    )
+    assert 200 <= r.status_code < 300
+    created_user = r.json()
+    user = crud.get_user_by_email(email=username)
+    assert user
+    assert user.email == created_user["email"]
 
 
 def test_get_existing_user(client: TestClient, superuser_token_headers: dict[str, str], crud: CrudService) -> None:
@@ -105,7 +105,6 @@ def test_create_user_existing_username(
     client: TestClient, superuser_token_headers: dict[str, str], crud: CrudService
 ) -> None:
     username = random_email()
-    # username = email
     password = random_lower_string()
     user_in = UserCreate(email=username, password=password)
     crud.create_user(user_create=user_in)

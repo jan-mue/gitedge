@@ -1,14 +1,12 @@
+"""Utility routes for health checks and email testing."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from pydantic.networks import EmailStr
 
-from app.api.dependencies import (
-    EmailClientDep,
-    check_database_connection,
-    get_current_active_superuser,
-)
-from app.schemas.items import Message
+from app.api.dependencies import EmailClientDep, check_database_connection, get_current_active_superuser
+from app.schemas.common import Message
 from app.utils.email import generate_test_email
 
 router = APIRouter(prefix="/utils", tags=["utils"])
@@ -19,10 +17,8 @@ router = APIRouter(prefix="/utils", tags=["utils"])
     dependencies=[Depends(get_current_active_superuser)],
     status_code=201,
 )
-def test_email(email_to: EmailStr, email_client: EmailClientDep) -> Message:
-    """
-    Test emails.
-    """
+async def test_email(email_to: EmailStr, email_client: EmailClientDep) -> Message:
+    """Test emails."""
     email_data = generate_test_email(email_to=email_to)
     email_client.send_email(
         email_to=email_to,
@@ -36,4 +32,5 @@ def test_email(email_to: EmailStr, email_client: EmailClientDep) -> Message:
 async def health_check(
     db_reachable: Annotated[bool, Depends(check_database_connection)],
 ) -> bool:
+    """Check if the database connection is working."""
     return db_reachable
