@@ -158,7 +158,7 @@ async def delete_user(
     session: SessionDep,
     user_repository: UserRepositoryDep,
     current_user: CurrentUser,
-    user_id: str,
+    user_id: uuid.UUID,
 ) -> Message:
     """Delete a user."""
     # TODO: move to service
