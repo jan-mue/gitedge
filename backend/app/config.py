@@ -110,21 +110,6 @@ class Settings(BaseSettings):
     REDIS_KIND: Literal["redis", "rest"] = "redis"
     REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_PASSWORD: str | None = None
-    # Set by the Vercel Upstash Redis integration.
-    UPSTASH_REDIS_REST_URL: str | None = None
-    UPSTASH_REDIS_REST_TOKEN: str | None = None
-
-    @model_validator(mode="after")
-    def _resolve_upstash_redis(self) -> Self:
-        """Adopt Upstash Redis when the Vercel integration provides it."""
-        if self.UPSTASH_REDIS_REST_URL:
-            self.REDIS_URL = self.UPSTASH_REDIS_REST_URL
-            if self.UPSTASH_REDIS_REST_TOKEN:
-                self.REDIS_PASSWORD = self.UPSTASH_REDIS_REST_TOKEN
-            self.REDIS_KIND = "rest"
-        elif self.REDIS_URL.startswith("https://"):
-            self.REDIS_KIND = "rest"
-        return self
 
     # Blob storage settings
     BLOB_STORAGE_KIND: Literal["vercel", "s3"] = "s3"
