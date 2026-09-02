@@ -12,7 +12,7 @@ from io import BytesIO
 from typing import TYPE_CHECKING, Any, BinaryIO
 
 from dulwich.object_format import DEFAULT_OBJECT_FORMAT, ObjectFormat
-from dulwich.object_store import BucketBasedObjectStore
+from dulwich.object_store import BucketBasedObjectStore, _bound_read_callables
 from dulwich.pack import (
     Pack,
     PackData,
@@ -229,6 +229,8 @@ class BlobObjectStore(BucketBasedObjectStore):
         read_all: Callable[[int], bytes],
         read_some: Callable[[int], bytes] | None,
         progress: Callable[..., None] | None = None,
+        *,
+        max_input_size: int | None = None,
     ) -> Pack:
         """Add a new thin pack to this object store.
 
@@ -242,10 +244,18 @@ class BlobObjectStore(BucketBasedObjectStore):
             read_some: Read function that returns at least one byte, but may
                 not return the number of bytes requested.
             progress: Optional progress reporting function.
+            max_input_size: Maximum number of bytes that may be read while
+                ingesting this pack. ``None`` (the default) means unlimited.
 
         Returns:
             A Pack object pointing at the completed pack.
         """
+        if max_input_size:
+            read_all, read_some = _bound_read_callables(
+                read_all,
+                read_some,
+                max_input_size,
+            )
         # Create a temp file for the pack data
         with tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024, prefix="thin-pack-") as pf:
             # Use PackIndexer to resolve external refs and PackStreamCopier to copy

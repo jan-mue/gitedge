@@ -52,7 +52,7 @@ def _push_test_repo(wrangler_dev_url: str, repo_name: str) -> None:
         wrangler_dev_url: Base URL of the wrangler dev server.
         repo_name: Repository name (e.g., "testuser/browse-test.git").
     """
-    remote_url = f"{wrangler_dev_url}/{repo_name}"
+    remote_url = f"{wrangler_dev_url}/api/v1/{repo_name}"
 
     with tempfile.TemporaryDirectory() as tmpdir:
         source_dir = Path(tmpdir) / "source"

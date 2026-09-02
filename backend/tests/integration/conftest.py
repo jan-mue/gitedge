@@ -116,7 +116,7 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
 
         # Run Alembic migrations via alembic library
         config = Config(BACKEND_DIR / "alembic.ini")
-        config.set_main_option("script_location", str(BACKEND_DIR / "migrations" / "alembic"))
+        config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
         # We need to temporarily set the database URl so that env.py can pick it up
         os.environ["DATABASE_URL"] = db_url
         upgrade(config, "head")
@@ -157,8 +157,8 @@ def app_url(infrastructure: dict[str, str], xprocess: XProcess) -> Generator[str
         terminate_on_interrupt = True
         pattern = "Application startup complete"
         env = backend_env
-        args = [sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(backend_port)]
-        popen_kwargs = {"cwd": backend_cwd / "src"}
+        args = [sys.executable, "-m", "uvicorn", "app.index:app", "--port", str(backend_port)]
+        popen_kwargs = {"cwd": backend_cwd}
         max_read_lines = 1000
 
     backend_base_url = f"http://127.0.0.1:{backend_port}"

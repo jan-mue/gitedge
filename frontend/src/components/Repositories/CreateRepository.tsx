@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { type ItemCreate, ItemsService } from "@/client"
+import { RepositoriesService } from "@/client"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -31,13 +31,25 @@ import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
 const formSchema = z.object({
-  title: z.string().min(1, { message: "Title is required" }),
-  description: z.string().optional(),
+  owner: z
+    .string()
+    .min(1, { message: "Owner is required" })
+    .regex(/^[a-zA-Z0-9_-]+$/, {
+      message:
+        "Owner must only contain letters, numbers, hyphens, and underscores",
+    }),
+  name: z
+    .string()
+    .min(1, { message: "Repository name is required" })
+    .regex(/^[a-zA-Z0-9._-]+$/, {
+      message:
+        "Repository name must only contain letters, numbers, dots, hyphens, and underscores",
+    }),
 })
 
 type FormData = z.infer<typeof formSchema>
 
-const AddItem = () => {
+const CreateRepository = () => {
   const [isOpen, setIsOpen] = useState(false)
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
@@ -47,21 +59,24 @@ const AddItem = () => {
     mode: "onBlur",
     criteriaMode: "all",
     defaultValues: {
-      title: "",
-      description: "",
+      owner: "",
+      name: "",
     },
   })
 
   const mutation = useMutation({
-    mutationFn: (data: ItemCreate) => ItemsService.createItem({ body: data }),
+    mutationFn: (data: FormData) =>
+      RepositoriesService.createRepository({
+        body: { owner: data.owner, name: data.name },
+      }),
     onSuccess: () => {
-      showSuccessToast("Item created successfully")
+      showSuccessToast("Repository created successfully")
       form.reset()
       setIsOpen(false)
     },
     onError: handleError.bind(showErrorToast),
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["items"] })
+      queryClient.invalidateQueries({ queryKey: ["repositories"] })
     },
   })
 
@@ -72,16 +87,16 @@ const AddItem = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="my-4">
+        <Button data-testid="create-repository-button">
           <Plus className="mr-2" />
-          Add Item
+          New Repository
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Item</DialogTitle>
+          <DialogTitle>Create Repository</DialogTitle>
           <DialogDescription>
-            Fill in the details to add a new item.
+            Create a new empty Git repository.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -89,16 +104,17 @@ const AddItem = () => {
             <div className="grid gap-4 py-4">
               <FormField
                 control={form.control}
-                name="title"
+                name="owner"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Title <span className="text-destructive">*</span>
+                      Owner <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Title"
+                        placeholder="owner"
                         type="text"
+                        data-testid="create-repo-owner"
                         {...field}
                         required
                       />
@@ -110,12 +126,21 @@ const AddItem = () => {
 
               <FormField
                 control={form.control}
-                name="description"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel>
+                      Repository Name{" "}
+                      <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
-                      <Input placeholder="Description" type="text" {...field} />
+                      <Input
+                        placeholder="my-repo"
+                        type="text"
+                        data-testid="create-repo-name"
+                        {...field}
+                        required
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -129,8 +154,12 @@ const AddItem = () => {
                   Cancel
                 </Button>
               </DialogClose>
-              <LoadingButton type="submit" loading={mutation.isPending}>
-                Save
+              <LoadingButton
+                type="submit"
+                loading={mutation.isPending}
+                data-testid="create-repo-submit"
+              >
+                Create
               </LoadingButton>
             </DialogFooter>
           </form>
@@ -140,4 +169,4 @@ const AddItem = () => {
   )
 }
 
-export default AddItem
+export default CreateRepository
