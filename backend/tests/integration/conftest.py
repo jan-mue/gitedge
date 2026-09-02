@@ -26,6 +26,7 @@ from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 from xprocess import ProcessStarter
 
+from app.config import settings
 from app.constants import BACKEND_DIR
 from app.utils.security import get_password_hash
 
@@ -117,7 +118,8 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
         # Run Alembic migrations via alembic library
         config = Config(BACKEND_DIR / "alembic.ini")
         config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
-        # We need to temporarily set the database URl so that env.py can pick it up
+        # Migrate the ephemeral Postgres test container via settings.DATABASE_URL.
+        settings.DATABASE_URL = db_url  # type: ignore[assignment]
         os.environ["DATABASE_URL"] = db_url
         upgrade(config, "head")
 

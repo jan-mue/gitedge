@@ -1,4 +1,3 @@
-import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -21,10 +20,10 @@ fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
 
-# Allow the DATABASE_URL environment variable to override the app settings,
-# e.g. when tests run migrations against an ephemeral database container.
-database_url = os.environ.get("DATABASE_URL") or str(settings.DATABASE_URL)
-config.set_main_option("sqlalchemy.url", database_url)
+config.set_main_option(
+    "sqlalchemy.url",
+    str(settings.DATABASE_URL),
+)
 
 
 def run_migrations_offline() -> None:
