@@ -269,6 +269,8 @@ export class GitService {
      * Args:
      * request: FastAPI request.
      * repo_path: Repository path.
+     * backend: Git backend dependency.
+     * blob_client: Blob storage client dependency.
      *
      * Returns:
      * Response with refs.
@@ -289,6 +291,8 @@ export class GitService {
      * Args:
      * request: FastAPI request.
      * repo_path: Repository path.
+     * backend: Git backend dependency.
+     * blob_client: Blob storage client dependency.
      *
      * Returns:
      * Response with HEAD.
@@ -309,6 +313,8 @@ export class GitService {
      * Args:
      * request: FastAPI request.
      * repo_path: Repository path.
+     * backend: Git backend dependency.
+     * blob_client: Blob storage client dependency.
      *
      * Returns:
      * Response with pack info.
@@ -331,6 +337,8 @@ export class GitService {
      * repo_path: Repository path.
      * prefix: Object SHA prefix (2 chars).
      * suffix: Object SHA suffix (38 chars).
+     * backend: Git backend dependency.
+     * blob_client: Blob storage client dependency.
      *
      * Returns:
      * Response with object data.
@@ -352,6 +360,8 @@ export class GitService {
      * request: FastAPI request.
      * repo_path: Repository path.
      * pack_file: Pack file name.
+     * backend: Git backend dependency.
+     * blob_client: Blob storage client dependency.
      *
      * Returns:
      * Response with pack/index data.
@@ -372,6 +382,8 @@ export class GitService {
      * Args:
      * request: FastAPI request.
      * repo_path: Repository path.
+     * backend: Git backend dependency.
+     * blob_client: Blob storage client dependency.
      *
      * Returns:
      * Response with pack data.
@@ -392,6 +404,8 @@ export class GitService {
      * Args:
      * request: FastAPI request.
      * repo_path: Repository path.
+     * backend: Git backend dependency.
+     * blob_client: Blob storage client dependency.
      *
      * Returns:
      * Response with push result.
@@ -428,6 +442,7 @@ export class RepositoriesService {
      *
      * Args:
      * body: Repository creation request.
+     * backend: Git backend dependency.
      * blob_client: Blob storage client dependency.
      *
      * Returns:
@@ -451,6 +466,7 @@ export class RepositoriesService {
      * Get directory listing for a repository path.
      *
      * Args:
+     * backend: Git backend dependency.
      * blob_client: Blob storage client dependency.
      * path: Repository path (e.g., "user/repo" or "user/repo.git").
      * ref: Git ref to browse (default: "main").
@@ -473,6 +489,7 @@ export class RepositoriesService {
      * Get file content with syntax highlighting.
      *
      * Args:
+     * backend: Git backend dependency.
      * blob_client: Blob storage client dependency.
      * path: Repository path (e.g., "user/repo" or "user/repo.git").
      * ref: Git ref (default: "main").

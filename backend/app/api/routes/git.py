@@ -13,42 +13,30 @@ from typing import TYPE_CHECKING, Any
 from dulwich.web import GunzipFilter, HTTPGitApplication, LimitedInputFilter
 from fastapi import APIRouter, Request, Response
 
-from app.api.dependencies import get_blob_client
+from app.api.dependencies import BackendDep, BlobStorageClientDep
 from app.services.blob_backend import BlobBackend, load_repository_from_storage, save_repository_changes_to_storage
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from types import TracebackType
 
+    from app.clients.blob_storage import BlobStorageClient
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["git"])
 
-# Global backend instance - will be configured per-request with loaded repos
-_backend = BlobBackend()
 
-
-def get_backend() -> BlobBackend:
-    """Get the global BlobBackend instance.
-
-    Returns:
-        The BlobBackend instance.
-    """
-    return _backend
-
-
-async def _ensure_repository_loaded(repo_path: str) -> None:
+async def _ensure_repository_loaded(backend: BlobBackend, blob_client: BlobStorageClient, repo_path: str) -> None:
     """Ensure a repository is loaded from blob storage and Redis.
 
     Args:
+        backend: Git backend to load the repository into.
+        blob_client: Blob storage client.
         repo_path: Repository path.
     """
-    backend = get_backend()
-
     if backend.repository_exists(repo_path):
         return
-
-    blob_client = get_blob_client()
 
     # Load from storage
     try:
@@ -63,19 +51,19 @@ async def _ensure_repository_loaded(repo_path: str) -> None:
         backend.create_repository(repo_path)
 
 
-async def _save_repository_changes(repo_path: str) -> None:
+async def _save_repository_changes(backend: BlobBackend, blob_client: BlobStorageClient, repo_path: str) -> None:
     """Save repository changes to blob storage and Redis.
 
     Args:
+        backend: Git backend to read changes from.
+        blob_client: Blob storage client.
         repo_path: Repository path.
     """
-    backend = get_backend()
     changes = backend.get_repository_changes(repo_path)
 
     if not any(changes.values()):
         return
 
-    blob_client = get_blob_client()
     await save_repository_changes_to_storage(blob_client, repo_path, changes)
     backend.clear_repository_changes(repo_path)
 
@@ -129,19 +117,27 @@ def _create_wsgi_environ(request: Request, body: bytes, path: str) -> dict[str, 
     return environ
 
 
-async def _handle_git_request(request: Request, repo_path: str, service_path: str) -> Response:
+async def _handle_git_request(
+    request: Request,
+    repo_path: str,
+    backend: BlobBackend,
+    blob_client: BlobStorageClient,
+    service_path: str,
+) -> Response:
     """Handle a Git HTTP request.
 
     Args:
         request: FastAPI request.
         repo_path: Repository path (e.g., "user/repo.git").
+        backend: Git backend for the request.
+        blob_client: Blob storage client.
         service_path: Git service path (e.g., "/info/refs").
 
     Returns:
         FastAPI Response.
     """
     # Ensure repository is loaded
-    await _ensure_repository_loaded(repo_path)
+    await _ensure_repository_loaded(backend, blob_client, repo_path)
 
     # Get request body
     body = await request.body()
@@ -172,7 +168,6 @@ async def _handle_git_request(request: Request, repo_path: str, service_path: st
         return write
 
     # Create and call WSGI app
-    backend = get_backend()
     wsgi_app = HTTPGitApplication(backend)
     # Apply filters
     wsgi_app_filtered = GunzipFilter(LimitedInputFilter(wsgi_app))
@@ -189,7 +184,7 @@ async def _handle_git_request(request: Request, repo_path: str, service_path: st
         )
 
     # Save any changes
-    await _save_repository_changes(repo_path)
+    await _save_repository_changes(backend, blob_client, repo_path)
 
     # Build response
     status_code = int(response_status.split(maxsplit=1)[0])
@@ -207,49 +202,81 @@ async def _handle_git_request(request: Request, repo_path: str, service_path: st
 
 
 @router.get("/{repo_path:path}/info/refs")
-async def get_info_refs(request: Request, repo_path: str) -> Response:
+async def get_info_refs(
+    request: Request,
+    repo_path: str,
+    *,
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+) -> Response:
     """Get repository references (used for clone/fetch discovery).
 
     Args:
         request: FastAPI request.
         repo_path: Repository path.
+        backend: Git backend dependency.
+        blob_client: Blob storage client dependency.
 
     Returns:
         Response with refs.
     """
-    return await _handle_git_request(request, repo_path, "/info/refs")
+    return await _handle_git_request(request, repo_path, backend, blob_client, "/info/refs")
 
 
 @router.get("/{repo_path:path}/HEAD")
-async def get_head(request: Request, repo_path: str) -> Response:
+async def get_head(
+    request: Request,
+    repo_path: str,
+    *,
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+) -> Response:
     """Get repository HEAD.
 
     Args:
         request: FastAPI request.
         repo_path: Repository path.
+        backend: Git backend dependency.
+        blob_client: Blob storage client dependency.
 
     Returns:
         Response with HEAD.
     """
-    return await _handle_git_request(request, repo_path, "/HEAD")
+    return await _handle_git_request(request, repo_path, backend, blob_client, "/HEAD")
 
 
 @router.get("/{repo_path:path}/objects/info/packs")
-async def get_info_packs(request: Request, repo_path: str) -> Response:
+async def get_info_packs(
+    request: Request,
+    repo_path: str,
+    *,
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+) -> Response:
     """Get pack file info.
 
     Args:
         request: FastAPI request.
         repo_path: Repository path.
+        backend: Git backend dependency.
+        blob_client: Blob storage client dependency.
 
     Returns:
         Response with pack info.
     """
-    return await _handle_git_request(request, repo_path, "/objects/info/packs")
+    return await _handle_git_request(request, repo_path, backend, blob_client, "/objects/info/packs")
 
 
 @router.get("/{repo_path:path}/objects/{prefix:path}/{suffix}")
-async def get_loose_object(request: Request, repo_path: str, prefix: str, suffix: str) -> Response:
+async def get_loose_object(
+    request: Request,
+    repo_path: str,
+    prefix: str,
+    suffix: str,
+    *,
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+) -> Response:
     """Get a loose object.
 
     Args:
@@ -257,51 +284,78 @@ async def get_loose_object(request: Request, repo_path: str, prefix: str, suffix
         repo_path: Repository path.
         prefix: Object SHA prefix (2 chars).
         suffix: Object SHA suffix (38 chars).
+        backend: Git backend dependency.
+        blob_client: Blob storage client dependency.
 
     Returns:
         Response with object data.
     """
-    return await _handle_git_request(request, repo_path, f"/objects/{prefix}/{suffix}")
+    return await _handle_git_request(request, repo_path, backend, blob_client, f"/objects/{prefix}/{suffix}")
 
 
 @router.get("/{repo_path:path}/objects/pack/{pack_file}")
-async def get_pack_file(request: Request, repo_path: str, pack_file: str) -> Response:
+async def get_pack_file(
+    request: Request,
+    repo_path: str,
+    pack_file: str,
+    *,
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+) -> Response:
     """Get a pack or index file.
 
     Args:
         request: FastAPI request.
         repo_path: Repository path.
         pack_file: Pack file name.
+        backend: Git backend dependency.
+        blob_client: Blob storage client dependency.
 
     Returns:
         Response with pack/index data.
     """
-    return await _handle_git_request(request, repo_path, f"/objects/pack/{pack_file}")
+    return await _handle_git_request(request, repo_path, backend, blob_client, f"/objects/pack/{pack_file}")
 
 
 @router.post("/{repo_path:path}/git-upload-pack")
-async def git_upload_pack(request: Request, repo_path: str) -> Response:
+async def git_upload_pack(
+    request: Request,
+    repo_path: str,
+    *,
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+) -> Response:
     """Handle git-upload-pack (clone/fetch).
 
     Args:
         request: FastAPI request.
         repo_path: Repository path.
+        backend: Git backend dependency.
+        blob_client: Blob storage client dependency.
 
     Returns:
         Response with pack data.
     """
-    return await _handle_git_request(request, repo_path, "/git-upload-pack")
+    return await _handle_git_request(request, repo_path, backend, blob_client, "/git-upload-pack")
 
 
 @router.post("/{repo_path:path}/git-receive-pack")
-async def git_receive_pack(request: Request, repo_path: str) -> Response:
+async def git_receive_pack(
+    request: Request,
+    repo_path: str,
+    *,
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+) -> Response:
     """Handle git-receive-pack (push).
 
     Args:
         request: FastAPI request.
         repo_path: Repository path.
+        backend: Git backend dependency.
+        blob_client: Blob storage client dependency.
 
     Returns:
         Response with push result.
     """
-    return await _handle_git_request(request, repo_path, "/git-receive-pack")
+    return await _handle_git_request(request, repo_path, backend, blob_client, "/git-receive-pack")

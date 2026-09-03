@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from functools import cache
 from typing import TYPE_CHECKING, Annotated
 
 import jwt
@@ -20,6 +21,7 @@ from app.clients.users import SQLUserRepository, UserRepository
 from app.config import settings
 from app.entities.users import User
 from app.schemas.token import TokenPayload
+from app.services.blob_backend import BlobBackend
 from app.services.crud import CrudService
 from app.utils import security
 
@@ -195,3 +197,16 @@ def set_blob_client(client: BlobStorageClient) -> None:
 
 
 BlobStorageClientDep = Annotated[BlobStorageClient, Depends(get_blob_client)]
+
+
+@cache
+def get_backend() -> BlobBackend:
+    """Get the shared Git backend instance.
+
+    Returns:
+        The shared BlobBackend instance.
+    """
+    return BlobBackend()
+
+
+BackendDep = Annotated[BlobBackend, Depends(get_backend)]
