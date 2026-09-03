@@ -161,39 +161,22 @@ def get_email_client() -> EmailClient:
 EmailClientDep = Annotated[EmailClient, Depends(get_email_client)]
 
 
-# Blob storage client dependency
-_blob_client: BlobStorageClient | None = None
-
-
+@cache
 def get_blob_client() -> BlobStorageClient:
     """Get blob storage client dependency.
 
     Returns:
         Blob storage client instance.
     """
-    global _blob_client  # noqa: PLW0603
-    if _blob_client is None:
-        if settings.BLOB_STORAGE_KIND == "s3":
-            _blob_client = S3Client(
-                endpoint=settings.S3_ENDPOINT or "",
-                access_key=settings.S3_ACCESS_KEY or "",
-                secret_key=settings.S3_SECRET_KEY or "",
-                bucket=settings.S3_BUCKET or "gitedge",
-                secure=settings.S3_SECURE,
-            )
-        else:
-            _blob_client = VercelBlobClient(token=settings.VERCEL_BLOB_TOKEN)
-    return _blob_client
-
-
-def set_blob_client(client: BlobStorageClient) -> None:
-    """Override the blob storage client (for testing).
-
-    Args:
-        client: The blob storage client to use.
-    """
-    global _blob_client  # noqa: PLW0603
-    _blob_client = client
+    if settings.BLOB_STORAGE_KIND == "s3":
+        return S3Client(
+            endpoint=settings.S3_ENDPOINT or "",
+            access_key=settings.S3_ACCESS_KEY or "",
+            secret_key=settings.S3_SECRET_KEY or "",
+            bucket=settings.S3_BUCKET or "gitedge",
+            secure=settings.S3_SECURE,
+        )
+    return VercelBlobClient(token=settings.VERCEL_BLOB_TOKEN)
 
 
 BlobStorageClientDep = Annotated[BlobStorageClient, Depends(get_blob_client)]
