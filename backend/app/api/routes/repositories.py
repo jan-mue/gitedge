@@ -4,18 +4,25 @@ from __future__ import annotations
 
 import logging
 import stat
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
-from dulwich.objects import Blob, Commit, Tree
-from dulwich.refs import SYMREF
+from dulwich.objects import Blob, Commit, ObjectID, Tree
+from dulwich.refs import SYMREF, Ref
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import TextLexer, get_lexer_for_filename
 
 from app.api.dependencies import BackendDep, BlobStorageClientDep
 from app.clients.redis import redis_scan_keys
+from app.schemas.repositories import (
+    CreateRepositoryRequest,
+    FileContent,
+    RepositoriesPublic,
+    Repository,
+    TreeEntry,
+    TreeListing,
+)
 from app.services.blob_backend import load_repository_from_storage, save_repository_changes_to_storage
 
 if TYPE_CHECKING:
@@ -26,57 +33,24 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/repositories", tags=["repositories"])
 
 
-class Repository(BaseModel):
-    """Repository schema."""
+class StyleDefsProvider(Protocol):
+    """Protocol for formatters that expose get_style_defs()."""
 
-    name: str
-    path: str
-
-
-class RepositoriesPublic(BaseModel):
-    """List of repositories."""
-
-    data: list[Repository]
-    count: int
+    def get_style_defs(self, arg: str = "") -> str:
+        """Return the CSS style definitions for the given scope."""
 
 
-class TreeEntry(BaseModel):
-    """A single entry in a Git tree (file or directory)."""
+def _get_style_defs(formatter: StyleDefsProvider, arg: str) -> str:
+    """Return CSS style definitions for a formatter.
 
-    name: str
-    path: str
-    type: str  # "tree" or "blob"
-    size: int | None = None
+    Args:
+        formatter: Pygments formatter.
+        arg: CSS scope selector.
 
-
-class TreeListing(BaseModel):
-    """Directory listing for a repository path."""
-
-    entries: list[TreeEntry]
-    repo_path: str
-    tree_path: str
-    ref: str
-
-
-class FileContent(BaseModel):
-    """File content with syntax highlighting."""
-
-    name: str
-    path: str
-    size: int
-    content: str
-    highlighted_html: str
-    css: str
-    css_dark: str
-    language: str
-    line_count: int
-
-
-class CreateRepositoryRequest(BaseModel):
-    """Request to create a new repository."""
-
-    name: str
-    owner: str
+    Returns:
+        The CSS definitions as a string.
+    """
+    return formatter.get_style_defs(arg)
 
 
 async def _load_repo(backend: BackendDep, blob_client: BlobStorageClientDep, repo_path: str) -> BlobRepository:
@@ -131,32 +105,32 @@ def _resolve_ref(repo: BlobRepository, ref_name: str) -> bytes:
     """
     # Try the ref as-is
     refs = repo.refs
-    sha = refs.read_loose_ref(ref_name.encode())  # type: ignore[arg-type]
+    sha = refs.read_loose_ref(Ref(ref_name.encode()))
     if sha is not None:
         # Follow symbolic refs
         if sha.startswith(SYMREF):
             target = sha[len(SYMREF) :]
-            sha = refs.read_loose_ref(target)  # type: ignore[arg-type]
+            sha = refs.read_loose_ref(Ref(target))
         if sha is not None:
             return sha
 
     # Try refs/heads/<ref_name>
-    sha = refs.read_loose_ref(f"refs/heads/{ref_name}".encode())  # type: ignore[arg-type]
+    sha = refs.read_loose_ref(Ref(f"refs/heads/{ref_name}".encode()))
     if sha is not None:
         return sha
 
     # Try refs/tags/<ref_name>
-    sha = refs.read_loose_ref(f"refs/tags/{ref_name}".encode())  # type: ignore[arg-type]
+    sha = refs.read_loose_ref(Ref(f"refs/tags/{ref_name}".encode()))
     if sha is not None:
         return sha
 
     # Try HEAD
     if ref_name in ("", "HEAD"):
-        head_val = refs.read_loose_ref(b"HEAD")  # type: ignore[arg-type]
+        head_val = refs.read_loose_ref(Ref(b"HEAD"))
         if head_val is not None:
             if head_val.startswith(SYMREF):
                 target = head_val[len(SYMREF) :]
-                sha = refs.read_loose_ref(target)  # type: ignore[arg-type]
+                sha = refs.read_loose_ref(Ref(target))
                 if sha is not None:
                     return sha
             else:
@@ -180,7 +154,7 @@ def _get_tree_at_path(repo: BlobRepository, commit_sha: bytes, path: str) -> Tre
         HTTPException: If path not found or not a tree.
     """
     store = repo.object_store
-    commit = store[commit_sha]  # type: ignore[index]
+    commit = store[ObjectID(commit_sha)]
     if not isinstance(commit, Commit):
         raise HTTPException(status_code=404, detail="Not a valid commit")
 
@@ -225,7 +199,7 @@ def _get_blob_at_path(repo: BlobRepository, commit_sha: bytes, path: str) -> tup
         HTTPException: If file not found or not a blob.
     """
     store = repo.object_store
-    commit = store[commit_sha]  # type: ignore[index]
+    commit = store[ObjectID(commit_sha)]
     if not isinstance(commit, Commit):
         raise HTTPException(status_code=404, detail="Not a valid commit")
 
@@ -441,12 +415,12 @@ async def get_blob(
     )
 
     highlighted_html = highlight(content, lexer, formatter)
-    css: str = formatter.get_style_defs(".highlight")  # type: ignore[no-untyped-call]
+    css = _get_style_defs(formatter, ".highlight")
 
     # Scope all dark CSS rules under .dark to prevent them from leaking into
     # light mode. get_style_defs() only prefixes .highlight rules, but Pygments
     # also emits global rules (td.linenos, span.linenos, pre) that need scoping.
-    raw_dark_css: str = dark_formatter.get_style_defs(".highlight")  # type: ignore[no-untyped-call]
+    raw_dark_css = _get_style_defs(dark_formatter, ".highlight")
     css_dark = "\n".join(
         f".dark {line}" if line and not line.startswith(".dark") else line for line in raw_dark_css.split("\n")
     )
