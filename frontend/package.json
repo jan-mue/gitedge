@@ -54,7 +54,7 @@
     "@playwright/test": "1.63.0",
     "@tanstack/router-devtools": "1.167.1",
     "@tanstack/router-plugin": "1.168.36",
-    "@types/node": "26.4.1",
+    "@types/node": "26.5.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "@vercel/related-projects": "1.1.1",
