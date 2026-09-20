@@ -20,7 +20,7 @@ repos:
         args: [--markdown-linebreak-ext=md]
         exclude: ^frontend/src/client/.*
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 2eeb5678de71a00c0902cbda7105d328432f72cb # frozen: v0.16.8
+    rev: e8f7d69b957a30acb2c875078d5fd012de24b64c # frozen: v0.16.7
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
@@ -46,11 +46,11 @@ repos:
     hooks:
       - id: actionlint
   - repo: https://github.com/tox-dev/pyproject-fmt
-    rev: 59e7b26529dc6f15c43063064b8b06ded60d0910 # frozen: v2.29.4
+    rev: b60edd5a6e1cdaa6da32da88e01bb83f760e61a8 # frozen: v2.28.2
     hooks:
       - id: pyproject-fmt
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: 916ad0aaa108c64d294101002066f530ea170b10 # frozen: v0.23.3
+    rev: b82a6c8896e491b9cb377a99ff3412131920681b # frozen: v0.23.2
     hooks:
       - id: markdownlint-cli2
         args: [--fix]
@@ -61,11 +61,11 @@ repos:
       - id: deptry
         entry: bash -c 'cd backend && uv run deptry .'
   - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: a6564f5d57444e123433a5c9af733e3975c77229 # frozen: v0.11.0.1-1
+    rev: 745eface02aef23e168a8afb6b5737818efbea95 # frozen: v0.11.0.1
     hooks:
       - id: shellcheck
   - repo: https://github.com/scop/pre-commit-shfmt
-    rev: 479be5958357ba5ab65ce47172117348516860e9 # frozen: v3.14.1-1
+    rev: 05c1426671b9237fb5e1444dd63aa5731bec0dfb # frozen: v3.13.1-1
     hooks:
       - id: shfmt
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
