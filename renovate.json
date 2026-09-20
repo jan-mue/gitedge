@@ -1,25 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:best-practices",
-    ":automergeMinor"
+    "github>jan-mue/renovate-config"
   ],
-  "minimumReleaseAge": "7 days",
-  "labels": [
-    "dependencies"
-  ],
-  "vulnerabilityAlerts": {
-    "labels": [
-      "type:security"
-    ],
-    "minimumReleaseAge": null
-  },
-  "pre-commit": {
-    "enabled": true
-  },
-  "lockFileMaintenance": {
-    "enabled": true
-  },
   "packageRules": [
     {
       "matchPackageNames": [
