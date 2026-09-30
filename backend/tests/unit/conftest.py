@@ -53,7 +53,6 @@ def override_get_db() -> Generator[Session]:
         yield session
 
 
-# Override the get_db dependency for all tests
 app.dependency_overrides[get_db] = override_get_db
 
 

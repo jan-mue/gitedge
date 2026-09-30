@@ -61,7 +61,6 @@ describe("Logo", () => {
   test("applies custom className to icon variant", () => {
     render(<Logo variant="icon" className="custom-icon-class" asLink={false} />)
 
-    // The icon should have the custom class
     const svg = document.querySelector("svg")
     expect(svg).toHaveClass("custom-icon-class")
   })

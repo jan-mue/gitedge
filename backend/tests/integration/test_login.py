@@ -119,7 +119,6 @@ class TestLogout:
         page.get_by_role("menuitem", name="Log out").click()
         page.wait_for_url(f"{app_url}/login")
 
-        # Try to access protected route
         page.goto(f"{app_url}/settings")
         page.wait_for_url(f"{app_url}/login")
 

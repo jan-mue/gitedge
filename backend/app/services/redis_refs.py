@@ -41,10 +41,8 @@ class RedisRefsContainer(RefsContainer):
         # In-memory refs storage: ref name -> ref value (SHA or SYMREF + target)
         self._refs: dict[Ref, bytes] = {}
 
-        # Peeled refs cache: ref name -> peeled SHA
         self._peeled: dict[Ref, ObjectID] = {}
 
-        # Pending changes to write to Redis
         self._pending_puts: dict[Ref, bytes] = {}
         self._pending_deletes: set[Ref] = set()
 

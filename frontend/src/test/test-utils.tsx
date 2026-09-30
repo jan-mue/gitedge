@@ -30,7 +30,6 @@ interface WrapperProps {
   children: ReactNode
 }
 
-// Create a wrapper with all necessary providers
 function createWrapper() {
   const queryClient = createTestQueryClient()
 
@@ -45,7 +44,6 @@ function createWrapper() {
   }
 }
 
-// Custom render function that includes providers
 function customRender(
   ui: ReactElement,
   options?: Omit<RenderOptions, "wrapper">,
@@ -56,7 +54,6 @@ function customRender(
   }
 }
 
-// Create a test router for testing route components
 interface TestRouterOptions {
   initialPath?: string
   component: () => ReactElement
@@ -96,6 +93,5 @@ function renderWithRouter(options: TestRouterOptions) {
   }
 }
 
-// Re-export everything from testing-library
 export * from "@testing-library/react"
 export { createTestQueryClient, customRender as render, renderWithRouter }

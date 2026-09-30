@@ -5,14 +5,12 @@ import { describe, expect, test } from "vitest"
 
 import { DataTable } from "./DataTable"
 
-// Test data type
 interface TestData {
   id: number
   name: string
   email: string
 }
 
-// Test columns
 const columns: ColumnDef<TestData>[] = [
   {
     accessorKey: "id",
@@ -28,7 +26,6 @@ const columns: ColumnDef<TestData>[] = [
   },
 ]
 
-// Sample test data
 const testData: TestData[] = [
   { id: 1, name: "John Doe", email: "john@example.com" },
   { id: 2, name: "Jane Smith", email: "jane@example.com" },
@@ -117,13 +114,10 @@ describe("DataTable", () => {
     const largeData = generateLargeDataset(20)
     render(<DataTable columns={columns} data={largeData} />)
 
-    // Initially on page 1
     expect(screen.getByText("User 1")).toBeInTheDocument()
 
-    // Click next page
     await user.click(screen.getByRole("button", { name: /go to next page/i }))
 
-    // Should be on page 2
     expect(screen.getByText("User 11")).toBeInTheDocument()
   })
 
@@ -152,7 +146,6 @@ describe("DataTable", () => {
 
     await user.click(screen.getByRole("button", { name: /go to last page/i }))
 
-    // Should show last items
     expect(screen.getByText("User 25")).toBeInTheDocument()
   })
 
@@ -192,7 +185,6 @@ describe("DataTable", () => {
     const largeData = generateLargeDataset(25)
     render(<DataTable columns={columns} data={largeData} />)
 
-    // Check that showing text is present
     const showingText = screen.getByText(/Showing/)
     expect(showingText).toBeInTheDocument()
   })

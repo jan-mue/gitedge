@@ -101,11 +101,9 @@ class TestSignUpValidation:
         """Signing up with an existing email should show an error message."""
         full_name = "Test User"
 
-        # First sign up
         page.goto(f"{app_url}/signup")
         _fill_signup_form(page, full_name, random_email, random_password)
 
-        # Try to sign up again with the same email
         page.goto(f"{app_url}/signup")
         _fill_signup_form(page, full_name, random_email, random_password)
 

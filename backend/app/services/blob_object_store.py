@@ -23,6 +23,8 @@ from dulwich.pack import (
     write_pack_index,
 )
 
+from app.types import PackContents
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
@@ -43,11 +45,9 @@ class BlobPackData(PackData):
         if object_format is None:
             object_format = DEFAULT_OBJECT_FORMAT
 
-        # Create a BytesIO wrapper around the data
         self._data_bytes = data
         self._file = BytesIO(data)
 
-        # Initialize the parent class with the file-like object
         super().__init__(filename="", file=self._file, object_format=object_format)
 
     def close(self) -> None:
@@ -73,16 +73,13 @@ class BlobPack(Pack):
         """
         super().__init__(basename, object_format=object_format)
 
-        # Create lazy loaders that return pre-fetched data
         self._pack_data_bytes = pack_data
         self._index_data_bytes = index_data
 
-        # Load the index immediately to get object format
         idx_file = BytesIO(index_data)
         self._idx = load_pack_index_file(basename + ".idx", idx_file, object_format)
         self._idx_load = None
 
-        # Set up lazy loading for pack data
         self._data_load = lambda: BlobPackData(pack_data, object_format)
         self._data = None
 
@@ -112,14 +109,8 @@ class BlobObjectStore(BucketBasedObjectStore):
         if object_format is not None:
             self.object_format = object_format
 
-        # Cache of pack names to (pack_data, index_data) tuples
-        # This is populated by load_packs() and updated during operations
-        self._loaded_packs: dict[str, tuple[bytes, bytes]] = {}
-
-        # Pending uploads: basename -> (pack_data, index_data)
-        self._pending_uploads: dict[str, tuple[bytes, bytes]] = {}
-
-        # Pending deletes: set of basenames to delete
+        self._loaded_packs: dict[str, PackContents] = {}
+        self._pending_uploads: dict[str, PackContents] = {}
         self._pending_deletes: set[str] = set()
 
     def _iter_pack_names(self) -> Iterator[str]:
@@ -145,8 +136,8 @@ class BlobObjectStore(BucketBasedObjectStore):
         if name not in self._loaded_packs:
             raise KeyError(f"Pack {name} not found")
 
-        pack_data, index_data = self._loaded_packs[name]
-        return BlobPack(name, pack_data, index_data, self.object_format)
+        contents = self._loaded_packs[name]
+        return BlobPack(name, contents.pack, contents.index, self.object_format)
 
     def _upload_pack(self, basename: str, pack_file: BinaryIO, index_file: BinaryIO) -> None:
         """Queue a pack for upload to BlobStorage.
@@ -162,11 +153,11 @@ class BlobObjectStore(BucketBasedObjectStore):
         pack_data = pack_file.read()
         index_data = index_file.read()
 
-        # Store in pending uploads
-        self._pending_uploads[basename] = (pack_data, index_data)
+        contents = PackContents(pack=pack_data, index=index_data)
+        self._pending_uploads[basename] = contents
 
         # Also add to loaded packs so it's immediately available
-        self._loaded_packs[basename] = (pack_data, index_data)
+        self._loaded_packs[basename] = contents
 
     def _remove_pack_by_name(self, name: str) -> None:
         """Queue a pack for deletion from BlobStorage.
@@ -178,24 +169,23 @@ class BlobObjectStore(BucketBasedObjectStore):
         self._loaded_packs.pop(name, None)
         self._pending_uploads.pop(name, None)
 
-    def load_packs_from_data(self, packs: dict[str, tuple[bytes, bytes]]) -> None:
+    def load_packs_from_data(self, packs: dict[str, PackContents]) -> None:
         """Load pack data that was pre-fetched from BlobStorage.
 
         This method should be called after fetching pack data from BlobStorage
         asynchronously, before using the store with dulwich.
 
         Args:
-            packs: Dictionary mapping pack basenames to (pack_data, index_data) tuples.
+            packs: Dictionary mapping pack basenames to PackContents.
         """
         self._loaded_packs.update(packs)
-        # Clear the pack cache to force reload
         self._pack_cache.clear()
 
-    def get_pending_uploads(self) -> dict[str, tuple[bytes, bytes]]:
+    def get_pending_uploads(self) -> dict[str, PackContents]:
         """Get pending pack uploads.
 
         Returns:
-            Dictionary mapping pack basenames to (pack_data, index_data) tuples.
+            Dictionary mapping pack basenames to PackContents.
         """
         return dict(self._pending_uploads)
 
@@ -256,7 +246,6 @@ class BlobObjectStore(BucketBasedObjectStore):
                 read_some,
                 max_input_size,
             )
-        # Create a temp file for the pack data
         with tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024, prefix="thin-pack-") as pf:
             # Use PackIndexer to resolve external refs and PackStreamCopier to copy
             indexer = PackIndexer(
@@ -273,37 +262,30 @@ class BlobObjectStore(BucketBasedObjectStore):
             )
             copier.verify(progress=progress)
 
-            # Now complete the pack
             pf.seek(0)
             pack_data = pf.read()
 
         if len(pack_data) == 0:
             raise ValueError("Empty pack data")
 
-        # Create PackData from the data
         pack_file = BytesIO(pack_data)
         p = PackData("", file=pack_file, object_format=self.object_format)
 
-        # Get entries for index
         entries = p.sorted_entries()
 
-        # Generate basename from SHA of entries
         basename = iter_sha1(entry[0] for entry in entries).decode("ascii")
 
-        # Create index file
         idxf = BytesIO()
         checksum = p.get_stored_checksum()
         write_pack_index(idxf, entries, checksum, version=2)
         idxf.seek(0)
         idx_data = idxf.read()
 
-        # Store the pack
         pack_file.seek(0)
-        final_pack_data = pack_file.read()
-        self._pending_uploads[basename] = (final_pack_data, idx_data)
-        self._loaded_packs[basename] = (final_pack_data, idx_data)
+        contents = PackContents(pack=pack_file.read(), index=idx_data)
+        self._pending_uploads[basename] = contents
+        self._loaded_packs[basename] = contents
 
-        # Create and return the pack object
         pack_file.seek(0)
         idx = load_pack_index_file(basename + ".idx", BytesIO(idx_data), self.object_format)
         final_pack = Pack.from_objects(p, idx)

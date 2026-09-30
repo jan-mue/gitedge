@@ -2,14 +2,12 @@ import "@testing-library/jest-dom/vitest"
 import { cleanup } from "@testing-library/react"
 import { afterEach, beforeAll, vi } from "vitest"
 
-// Cleanup after each test
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
 })
 
 beforeAll(() => {
-  // Mock window.matchMedia
   Object.defineProperty(window, "matchMedia", {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({
@@ -24,14 +22,12 @@ beforeAll(() => {
     })),
   })
 
-  // Mock ResizeObserver
   global.ResizeObserver = vi.fn().mockImplementation(() => ({
     observe: vi.fn(),
     unobserve: vi.fn(),
     disconnect: vi.fn(),
   }))
 
-  // Mock IntersectionObserver
   global.IntersectionObserver = vi.fn().mockImplementation(() => ({
     observe: vi.fn(),
     unobserve: vi.fn(),
@@ -41,7 +37,6 @@ beforeAll(() => {
     thresholds: [],
   }))
 
-  // Mock localStorage
   const localStorageMock = {
     getItem: vi.fn(() => null),
     setItem: vi.fn(),
@@ -55,7 +50,6 @@ beforeAll(() => {
     writable: true,
   })
 
-  // Mock clipboard API
   const clipboardMock = {
     writeText: vi.fn().mockResolvedValue(undefined),
     readText: vi.fn().mockResolvedValue(""),

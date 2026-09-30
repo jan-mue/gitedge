@@ -84,15 +84,11 @@ class UpstashRedisClient(AbstractRedisClient):
             return result.encode()
         if isinstance(result, bytes):
             return result
-        # Fallback for unexpected types
         return str(result).encode()
 
     async def set(self, key: str, value: str | bytes) -> None:
         """Set a value in Redis."""
-        # upstash-redis takes str/bytes gracefully
         if isinstance(value, bytes):
-            # Upstash REST API might prefer strings or might natively support binary if encoded.
-            # Usually decode strings for Upstash caching unless binary explicitly desired.
             value = value.decode("utf-8", errors="ignore")
         await self._client.set(key, value)
 
@@ -102,7 +98,6 @@ class UpstashRedisClient(AbstractRedisClient):
 
     async def scan_keys(self, pattern: str) -> list[str]:
         """Scan for keys matching a pattern."""
-        # upstash-redis has scan
         cursor = 0
         keys: list[str] = []
         while True:

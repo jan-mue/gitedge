@@ -115,7 +115,6 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
             "NODE_ENV": "test",
         }
 
-        # Run Alembic migrations via alembic library
         config = Config(BACKEND_DIR / "alembic.ini")
         config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
         # Migrate the ephemeral Postgres test container via settings.DATABASE_URL.
@@ -123,7 +122,6 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
         os.environ["DATABASE_URL"] = db_url
         upgrade(config, "head")
 
-        # Seed superuser manually into PostgreSQL via psycopg
         user_id = str(uuid.uuid4())
         hashed_password = get_password_hash(FIRST_SUPERUSER_PASSWORD)
 
@@ -189,7 +187,6 @@ def app_url(infrastructure: dict[str, str], xprocess: XProcess) -> Generator[str
 
     yield frontend_base_url
 
-    # Clean up processes afterwards natively
     xprocess.getinfo("frontend").terminate()
     xprocess.getinfo("backend").terminate()
 

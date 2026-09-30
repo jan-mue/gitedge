@@ -14,6 +14,7 @@ from dulwich.server import Backend
 
 from app.clients.redis import redis_delete, redis_get, redis_scan_keys, redis_set
 from app.services.blob_repository import BlobRepository
+from app.types import PackContents
 
 if TYPE_CHECKING:
     from app.clients.blob_storage import BlobStorageClient
@@ -39,7 +40,6 @@ class BlobBackend(Backend):
     def __init__(self) -> None:
         """Initialize BlobBackend."""
         super().__init__()
-        # Cache of loaded repositories
         self._repos: dict[str, BlobRepository] = {}
 
     def open_repository(self, path: str | bytes) -> BlobRepository:  # type: ignore[override]
@@ -97,7 +97,7 @@ class BlobBackend(Backend):
     def load_repository_from_data(
         self,
         path: str,
-        packs: dict[str, tuple[bytes, bytes]],
+        packs: dict[str, PackContents],
         refs: dict[str, bytes],
         named_files: dict[str, bytes] | None = None,
     ) -> BlobRepository:
@@ -105,7 +105,7 @@ class BlobBackend(Backend):
 
         Args:
             path: Repository path.
-            packs: Dict mapping pack basenames to (pack_data, index_data).
+            packs: Dict mapping pack basenames to PackContents.
             refs: Dict mapping ref names to values.
             named_files: Optional dict of named files.
 
@@ -159,7 +159,7 @@ class BlobBackend(Backend):
 async def load_repository_from_storage(
     blob_client: BlobStorageClient,
     repo_path: str,
-) -> tuple[dict[str, tuple[bytes, bytes]], dict[str, bytes]]:
+) -> tuple[dict[str, PackContents], dict[str, bytes]]:
     """Load repository data from blob storage and Redis.
 
     Args:
@@ -169,53 +169,38 @@ async def load_repository_from_storage(
     Returns:
         Tuple of (packs_dict, refs_dict) to pass to load_repository_from_data.
     """
-    # Normalize path for storage keys
     repo_prefix = repo_path.strip("/")
     if not repo_prefix.endswith(".git"):
         repo_prefix = repo_prefix + ".git"
 
-    # Load packs from blob storage
-    packs: dict[str, tuple[bytes, bytes]] = {}
+    packs: dict[str, PackContents] = {}
     pack_prefix = f"{repo_prefix}/{PACK_PREFIX}"
 
-    # List all pack files
-    all_keys = await blob_client.list_keys(pack_prefix)
+    pack_keys: dict[str, str] = {}
+    idx_keys: dict[str, str] = {}
+    for key in await blob_client.list_keys(pack_prefix):
+        name = key.removeprefix(pack_prefix)
+        if name.endswith(".pack"):
+            pack_keys[name.removesuffix(".pack")] = key
+        elif name.endswith(".idx"):
+            idx_keys[name.removesuffix(".idx")] = key
 
-    # Group by basename (without .pack/.idx extension)
-    pack_files: dict[str, dict[str, str]] = {}
-    for key in all_keys:
-        if key.endswith(".pack"):
-            basename = key[len(pack_prefix) : -5]  # Remove prefix and .pack
-            if basename not in pack_files:
-                pack_files[basename] = {}
-            pack_files[basename]["pack_key"] = key
-        elif key.endswith(".idx"):
-            basename = key[len(pack_prefix) : -4]  # Remove prefix and .idx
-            if basename not in pack_files:
-                pack_files[basename] = {}
-            pack_files[basename]["idx_key"] = key
+    for basename, pack_key in pack_keys.items():
+        idx_key = idx_keys.get(basename)
+        if idx_key is None:
+            continue
+        pack_data = await blob_client.get(pack_key)
+        idx_data = await blob_client.get(idx_key)
+        if pack_data and idx_data:
+            packs[basename] = PackContents(pack=pack_data, index=idx_data)
 
-    # Fetch pack and index data
-    for basename, files in pack_files.items():
-        if "pack_key" in files and "idx_key" in files:
-            pack_data = await blob_client.get(files["pack_key"])
-            idx_data = await blob_client.get(files["idx_key"])
-
-            if pack_data and idx_data:
-                packs[basename] = (pack_data, idx_data)
-
-    # Load refs from Redis
     refs: dict[str, bytes] = {}
     ref_prefix = f"{repo_prefix}/{REF_PREFIX}"
 
-    # Scan for all ref keys
-    ref_keys = await redis_scan_keys(f"{ref_prefix}*")
-
-    for key in ref_keys:
-        ref_name = key[len(ref_prefix) :]  # Remove prefix to get ref name
+    for key in await redis_scan_keys(f"{ref_prefix}*"):
         value = await redis_get(key)
         if value:
-            refs[ref_name] = value
+            refs[key.removeprefix(ref_prefix)] = value
 
     return packs, refs
 
@@ -232,7 +217,6 @@ async def save_repository_changes_to_storage(
         repo_path: Repository path prefix.
         changes: Changes dict from get_pending_changes().
     """
-    # Normalize path for storage keys
     repo_prefix = repo_path.strip("/")
     if not repo_prefix.endswith(".git"):
         repo_prefix = repo_prefix + ".git"
@@ -240,28 +224,24 @@ async def save_repository_changes_to_storage(
     pack_prefix = f"{repo_prefix}/{PACK_PREFIX}"
     ref_prefix = f"{repo_prefix}/{REF_PREFIX}"
 
-    # Upload new packs
-    for basename, (pack_data, idx_data) in changes.get("pack_uploads", {}).items():
+    for basename, contents in changes.get("pack_uploads", {}).items():
         pack_key = f"{pack_prefix}{basename}.pack"
         idx_key = f"{pack_prefix}{basename}.idx"
-        await blob_client.put(pack_key, pack_data)
-        await blob_client.put(idx_key, idx_data)
+        await blob_client.put(pack_key, contents.pack)
+        await blob_client.put(idx_key, contents.index)
 
-    # Delete removed packs
     for basename in changes.get("pack_deletes", set()):
         pack_key = f"{pack_prefix}{basename}.pack"
         idx_key = f"{pack_prefix}{basename}.idx"
         await blob_client.delete(pack_key)
         await blob_client.delete(idx_key)
 
-    # Update refs
     for ref_name, value in changes.get("ref_puts", {}).items():
         ref_name_str = ref_name.decode() if isinstance(ref_name, bytes) else ref_name
         redis_key = f"{ref_prefix}{ref_name_str}"
         value_str = value.decode() if isinstance(value, bytes) else value
         await redis_set(redis_key, value_str)
 
-    # Delete refs
     for ref_name in changes.get("ref_deletes", set()):
         ref_name_str = ref_name.decode() if isinstance(ref_name, bytes) else ref_name
         redis_key = f"{ref_prefix}{ref_name_str}"

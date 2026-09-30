@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from dulwich.index import Index
     from dulwich.rebase import RebaseStateManager
 
-    from app.types import RepositoryChanges
+    from app.types import PackContents, RepositoryChanges
 
 
 class BlobRepository(BaseRepo):
@@ -56,14 +56,11 @@ class BlobRepository(BaseRepo):
         if object_format is None:
             object_format = DEFAULT_OBJECT_FORMAT
 
-        # Create the object store and refs container
         self._object_store = BlobObjectStore(object_format=object_format)
         self._refs = RedisRefsContainer()
 
-        # Initialize base class
         BaseRepo.__init__(self, self._object_store, self._refs, object_format)
 
-        # In-memory storage for named files
         self._named_files: dict[str, bytes] = {}
         self.bare = True
         self._config = ConfigFile()
@@ -91,7 +88,7 @@ class BlobRepository(BaseRepo):
 
     def load_from_storage(
         self,
-        packs: dict[str, tuple[bytes, bytes]],
+        packs: dict[str, PackContents],
         refs: dict[str, bytes],
         named_files: dict[str, bytes] | None = None,
     ) -> None:
@@ -101,13 +98,12 @@ class BlobRepository(BaseRepo):
         asynchronously, before using the repository with dulwich.
 
         Args:
-            packs: Dict mapping pack basenames to (pack_data, index_data) tuples.
+            packs: Dict mapping pack basenames to PackContents.
             refs: Dict mapping ref names to their values.
             named_files: Optional dict of named files (config, description, etc.).
         """
         self._object_store.load_packs_from_data(packs)
 
-        # Load refs, handling bytes vs string keys
         refs_bytes: dict[str, bytes] = {}
         for name, value in refs.items():
             if isinstance(name, bytes):
@@ -124,7 +120,7 @@ class BlobRepository(BaseRepo):
 
         Returns:
             Dictionary with keys:
-            - 'pack_uploads': Dict of pack basenames to (pack_data, index_data)
+            - 'pack_uploads': Dict of pack basenames to PackContents
             - 'pack_deletes': Set of pack basenames to delete
             - 'ref_puts': Dict of ref names to new values
             - 'ref_deletes': Set of ref names to delete
@@ -276,7 +272,6 @@ class BlobRepository(BaseRepo):
         """
         repo = cls(object_format=object_format)
 
-        # Set up default HEAD -> refs/heads/main
         default_branch = Ref(LOCAL_BRANCH_PREFIX + b"main")
         repo.refs.set_symbolic_ref(HEADREF, default_branch)
 

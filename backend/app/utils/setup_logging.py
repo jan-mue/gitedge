@@ -21,7 +21,6 @@ def setup_logging(level: int | str = logging.INFO, logger_name: str | None = Non
     if logger.handlers:
         return logger
 
-    # Create stderr handler
     handler = logging.StreamHandler(sys.stderr)
     handler.setLevel(level)
 

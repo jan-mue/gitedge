@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Global engine instance (lazy initialized)
 _engine: Engine | None = None
 
 

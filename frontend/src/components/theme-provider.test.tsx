@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 
 import { ThemeProvider, useTheme } from "./theme-provider"
 
-// Test component that uses the theme context
 function TestComponent() {
   const { theme, resolvedTheme, setTheme } = useTheme()
 
@@ -27,7 +26,6 @@ function TestComponent() {
 
 describe("ThemeProvider", () => {
   beforeEach(() => {
-    // Reset document classes
     document.documentElement.classList.remove("light", "dark")
   })
 

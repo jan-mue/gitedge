@@ -27,19 +27,16 @@ def test_git_push_and_clone(app_url: str) -> None:
         source_dir = Path(tmpdir) / "source"
         clone_dir = Path(tmpdir) / "clone"
 
-        # Create source repository
         source_dir.mkdir()
         _run_git(source_dir, ["init"])
         _run_git(source_dir, ["config", "user.email", "test@example.com"])
         _run_git(source_dir, ["config", "user.name", "Test User"])
 
-        # Create initial commit
         readme = source_dir / "README.md"
         readme.write_text("# Hello GitEdge\n\nThis is a test repository.\n")
         _run_git(source_dir, ["add", "README.md"])
         _run_git(source_dir, ["commit", "-m", "Initial commit"])
 
-        # Create a second commit
         src_dir = source_dir / "src"
         src_dir.mkdir()
         main_py = src_dir / "main.py"
@@ -47,29 +44,23 @@ def test_git_push_and_clone(app_url: str) -> None:
         _run_git(source_dir, ["add", "src/main.py"])
         _run_git(source_dir, ["commit", "-m", "Add main.py"])
 
-        # Get the commit log from source
         source_log = _run_git(source_dir, ["log", "--oneline"])
 
-        # Add remote and push
         _run_git(source_dir, ["remote", "add", "origin", remote_url])
         _run_git(source_dir, ["push", "-u", "origin", "main"])
 
-        # Clone from GitEdge
         _run_git(Path(tmpdir), ["clone", remote_url, "clone"])
 
-        # Verify cloned content
         assert clone_dir.exists(), "Clone directory should exist"
         assert (clone_dir / "README.md").exists(), "README.md should exist"
         assert (clone_dir / "src" / "main.py").exists(), "src/main.py should exist"
 
-        # Verify file contents
         cloned_readme = (clone_dir / "README.md").read_text()
         assert "Hello GitEdge" in cloned_readme, "README should contain expected content"
 
         cloned_main = (clone_dir / "src" / "main.py").read_text()
         assert 'print("Hello, World!")' in cloned_main, "main.py should contain expected content"
 
-        # Verify commit history
         clone_log = _run_git(clone_dir, ["log", "--oneline"])
         assert source_log == clone_log, "Commit history should match"
 
@@ -87,23 +78,19 @@ def test_git_push_to_new_branch(app_url: str) -> None:
         source_dir = Path(tmpdir) / "source"
         clone_dir = Path(tmpdir) / "clone"
 
-        # Create source repository
         source_dir.mkdir()
         _run_git(source_dir, ["init"])
         _run_git(source_dir, ["config", "user.email", "test@example.com"])
         _run_git(source_dir, ["config", "user.name", "Test User"])
 
-        # Create initial commit on main
         readme = source_dir / "README.md"
         readme.write_text("# Branch Test\n")
         _run_git(source_dir, ["add", "README.md"])
         _run_git(source_dir, ["commit", "-m", "Initial commit"])
 
-        # Push main
         _run_git(source_dir, ["remote", "add", "origin", remote_url])
         _run_git(source_dir, ["push", "-u", "origin", "main"])
 
-        # Create and push a feature branch
         _run_git(source_dir, ["checkout", "-b", "feature"])
         feature_file = source_dir / "feature.txt"
         feature_file.write_text("New feature\n")
@@ -111,15 +98,12 @@ def test_git_push_to_new_branch(app_url: str) -> None:
         _run_git(source_dir, ["commit", "-m", "Add feature"])
         _run_git(source_dir, ["push", "-u", "origin", "feature"])
 
-        # Clone and verify both branches exist
         _run_git(Path(tmpdir), ["clone", remote_url, "clone"])
 
-        # Check remote branches
         branches = _run_git(clone_dir, ["branch", "-r"])
         assert "origin/main" in branches, "origin/main should exist"
         assert "origin/feature" in branches, "origin/feature should exist"
 
-        # Checkout feature branch and verify content
         _run_git(clone_dir, ["checkout", "feature"])
         assert (clone_dir / "feature.txt").exists(), "feature.txt should exist on feature branch"
 
@@ -136,7 +120,6 @@ def test_info_refs_endpoint(app_url: str) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         source_dir = Path(tmpdir) / "source"
 
-        # Create and push a repository first
         source_dir.mkdir()
         _run_git(source_dir, ["init"])
         _run_git(source_dir, ["config", "user.email", "test@example.com"])
@@ -149,7 +132,6 @@ def test_info_refs_endpoint(app_url: str) -> None:
         _run_git(source_dir, ["remote", "add", "origin", remote_url])
         _run_git(source_dir, ["push", "-u", "origin", "main"])
 
-    # Now test info/refs endpoint
     info_refs_url = f"{remote_url}/info/refs?service=git-upload-pack"
     req = urllib.request.Request(info_refs_url)
     with urllib.request.urlopen(req, timeout=30) as response:

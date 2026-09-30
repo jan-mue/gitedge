@@ -62,7 +62,6 @@ def _push_test_repo(wrangler_dev_url: str, repo_name: str) -> None:
         _run_git(source_dir, ["config", "user.email", "test@example.com"])
         _run_git(source_dir, ["config", "user.name", "Test User"])
 
-        # Create files
         readme = source_dir / "README.md"
         readme.write_text("# Browse Test\n\nA test repository for browsing.\n")
 
@@ -110,14 +109,11 @@ class TestRepositoryBrowsing:
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        # Navigate to the repo browser
         page.goto(f"{app_url}/browseuser/rootrepo")
 
-        # Verify the file tree is shown
         file_tree = page.get_by_test_id("file-tree")
         expect(file_tree).to_be_visible(timeout=15000)
 
-        # Verify directory entries
         expect(page.get_by_test_id("tree-entry-src")).to_be_visible()
         expect(page.get_by_test_id("tree-entry-README.md")).to_be_visible()
 
@@ -132,18 +128,14 @@ class TestRepositoryBrowsing:
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        # Navigate to the repo browser
         page.goto(f"{app_url}/browseuser/subdirrepo")
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
-        # Click on the src directory
         page.get_by_test_id("tree-entry-src").click()
 
-        # Should now show files inside src/
         expect(page.get_by_test_id("tree-entry-main.py")).to_be_visible(timeout=10000)
         expect(page.get_by_test_id("tree-entry-utils.py")).to_be_visible()
 
-        # Parent directory entry should be visible
         expect(page.get_by_test_id("tree-entry-parent")).to_be_visible()
 
     def test_navigate_to_repo_from_list(self, app_url: str, page: Page) -> None:
@@ -158,12 +150,10 @@ class TestRepositoryBrowsing:
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         page.goto(f"{app_url}/repositories")
 
-        # Click on the repo link
         repo_link = page.get_by_test_id("repo-link-navrepo")
         expect(repo_link).to_be_visible(timeout=10000)
         repo_link.click()
 
-        # Should navigate to the repo browser and show the file tree
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
         expect(page.get_by_test_id("tree-entry-README.md")).to_be_visible()
 
@@ -182,22 +172,17 @@ class TestFileViewer:
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        # Navigate into src directory
         page.goto(f"{app_url}/browseuser/viewrepo?path=src")
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
-        # Click on main.py
         page.get_by_test_id("tree-entry-main.py").click()
 
-        # Verify the file viewer is shown
         file_viewer = page.get_by_test_id("file-viewer")
         expect(file_viewer).to_be_visible(timeout=15000)
 
-        # Verify file metadata
         expect(page.get_by_test_id("file-name")).to_have_text("main.py")
         expect(page.get_by_test_id("file-language")).to_have_text("Python")
 
-        # Verify highlighted content contains our code
         content = page.get_by_test_id("highlighted-content")
         expect(content).to_be_visible()
         expect(content).to_contain_text("Hello, World!")
@@ -213,18 +198,14 @@ class TestFileViewer:
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        # Navigate to repo root
         page.goto(f"{app_url}/browseuser/mdrepo")
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
-        # Click on README.md
         page.get_by_test_id("tree-entry-README.md").click()
 
-        # Verify file viewer
         expect(page.get_by_test_id("file-viewer")).to_be_visible(timeout=15000)
         expect(page.get_by_test_id("file-name")).to_have_text("README.md")
 
-        # Verify content
         content = page.get_by_test_id("highlighted-content")
         expect(content).to_contain_text("Browse Test")
 
@@ -239,15 +220,12 @@ class TestFileViewer:
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        # Navigate to a file
         page.goto(f"{app_url}/browseuser/backrepo")
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
         page.get_by_test_id("tree-entry-README.md").click()
         expect(page.get_by_test_id("file-viewer")).to_be_visible(timeout=15000)
 
-        # Click the Back button
         page.get_by_role("button", name="Back").click()
 
-        # Should return to the file tree
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=10000)
         expect(page.get_by_test_id("tree-entry-README.md")).to_be_visible()

@@ -80,7 +80,6 @@ class TestAdminUserManagement:
         original_name = "Original Name"
         updated_name = "Updated Name"
 
-        # Create user first
         page.get_by_role("button", name="Add User").click()
         page.get_by_placeholder("Email").fill(random_email)
         page.get_by_placeholder("Full name").fill(original_name)
@@ -108,7 +107,6 @@ class TestAdminUserManagement:
         """Admin should be able to delete a user."""
         page.goto(f"{app_url}/admin")
 
-        # Create user first
         page.get_by_role("button", name="Add User").click()
         page.get_by_placeholder("Email").fill(random_email)
         page.get_by_placeholder("Password").first.fill(random_password)

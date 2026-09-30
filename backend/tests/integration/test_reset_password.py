@@ -56,16 +56,13 @@ def _get_password_reset_url(page: Page, wrangler_dev_url: str, mailpit_http_url:
     # Find the password reset email (allow extra time for email delivery)
     email_data = find_last_email(mailpit_http_url, recipient_filter=email, timeout=30000)
 
-    # Get the email HTML content
     message_id = email_data["ID"]
     html_content = get_email_html(mailpit_http_url, message_id)
 
-    # Extract the reset link from the HTML
     match = re.search(r'href="([^"]*reset-password\?token=[^"]*)"', html_content)
     assert match is not None, "Could not find reset password link in email"
     url = match.group(1)
 
-    # Update the URL to use the correct base URL
     return re.sub(r"https?://[^/]+", wrangler_dev_url, url)
 
 
@@ -80,13 +77,10 @@ class TestPasswordReset:
         password = random_password
         new_password = password + "2"
 
-        # Create a user via API (more reliable than sign-up flow)
         create_user_via_api(app_url, email, password)
 
-        # Get the password reset URL
         url = _get_password_reset_url(page, app_url, mailpit_http_url, email)
 
-        # Set the new password and confirm it
         page.goto(url)
 
         page.get_by_test_id("new-password-input").fill(new_password)
@@ -94,7 +88,6 @@ class TestPasswordReset:
         page.get_by_role("button", name="Reset Password").click()
         expect(page.get_by_text("Password updated successfully")).to_be_visible()
 
-        # Check if the user can login with the new password
         log_in_user(page, app_url, email, new_password)
 
     def test_expired_or_invalid_reset_link(self, page: Page, app_url: str, random_password: str) -> None:
@@ -115,13 +108,10 @@ class TestPasswordReset:
         """Weak new password should show a validation error."""
         weak_password = "123"
 
-        # Create a user via API (more reliable than sign-up flow)
         create_user_via_api(app_url, random_email, random_password)
 
-        # Get the password reset URL
         url = _get_password_reset_url(page, app_url, mailpit_http_url, random_email)
 
-        # Set a weak new password
         page.goto(url)
         page.get_by_test_id("new-password-input").fill(weak_password)
         page.get_by_test_id("confirm-password-input").fill(weak_password)

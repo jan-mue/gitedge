@@ -38,13 +38,11 @@ async def _ensure_repository_loaded(backend: BlobBackend, blob_client: BlobStora
     if backend.repository_exists(repo_path):
         return
 
-    # Load from storage
     try:
         packs, refs = await load_repository_from_storage(blob_client, repo_path)
         if packs or refs:
             backend.load_repository_from_data(repo_path, packs, refs)
         else:
-            # No existing data, create new repo
             backend.create_repository(repo_path)
     except (OSError, ValueError, TypeError) as e:
         logger.warning(f"Failed to load repository {repo_path}: {e}")
@@ -79,7 +77,6 @@ def _create_wsgi_environ(request: Request, body: bytes, path: str) -> dict[str, 
     Returns:
         WSGI environ dictionary.
     """
-    # Build query string
     query_string = str(request.url.query) if request.url.query else ""
 
     environ: dict[str, Any] = {
@@ -99,7 +96,6 @@ def _create_wsgi_environ(request: Request, body: bytes, path: str) -> dict[str, 
         "wsgi.run_once": True,
     }
 
-    # Add content type and length if present
     content_type = request.headers.get("content-type")
     if content_type:
         environ["CONTENT_TYPE"] = content_type
@@ -108,7 +104,6 @@ def _create_wsgi_environ(request: Request, body: bytes, path: str) -> dict[str, 
     if content_length:
         environ["CONTENT_LENGTH"] = content_length
 
-    # Add HTTP headers
     for key, value in request.headers.items():
         key_upper = key.upper().replace("-", "_")
         if key_upper not in ("CONTENT_TYPE", "CONTENT_LENGTH"):
@@ -136,18 +131,13 @@ async def _handle_git_request(
     Returns:
         FastAPI Response.
     """
-    # Ensure repository is loaded
     await _ensure_repository_loaded(backend, blob_client, repo_path)
 
-    # Get request body
     body = await request.body()
 
-    # Create WSGI environ
     path_info = f"/{repo_path}{service_path}"
     environ = _create_wsgi_environ(request, body, path_info)
 
-    # Create response collector
-    response_started = False
     response_status = "200 OK"
     response_headers: list[tuple[str, str]] = []
     response_body: list[bytes] = []
@@ -157,8 +147,7 @@ async def _handle_git_request(
         headers: list[tuple[str, str]],
         _exc_info: tuple[type[BaseException], BaseException, TracebackType] | tuple[None, None, None] | None = None,
     ) -> Callable[[bytes], object]:
-        nonlocal response_started, response_status, response_headers
-        response_started = True
+        nonlocal response_status, response_headers
         response_status = status
         response_headers = headers
 
@@ -167,12 +156,9 @@ async def _handle_git_request(
 
         return write
 
-    # Create and call WSGI app
     wsgi_app = HTTPGitApplication(backend)
-    # Apply filters
     wsgi_app_filtered = GunzipFilter(LimitedInputFilter(wsgi_app))
 
-    # Execute WSGI app
     try:
         result = wsgi_app_filtered(environ, start_response)
         response_body.extend(result)
@@ -183,10 +169,8 @@ async def _handle_git_request(
             status_code=500,
         )
 
-    # Save any changes
     await _save_repository_changes(backend, blob_client, repo_path)
 
-    # Build response
     status_code = int(response_status.split(maxsplit=1)[0])
     headers_dict = dict(response_headers)
 

@@ -103,38 +103,17 @@ def _resolve_ref(repo: BlobRepository, ref_name: str) -> bytes:
     Raises:
         HTTPException: If ref not found.
     """
-    # Try the ref as-is
     refs = repo.refs
-    sha = refs.read_loose_ref(Ref(ref_name.encode()))
-    if sha is not None:
-        # Follow symbolic refs
-        if sha.startswith(SYMREF):
-            target = sha[len(SYMREF) :]
-            sha = refs.read_loose_ref(Ref(target))
+    candidates: tuple[str, ...] = (ref_name, f"refs/heads/{ref_name}", f"refs/tags/{ref_name}")
+    if ref_name in ("", "HEAD"):
+        candidates = (*candidates, "HEAD")
+
+    for candidate in candidates:
+        sha = refs.read_loose_ref(Ref(candidate.encode()))
+        if sha is not None and sha.startswith(SYMREF):
+            sha = refs.read_loose_ref(Ref(sha[len(SYMREF) :]))
         if sha is not None:
             return sha
-
-    # Try refs/heads/<ref_name>
-    sha = refs.read_loose_ref(Ref(f"refs/heads/{ref_name}".encode()))
-    if sha is not None:
-        return sha
-
-    # Try refs/tags/<ref_name>
-    sha = refs.read_loose_ref(Ref(f"refs/tags/{ref_name}".encode()))
-    if sha is not None:
-        return sha
-
-    # Try HEAD
-    if ref_name in ("", "HEAD"):
-        head_val = refs.read_loose_ref(Ref(b"HEAD"))
-        if head_val is not None:
-            if head_val.startswith(SYMREF):
-                target = head_val[len(SYMREF) :]
-                sha = refs.read_loose_ref(Ref(target))
-                if sha is not None:
-                    return sha
-            else:
-                return head_val
 
     raise HTTPException(status_code=404, detail=f"Ref '{ref_name}' not found")
 
@@ -225,7 +204,6 @@ def _get_blob_at_path(repo: BlobRepository, commit_sha: bytes, path: str) -> tup
         if not found:
             raise HTTPException(status_code=404, detail=f"Path '{path}' not found")
 
-    # Find the file in the final tree
     filename = parts[-1]
     for entry in current_tree.items():
         if entry.path.decode() == filename:
@@ -254,7 +232,6 @@ async def get_repositories_from_redis() -> list[Repository]:
         if "/refs/" in key_name:
             repo_path = key_name.split("/refs/")[0]
             if repo_path not in repositories:
-                # Extract repository name from path (last component)
                 name = repo_path.rstrip("/").split("/")[-1]
                 if name.endswith(".git"):
                     name = name[:-4]
@@ -291,7 +268,6 @@ async def create_repository(
     """
     repo_path = f"{body.owner}/{body.name}.git"
 
-    # Create the repo in-memory
     backend.create_repository(repo_path)
 
     # Save initial refs to storage (HEAD -> refs/heads/main)
@@ -385,20 +361,17 @@ async def get_blob(
     commit_sha = _resolve_ref(repo, ref)
     blob, filename = _get_blob_at_path(repo, commit_sha, file_path)
 
-    # Decode content
     raw_data = blob.data
     try:
         content = raw_data.decode("utf-8")
     except UnicodeDecodeError:
         content = "(binary file)"
 
-    # Get lexer for syntax highlighting
     try:
         lexer = get_lexer_for_filename(filename)
     except ValueError, TypeError:
         lexer = TextLexer()
 
-    # Create formatter with GitHub-like settings
     formatter = HtmlFormatter(
         style="default",
         cssclass="highlight",
