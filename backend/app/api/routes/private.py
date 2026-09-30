@@ -4,17 +4,17 @@ These endpoints should not be exposed in production.
 """
 
 from fastapi import APIRouter
-from pydantic import BaseModel
 
 from app.api.dependencies import UserRepositoryDep
 from app.entities.users import User
+from app.schemas.base import GitEdgeBaseModel
 from app.schemas.users import UserPublic
 from app.utils.security import get_password_hash
 
 router = APIRouter(tags=["private"], prefix="/private")
 
 
-class PrivateUserCreate(BaseModel):
+class PrivateUserCreate(GitEdgeBaseModel):
     """Schema for creating a user via private API."""
 
     email: str

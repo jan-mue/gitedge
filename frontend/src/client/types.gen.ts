@@ -89,18 +89,6 @@ export type HTTPValidationError = {
 };
 
 /**
- * Message
- *
- * Generic message response schema.
- */
-export type Message = {
-    /**
-     * Message
-     */
-    message: string;
-};
-
-/**
  * NewPassword
  *
  * Schema for password reset with token.
@@ -482,7 +470,7 @@ export type loginRecoverPasswordResponses = {
     /**
      * Successful Response
      */
-    200: Message;
+    204: void;
 };
 
 export type loginRecoverPasswordResponse = loginRecoverPasswordResponses[keyof loginRecoverPasswordResponses];
@@ -507,7 +495,7 @@ export type loginResetPasswordResponses = {
     /**
      * Successful Response
      */
-    200: Message;
+    204: void;
 };
 
 export type loginResetPasswordResponse = loginResetPasswordResponses[keyof loginResetPasswordResponses];
@@ -610,7 +598,7 @@ export type usersDeleteUserMeResponses = {
     /**
      * Successful Response
      */
-    200: Message;
+    204: void;
 };
 
 export type usersDeleteUserMeResponse = usersDeleteUserMeResponses[keyof usersDeleteUserMeResponses];
@@ -676,7 +664,7 @@ export type usersUpdatePasswordMeResponses = {
     /**
      * Successful Response
      */
-    200: Message;
+    204: void;
 };
 
 export type usersUpdatePasswordMeResponse = usersUpdatePasswordMeResponses[keyof usersUpdatePasswordMeResponses];
@@ -731,7 +719,7 @@ export type usersDeleteUserResponses = {
     /**
      * Successful Response
      */
-    200: Message;
+    204: void;
 };
 
 export type usersDeleteUserResponse = usersDeleteUserResponses[keyof usersDeleteUserResponses];
@@ -1178,7 +1166,7 @@ export type utilsTestEmailResponses = {
     /**
      * Successful Response
      */
-    201: Message;
+    204: void;
 };
 
 export type utilsTestEmailResponse = utilsTestEmailResponses[keyof utilsTestEmailResponses];

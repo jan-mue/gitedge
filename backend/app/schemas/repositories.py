@@ -1,23 +1,23 @@
 """Repository Pydantic schemas."""
 
-from pydantic import BaseModel
+from app.schemas.base import GitEdgeBaseModel
 
 
-class Repository(BaseModel):
+class Repository(GitEdgeBaseModel):
     """Repository schema."""
 
     name: str
     path: str
 
 
-class RepositoriesPublic(BaseModel):
+class RepositoriesPublic(GitEdgeBaseModel):
     """List of repositories."""
 
     data: list[Repository]
     count: int
 
 
-class TreeEntry(BaseModel):
+class TreeEntry(GitEdgeBaseModel):
     """A single entry in a Git tree (file or directory)."""
 
     name: str
@@ -26,7 +26,7 @@ class TreeEntry(BaseModel):
     size: int | None = None
 
 
-class TreeListing(BaseModel):
+class TreeListing(GitEdgeBaseModel):
     """Directory listing for a repository path."""
 
     entries: list[TreeEntry]
@@ -35,7 +35,7 @@ class TreeListing(BaseModel):
     ref: str
 
 
-class FileContent(BaseModel):
+class FileContent(GitEdgeBaseModel):
     """File content with syntax highlighting."""
 
     name: str
@@ -49,7 +49,7 @@ class FileContent(BaseModel):
     line_count: int
 
 
-class CreateRepositoryRequest(BaseModel):
+class CreateRepositoryRequest(GitEdgeBaseModel):
     """Request to create a new repository."""
 
     name: str

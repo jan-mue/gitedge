@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.dependencies import (
     CrudServiceDep,
@@ -13,7 +13,6 @@ from app.api.dependencies import (
     get_current_active_superuser,
 )
 from app.config import settings
-from app.schemas.common import Message
 from app.schemas.users import (
     UpdatePassword,
     UserCreate,
@@ -73,10 +72,10 @@ async def update_user_me(
     return crud_service.update_user(db_user=current_user, user_in=user_in)
 
 
-@router.patch("/me/password")
+@router.patch("/me/password", status_code=status.HTTP_204_NO_CONTENT)
 async def update_password_me(
     *, user_repository: UserRepositoryDep, body: UpdatePassword, current_user: CurrentUser
-) -> Message:
+) -> None:
     """Update own password."""
     verified, _ = verify_password(body.current_password, current_user.hashed_password)
     if not verified:
@@ -86,7 +85,6 @@ async def update_password_me(
     hashed_password = get_password_hash(body.new_password)
     current_user.hashed_password = hashed_password
     user_repository.update(current_user)
-    return Message(message="Password updated successfully")
 
 
 @router.get("/me")
@@ -95,8 +93,8 @@ async def read_user_me(current_user: CurrentUser) -> UserPublic:
     return UserPublic.model_validate(current_user)
 
 
-@router.delete("/me")
-async def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Message:
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user_me(session: SessionDep, current_user: CurrentUser) -> None:
     """Delete own user."""
     if current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Super users are not allowed to delete themselves")
@@ -104,7 +102,6 @@ async def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Mess
     # TODO: move to service
     session.delete(current_user)
     session.commit()
-    return Message(message="User deleted successfully")
 
 
 @router.post("/signup")
@@ -153,13 +150,15 @@ async def update_user(
     return crud_service.update_user(db_user=db_user, user_in=user_in)
 
 
-@router.delete("/{user_id}", dependencies=[Depends(get_current_active_superuser)])
+@router.delete(
+    "/{user_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(get_current_active_superuser)]
+)
 async def delete_user(
     session: SessionDep,
     user_repository: UserRepositoryDep,
     current_user: CurrentUser,
     user_id: uuid.UUID,
-) -> Message:
+) -> None:
     """Delete a user."""
     # TODO: move to service
     user = user_repository.get(user_id)
@@ -170,4 +169,3 @@ async def delete_user(
     # TODO: delete repositories
     session.delete(user)
     session.commit()
-    return Message(message="User deleted successfully")

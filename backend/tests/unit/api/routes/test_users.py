@@ -182,9 +182,7 @@ def test_update_password_me(client: TestClient, superuser_token_headers: dict[st
         headers=superuser_token_headers,
         json=data,
     )
-    assert r.status_code == 200
-    updated_user = r.json()
-    assert updated_user["message"] == "Password updated successfully"
+    assert r.status_code == 204
 
     user_db = crud.user_repository.get_by_email(email=settings.FIRST_SUPERUSER)
     assert user_db
@@ -204,7 +202,7 @@ def test_update_password_me(client: TestClient, superuser_token_headers: dict[st
     )
     crud.user_repository.refresh(user_db)
 
-    assert r.status_code == 200
+    assert r.status_code == 204
     verified, _ = verify_password(settings.FIRST_SUPERUSER_PASSWORD, user_db.hashed_password)
     assert verified
 
@@ -369,9 +367,7 @@ def test_delete_user_me(client: TestClient, crud: CrudService) -> None:
         f"{settings.API_V1_STR}/users/me",
         headers=headers,
     )
-    assert r.status_code == 200
-    deleted_user = r.json()
-    assert deleted_user["message"] == "User deleted successfully"
+    assert r.status_code == 204
     user_db = crud.user_repository.get(user_id)
     assert user_db is None
 
@@ -396,9 +392,7 @@ def test_delete_user_super_user(client: TestClient, superuser_token_headers: dic
         f"{settings.API_V1_STR}/users/{user_id}",
         headers=superuser_token_headers,
     )
-    assert r.status_code == 200
-    deleted_user = r.json()
-    assert deleted_user["message"] == "User deleted successfully"
+    assert r.status_code == 204
     user_db = crud.user_repository.get(user_id)
     assert user_db is None
 

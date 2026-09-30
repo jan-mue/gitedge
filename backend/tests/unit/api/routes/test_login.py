@@ -65,8 +65,7 @@ def test_recovery_password(
         f"{settings.API_V1_STR}/password-recovery/{email}",
         headers=normal_user_token_headers,
     )
-    assert r.status_code == 200
-    assert r.json() == {"message": "If that email is registered, we sent a password recovery link"}
+    assert r.status_code == 204
 
 
 def test_recovery_password_user_not_exits(client: TestClient, normal_user_token_headers: dict[str, str]) -> None:
@@ -75,9 +74,8 @@ def test_recovery_password_user_not_exits(client: TestClient, normal_user_token_
         f"{settings.API_V1_STR}/password-recovery/{email}",
         headers=normal_user_token_headers,
     )
-    # Should return 200 with generic message to prevent email enumeration attacks
-    assert r.status_code == 200
-    assert r.json() == {"message": "If that email is registered, we sent a password recovery link"}
+    # Should return 204 (no content) regardless to prevent email enumeration attacks
+    assert r.status_code == 204
 
 
 def test_reset_password(client: TestClient, crud: CrudService) -> None:
@@ -104,8 +102,7 @@ def test_reset_password(client: TestClient, crud: CrudService) -> None:
         json=data,
     )
 
-    assert r.status_code == 200
-    assert r.json() == {"message": "Password updated successfully"}
+    assert r.status_code == 204
 
     user = crud.user_repository.get_by_email(email=email)
     assert user is not None

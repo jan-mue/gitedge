@@ -102,6 +102,7 @@ lint.flake8-tidy-imports.ban-relative-imports = "all"
 lint.flake8-tidy-imports.banned-api."unittest.mock".msg = "Use `pytest-mock` instead."
 lint.flake8-type-checking.runtime-evaluated-base-classes = [
     "app.entities.base.Base",
+    "app.schemas.base.GitEdgeBaseModel",
     "pydantic.BaseModel",
     "sqlalchemy.orm.DeclarativeBase",
 ]

@@ -2,10 +2,12 @@
 
 import uuid
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import ConfigDict, EmailStr, Field
+
+from app.schemas.base import GitEdgeBaseModel
 
 
-class UserBase(BaseModel):
+class UserBase(GitEdgeBaseModel):
     """Base user schema with common fields."""
 
     email: EmailStr = Field(max_length=255)
@@ -22,7 +24,7 @@ class UserCreate(UserBase):
     password: str = Field(min_length=8, max_length=40)
 
 
-class UserRegister(BaseModel):
+class UserRegister(GitEdgeBaseModel):
     """Schema for user self-registration."""
 
     email: EmailStr = Field(max_length=255)
@@ -37,14 +39,14 @@ class UserUpdate(UserBase):
     password: str | None = Field(default=None, min_length=8, max_length=40)
 
 
-class UserUpdateMe(BaseModel):
+class UserUpdateMe(GitEdgeBaseModel):
     """Schema for users updating their own profile."""
 
     full_name: str | None = Field(default=None, max_length=255)
     email: EmailStr | None = Field(default=None, max_length=255)
 
 
-class UpdatePassword(BaseModel):
+class UpdatePassword(GitEdgeBaseModel):
     """Schema for password update."""
 
     current_password: str = Field(min_length=8, max_length=40)
@@ -59,7 +61,7 @@ class UserPublic(UserBase):
     id: uuid.UUID
 
 
-class UsersPublic(BaseModel):
+class UsersPublic(GitEdgeBaseModel):
     """Schema for paginated list of users."""
 
     data: list[UserPublic]

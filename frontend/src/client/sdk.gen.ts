@@ -60,11 +60,7 @@ export class LoginService {
      * Password Recovery.
      */
     public static recoverPassword<ThrowOnError extends boolean = true>(options: Options<loginRecoverPasswordData, ThrowOnError>): RequestResult<loginRecoverPasswordResponses, loginRecoverPasswordErrors, ThrowOnError> {
-        return (options.client ?? client).post<loginRecoverPasswordResponses, loginRecoverPasswordErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/password-recovery/{email}',
-            ...options
-        });
+        return (options.client ?? client).post<loginRecoverPasswordResponses, loginRecoverPasswordErrors, ThrowOnError>({ url: '/api/v1/password-recovery/{email}', ...options });
     }
     
     /**
@@ -74,7 +70,6 @@ export class LoginService {
      */
     public static resetPassword<ThrowOnError extends boolean = true>(options: Options<loginResetPasswordData, ThrowOnError>): RequestResult<loginResetPasswordResponses, loginResetPasswordErrors, ThrowOnError> {
         return (options.client ?? client).post<loginResetPasswordResponses, loginResetPasswordErrors, ThrowOnError>({
-            responseType: 'json',
             url: '/api/v1/reset-password/',
             ...options,
             headers: {
@@ -139,7 +134,6 @@ export class UsersService {
      */
     public static deleteUserMe<ThrowOnError extends boolean = true>(options?: Options<usersDeleteUserMeData, ThrowOnError>): RequestResult<usersDeleteUserMeResponses, unknown, ThrowOnError> {
         return (options?.client ?? client).delete<usersDeleteUserMeResponses, unknown, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/users/me',
             ...options
@@ -185,7 +179,6 @@ export class UsersService {
      */
     public static updatePasswordMe<ThrowOnError extends boolean = true>(options: Options<usersUpdatePasswordMeData, ThrowOnError>): RequestResult<usersUpdatePasswordMeResponses, usersUpdatePasswordMeErrors, ThrowOnError> {
         return (options.client ?? client).patch<usersUpdatePasswordMeResponses, usersUpdatePasswordMeErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/users/me/password',
             ...options,
@@ -220,7 +213,6 @@ export class UsersService {
      */
     public static deleteUser<ThrowOnError extends boolean = true>(options: Options<usersDeleteUserData, ThrowOnError>): RequestResult<usersDeleteUserResponses, usersDeleteUserErrors, ThrowOnError> {
         return (options.client ?? client).delete<usersDeleteUserResponses, usersDeleteUserErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/users/{user_id}',
             ...options
@@ -528,7 +520,6 @@ export class UtilsService {
      */
     public static testEmail<ThrowOnError extends boolean = true>(options: Options<utilsTestEmailData, ThrowOnError>): RequestResult<utilsTestEmailResponses, utilsTestEmailErrors, ThrowOnError> {
         return (options.client ?? client).post<utilsTestEmailResponses, utilsTestEmailErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/utils/test-email/',
             ...options

@@ -1,22 +1,24 @@
 """Token and authentication schemas."""
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from app.schemas.base import GitEdgeBaseModel
 
 
-class Token(BaseModel):
+class Token(GitEdgeBaseModel):
     """OAuth2 token response schema."""
 
     access_token: str
     token_type: str = "bearer"  # noqa: S105
 
 
-class TokenPayload(BaseModel):
+class TokenPayload(GitEdgeBaseModel):
     """JWT token payload schema."""
 
     sub: str | None = None
 
 
-class NewPassword(BaseModel):
+class NewPassword(GitEdgeBaseModel):
     """Schema for password reset with token."""
 
     token: str
