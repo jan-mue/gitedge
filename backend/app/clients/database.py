@@ -89,12 +89,12 @@ class SQLRepository[T: Base](CrudRepository[T]):
 
         Args:
             primary_key: Primary key of the entity. String keys are coerced to UUID.
+
+        Raises:
+            ValueError: If a string key is not a valid UUID.
         """
         if not isinstance(primary_key, uuid.UUID):
-            try:
-                primary_key = uuid.UUID(str(primary_key))
-            except ValueError, AttributeError, TypeError:
-                return None
+            primary_key = uuid.UUID(primary_key)
         return self.db.scalar(select(self.entity_class).where(self.entity_class.id == primary_key))
 
     def get_all(self, offset: int = 0, limit: int = 100) -> list[T]:
