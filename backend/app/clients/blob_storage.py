@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import botocore.exceptions  # type: ignore[import-untyped]
 from aiobotocore.session import get_session  # type: ignore[import-untyped]
-from vercel.blob import AsyncBlobClient, BlobError, BlobNotFoundError
+from vercel.blob import AsyncBlobClient, BlobNotFoundError
 
 if TYPE_CHECKING:
     from aiobotocore.session import ClientCreatorContext
@@ -103,8 +103,8 @@ class VercelBlobClient(BlobStorageClient):
         """Delete data from Vercel Blob Storage."""
         try:
             await self._client.delete([key])
-        except BlobError:
-            logger.debug("Failed to delete blob: %s", key)
+        except BlobNotFoundError:
+            logger.debug("Blob not found while deleting: %s", key)
 
     async def list_keys(self, prefix: str) -> list[str]:
         """List all keys with the given prefix in Vercel Blob Storage."""
@@ -182,21 +182,15 @@ class S3Client(BlobStorageClient):
                     return await stream.read()  # type: ignore[no-any-return]
         except botocore.exceptions.ClientError as e:
             if e.response.get("Error", {}).get("Code") == "NoSuchKey":
+                logger.debug("Object not found in S3: %s", key)
                 return None
-            logger.debug("Object not found in S3: %s", key)
-            return None
-        except botocore.exceptions.BotoCoreError:
-            logger.debug("Object not found in S3: %s", key)
-            return None
+            raise
 
     async def delete(self, key: str) -> None:
         """Delete data from S3."""
         await self._ensure_bucket()
-        try:
-            async with self._create_client() as client:
-                await client.delete_object(Bucket=self._bucket, Key=key)
-        except botocore.exceptions.BotoCoreError:
-            logger.debug("Failed to delete object from S3: %s", key)
+        async with self._create_client() as client:
+            await client.delete_object(Bucket=self._bucket, Key=key)
 
     async def list_keys(self, prefix: str) -> list[str]:
         """List all keys with the given prefix in S3."""
