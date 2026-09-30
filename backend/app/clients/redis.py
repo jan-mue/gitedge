@@ -2,6 +2,7 @@
 
 import logging
 from abc import ABC, abstractmethod
+from functools import cache
 
 import redis.asyncio as aioredis
 from upstash_redis.asyncio import Redis
@@ -112,20 +113,14 @@ class UpstashRedisClient(AbstractRedisClient):
         return keys
 
 
-# Global mockable client instance (lazy initialized)
-_redis_client: AbstractRedisClient | None = None
-
-
+@cache
 def get_redis_client() -> AbstractRedisClient:
     """Get or create the active Redis client.
 
     Returns:
         Redis client instance (Standard or Upstash).
     """
-    global _redis_client  # noqa: PLW0603
-    if _redis_client is None:
-        _redis_client = UpstashRedisClient() if settings.REDIS_KIND == "rest" else RedisClient()
-    return _redis_client
+    return UpstashRedisClient() if settings.REDIS_KIND == "rest" else RedisClient()
 
 
 async def redis_get(key: str) -> bytes | None:
