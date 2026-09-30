@@ -118,7 +118,9 @@ async def register_user(crud_service: CrudServiceDep, user_in: UserRegister) -> 
 
 
 @router.get("/{user_id}")
-async def read_user_by_id(user_id: str, user_repository: UserRepositoryDep, current_user: CurrentUser) -> UserPublic:
+async def read_user_by_id(
+    user_id: uuid.UUID, user_repository: UserRepositoryDep, current_user: CurrentUser
+) -> UserPublic:
     """Get a specific user by id."""
     user = user_repository.get(user_id)
     if user != current_user and not current_user.is_superuser:
@@ -154,10 +156,7 @@ async def update_user(
     "/{user_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(get_current_active_superuser)]
 )
 async def delete_user(
-    session: SessionDep,
-    user_repository: UserRepositoryDep,
-    current_user: CurrentUser,
-    user_id: uuid.UUID,
+    session: SessionDep, user_repository: UserRepositoryDep, current_user: CurrentUser, user_id: uuid.UUID
 ) -> None:
     """Delete a user."""
     # TODO: move to service

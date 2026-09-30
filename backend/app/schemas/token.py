@@ -1,5 +1,7 @@
 """Token and authentication schemas."""
 
+import uuid
+
 from pydantic import Field
 
 from app.schemas.base import GitEdgeBaseModel
@@ -15,7 +17,7 @@ class Token(GitEdgeBaseModel):
 class TokenPayload(GitEdgeBaseModel):
     """JWT token payload schema."""
 
-    sub: str | None = None
+    sub: uuid.UUID | None = None
 
 
 class NewPassword(GitEdgeBaseModel):

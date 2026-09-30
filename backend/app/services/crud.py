@@ -48,7 +48,7 @@ class CrudService:
         self.user_repository.add(user)
         return UserPublic.model_validate(user)
 
-    def get_user_by_id(self, user_id: str | uuid.UUID) -> UserPublic | None:
+    def get_user_by_id(self, user_id: uuid.UUID) -> UserPublic | None:
         """Get a user by their ID.
 
         Args:

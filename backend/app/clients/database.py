@@ -1,15 +1,17 @@
 """Database client using SQLAlchemy with PostgreSQL."""
 
 import logging
-import uuid
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Engine, create_engine, func, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.entities.base import Base
+
+if TYPE_CHECKING:
+    import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +45,7 @@ class CrudRepository[T: Base](ABC):
     """Abstract base class for CRUD repository operations."""
 
     @abstractmethod
-    def get(self, primary_key: str | uuid.UUID) -> T | None:
+    def get(self, primary_key: uuid.UUID) -> T | None:
         """Get an entity by its primary key."""
 
     @abstractmethod
@@ -84,17 +86,12 @@ class SQLRepository[T: Base](CrudRepository[T]):
         self.db = db
         self.entity_class = entity_class
 
-    def get(self, primary_key: str | uuid.UUID) -> T | None:
+    def get(self, primary_key: uuid.UUID) -> T | None:
         """Get an entity by its primary key.
 
         Args:
-            primary_key: Primary key of the entity. String keys are coerced to UUID.
-
-        Raises:
-            ValueError: If a string key is not a valid UUID.
+            primary_key: Primary key of the entity.
         """
-        if not isinstance(primary_key, uuid.UUID):
-            primary_key = uuid.UUID(primary_key)
         return self.db.scalar(select(self.entity_class).where(self.entity_class.id == primary_key))
 
     def get_all(self, offset: int = 0, limit: int = 100) -> list[T]:

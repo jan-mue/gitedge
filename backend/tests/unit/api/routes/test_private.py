@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING
 
 from app.config import settings
@@ -24,7 +25,7 @@ def test_create_user(client: TestClient, crud: CrudService) -> None:
 
     data = r.json()
 
-    user = crud.get_user_by_id(data["id"])
+    user = crud.get_user_by_id(uuid.UUID(data["id"]))
 
     assert user
     assert user.email == "pollo@listo.com"
