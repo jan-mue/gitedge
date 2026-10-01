@@ -106,6 +106,13 @@ repos:
         files: ^frontend/
         pass_filenames: false
 
+      - id: knip
+        name: knip
+        entry: bun run knip
+        language: system
+        files: \.(ts|js|tsx|jsx|mjs)$
+        pass_filenames: false
+
       - id: generate-frontend-sdk
         name: Generate Frontend SDK
         entry: bash ./scripts/generate-client.sh

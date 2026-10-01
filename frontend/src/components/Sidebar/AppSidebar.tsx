@@ -17,7 +17,7 @@ const baseItems: Item[] = [
   { icon: GitBranch, title: "Repositories", path: "/repositories" },
 ]
 
-export function AppSidebar() {
+function AppSidebar() {
   const { user: currentUser } = useAuth()
 
   const items = currentUser?.is_superuser

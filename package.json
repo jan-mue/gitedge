@@ -11,6 +11,10 @@
     "test": "bun run --filter frontend test",
     "test:ui": "bun run --filter frontend test:ui",
     "email:dev": "bun run --filter emails dev",
-    "email:export": "bun run --filter emails export"
+    "email:export": "bun run --filter emails export",
+    "knip": "knip"
+  },
+  "devDependencies": {
+    "knip": "6.38.0"
   }
 }
