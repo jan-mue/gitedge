@@ -185,4 +185,4 @@ class Settings(BaseSettings):
         return origins
 
 
-settings = Settings()  # ty: ignore[missing-argument]
+settings = Settings()

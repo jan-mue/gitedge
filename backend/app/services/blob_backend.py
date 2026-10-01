@@ -42,7 +42,7 @@ class BlobBackend(Backend):
         super().__init__()
         self._repos: dict[str, BlobRepository] = {}
 
-    def open_repository(self, path: str | bytes) -> BlobRepository:  # type: ignore[override]
+    def open_repository(self, path: str | bytes) -> BlobRepository:
         """Open a repository at the given path.
 
         The repository must have been pre-loaded via load_repository()

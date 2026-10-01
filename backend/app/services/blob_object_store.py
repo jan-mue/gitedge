@@ -18,6 +18,7 @@ from dulwich.pack import (
     PackData,
     PackIndexer,
     PackStreamCopier,
+    extend_pack,
     iter_sha1,
     load_pack_index_file,
     write_pack_index,
@@ -27,6 +28,8 @@ from app.types import PackContents
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
+
+    from dulwich.pack import PackIndexEntry
 
 
 class BlobPackData(PackData):
@@ -247,18 +250,11 @@ class BlobObjectStore(BucketBasedObjectStore):
                 max_input_size,
             )
         with tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024, prefix="thin-pack-") as pf:
-            # Use PackIndexer to resolve external refs and PackStreamCopier to copy
-            indexer = PackIndexer(
-                pf,
-                self.object_format.hash_func,
-                resolve_ext_ref=self.get_raw,
-            )
             copier = PackStreamCopier(
                 self.object_format.hash_func,
                 read_all,
                 read_some,
                 pf,
-                delta_iter=indexer,  # type: ignore[arg-type]
             )
             copier.verify(progress=progress)
 
@@ -269,26 +265,39 @@ class BlobObjectStore(BucketBasedObjectStore):
             raise ValueError("Empty pack data")
 
         pack_file = BytesIO(pack_data)
-        p = PackData("", file=pack_file, object_format=self.object_format)
+        p = PackData("", file=BytesIO(pack_data), object_format=self.object_format)
 
-        entries = p.sorted_entries()
+        indexer = PackIndexer.for_pack_data(p, resolve_ext_ref=self.get_raw)
+        entries: list[PackIndexEntry] = list(indexer)
+        ext_refs = set(indexer.ext_refs())
+
+        pack_sha, extra_entries = extend_pack(
+            pack_file,
+            ext_refs,
+            self.get_raw,
+            self.object_format,
+            compression_level=self.pack_compression_level,
+            progress=progress,
+        )
+        entries.extend(extra_entries)
+        entries.sort()
 
         basename = iter_sha1(entry[0] for entry in entries).decode("ascii")
 
         idxf = BytesIO()
-        checksum = p.get_stored_checksum()
-        write_pack_index(idxf, entries, checksum, version=2)
+        write_pack_index(idxf, entries, pack_sha, version=2)
         idxf.seek(0)
         idx_data = idxf.read()
 
         pack_file.seek(0)
-        contents = PackContents(pack=pack_file.read(), index=idx_data)
+        completed_pack = pack_file.read()
+        contents = PackContents(pack=completed_pack, index=idx_data)
         self._pending_uploads[basename] = contents
         self._loaded_packs[basename] = contents
 
-        pack_file.seek(0)
         idx = load_pack_index_file(basename + ".idx", BytesIO(idx_data), self.object_format)
-        final_pack = Pack.from_objects(p, idx)
+        final_pack_data = PackData("", file=BytesIO(completed_pack), object_format=self.object_format)
+        final_pack = Pack.from_objects(final_pack_data, idx)
         self._add_cached_pack(basename, final_pack)
 
         return final_pack

@@ -106,7 +106,8 @@ def test_reset_password(client: TestClient, crud: CrudService) -> None:
 
     user = crud.user_repository.get_by_email(email=email)
     assert user is not None
-    assert verify_password(new_password, user.hashed_password)
+    verified, _ = verify_password(new_password, user.hashed_password)
+    assert verified
 
 
 def test_reset_password_invalid_token(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
