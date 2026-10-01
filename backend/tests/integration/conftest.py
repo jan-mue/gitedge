@@ -91,7 +91,9 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
     with (
         PostgresContainer("postgres:18.2", driver="psycopg") as postgres,
         RedisContainer("redis:8.6.0") as redis,
-        MinioContainer("minio/minio:RELEASE.2025-09-07T16-13-09Z") as minio,
+        MinioContainer(
+            "cgr.dev/chainguard/minio@sha256:9dcc028b309030afa86fc1fc8d93907ae373ea3fb75277cca3fc77e4645932b7"
+        ) as minio,
     ):
         db_url = postgres.get_connection_url()
         redis_url = f"redis://{redis.get_container_host_ip()}:{redis.get_exposed_port(6379)}/0"
