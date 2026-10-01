@@ -28,7 +28,7 @@ def test_git_push_and_clone(app_url: str) -> None:
         clone_dir = Path(tmpdir) / "clone"
 
         source_dir.mkdir()
-        _run_git(source_dir, ["init"])
+        _run_git(source_dir, ["init", "-b", "main"])
         _run_git(source_dir, ["config", "user.email", "test@example.com"])
         _run_git(source_dir, ["config", "user.name", "Test User"])
 
@@ -79,7 +79,7 @@ def test_git_push_to_new_branch(app_url: str) -> None:
         clone_dir = Path(tmpdir) / "clone"
 
         source_dir.mkdir()
-        _run_git(source_dir, ["init"])
+        _run_git(source_dir, ["init", "-b", "main"])
         _run_git(source_dir, ["config", "user.email", "test@example.com"])
         _run_git(source_dir, ["config", "user.name", "Test User"])
 
@@ -121,7 +121,7 @@ def test_info_refs_endpoint(app_url: str) -> None:
         source_dir = Path(tmpdir) / "source"
 
         source_dir.mkdir()
-        _run_git(source_dir, ["init"])
+        _run_git(source_dir, ["init", "-b", "main"])
         _run_git(source_dir, ["config", "user.email", "test@example.com"])
         _run_git(source_dir, ["config", "user.name", "Test User"])
 
