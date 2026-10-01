@@ -38,7 +38,7 @@ dev = [
     "coverage==7.16.1",
     "deptry==0.25.1",
     "inline-snapshot[black]==0.35.4",
-    "mypy==1.20.2",
+    "mypy==2.3.1",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
     "pytest-mock==3.15.1",
