@@ -54,6 +54,7 @@ jobs:
         run: bun ci
 
       - name: Build frontend
+        working-directory: frontend
         run: bun run build
 
       - name: Install Playwright browsers
