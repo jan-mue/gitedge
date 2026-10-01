@@ -10,7 +10,7 @@ from dulwich.objects import ZERO_SHA, ObjectID
 from dulwich.refs import SYMREF, Ref, RefsContainer
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
 
 
 class RedisRefsContainer(RefsContainer):
@@ -283,7 +283,7 @@ class RedisRefsContainer(RefsContainer):
         self._pending_puts.clear()
         self._pending_deletes.clear()
 
-    def add_packed_refs(self, new_refs: dict[Ref, ObjectID | None]) -> None:  # type: ignore[override]
+    def add_packed_refs(self, new_refs: Mapping[Ref, ObjectID | None]) -> None:
         """Add packed refs (no-op for Redis-based storage).
 
         Args:
@@ -296,10 +296,10 @@ class RedisRefsContainer(RefsContainer):
             else:
                 self.set_if_equals(name, None, value)
 
-    def pack_refs(self, all_refs: bool = False) -> None:
+    def pack_refs(self, all: bool = False) -> None:  # noqa: A002
         """Pack loose refs (no-op for Redis-based storage).
 
         Args:
-            all_refs: If True, pack all refs. If False, only pack tags.
+            all: If True, pack all refs. If False, only pack tags.
         """
         # Redis doesn't need packing

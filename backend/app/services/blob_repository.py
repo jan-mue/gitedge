@@ -46,6 +46,7 @@ class BlobRepository(BaseRepo):
     """
 
     filter_context: FilterContext | None
+    object_store: BlobObjectStore
 
     def __init__(self, object_format: ObjectFormat | None = None) -> None:
         """Create a new BlobRepository.

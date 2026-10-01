@@ -20,6 +20,7 @@ import pytest
 from alembic.command import upgrade
 from alembic.config import Config
 from playwright.sync_api import expect
+from pydantic import PostgresDsn, TypeAdapter
 from testcontainers.mailpit import MailpitContainer
 from testcontainers.minio import MinioContainer
 from testcontainers.postgres import PostgresContainer
@@ -120,7 +121,7 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
         config = Config(BACKEND_DIR / "alembic.ini")
         config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
         # Migrate the ephemeral Postgres test container via settings.DATABASE_URL.
-        settings.DATABASE_URL = db_url  # type: ignore[assignment]
+        settings.DATABASE_URL = TypeAdapter(PostgresDsn).validate_python(db_url)
         os.environ["DATABASE_URL"] = db_url
         upgrade(config, "head")
 
