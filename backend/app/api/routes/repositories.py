@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import TextLexer, get_lexer_for_filename
+from pygments.util import ClassNotFound
 
 from app.api.dependencies import BackendDep, BlobStorageClientDep
 from app.clients.redis import redis_scan_keys
@@ -77,17 +78,11 @@ async def _load_repo(backend: BackendDep, blob_client: BlobStorageClientDep, rep
         logger.debug("Repository found in cache: %s", normalized)
         return backend.open_repository(normalized)
 
-    try:
-        packs, refs = await load_repository_from_storage(blob_client, normalized)
-        logger.debug("Loaded from storage: %s (packs=%d, refs=%d)", normalized, len(packs), len(refs))
-        if not packs and not refs:
-            raise HTTPException(status_code=404, detail="Repository not found")
-        return backend.load_repository_from_data(normalized, packs, refs)
-    except HTTPException:
-        raise
-    except (OSError, ValueError, TypeError) as e:
-        logger.warning("Failed to load repository %s: %s", normalized, e)
-        raise HTTPException(status_code=404, detail="Repository not found") from e
+    packs, refs = await load_repository_from_storage(blob_client, normalized)
+    logger.debug("Loaded from storage: %s (packs=%d, refs=%d)", normalized, len(packs), len(refs))
+    if not packs and not refs:
+        raise HTTPException(status_code=404, detail="Repository not found")
+    return backend.load_repository_from_data(normalized, packs, refs)
 
 
 def _resolve_ref(repo: BlobRepository, ref_name: str) -> bytes:
@@ -369,7 +364,7 @@ async def get_blob(
 
     try:
         lexer = get_lexer_for_filename(filename)
-    except ValueError, TypeError:
+    except ClassNotFound:
         lexer = TextLexer()
 
     formatter = HtmlFormatter(

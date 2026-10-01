@@ -2,8 +2,9 @@
 
 import logging
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import select
-from tenacity import after_log, before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import after_log, before_log, retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from app.clients.database import get_db_session
 
@@ -16,18 +17,14 @@ wait_seconds = 1
 @retry(
     stop=stop_after_attempt(max_tries),
     wait=wait_fixed(wait_seconds),
+    retry=retry_if_exception_type(SQLAlchemyError),
     before=before_log(logger, logging.INFO),
     after=after_log(logger, logging.WARNING),
 )
 def init() -> None:
     """Check that the database is reachable, retrying until it is."""
-    try:
-        with get_db_session() as session:
-            # Try to create session to check if DB is awake
-            session.execute(select(1))
-    except Exception as e:
-        logger.error(e)
-        raise e
+    with get_db_session() as session:
+        session.execute(select(1))
 
 
 def main() -> None:

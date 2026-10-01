@@ -6,7 +6,6 @@ server for use with blob storage and Redis backends.
 
 from __future__ import annotations
 
-import logging
 from io import BytesIO
 from typing import TYPE_CHECKING, Any
 
@@ -22,8 +21,6 @@ if TYPE_CHECKING:
 
     from app.clients.blob_storage import BlobStorageClient
 
-logger = logging.getLogger(__name__)
-
 router = APIRouter(tags=["git"])
 
 
@@ -38,14 +35,10 @@ async def _ensure_repository_loaded(backend: BlobBackend, blob_client: BlobStora
     if backend.repository_exists(repo_path):
         return
 
-    try:
-        packs, refs = await load_repository_from_storage(blob_client, repo_path)
-        if packs or refs:
-            backend.load_repository_from_data(repo_path, packs, refs)
-        else:
-            backend.create_repository(repo_path)
-    except (OSError, ValueError, TypeError) as e:
-        logger.warning(f"Failed to load repository {repo_path}: {e}")
+    packs, refs = await load_repository_from_storage(blob_client, repo_path)
+    if packs or refs:
+        backend.load_repository_from_data(repo_path, packs, refs)
+    else:
         backend.create_repository(repo_path)
 
 
@@ -159,15 +152,8 @@ async def _handle_git_request(
     wsgi_app = HTTPGitApplication(backend)
     wsgi_app_filtered = GunzipFilter(LimitedInputFilter(wsgi_app))
 
-    try:
-        result = wsgi_app_filtered(environ, start_response)
-        response_body.extend(result)
-    except Exception:
-        logger.exception("Git request failed")
-        return Response(
-            content="Internal error",
-            status_code=500,
-        )
+    result = wsgi_app_filtered(environ, start_response)
+    response_body.extend(result)
 
     await _save_repository_changes(backend, blob_client, repo_path)
 
