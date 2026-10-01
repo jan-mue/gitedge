@@ -13,7 +13,7 @@ dependencies = [
     "aiobotocore==3.9.0",
     "alembic==1.20.0",
     "botocore==1.43.56",
-    "dulwich==1.2.12",
+    "dulwich==1.2.15",
     "emails==1.1.2",
     "fastapi==0.141.1",
     "jinja2==3.1.6",
