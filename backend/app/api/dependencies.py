@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
 from app.clients.database import get_db_session
 from app.clients.email import EmailClient, SMTPClient
+from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClient
 from app.clients.users import SQLUserRepository, UserRepository
 from app.config import settings
 from app.entities.users import User
@@ -180,6 +181,19 @@ def get_blob_client() -> BlobStorageClient:
 
 
 BlobStorageClientDep = Annotated[BlobStorageClient, Depends(get_blob_client)]
+
+
+@cache
+def get_redis_client() -> AbstractRedisClient:
+    """Get the shared Redis client dependency.
+
+    Returns:
+        Redis client instance (standard or Upstash).
+    """
+    return UpstashRedisClient() if settings.REDIS_KIND == "rest" else RedisClient()
+
+
+RedisClientDep = Annotated[AbstractRedisClient, Depends(get_redis_client)]
 
 
 @cache

@@ -12,12 +12,12 @@ from typing import TYPE_CHECKING
 from dulwich.errors import NotGitRepository
 from dulwich.server import Backend
 
-from app.clients.redis import redis_delete, redis_get, redis_scan_keys, redis_set
 from app.services.blob_repository import BlobRepository
 from app.types import PackContents
 
 if TYPE_CHECKING:
     from app.clients.blob_storage import BlobStorageClient
+    from app.clients.redis import AbstractRedisClient
     from app.types import RepositoryChanges
 
 logger = logging.getLogger(__name__)
@@ -158,12 +158,14 @@ class BlobBackend(Backend):
 
 async def load_repository_from_storage(
     blob_client: BlobStorageClient,
+    redis_client: AbstractRedisClient,
     repo_path: str,
 ) -> tuple[dict[str, PackContents], dict[str, bytes]]:
     """Load repository data from blob storage and Redis.
 
     Args:
         blob_client: Blob storage client instance.
+        redis_client: Redis client instance.
         repo_path: Repository path prefix.
 
     Returns:
@@ -197,8 +199,8 @@ async def load_repository_from_storage(
     refs: dict[str, bytes] = {}
     ref_prefix = f"{repo_prefix}/{REF_PREFIX}"
 
-    for key in await redis_scan_keys(f"{ref_prefix}*"):
-        value = await redis_get(key)
+    for key in await redis_client.scan_keys(f"{ref_prefix}*"):
+        value = await redis_client.get(key)
         if value:
             refs[key.removeprefix(ref_prefix)] = value
 
@@ -207,6 +209,7 @@ async def load_repository_from_storage(
 
 async def save_repository_changes_to_storage(
     blob_client: BlobStorageClient,
+    redis_client: AbstractRedisClient,
     repo_path: str,
     changes: RepositoryChanges,
 ) -> None:
@@ -214,6 +217,7 @@ async def save_repository_changes_to_storage(
 
     Args:
         blob_client: Blob storage client instance.
+        redis_client: Redis client instance.
         repo_path: Repository path prefix.
         changes: Changes dict from get_pending_changes().
     """
@@ -240,9 +244,9 @@ async def save_repository_changes_to_storage(
         ref_name_str = ref_name.decode() if isinstance(ref_name, bytes) else ref_name
         redis_key = f"{ref_prefix}{ref_name_str}"
         value_str = value.decode() if isinstance(value, bytes) else value
-        await redis_set(redis_key, value_str)
+        await redis_client.set(redis_key, value_str)
 
     for ref_name in changes.get("ref_deletes", set()):
         ref_name_str = ref_name.decode() if isinstance(ref_name, bytes) else ref_name
         redis_key = f"{ref_prefix}{ref_name_str}"
-        await redis_delete(redis_key)
+        await redis_client.delete(redis_key)

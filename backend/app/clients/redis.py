@@ -1,15 +1,11 @@
 """Redis client for Git ref storage."""
 
-import logging
 from abc import ABC, abstractmethod
-from functools import cache
 
 import redis.asyncio as aioredis
 from upstash_redis.asyncio import Redis
 
 from app.config import settings
-
-logger = logging.getLogger(__name__)
 
 
 class AbstractRedisClient(ABC):
@@ -106,56 +102,3 @@ class UpstashRedisClient(AbstractRedisClient):
             if cursor == 0:
                 break
         return keys
-
-
-@cache
-def get_redis_client() -> AbstractRedisClient:
-    """Get or create the active Redis client.
-
-    Returns:
-        Redis client instance (Standard or Upstash).
-    """
-    return UpstashRedisClient() if settings.REDIS_KIND == "rest" else RedisClient()
-
-
-async def redis_get(key: str) -> bytes | None:
-    """Get a value from Redis.
-
-    Args:
-        key: The Redis key.
-
-    Returns:
-        The value as bytes, or None if not found.
-    """
-    return await get_redis_client().get(key)
-
-
-async def redis_set(key: str, value: str | bytes) -> None:
-    """Set a value in Redis.
-
-    Args:
-        key: The Redis key.
-        value: The value to store.
-    """
-    await get_redis_client().set(key, value)
-
-
-async def redis_delete(key: str) -> None:
-    """Delete a key from Redis.
-
-    Args:
-        key: The Redis key to delete.
-    """
-    await get_redis_client().delete(key)
-
-
-async def redis_scan_keys(pattern: str) -> list[str]:
-    """Scan for keys matching a pattern.
-
-    Args:
-        pattern: The key pattern to match (supports glob-style).
-
-    Returns:
-        List of matching keys as strings.
-    """
-    return await get_redis_client().scan_keys(pattern)

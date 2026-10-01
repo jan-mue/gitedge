@@ -14,8 +14,7 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import TextLexer, get_lexer_for_filename
 from pygments.util import ClassNotFound
 
-from app.api.dependencies import BackendDep, BlobStorageClientDep
-from app.clients.redis import redis_scan_keys
+from app.api.dependencies import BackendDep, BlobStorageClientDep, RedisClientDep
 from app.schemas.repositories import (
     CreateRepositoryRequest,
     FileContent,
@@ -27,6 +26,7 @@ from app.schemas.repositories import (
 from app.services.blob_backend import load_repository_from_storage, save_repository_changes_to_storage
 
 if TYPE_CHECKING:
+    from app.clients.redis import AbstractRedisClient
     from app.services.blob_repository import BlobRepository
 
 logger = logging.getLogger(__name__)
@@ -54,12 +54,18 @@ def _get_style_defs(formatter: StyleDefsProvider, arg: str) -> str:
     return formatter.get_style_defs(arg)
 
 
-async def _load_repo(backend: BackendDep, blob_client: BlobStorageClientDep, repo_path: str) -> BlobRepository:
+async def _load_repo(
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+    redis_client: AbstractRedisClient,
+    repo_path: str,
+) -> BlobRepository:
     """Load a repository from storage.
 
     Args:
         backend: Git backend dependency.
         blob_client: Blob storage client dependency.
+        redis_client: Redis client.
         repo_path: Repository path (e.g., "user/repo.git").
 
     Returns:
@@ -78,7 +84,7 @@ async def _load_repo(backend: BackendDep, blob_client: BlobStorageClientDep, rep
         logger.debug("Repository found in cache: %s", normalized)
         return backend.open_repository(normalized)
 
-    packs, refs = await load_repository_from_storage(blob_client, normalized)
+    packs, refs = await load_repository_from_storage(blob_client, redis_client, normalized)
     logger.debug("Loaded from storage: %s (packs=%d, refs=%d)", normalized, len(packs), len(refs))
     if not packs and not refs:
         raise HTTPException(status_code=404, detail="Repository not found")
@@ -210,10 +216,13 @@ def _get_blob_at_path(repo: BlobRepository, commit_sha: bytes, path: str) -> tup
     raise HTTPException(status_code=404, detail=f"File '{path}' not found")
 
 
-async def get_repositories_from_redis() -> list[Repository]:
+async def get_repositories_from_redis(redis_client: AbstractRedisClient) -> list[Repository]:
     """Get list of repositories from Redis storage.
 
     Scans the Redis keys to find unique repository paths.
+
+    Args:
+        redis_client: Redis client.
 
     Returns:
         List of Repository objects.
@@ -221,7 +230,7 @@ async def get_repositories_from_redis() -> list[Repository]:
     # Keys are in format: repo_path/refs/ref_name
     repositories: dict[str, Repository] = {}
 
-    keys = await redis_scan_keys("*/refs/*")
+    keys = await redis_client.scan_keys("*/refs/*")
 
     for key_name in keys:
         if "/refs/" in key_name:
@@ -236,12 +245,12 @@ async def get_repositories_from_redis() -> list[Repository]:
 
 
 @router.get("/")
-async def list_repositories() -> RepositoriesPublic:
+async def list_repositories(redis_client: RedisClientDep) -> RepositoriesPublic:
     """List all repositories.
 
     Returns a list of all Git repositories stored in the system.
     """
-    repositories = await get_repositories_from_redis()
+    repositories = await get_repositories_from_redis(redis_client)
     return RepositoriesPublic(data=repositories, count=len(repositories))
 
 
@@ -250,6 +259,7 @@ async def create_repository(
     body: CreateRepositoryRequest,
     backend: BackendDep,
     blob_client: BlobStorageClientDep,
+    redis_client: RedisClientDep,
 ) -> Repository:
     """Create a new empty Git repository.
 
@@ -257,6 +267,7 @@ async def create_repository(
         body: Repository creation request.
         backend: Git backend dependency.
         blob_client: Blob storage client dependency.
+        redis_client: Redis client dependency.
 
     Returns:
         The created repository.
@@ -268,7 +279,7 @@ async def create_repository(
     # Save initial refs to storage (HEAD -> refs/heads/main)
     changes = backend.get_repository_changes(repo_path)
     if any(changes.values()):
-        await save_repository_changes_to_storage(blob_client, repo_path, changes)
+        await save_repository_changes_to_storage(blob_client, redis_client, repo_path, changes)
         backend.clear_repository_changes(repo_path)
 
     return Repository(name=body.name, path=repo_path)
@@ -276,25 +287,28 @@ async def create_repository(
 
 @router.get("/{path:path}/tree")
 async def get_tree(
-    backend: BackendDep,
-    blob_client: BlobStorageClientDep,
     path: str,
     ref: str = "main",
     tree_path: str = "",
+    *,
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+    redis_client: RedisClientDep,
 ) -> TreeListing:
     """Get directory listing for a repository path.
 
     Args:
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
         path: Repository path (e.g., "user/repo" or "user/repo.git").
         ref: Git ref to browse (default: "main").
         tree_path: Subdirectory path within the repo.
+        backend: Git backend dependency.
+        blob_client: Blob storage client dependency.
+        redis_client: Redis client dependency.
 
     Returns:
         TreeListing with directory entries.
     """
-    repo = await _load_repo(backend, blob_client, path)
+    repo = await _load_repo(backend, blob_client, redis_client, path)
     commit_sha = _resolve_ref(repo, ref)
     tree = _get_tree_at_path(repo, commit_sha, tree_path)
 
@@ -331,20 +345,23 @@ async def get_tree(
 
 @router.get("/{path:path}/blob")
 async def get_blob(
-    backend: BackendDep,
-    blob_client: BlobStorageClientDep,
     path: str,
     ref: str = "main",
     file_path: str = "",
+    *,
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+    redis_client: RedisClientDep,
 ) -> FileContent:
     """Get file content with syntax highlighting.
 
     Args:
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
         path: Repository path (e.g., "user/repo" or "user/repo.git").
         ref: Git ref (default: "main").
         file_path: File path within the repository.
+        backend: Git backend dependency.
+        blob_client: Blob storage client dependency.
+        redis_client: Redis client dependency.
 
     Returns:
         FileContent with highlighted HTML and CSS.
@@ -352,7 +369,7 @@ async def get_blob(
     if not file_path:
         raise HTTPException(status_code=400, detail="file_path is required")
 
-    repo = await _load_repo(backend, blob_client, path)
+    repo = await _load_repo(backend, blob_client, redis_client, path)
     commit_sha = _resolve_ref(repo, ref)
     blob, filename = _get_blob_at_path(repo, commit_sha, file_path)
 
@@ -408,9 +425,9 @@ async def get_blob(
 
 
 @router.get("/{path:path}")
-async def get_repository(path: str) -> Repository:
+async def get_repository(path: str, redis_client: RedisClientDep) -> Repository:
     """Get a specific repository by path."""
-    repositories = await get_repositories_from_redis()
+    repositories = await get_repositories_from_redis(redis_client)
     for repo in repositories:
         if repo.path in (path, f"{path}.git"):
             return repo
