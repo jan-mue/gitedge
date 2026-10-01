@@ -903,7 +903,7 @@ requires-dist = [
 dev = [
     { name = "coverage", specifier = "==7.16.1" },
     { name = "deptry", specifier = "==0.25.1" },
-    { name = "inline-snapshot", extras = ["black"], specifier = "==0.32.0" },
+    { name = "inline-snapshot", extras = ["black"], specifier = "==0.35.4" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "pytest-asyncio", specifier = "==1.4.0" },
     { name = "pytest-mock", specifier = "==3.15.1" },
@@ -1127,7 +1127,7 @@ wheels = [
 
 [[package]]
 name = "inline-snapshot"
-version = "0.32.0"
+version = "0.35.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asttokens" },
@@ -1136,9 +1136,9 @@ dependencies = [
     { name = "rich" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/41/74/19294067d5b5b78144eab2aacec85b998c2d2ea6b3d24eefd9a90255d7aa/inline_snapshot-0.32.0.tar.gz", hash = "sha256:57fa3df325284d0d14def5dab9ac5da89e383f085bea9a7be51fdeab65e59ced", size = 2623331, upload-time = "2026-02-13T19:51:54.469Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/59/46/3c459f0350e88d6a5ca58a4792a7215c3b0990cf9bb6a2b37ac8d74a2504/inline_snapshot-0.35.4.tar.gz", hash = "sha256:82432a58b7ea77a172515f5024cd26fdea8dc0f873c7a4251e4e0471a914db14", size = 2537089, upload-time = "2026-08-11T07:07:56.213Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/97/25/0e84a6322e5fdb1bf67870b2269151449f4894987b26c78718918dd64ea6/inline_snapshot-0.32.0-py3-none-any.whl", hash = "sha256:b522ae2c891f666e80213c5f9677ec6fd4a2a7d334ab9d6ce745675bec6a40f0", size = 84087, upload-time = "2026-02-13T19:51:52.604Z" },
+    { url = "https://files.pythonhosted.org/packages/97/b3/dc18eb603de18daf5cacc27bb4c5e80c5403d9ca3eade7342fe4228652bf/inline_snapshot-0.35.4-py3-none-any.whl", hash = "sha256:0ad221c1bc6fe4ce249f7c1c4131284099ecac1a5c1023aa7b1a95921c07265d", size = 95725, upload-time = "2026-08-11T07:07:54.24Z" },
 ]
 
 [package.optional-dependencies]
