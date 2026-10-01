@@ -1,3 +1,5 @@
+"""Base SQLAlchemy model with common fields."""
+
 import uuid
 from datetime import datetime
 
@@ -14,6 +16,8 @@ POSTGRES_INDEXES_NAMING_CONVENTION = {
 
 
 class Base(DeclarativeBase):
+    """Base class for all SQLAlchemy models."""
+
     metadata = MetaData(naming_convention=POSTGRES_INDEXES_NAMING_CONVENTION)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

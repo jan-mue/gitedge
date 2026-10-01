@@ -40,7 +40,9 @@ function resolveApiUrl(): string {
     }
     return normalizeApiUrl(resolved)
   }
-  return normalizeApiUrl(DEV_API_URL)
+  // Local development: use relative URLs and let the dev server proxy
+  // API and git-smart-http requests to the backend.
+  return ""
 }
 
 // https://vitejs.dev/config/
@@ -65,4 +67,12 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: {
+      "/api": {
+        target: process.env.API_URL || DEV_API_URL,
+        changeOrigin: true,
+      },
+    },
+  },
 })

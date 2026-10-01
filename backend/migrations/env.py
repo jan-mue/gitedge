@@ -4,6 +4,9 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.config import settings
+
+# Import all entities so they are registered with Base.metadata
+from app.entities import *  # noqa: F403
 from app.entities.base import Base
 
 # this is the Alembic Config object, which provides

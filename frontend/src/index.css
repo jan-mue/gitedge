@@ -122,3 +122,99 @@
     cursor: pointer;
   }
 }
+
+/* File viewer — GitHub/Gitea-style code display */
+.file-viewer .highlight {
+  margin: 0;
+  border-radius: 0;
+}
+
+.file-viewer .highlight pre {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.file-viewer .highlight code {
+  font-family: inherit;
+}
+
+.file-viewer .highlight table.highlighttable,
+.file-viewer .highlight table {
+  width: 100%;
+  border-spacing: 0;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.file-viewer .highlight td.linenos {
+  width: 1%;
+  min-width: 50px;
+  padding: 0;
+  vertical-align: top;
+  user-select: none;
+  text-align: right;
+}
+
+.file-viewer .highlight td.linenos .linenodiv pre {
+  margin: 0;
+  padding: 8px 12px 8px 16px;
+  background: transparent;
+}
+
+.file-viewer .highlight td.linenos a,
+.file-viewer .highlight td.linenos .linenodiv pre span {
+  color: #8c959f;
+  text-decoration: none;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.file-viewer .highlight td.linenos a:hover {
+  color: #1f2328;
+}
+
+.file-viewer .highlight td.code {
+  padding: 0;
+  vertical-align: top;
+}
+
+.file-viewer .highlight td.code .highlight pre {
+  margin: 0;
+  padding: 8px 16px;
+  overflow-x: auto;
+}
+
+/* Light mode: GitHub-style background */
+.file-viewer .highlight {
+  background: #ffffff;
+  color: #1f2328;
+}
+
+.file-viewer .highlight td.linenos {
+  border-right: 1px solid #d1d9e0;
+}
+
+/* Dark mode overrides */
+.dark .file-viewer .highlight {
+  background: #0d1117;
+  color: #e6edf3;
+}
+
+.dark .file-viewer .highlight td.linenos {
+  border-right: 1px solid #30363d;
+}
+
+.dark .file-viewer .highlight td.linenos a,
+.dark .file-viewer .highlight td.linenos .linenodiv pre span {
+  color: #6e7681;
+}
+
+.dark .file-viewer .highlight td.linenos a:hover {
+  color: #e6edf3;
+}

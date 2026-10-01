@@ -5,12 +5,11 @@
     "includes": [
       "**",
       "!**/dist/**/*",
+      "!**/coverage/**/*",
       "!**/node_modules/**/*",
       "!**/src/routeTree.gen.ts",
       "!**/src/client/**/*",
-      "!**/src/components/ui/**/*",
-      "!**/playwright-report",
-      "!**/playwright.config.ts"
+      "!**/src/components/ui/**/*"
     ]
   },
   "linter": {

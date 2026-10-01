@@ -1,11 +1,13 @@
+"""Application configuration settings."""
+
 import json
+import logging
 import secrets
 import warnings
 from enum import StrEnum
 from typing import Literal, Self
 from urllib.parse import urlsplit
 
-from loguru import logger
 from pydantic import (
     EmailStr,
     HttpUrl,
@@ -15,6 +17,8 @@ from pydantic import (
     model_validator,
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 # Origin(s) allowed for local development (Vite dev server).
 DEV_FRONTEND_ORIGINS: tuple[str, ...] = (
@@ -58,6 +62,8 @@ def _preview_hosts(raw: str | None) -> list[str]:
 
 
 class LogLevel(StrEnum):
+    """Log level options for the application."""
+
     TRACE = "TRACE"
     DEBUG = "DEBUG"
     INFO = "INFO"
@@ -68,6 +74,8 @@ class LogLevel(StrEnum):
 
 
 class Settings(BaseSettings):
+    """Application settings loaded from environment variables."""
+
     model_config = SettingsConfigDict(
         # Use top level .env file (one level above ./backend/)
         env_file="../.env",
@@ -98,6 +106,21 @@ class Settings(BaseSettings):
                 return database_url.replace(scheme, "postgresql+psycopg://", 1)
         return database_url
 
+    # Redis settings
+    REDIS_KIND: Literal["redis", "rest"] = "redis"
+    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_PASSWORD: str | None = None
+
+    # Blob storage settings
+    BLOB_STORAGE_KIND: Literal["vercel", "s3"] = "s3"
+    VERCEL_BLOB_TOKEN: str | None = None
+    S3_ENDPOINT: str | None = "127.0.0.1:9000"
+    S3_ACCESS_KEY: str | None = "minioadmin"
+    S3_SECRET_KEY: str | None = "minioadmin"  # noqa: S105
+    S3_BUCKET: str | None = "gitedge"
+    S3_SECURE: bool = False
+
+    # Email settings
     SMTP_TLS: bool = True
     SMTP_SSL: bool = False
     SMTP_PORT: int = 587
@@ -118,6 +141,7 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def emails_enabled(self) -> bool:
+        """Check if email sending is properly configured."""
         return bool(self.SMTP_HOST and self.EMAILS_FROM_EMAIL)
 
     EMAIL_TEST_USER: EmailStr = "test@example.com"

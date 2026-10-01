@@ -9,10 +9,6 @@ export type ClientOptions = {
  */
 export type Body_login_login_access_token = {
     /**
-     * Grant Type
-     */
-    grant_type?: string | null;
-    /**
      * Username
      */
     username: string;
@@ -20,18 +16,66 @@ export type Body_login_login_access_token = {
      * Password
      */
     password: string;
+};
+
+/**
+ * CreateRepositoryRequest
+ *
+ * Request to create a new repository.
+ */
+export type CreateRepositoryRequest = {
     /**
-     * Scope
+     * Name
      */
-    scope?: string;
+    name: string;
     /**
-     * Client Id
+     * Owner
      */
-    client_id?: string | null;
+    owner: string;
+};
+
+/**
+ * FileContent
+ *
+ * File content with syntax highlighting.
+ */
+export type FileContent = {
     /**
-     * Client Secret
+     * Name
      */
-    client_secret?: string | null;
+    name: string;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Size
+     */
+    size: number;
+    /**
+     * Content
+     */
+    content: string;
+    /**
+     * Highlighted Html
+     */
+    highlighted_html: string;
+    /**
+     * Css
+     */
+    css: string;
+    /**
+     * Css Dark
+     */
+    css_dark: string;
+    /**
+     * Language
+     */
+    language: string;
+    /**
+     * Line Count
+     */
+    line_count: number;
 };
 
 /**
@@ -45,81 +89,9 @@ export type HTTPValidationError = {
 };
 
 /**
- * ItemCreate
- */
-export type ItemCreate = {
-    /**
-     * Title
-     */
-    title: string;
-    /**
-     * Description
-     */
-    description?: string | null;
-};
-
-/**
- * ItemPublic
- */
-export type ItemPublic = {
-    /**
-     * Title
-     */
-    title: string;
-    /**
-     * Description
-     */
-    description?: string | null;
-    /**
-     * Id
-     */
-    id: string;
-    /**
-     * Owner Id
-     */
-    owner_id: string;
-};
-
-/**
- * ItemUpdate
- */
-export type ItemUpdate = {
-    /**
-     * Title
-     */
-    title?: string | null;
-    /**
-     * Description
-     */
-    description?: string | null;
-};
-
-/**
- * ItemsPublic
- */
-export type ItemsPublic = {
-    /**
-     * Data
-     */
-    data: Array<ItemPublic>;
-    /**
-     * Count
-     */
-    count: number;
-};
-
-/**
- * Message
- */
-export type Message = {
-    /**
-     * Message
-     */
-    message: string;
-};
-
-/**
  * NewPassword
+ *
+ * Schema for password reset with token.
  */
 export type NewPassword = {
     /**
@@ -134,6 +106,8 @@ export type NewPassword = {
 
 /**
  * PrivateUserCreate
+ *
+ * Schema for creating a user via private API.
  */
 export type PrivateUserCreate = {
     /**
@@ -155,7 +129,41 @@ export type PrivateUserCreate = {
 };
 
 /**
+ * RepositoriesPublic
+ *
+ * List of repositories.
+ */
+export type RepositoriesPublic = {
+    /**
+     * Data
+     */
+    data: Array<Repository>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * Repository
+ *
+ * Repository schema.
+ */
+export type Repository = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Path
+     */
+    path: string;
+};
+
+/**
  * Token
+ *
+ * OAuth2 token response schema.
  */
 export type Token = {
     /**
@@ -169,7 +177,57 @@ export type Token = {
 };
 
 /**
+ * TreeEntry
+ *
+ * A single entry in a Git tree (file or directory).
+ */
+export type TreeEntry = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Type
+     */
+    type: string;
+    /**
+     * Size
+     */
+    size?: number | null;
+};
+
+/**
+ * TreeListing
+ *
+ * Directory listing for a repository path.
+ */
+export type TreeListing = {
+    /**
+     * Entries
+     */
+    entries: Array<TreeEntry>;
+    /**
+     * Repo Path
+     */
+    repo_path: string;
+    /**
+     * Tree Path
+     */
+    tree_path: string;
+    /**
+     * Ref
+     */
+    ref: string;
+};
+
+/**
  * UpdatePassword
+ *
+ * Schema for password update.
  */
 export type UpdatePassword = {
     /**
@@ -184,6 +242,8 @@ export type UpdatePassword = {
 
 /**
  * UserCreate
+ *
+ * Schema for creating a new user.
  */
 export type UserCreate = {
     /**
@@ -210,6 +270,8 @@ export type UserCreate = {
 
 /**
  * UserPublic
+ *
+ * Schema for returning user data to clients.
  */
 export type UserPublic = {
     /**
@@ -236,6 +298,8 @@ export type UserPublic = {
 
 /**
  * UserRegister
+ *
+ * Schema for user self-registration.
  */
 export type UserRegister = {
     /**
@@ -254,6 +318,8 @@ export type UserRegister = {
 
 /**
  * UserUpdate
+ *
+ * Schema for updating a user (admin).
  */
 export type UserUpdate = {
     /**
@@ -280,6 +346,8 @@ export type UserUpdate = {
 
 /**
  * UserUpdateMe
+ *
+ * Schema for users updating their own profile.
  */
 export type UserUpdateMe = {
     /**
@@ -294,6 +362,8 @@ export type UserUpdateMe = {
 
 /**
  * UsersPublic
+ *
+ * Schema for paginated list of users.
  */
 export type UsersPublic = {
     /**
@@ -400,7 +470,7 @@ export type loginRecoverPasswordResponses = {
     /**
      * Successful Response
      */
-    200: Message;
+    204: void;
 };
 
 export type loginRecoverPasswordResponse = loginRecoverPasswordResponses[keyof loginRecoverPasswordResponses];
@@ -425,7 +495,7 @@ export type loginResetPasswordResponses = {
     /**
      * Successful Response
      */
-    200: Message;
+    204: void;
 };
 
 export type loginResetPasswordResponse = loginResetPasswordResponses[keyof loginResetPasswordResponses];
@@ -528,7 +598,7 @@ export type usersDeleteUserMeResponses = {
     /**
      * Successful Response
      */
-    200: Message;
+    204: void;
 };
 
 export type usersDeleteUserMeResponse = usersDeleteUserMeResponses[keyof usersDeleteUserMeResponses];
@@ -594,7 +664,7 @@ export type usersUpdatePasswordMeResponses = {
     /**
      * Successful Response
      */
-    200: Message;
+    204: void;
 };
 
 export type usersUpdatePasswordMeResponse = usersUpdatePasswordMeResponses[keyof usersUpdatePasswordMeResponses];
@@ -649,7 +719,7 @@ export type usersDeleteUserResponses = {
     /**
      * Successful Response
      */
-    200: Message;
+    204: void;
 };
 
 export type usersDeleteUserResponse = usersDeleteUserResponses[keyof usersDeleteUserResponses];
@@ -714,6 +784,363 @@ export type usersUpdateUserResponses = {
 
 export type usersUpdateUserResponse = usersUpdateUserResponses[keyof usersUpdateUserResponses];
 
+export type gitGetInfoRefsData = {
+    body?: never;
+    path: {
+        /**
+         * Repo Path
+         */
+        repo_path: string;
+    };
+    query?: never;
+    url: '/api/v1/{repo_path}/info/refs';
+};
+
+export type gitGetInfoRefsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type gitGetInfoRefsError = gitGetInfoRefsErrors[keyof gitGetInfoRefsErrors];
+
+export type gitGetInfoRefsResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type gitGetHeadData = {
+    body?: never;
+    path: {
+        /**
+         * Repo Path
+         */
+        repo_path: string;
+    };
+    query?: never;
+    url: '/api/v1/{repo_path}/HEAD';
+};
+
+export type gitGetHeadErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type gitGetHeadError = gitGetHeadErrors[keyof gitGetHeadErrors];
+
+export type gitGetHeadResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type gitGetInfoPacksData = {
+    body?: never;
+    path: {
+        /**
+         * Repo Path
+         */
+        repo_path: string;
+    };
+    query?: never;
+    url: '/api/v1/{repo_path}/objects/info/packs';
+};
+
+export type gitGetInfoPacksErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type gitGetInfoPacksError = gitGetInfoPacksErrors[keyof gitGetInfoPacksErrors];
+
+export type gitGetInfoPacksResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type gitGetLooseObjectData = {
+    body?: never;
+    path: {
+        /**
+         * Repo Path
+         */
+        repo_path: string;
+        /**
+         * Prefix
+         */
+        prefix: string;
+        /**
+         * Suffix
+         */
+        suffix: string;
+    };
+    query?: never;
+    url: '/api/v1/{repo_path}/objects/{prefix}/{suffix}';
+};
+
+export type gitGetLooseObjectErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type gitGetLooseObjectError = gitGetLooseObjectErrors[keyof gitGetLooseObjectErrors];
+
+export type gitGetLooseObjectResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type gitGetPackFileData = {
+    body?: never;
+    path: {
+        /**
+         * Repo Path
+         */
+        repo_path: string;
+        /**
+         * Pack File
+         */
+        pack_file: string;
+    };
+    query?: never;
+    url: '/api/v1/{repo_path}/objects/pack/{pack_file}';
+};
+
+export type gitGetPackFileErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type gitGetPackFileError = gitGetPackFileErrors[keyof gitGetPackFileErrors];
+
+export type gitGetPackFileResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type gitGitUploadPackData = {
+    body?: never;
+    path: {
+        /**
+         * Repo Path
+         */
+        repo_path: string;
+    };
+    query?: never;
+    url: '/api/v1/{repo_path}/git-upload-pack';
+};
+
+export type gitGitUploadPackErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type gitGitUploadPackError = gitGitUploadPackErrors[keyof gitGitUploadPackErrors];
+
+export type gitGitUploadPackResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type gitGitReceivePackData = {
+    body?: never;
+    path: {
+        /**
+         * Repo Path
+         */
+        repo_path: string;
+    };
+    query?: never;
+    url: '/api/v1/{repo_path}/git-receive-pack';
+};
+
+export type gitGitReceivePackErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type gitGitReceivePackError = gitGitReceivePackErrors[keyof gitGitReceivePackErrors];
+
+export type gitGitReceivePackResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type repositoriesListRepositoriesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/repositories/';
+};
+
+export type repositoriesListRepositoriesResponses = {
+    /**
+     * Successful Response
+     */
+    200: RepositoriesPublic;
+};
+
+export type repositoriesListRepositoriesResponse = repositoriesListRepositoriesResponses[keyof repositoriesListRepositoriesResponses];
+
+export type repositoriesCreateRepositoryData = {
+    body: CreateRepositoryRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/repositories/';
+};
+
+export type repositoriesCreateRepositoryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesCreateRepositoryError = repositoriesCreateRepositoryErrors[keyof repositoriesCreateRepositoryErrors];
+
+export type repositoriesCreateRepositoryResponses = {
+    /**
+     * Successful Response
+     */
+    201: Repository;
+};
+
+export type repositoriesCreateRepositoryResponse = repositoriesCreateRepositoryResponses[keyof repositoriesCreateRepositoryResponses];
+
+export type repositoriesGetTreeData = {
+    body?: never;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+    };
+    query?: {
+        /**
+         * Ref
+         */
+        ref?: string;
+        /**
+         * Tree Path
+         */
+        tree_path?: string;
+    };
+    url: '/api/v1/repositories/{path}/tree';
+};
+
+export type repositoriesGetTreeErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetTreeError = repositoriesGetTreeErrors[keyof repositoriesGetTreeErrors];
+
+export type repositoriesGetTreeResponses = {
+    /**
+     * Successful Response
+     */
+    200: TreeListing;
+};
+
+export type repositoriesGetTreeResponse = repositoriesGetTreeResponses[keyof repositoriesGetTreeResponses];
+
+export type repositoriesGetBlobData = {
+    body?: never;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+    };
+    query?: {
+        /**
+         * Ref
+         */
+        ref?: string;
+        /**
+         * File Path
+         */
+        file_path?: string;
+    };
+    url: '/api/v1/repositories/{path}/blob';
+};
+
+export type repositoriesGetBlobErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetBlobError = repositoriesGetBlobErrors[keyof repositoriesGetBlobErrors];
+
+export type repositoriesGetBlobResponses = {
+    /**
+     * Successful Response
+     */
+    200: FileContent;
+};
+
+export type repositoriesGetBlobResponse = repositoriesGetBlobResponses[keyof repositoriesGetBlobResponses];
+
+export type repositoriesGetRepositoryData = {
+    body?: never;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{path}';
+};
+
+export type repositoriesGetRepositoryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetRepositoryError = repositoriesGetRepositoryErrors[keyof repositoriesGetRepositoryErrors];
+
+export type repositoriesGetRepositoryResponses = {
+    /**
+     * Successful Response
+     */
+    200: Repository;
+};
+
+export type repositoriesGetRepositoryResponse = repositoriesGetRepositoryResponses[keyof repositoriesGetRepositoryResponses];
+
 export type utilsTestEmailData = {
     body?: never;
     path?: never;
@@ -739,7 +1166,7 @@ export type utilsTestEmailResponses = {
     /**
      * Successful Response
      */
-    201: Message;
+    204: void;
 };
 
 export type utilsTestEmailResponse = utilsTestEmailResponses[keyof utilsTestEmailResponses];
@@ -761,155 +1188,6 @@ export type utilsHealthCheckResponses = {
 };
 
 export type utilsHealthCheckResponse = utilsHealthCheckResponses[keyof utilsHealthCheckResponses];
-
-export type itemsReadItemsData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Skip
-         */
-        skip?: number;
-        /**
-         * Limit
-         */
-        limit?: number;
-    };
-    url: '/api/v1/items/';
-};
-
-export type itemsReadItemsErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsReadItemsError = itemsReadItemsErrors[keyof itemsReadItemsErrors];
-
-export type itemsReadItemsResponses = {
-    /**
-     * Successful Response
-     */
-    200: ItemsPublic;
-};
-
-export type itemsReadItemsResponse = itemsReadItemsResponses[keyof itemsReadItemsResponses];
-
-export type itemsCreateItemData = {
-    body: ItemCreate;
-    path?: never;
-    query?: never;
-    url: '/api/v1/items/';
-};
-
-export type itemsCreateItemErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsCreateItemError = itemsCreateItemErrors[keyof itemsCreateItemErrors];
-
-export type itemsCreateItemResponses = {
-    /**
-     * Successful Response
-     */
-    200: ItemPublic;
-};
-
-export type itemsCreateItemResponse = itemsCreateItemResponses[keyof itemsCreateItemResponses];
-
-export type itemsDeleteItemData = {
-    body?: never;
-    path: {
-        /**
-         * Id
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/items/{id}';
-};
-
-export type itemsDeleteItemErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsDeleteItemError = itemsDeleteItemErrors[keyof itemsDeleteItemErrors];
-
-export type itemsDeleteItemResponses = {
-    /**
-     * Successful Response
-     */
-    200: Message;
-};
-
-export type itemsDeleteItemResponse = itemsDeleteItemResponses[keyof itemsDeleteItemResponses];
-
-export type itemsReadItemData = {
-    body?: never;
-    path: {
-        /**
-         * Id
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/items/{id}';
-};
-
-export type itemsReadItemErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsReadItemError = itemsReadItemErrors[keyof itemsReadItemErrors];
-
-export type itemsReadItemResponses = {
-    /**
-     * Successful Response
-     */
-    200: ItemPublic;
-};
-
-export type itemsReadItemResponse = itemsReadItemResponses[keyof itemsReadItemResponses];
-
-export type itemsUpdateItemData = {
-    body: ItemUpdate;
-    path: {
-        /**
-         * Id
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/items/{id}';
-};
-
-export type itemsUpdateItemErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsUpdateItemError = itemsUpdateItemErrors[keyof itemsUpdateItemErrors];
-
-export type itemsUpdateItemResponses = {
-    /**
-     * Successful Response
-     */
-    200: ItemPublic;
-};
-
-export type itemsUpdateItemResponse = itemsUpdateItemResponses[keyof itemsUpdateItemResponses];
 
 export type privateCreateUserData = {
     body: PrivateUserCreate;

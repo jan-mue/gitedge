@@ -1,2 +1,3 @@
-from .items import Item  # noqa: F401
-from .users import User  # noqa: F401
+from app.entities.users import User
+
+__all__ = ["User"]

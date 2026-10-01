@@ -1,7 +1,8 @@
+"""User management routes."""
+
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import delete
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.dependencies import (
     CrudServiceDep,
@@ -12,8 +13,6 @@ from app.api.dependencies import (
     get_current_active_superuser,
 )
 from app.config import settings
-from app.entities.items import Item
-from app.schemas.items import Message
 from app.schemas.users import (
     UpdatePassword,
     UserCreate,
@@ -30,10 +29,8 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/", dependencies=[Depends(get_current_active_superuser)])
-def read_users(user_repository: UserRepositoryDep, skip: int = 0, limit: int = 100) -> UsersPublic:
-    """
-    Retrieve users.
-    """
+async def read_users(user_repository: UserRepositoryDep, skip: int = 0, limit: int = 100) -> UsersPublic:
+    """Retrieve users."""
     count = user_repository.count()
     users = user_repository.get_all(offset=skip, limit=limit)
 
@@ -41,10 +38,8 @@ def read_users(user_repository: UserRepositoryDep, skip: int = 0, limit: int = 1
 
 
 @router.post("/", dependencies=[Depends(get_current_active_superuser)])
-def create_user(*, crud_service: CrudServiceDep, user_in: UserCreate, email_client: EmailClientDep) -> UserPublic:
-    """
-    Create new user.
-    """
+async def create_user(*, crud_service: CrudServiceDep, user_in: UserCreate, email_client: EmailClientDep) -> UserPublic:
+    """Create new user."""
     user = crud_service.get_user_by_email(email=user_in.email)
     if user:
         raise HTTPException(
@@ -66,11 +61,10 @@ def create_user(*, crud_service: CrudServiceDep, user_in: UserCreate, email_clie
 
 
 @router.patch("/me")
-def update_user_me(*, crud_service: CrudServiceDep, user_in: UserUpdateMe, current_user: CurrentUser) -> UserPublic:
-    """
-    Update own user.
-    """
-
+async def update_user_me(
+    *, crud_service: CrudServiceDep, user_in: UserUpdateMe, current_user: CurrentUser
+) -> UserPublic:
+    """Update own user."""
     if user_in.email:
         existing_user = crud_service.get_user_by_email(email=user_in.email)
         if existing_user and existing_user.id != current_user.id:
@@ -78,16 +72,11 @@ def update_user_me(*, crud_service: CrudServiceDep, user_in: UserUpdateMe, curre
     return crud_service.update_user(db_user=current_user, user_in=user_in)
 
 
-@router.patch("/me/password")
-def update_password_me(
-    *,
-    user_repository: UserRepositoryDep,
-    body: UpdatePassword,
-    current_user: CurrentUser,
-) -> Message:
-    """
-    Update own password.
-    """
+@router.patch("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+async def update_password_me(
+    *, user_repository: UserRepositoryDep, body: UpdatePassword, current_user: CurrentUser
+) -> None:
+    """Update own password."""
     verified, _ = verify_password(body.current_password, current_user.hashed_password)
     if not verified:
         raise HTTPException(status_code=400, detail="Incorrect password")
@@ -96,37 +85,28 @@ def update_password_me(
     hashed_password = get_password_hash(body.new_password)
     current_user.hashed_password = hashed_password
     user_repository.update(current_user)
-    return Message(message="Password updated successfully")
 
 
 @router.get("/me")
-def read_user_me(current_user: CurrentUser) -> UserPublic:
-    """
-    Get current user.
-    """
+async def read_user_me(current_user: CurrentUser) -> UserPublic:
+    """Get current user."""
     return UserPublic.model_validate(current_user)
 
 
-@router.delete("/me")
-def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Message:
-    """
-    Delete own user.
-    """
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user_me(session: SessionDep, current_user: CurrentUser) -> None:
+    """Delete own user."""
     if current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Super users are not allowed to delete themselves")
+    # TODO: delete repositories
     # TODO: move to service
-    statement = delete(Item).where(Item.owner_id == current_user.id)
-    session.execute(statement)
     session.delete(current_user)
     session.commit()
-    return Message(message="User deleted successfully")
 
 
 @router.post("/signup")
-def register_user(crud_service: CrudServiceDep, user_in: UserRegister) -> UserPublic:
-    """
-    Create new user without the need to be logged in.
-    """
+async def register_user(crud_service: CrudServiceDep, user_in: UserRegister) -> UserPublic:
+    """Create new user without the need to be logged in."""
     user = crud_service.get_user_by_email(email=user_in.email)
     if user:
         raise HTTPException(
@@ -134,15 +114,14 @@ def register_user(crud_service: CrudServiceDep, user_in: UserRegister) -> UserPu
             detail="The user with this email already exists in the system",
         )
     user_create = UserCreate.model_validate(user_in)
-    user = crud_service.create_user(user_create=user_create)
-    return user
+    return crud_service.create_user(user_create=user_create)
 
 
 @router.get("/{user_id}")
-def read_user_by_id(user_id: uuid.UUID, user_repository: UserRepositoryDep, current_user: CurrentUser) -> UserPublic:
-    """
-    Get a specific user by id.
-    """
+async def read_user_by_id(
+    user_id: uuid.UUID, user_repository: UserRepositoryDep, current_user: CurrentUser
+) -> UserPublic:
+    """Get a specific user by id."""
     user = user_repository.get(user_id)
     if user != current_user and not current_user.is_superuser:
         raise HTTPException(
@@ -155,17 +134,10 @@ def read_user_by_id(user_id: uuid.UUID, user_repository: UserRepositoryDep, curr
 
 
 @router.patch("/{user_id}", dependencies=[Depends(get_current_active_superuser)])
-def update_user(
-    *,
-    user_repository: UserRepositoryDep,
-    crud_service: CrudServiceDep,
-    user_id: uuid.UUID,
-    user_in: UserUpdate,
+async def update_user(
+    *, user_repository: UserRepositoryDep, crud_service: CrudServiceDep, user_id: uuid.UUID, user_in: UserUpdate
 ) -> UserPublic:
-    """
-    Update a user.
-    """
-
+    """Update a user."""
     db_user = user_repository.get(user_id)
     if not db_user:
         raise HTTPException(
@@ -180,24 +152,19 @@ def update_user(
     return crud_service.update_user(db_user=db_user, user_in=user_in)
 
 
-@router.delete("/{user_id}", dependencies=[Depends(get_current_active_superuser)])
-def delete_user(
-    session: SessionDep,
-    user_repository: UserRepositoryDep,
-    current_user: CurrentUser,
-    user_id: uuid.UUID,
-) -> Message:
-    """
-    Delete a user.
-    """
+@router.delete(
+    "/{user_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(get_current_active_superuser)]
+)
+async def delete_user(
+    session: SessionDep, user_repository: UserRepositoryDep, current_user: CurrentUser, user_id: uuid.UUID
+) -> None:
+    """Delete a user."""
     # TODO: move to service
     user = user_repository.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if user == current_user:
         raise HTTPException(status_code=403, detail="Super users are not allowed to delete themselves")
-    statement = delete(Item).where(Item.owner_id == user_id)
-    session.execute(statement)
+    # TODO: delete repositories
     session.delete(user)
     session.commit()
-    return Message(message="User deleted successfully")
