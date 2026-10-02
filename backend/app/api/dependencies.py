@@ -177,7 +177,7 @@ def get_blob_client() -> BlobStorageClient:
             bucket=settings.S3_BUCKET or "gitedge",
             secure=settings.S3_SECURE,
         )
-    return VercelBlobClient(token=settings.VERCEL_BLOB_TOKEN)
+    return VercelBlobClient(token=settings.VERCEL_BLOB_TOKEN, access=settings.VERCEL_BLOB_ACCESS)
 
 
 BlobStorageClientDep = Annotated[BlobStorageClient, Depends(get_blob_client)]

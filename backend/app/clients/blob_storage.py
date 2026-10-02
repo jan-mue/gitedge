@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import botocore.exceptions  # type: ignore[import-untyped]
 from aiobotocore.session import get_session  # type: ignore[import-untyped]
-from vercel.blob import AsyncBlobClient, BlobNotFoundError
+from vercel.blob import Access, AsyncBlobClient, BlobNotFoundError
 
 if TYPE_CHECKING:
     from aiobotocore.session import ClientCreatorContext
@@ -70,20 +70,23 @@ class VercelBlobClient(BlobStorageClient):
     The VERCEL_BLOB_TOKEN environment variable must be set.
     """
 
-    def __init__(self, token: str | None = None) -> None:
+    def __init__(self, token: str | None = None, access: Access = "private") -> None:
         """Initialize the Vercel Blob client.
 
         Args:
             token: Optional explicit token. If None, reads from VERCEL_BLOB_TOKEN env var.
+            access: Access mode of the Blob store. Must match the store's configuration,
+                otherwise Vercel rejects the request.
         """
         self._client = AsyncBlobClient(token=token) if token else AsyncBlobClient()
+        self._access = access
 
     async def put(self, key: str, data: bytes) -> None:
         """Store binary data in Vercel Blob Storage."""
         await self._client.put(
             key,
             data,
-            access="public",
+            access=self._access,
             content_type="application/octet-stream",
             add_random_suffix=False,
         )
@@ -91,7 +94,7 @@ class VercelBlobClient(BlobStorageClient):
     async def get(self, key: str) -> bytes | None:
         """Retrieve binary data from Vercel Blob Storage."""
         try:
-            result = await self._client.get(key)
+            result = await self._client.get(key, access=self._access)
         except BlobNotFoundError:
             logger.debug("Blob not found: %s", key)
             return None
