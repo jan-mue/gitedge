@@ -29,7 +29,7 @@ dependencies = [
     "sqlalchemy==2.1.0",
     "tenacity==9.1.4",
     "upstash-redis==1.7.0",
-    "uvicorn==0.53.0",
+    "uvicorn==0.54.0",
     "vercel==0.10.0",
 ]
 
