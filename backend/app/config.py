@@ -114,6 +114,8 @@ class Settings(BaseSettings):
     # Blob storage settings
     BLOB_STORAGE_KIND: Literal["vercel", "s3"] = "s3"
     VERCEL_BLOB_TOKEN: str | None = None
+    # Access mode of the Vercel Blob store. Must match the store's configuration.
+    VERCEL_BLOB_ACCESS: Literal["public", "private"] = "private"
     S3_ENDPOINT: str | None = "127.0.0.1:9000"
     S3_ACCESS_KEY: str | None = "minioadmin"
     S3_SECRET_KEY: str | None = "minioadmin"  # noqa: S105
