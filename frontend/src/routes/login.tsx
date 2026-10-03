@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
+import { signupsEnabled } from "@/utils"
 
 const formSchema = z.object({
   username: z.email({ message: "Invalid email address" }),
@@ -130,10 +131,19 @@ function Login() {
           </div>
 
           <div className="text-center text-sm">
-            Don't have an account yet?{" "}
-            <RouterLink to="/signup" className="underline underline-offset-4">
-              Sign up
-            </RouterLink>
+            {signupsEnabled ? (
+              <>
+                Don't have an account yet?{" "}
+                <RouterLink
+                  to="/signup"
+                  className="underline underline-offset-4"
+                >
+                  Sign up
+                </RouterLink>
+              </>
+            ) : (
+              "Sign-ups are disabled."
+            )}
           </div>
         </form>
       </Form>

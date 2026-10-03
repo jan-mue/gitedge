@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
+import { signupsEnabled } from "@/utils"
 
 const formSchema = z
   .object({
@@ -42,6 +43,11 @@ type FormData = z.infer<typeof formSchema>
 export const Route = createFileRoute("/signup")({
   component: SignUp,
   beforeLoad: async () => {
+    if (!signupsEnabled) {
+      throw redirect({
+        to: "/login",
+      })
+    }
     if (isLoggedIn()) {
       throw redirect({
         to: "/",

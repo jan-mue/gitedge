@@ -1,5 +1,7 @@
 import { AxiosError } from "axios"
 
+export const signupsEnabled = import.meta.env.VITE_SIGNUPS_ENABLED !== "false"
+
 function extractErrorMessage(err: Error): string {
   if (err instanceof AxiosError) {
     const errDetail = (err.response?.data as any)?.detail

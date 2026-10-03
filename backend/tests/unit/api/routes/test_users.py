@@ -275,6 +275,17 @@ def test_register_user(client: TestClient, crud: CrudService) -> None:
     assert verified
 
 
+def test_register_user_signups_disabled(client: TestClient, mocker: MockerFixture) -> None:
+    mocker.patch.object(settings, "SIGNUPS_ENABLED", False)
+    data = {"email": random_email(), "password": random_lower_string(), "full_name": random_lower_string()}
+    r = client.post(
+        f"{settings.API_V1_STR}/users/signup",
+        json=data,
+    )
+    assert r.status_code == 403
+    assert r.json()["detail"] == "Sign-ups are disabled"
+
+
 def test_register_user_already_exists_error(client: TestClient) -> None:
     password = random_lower_string()
     full_name = random_lower_string()

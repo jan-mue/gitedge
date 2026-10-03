@@ -45,6 +45,19 @@ and `*` is never used, so `allow_credentials=True` stays valid.
 - `FRONTEND_HOST` — production frontend origin (`https://gitedge-app.vercel.app`).
   Required for strict production CORS; managed in `infra/vercel.tf`.
 
+### Disabling sign-ups
+
+Self-service registration can be turned off by setting the matching variables on
+both projects:
+
+- `SIGNUPS_ENABLED` (backend, default `true`) — when `false`,
+  `POST /api/v1/users/signup` responds with `403` and no account is created.
+- `VITE_SIGNUPS_ENABLED` (frontend, default `true`) — when `false`, the
+  "Sign up" link is hidden on the login page and `/signup` redirects to
+  `/login`.
+
+Set both to `false` to close registration end to end.
+
 ### Local development
 
 Nothing extra to configure: the repo `.env` sets `VERCEL_ENV=development`, so
