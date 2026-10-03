@@ -13,6 +13,7 @@ class Issue(Base):
 
     __tablename__ = "issue"
     __table_args__ = (UniqueConstraint("repo_id", "number", name="issue_repo_number_key"),)
+    __mapper_args__ = {"polymorphic_identity": "issue", "polymorphic_on": "kind"}
 
     repo_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("repository.id"), nullable=False, index=True
@@ -22,3 +23,4 @@ class Issue(Base):
     body: Mapped[str | None] = mapped_column(Text, nullable=True)
     state: Mapped[str] = mapped_column(String(20), default="open")
     author_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    kind: Mapped[str] = mapped_column("type", String(20), default="issue")

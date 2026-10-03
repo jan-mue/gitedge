@@ -6,16 +6,13 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
-from sqlalchemy import func as sa_func
-from sqlalchemy import select
 
 from app.entities.issues import Issue
 from app.schemas.repositories import IssueCreate, IssuePublic, IssuesListPublic, IssueUpdate
 from app.services.repositories import ensure_repository, normalize_repo_path
 
 if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
-
+    from app.clients.issues import IssueRepository
     from app.clients.repositories import RepositoryRepository
     from app.entities.users import User
 
@@ -23,14 +20,14 @@ if TYPE_CHECKING:
 class IssueService:
     """Service for managing repository issues."""
 
-    def __init__(self, session: Session, repository_store: RepositoryRepository) -> None:
+    def __init__(self, issue_repository: IssueRepository, repository_store: RepositoryRepository) -> None:
         """Initialize the issue service.
 
         Args:
-            session: Database session.
+            issue_repository: Issue repository.
             repository_store: Repository store.
         """
-        self.session = session
+        self.issue_repository = issue_repository
         self.repository_store = repository_store
 
     def list_issues(self, path: str, state: str) -> IssuesListPublic:
@@ -48,25 +45,14 @@ class IssueService:
         if repository is None:
             return IssuesListPublic(data=[], count=0, open_count=0, closed_count=0)
 
-        stmt = select(Issue).where(Issue.repo_id == repository.id)
-        if state in ("open", "closed"):
-            stmt = stmt.where(Issue.state == state)
-        stmt = stmt.order_by(Issue.number.desc())
-
-        issues = list(self.session.execute(stmt).scalars().all())
-
-        open_count = self.session.execute(
-            select(sa_func.count()).select_from(Issue).where(Issue.repo_id == repository.id, Issue.state == "open")
-        ).scalar_one()
-        closed_count = self.session.execute(
-            select(sa_func.count()).select_from(Issue).where(Issue.repo_id == repository.id, Issue.state == "closed")
-        ).scalar_one()
+        filter_state = state if state in ("open", "closed") else None
+        issues = self.issue_repository.list_by_repo(repository.id, filter_state)
 
         return IssuesListPublic(
             data=[self._to_public(issue, repo_path) for issue in issues],
             count=len(issues),
-            open_count=open_count,
-            closed_count=closed_count,
+            open_count=self.issue_repository.count_by_state(repository.id, "open"),
+            closed_count=self.issue_repository.count_by_state(repository.id, "closed"),
         )
 
     def create_issue(self, path: str, body: IssueCreate, current_user: User) -> IssuePublic:
@@ -83,22 +69,15 @@ class IssueService:
         repo_path = normalize_repo_path(path)
         repository = ensure_repository(self.repository_store, repo_path, current_user)
 
-        max_number = self.session.execute(
-            select(sa_func.max(Issue.number)).where(Issue.repo_id == repository.id)
-        ).scalar_one()
-        next_number = (max_number or 0) + 1
-
         issue = Issue(
             repo_id=repository.id,
-            number=next_number,
+            number=self.issue_repository.next_number(repository.id),
             title=body.title,
             body=body.body,
             state="open",
             author_email=current_user.email,
         )
-        self.session.add(issue)
-        self.session.commit()
-        self.session.refresh(issue)
+        self.issue_repository.add(issue)
 
         return self._to_public(issue, repo_path)
 
@@ -146,8 +125,7 @@ class IssueService:
             issue.state = body.state
 
         issue.updated_at = datetime.now(UTC)
-        self.session.commit()
-        self.session.refresh(issue)
+        self.issue_repository.update(issue)
 
         return self._to_public(issue, repo_path)
 
@@ -168,9 +146,7 @@ class IssueService:
         if repository is None:
             raise HTTPException(status_code=404, detail="Issue not found")
 
-        issue = self.session.execute(
-            select(Issue).where(Issue.repo_id == repository.id, Issue.number == number)
-        ).scalar_one_or_none()
+        issue = self.issue_repository.get_by_number(repository.id, number)
         if issue is None:
             raise HTTPException(status_code=404, detail="Issue not found")
         return issue

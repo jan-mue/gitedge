@@ -46,6 +46,7 @@ def upgrade() -> None:
         sa.Column("body", sa.Text(), nullable=True),
         sa.Column("state", sa.String(length=20), nullable=False),
         sa.Column("author_email", sa.String(length=255), nullable=True),
+        sa.Column("type", sa.String(length=20), nullable=False, server_default="issue"),
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),

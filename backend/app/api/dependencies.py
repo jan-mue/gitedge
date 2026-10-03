@@ -17,6 +17,8 @@ from sqlalchemy.orm import Session
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
 from app.clients.database import get_db_session
 from app.clients.email import EmailClient, SMTPClient
+from app.clients.issues import IssueRepository, SQLIssueRepository
+from app.clients.pull_requests import PullRequestRepository, SQLPullRequestRepository
 from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClient
 from app.clients.repositories import RepositoryRepository, SQLRepositoryRepository
 from app.clients.users import SQLUserRepository, UserRepository
@@ -249,36 +251,66 @@ def get_repository_service(
 RepositoryServiceDep = Annotated[RepositoryService, Depends(get_repository_service)]
 
 
-def get_issue_service(session: SessionDep, repository_store: RepositoryRepositoryDep) -> IssueService:
-    """Get the issue service dependency.
+def get_issue_repository(session: SessionDep) -> IssueRepository:
+    """Get the issue repository dependency.
 
     Args:
         session: SQLAlchemy session.
+
+    Returns:
+        Issue repository instance.
+    """
+    return SQLIssueRepository(session)
+
+
+IssueRepositoryDep = Annotated[IssueRepository, Depends(get_issue_repository)]
+
+
+def get_pull_request_repository(session: SessionDep) -> PullRequestRepository:
+    """Get the pull request repository dependency.
+
+    Args:
+        session: SQLAlchemy session.
+
+    Returns:
+        Pull request repository instance.
+    """
+    return SQLPullRequestRepository(session)
+
+
+PullRequestRepositoryDep = Annotated[PullRequestRepository, Depends(get_pull_request_repository)]
+
+
+def get_issue_service(issue_repository: IssueRepositoryDep, repository_store: RepositoryRepositoryDep) -> IssueService:
+    """Get the issue service dependency.
+
+    Args:
+        issue_repository: Issue repository dependency.
         repository_store: Repository store dependency.
 
     Returns:
         Issue service instance.
     """
-    return IssueService(session, repository_store)
+    return IssueService(issue_repository, repository_store)
 
 
 IssueServiceDep = Annotated[IssueService, Depends(get_issue_service)]
 
 
 def get_pull_request_service(
-    session: SessionDep,
+    pull_request_repository: PullRequestRepositoryDep,
     repository_store: RepositoryRepositoryDep,
 ) -> PullRequestService:
     """Get the pull request service dependency.
 
     Args:
-        session: SQLAlchemy session.
+        pull_request_repository: Pull request repository dependency.
         repository_store: Repository store dependency.
 
     Returns:
         Pull request service instance.
     """
-    return PullRequestService(session, repository_store)
+    return PullRequestService(pull_request_repository, repository_store)
 
 
 PullRequestServiceDep = Annotated[PullRequestService, Depends(get_pull_request_service)]

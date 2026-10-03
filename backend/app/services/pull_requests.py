@@ -6,8 +6,6 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
-from sqlalchemy import func as sa_func
-from sqlalchemy import select
 
 from app.entities.pull_requests import PullRequest
 from app.schemas.repositories import (
@@ -19,8 +17,7 @@ from app.schemas.repositories import (
 from app.services.repositories import ensure_repository, normalize_repo_path
 
 if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
-
+    from app.clients.pull_requests import PullRequestRepository
     from app.clients.repositories import RepositoryRepository
     from app.entities.users import User
 
@@ -28,14 +25,18 @@ if TYPE_CHECKING:
 class PullRequestService:
     """Service for managing repository pull requests."""
 
-    def __init__(self, session: Session, repository_store: RepositoryRepository) -> None:
+    def __init__(
+        self,
+        pull_request_repository: PullRequestRepository,
+        repository_store: RepositoryRepository,
+    ) -> None:
         """Initialize the pull request service.
 
         Args:
-            session: Database session.
+            pull_request_repository: Pull request repository.
             repository_store: Repository store.
         """
-        self.session = session
+        self.pull_request_repository = pull_request_repository
         self.repository_store = repository_store
 
     def list_pull_requests(self, path: str, state: str) -> PullRequestsListPublic:
@@ -53,29 +54,14 @@ class PullRequestService:
         if repository is None:
             return PullRequestsListPublic(data=[], count=0, open_count=0, closed_count=0)
 
-        stmt = select(PullRequest).where(PullRequest.repo_id == repository.id)
-        if state in ("open", "closed", "merged"):
-            stmt = stmt.where(PullRequest.state == state)
-        stmt = stmt.order_by(PullRequest.number.desc())
-
-        pull_requests = list(self.session.execute(stmt).scalars().all())
-
-        open_count = self.session.execute(
-            select(sa_func.count())
-            .select_from(PullRequest)
-            .where(PullRequest.repo_id == repository.id, PullRequest.state == "open")
-        ).scalar_one()
-        closed_count = self.session.execute(
-            select(sa_func.count())
-            .select_from(PullRequest)
-            .where(PullRequest.repo_id == repository.id, PullRequest.state.in_(["closed", "merged"]))
-        ).scalar_one()
+        filter_state = state if state in ("open", "closed", "merged") else None
+        pull_requests = self.pull_request_repository.list_by_repo(repository.id, filter_state)
 
         return PullRequestsListPublic(
             data=[self._to_public(pr, repo_path) for pr in pull_requests],
             count=len(pull_requests),
-            open_count=open_count,
-            closed_count=closed_count,
+            open_count=self.pull_request_repository.count_by_state(repository.id, "open"),
+            closed_count=self.pull_request_repository.count_by_states(repository.id, ["closed", "merged"]),
         )
 
     def create_pull_request(self, path: str, body: PullRequestCreate, current_user: User) -> PullRequestPublic:
@@ -92,14 +78,9 @@ class PullRequestService:
         repo_path = normalize_repo_path(path)
         repository = ensure_repository(self.repository_store, repo_path, current_user)
 
-        max_number = self.session.execute(
-            select(sa_func.max(PullRequest.number)).where(PullRequest.repo_id == repository.id)
-        ).scalar_one()
-        next_number = (max_number or 0) + 1
-
         pull_request = PullRequest(
             repo_id=repository.id,
-            number=next_number,
+            number=self.pull_request_repository.next_number(repository.id),
             title=body.title,
             body=body.body,
             state="open",
@@ -109,9 +90,7 @@ class PullRequestService:
             head_branch=body.head_branch,
             base_branch=body.base_branch,
         )
-        self.session.add(pull_request)
-        self.session.commit()
-        self.session.refresh(pull_request)
+        self.pull_request_repository.add(pull_request)
 
         return self._to_public(pull_request, repo_path)
 
@@ -159,8 +138,7 @@ class PullRequestService:
             pull_request.state = body.state
 
         pull_request.updated_at = datetime.now(UTC)
-        self.session.commit()
-        self.session.refresh(pull_request)
+        self.pull_request_repository.update(pull_request)
 
         return self._to_public(pull_request, repo_path)
 
@@ -181,9 +159,7 @@ class PullRequestService:
         if repository is None:
             raise HTTPException(status_code=404, detail="Pull request not found")
 
-        pull_request = self.session.execute(
-            select(PullRequest).where(PullRequest.repo_id == repository.id, PullRequest.number == number)
-        ).scalar_one_or_none()
+        pull_request = self.pull_request_repository.get_by_number(repository.id, number)
         if pull_request is None:
             raise HTTPException(status_code=404, detail="Pull request not found")
         return pull_request
