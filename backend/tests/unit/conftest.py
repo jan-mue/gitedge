@@ -18,8 +18,8 @@ from app.utils.database import init_db
 from tests.unit.utils.fakes import (
     FakeIssueStore,
     FakePullRequestStore,
-    FakeRepositories,
     FakeRepositoryStore,
+    FakeStores,
 )
 from tests.unit.utils.user import authentication_token_from_email
 from tests.unit.utils.utils import get_superuser_token_headers
@@ -75,16 +75,16 @@ def client() -> Generator[TestClient]:
 
 
 @pytest.fixture
-def fake_repositories() -> Generator[FakeRepositories]:
-    """Override the repository clients with in-memory fakes."""
-    fakes = FakeRepositories(
+def fake_stores() -> Generator[FakeStores]:
+    """Override the data access stores with in-memory fakes."""
+    fakes = FakeStores(
         issues=FakeIssueStore(),
         pull_requests=FakePullRequestStore(),
-        repositories=FakeRepositoryStore(),
+        repository=FakeRepositoryStore(),
     )
     app.dependency_overrides[get_issue_store] = lambda: fakes.issues
     app.dependency_overrides[get_pull_request_store] = lambda: fakes.pull_requests
-    app.dependency_overrides[get_repository_store] = lambda: fakes.repositories
+    app.dependency_overrides[get_repository_store] = lambda: fakes.repository
 
     yield fakes
 

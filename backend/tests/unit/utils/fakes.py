@@ -197,9 +197,9 @@ class FakePullRequestStore(FakeCrudStore[PullRequest], PullRequestStore):
 
 
 @dataclass
-class FakeRepositories:
-    """Container for the in-memory repository fakes."""
+class FakeStores:
+    """Container for the in-memory store fakes."""
 
     issues: FakeIssueStore
     pull_requests: FakePullRequestStore
-    repositories: FakeRepositoryStore
+    repository: FakeRepositoryStore
