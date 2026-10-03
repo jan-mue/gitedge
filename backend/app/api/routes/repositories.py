@@ -516,7 +516,6 @@ def _get_commit_info(repo: BlobRepository, commit_sha: bytes) -> CommitInfo:
     sha_str = commit_sha.decode() if isinstance(commit_sha, bytes) else str(commit_sha)
     message = commit.message.decode("utf-8", errors="replace").strip()
     author_raw = commit.author.decode("utf-8", errors="replace")
-    # Extract just the name part (before <email>)
     author = author_raw.split("<")[0].strip() if "<" in author_raw else author_raw
     timestamp = commit.author_time if hasattr(commit, "author_time") else int(time.time())
 
@@ -581,13 +580,11 @@ async def get_repository_info(
 
     branch_count, tag_count, default_branch = _get_ref_counts(repo)
 
-    # Get name from path
     normalized = path.strip("/")
     name = normalized.rstrip("/").split("/")[-1]
     if name.endswith(".git"):
         name = name[:-4]
 
-    # Get last commit info
     last_commit = None
     try:
         commit_sha = _resolve_ref(repo, ref)
@@ -685,9 +682,6 @@ async def list_branches(
             branches.append(BranchInfo(name=branch_name, is_default=branch_name == default_branch))
 
     return branches
-
-
-# --- Issue endpoints ---
 
 
 def _normalize_repo_path(path: str) -> str:
@@ -849,7 +843,6 @@ async def create_issue(
     repo_path = _normalize_repo_path(path)
     repository = _ensure_repository(repository_store, repo_path, current_user)
 
-    # Get next issue number for this repo
     max_number = session.execute(select(sa_func.max(Issue.number)).where(Issue.repo_id == repository.id)).scalar_one()
     next_number = (max_number or 0) + 1
 
@@ -953,9 +946,6 @@ async def update_issue(
     return _issue_to_public(issue, repo_path)
 
 
-# --- Pull request endpoints ---
-
-
 @router.get("/{path:path}/pulls")
 async def list_pull_requests(
     path: str,
@@ -1028,7 +1018,6 @@ async def create_pull_request(
     repo_path = _normalize_repo_path(path)
     repository = _ensure_repository(repository_store, repo_path, current_user)
 
-    # Get next PR number for this repo
     max_number = session.execute(
         select(sa_func.max(PullRequest.number)).where(PullRequest.repo_id == repository.id)
     ).scalar_one()

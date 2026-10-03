@@ -20,7 +20,6 @@ class PullRequest(Issue):
         primary_key=True,
     )
 
-    # Additional PR-specific fields
     head_repo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("repository.id"), nullable=False)
     base_repo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("repository.id"), nullable=False)
     head_branch: Mapped[str] = mapped_column(String(255), nullable=False)

@@ -78,7 +78,6 @@ function NewPRForm({ owner, repo }: { owner: string; repo: string }) {
       <h1 className="text-xl font-bold text-foreground">New Pull Request</h1>
 
       <div className="space-y-4">
-        {/* Branch selectors */}
         <div className="flex items-center gap-3">
           <div className="flex-1">
             <label

@@ -59,7 +59,6 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
       className="border-b border-border bg-background"
       data-testid="repo-header"
     >
-      {/* Top bar */}
       <div className="container max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -99,7 +98,6 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="container max-w-7xl mx-auto px-4">
         <nav className="flex gap-1 overflow-x-auto -mb-px">
           {tabs.map((tab) => (

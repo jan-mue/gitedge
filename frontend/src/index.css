@@ -240,7 +240,6 @@
   color: #e6edf3;
 }
 
-/* Markdown body — rendered README / markdown content */
 .markdown-body {
   font-size: 0.9375rem;
   line-height: 1.7;
@@ -256,7 +255,6 @@
   margin-bottom: 0;
 }
 
-/* Headings */
 .markdown-body h1 {
   font-size: 1.5rem;
   font-weight: 700;
@@ -308,14 +306,12 @@
   color: var(--muted-foreground);
 }
 
-/* Paragraphs */
 .markdown-body p {
   margin-top: 0;
   margin-bottom: 0.75rem;
   line-height: 1.7;
 }
 
-/* Links */
 .markdown-body a {
   color: var(--primary);
   text-decoration: none;
@@ -325,7 +321,6 @@
   text-decoration: underline;
 }
 
-/* Bold / Italic / Strikethrough */
 .markdown-body strong {
   font-weight: 600;
 }
@@ -338,7 +333,6 @@
   text-decoration: line-through;
 }
 
-/* Lists */
 .markdown-body ul,
 .markdown-body ol {
   margin-top: 0;
@@ -368,7 +362,6 @@
   margin-bottom: 0;
 }
 
-/* Task lists (markdown-it-py task list plugin) */
 .markdown-body .contains-task-list {
   list-style: none;
   padding-left: 1.25rem;
@@ -384,7 +377,6 @@
   pointer-events: none;
 }
 
-/* Blockquotes */
 .markdown-body blockquote {
   margin: 0 0 0.75rem;
   padding: 0.5rem 1rem;
@@ -396,7 +388,6 @@
   margin-bottom: 0;
 }
 
-/* Code — inline */
 .markdown-body code {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
@@ -405,7 +396,6 @@
   background: var(--accent);
 }
 
-/* Code — fenced blocks */
 .markdown-body pre {
   margin-top: 0;
   margin-bottom: 0.75rem;
@@ -424,7 +414,6 @@
   line-height: 1.5;
 }
 
-/* Horizontal rule */
 .markdown-body hr {
   height: 1px;
   margin: 1.5rem 0;
@@ -433,14 +422,12 @@
   background-color: var(--border);
 }
 
-/* Images */
 .markdown-body img {
   max-width: 100%;
   height: auto;
   border-radius: 0.375rem;
 }
 
-/* Tables */
 .markdown-body table {
   width: 100%;
   margin-bottom: 0.75rem;

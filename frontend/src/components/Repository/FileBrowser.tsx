@@ -63,7 +63,6 @@ const FileBrowser = ({
       className="border border-border rounded-lg overflow-hidden"
       data-testid="file-tree"
     >
-      {/* Last commit bar */}
       {lastCommit && (
         <div className="flex items-center gap-3 px-4 py-2.5 bg-secondary border-b border-border">
           <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-xs font-medium text-accent-foreground">
@@ -91,7 +90,6 @@ const FileBrowser = ({
         </div>
       )}
 
-      {/* Back link for subdirectories */}
       {treePath && (
         <button
           type="button"
@@ -104,7 +102,6 @@ const FileBrowser = ({
         </button>
       )}
 
-      {/* File list */}
       {entries.map((entry, index) => (
         <button
           key={entry.path}

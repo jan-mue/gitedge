@@ -30,7 +30,6 @@ function IssuesContent({ owner, repo }: { owner: string; repo: string }) {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -67,9 +66,7 @@ function IssuesContent({ owner, repo }: { owner: string; repo: string }) {
         </RouterLink>
       </div>
 
-      {/* Issue list */}
       <div className="border border-border rounded-lg overflow-hidden">
-        {/* Stats bar */}
         <div className="flex items-center justify-between px-4 py-2.5 bg-secondary border-b border-border">
           <div className="flex items-center gap-4 text-sm">
             <span className="flex items-center gap-1.5 text-foreground font-medium">
@@ -109,7 +106,6 @@ function IssuesContent({ owner, repo }: { owner: string; repo: string }) {
           </div>
         </div>
 
-        {/* Issues list or empty state */}
         {issues.length > 0 ? (
           <div>
             {issues.map((issue) => (

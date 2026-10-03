@@ -75,7 +75,6 @@ const RepoStats = ({ owner, repo, gitRef, searchRef }: RepoStatsProps) => {
 
   return (
     <div className="space-y-3" data-testid="repo-stats">
-      {/* Stats */}
       {repoInfo && (
         <div className="flex items-center gap-6 text-sm text-muted-foreground">
           {repoInfo.last_commit && (
@@ -103,7 +102,6 @@ const RepoStats = ({ owner, repo, gitRef, searchRef }: RepoStatsProps) => {
         </div>
       )}
 
-      {/* Branch selector and clone URL */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative" ref={dropdownRef}>
           <button
