@@ -8,13 +8,19 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app.api.dependencies import get_db
+from app.api.dependencies import get_db, get_issue_repository, get_pull_request_repository, get_repository_store
 from app.clients.users import SQLUserRepository
 from app.config import settings
 from app.entities.base import Base
 from app.index import app
 from app.services.crud import CrudService
 from app.utils.database import init_db
+from tests.unit.utils.fakes import (
+    FakeIssueRepository,
+    FakePullRequestRepository,
+    FakeRepositories,
+    FakeRepositoryRepository,
+)
 from tests.unit.utils.user import authentication_token_from_email
 from tests.unit.utils.utils import get_superuser_token_headers
 
@@ -66,6 +72,25 @@ def crud(db: Session) -> CrudService:
 def client() -> Generator[TestClient]:
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture
+def fake_repositories() -> Generator[FakeRepositories]:
+    """Override the repository clients with in-memory fakes."""
+    fakes = FakeRepositories(
+        issues=FakeIssueRepository(),
+        pull_requests=FakePullRequestRepository(),
+        repositories=FakeRepositoryRepository(),
+    )
+    app.dependency_overrides[get_issue_repository] = lambda: fakes.issues
+    app.dependency_overrides[get_pull_request_repository] = lambda: fakes.pull_requests
+    app.dependency_overrides[get_repository_store] = lambda: fakes.repositories
+
+    yield fakes
+
+    app.dependency_overrides.pop(get_issue_repository, None)
+    app.dependency_overrides.pop(get_pull_request_repository, None)
+    app.dependency_overrides.pop(get_repository_store, None)
 
 
 @pytest.fixture(scope="module")
