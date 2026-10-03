@@ -674,7 +674,7 @@ export class PrivateService {
      *
      * Args:
      * user_in: User creation data.
-     * user_repository: User repository dependency.
+     * user_store: User store dependency.
      *
      * Returns:
      * The created user public data.

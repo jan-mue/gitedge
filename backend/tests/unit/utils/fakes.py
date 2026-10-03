@@ -10,12 +10,12 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from app.clients.blob_storage import BlobStorageClient
-from app.clients.database import CrudRepository
+from app.clients.database import CrudStore
 from app.clients.email import EmailClient
-from app.clients.issues import IssueRepository
-from app.clients.pull_requests import PullRequestRepository
+from app.clients.issues import IssueStore
+from app.clients.pull_requests import PullRequestStore
 from app.clients.redis import AbstractRedisClient
-from app.clients.repositories import RepositoryRepository
+from app.clients.repositories import RepositoryStore
 from app.entities.base import Base
 from app.entities.issues import Issue
 from app.entities.pull_requests import PullRequest
@@ -80,7 +80,7 @@ class FakeRedisClient(AbstractRedisClient):
         return fnmatch.filter(self.values, pattern)
 
 
-class FakeCrudRepository[T: Base](CrudRepository[T]):
+class FakeCrudStore[T: Base](CrudStore[T]):
     """In-memory CRUD repository."""
 
     def __init__(self) -> None:
@@ -120,7 +120,7 @@ class FakeCrudRepository[T: Base](CrudRepository[T]):
         """Refresh an entity (no-op for in-memory storage)."""
 
 
-class FakeRepositoryRepository(FakeCrudRepository[Repository], RepositoryRepository):
+class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
     """In-memory repository store."""
 
     def get_by_path(self, path: str) -> Repository | None:
@@ -133,7 +133,7 @@ class FakeRepositoryRepository(FakeCrudRepository[Repository], RepositoryReposit
         return repositories[offset : offset + limit]
 
 
-class FakeIssueRepository(FakeCrudRepository[Issue], IssueRepository):
+class FakeIssueStore(FakeCrudStore[Issue], IssueStore):
     """In-memory issue repository."""
 
     def get_by_number(self, repo_id: uuid.UUID, number: int) -> Issue | None:
@@ -160,7 +160,7 @@ class FakeIssueRepository(FakeCrudRepository[Issue], IssueRepository):
         return (max(numbers) if numbers else 0) + 1
 
 
-class FakePullRequestRepository(FakeCrudRepository[PullRequest], PullRequestRepository):
+class FakePullRequestStore(FakeCrudStore[PullRequest], PullRequestStore):
     """In-memory pull request repository."""
 
     def add(self, obj: PullRequest) -> None:
@@ -200,6 +200,6 @@ class FakePullRequestRepository(FakeCrudRepository[PullRequest], PullRequestRepo
 class FakeRepositories:
     """Container for the in-memory repository fakes."""
 
-    issues: FakeIssueRepository
-    pull_requests: FakePullRequestRepository
-    repositories: FakeRepositoryRepository
+    issues: FakeIssueStore
+    pull_requests: FakePullRequestStore
+    repositories: FakeRepositoryStore

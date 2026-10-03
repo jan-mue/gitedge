@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.clients.users import SQLUserRepository
+from app.clients.users import SQLUserStore
 from app.config import settings
 from app.schemas.users import UserCreate
 from app.services.crud import CrudService
@@ -19,7 +19,7 @@ def init_db(session: Session) -> None:
     Args:
         session: SQLAlchemy session to use.
     """
-    crud_service = CrudService(SQLUserRepository(session))
+    crud_service = CrudService(SQLUserStore(session))
     user = crud_service.get_user_by_email(email=settings.FIRST_SUPERUSER)
     if not user:
         user_in = UserCreate(

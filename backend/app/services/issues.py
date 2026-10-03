@@ -12,22 +12,22 @@ from app.schemas.repositories import IssueCreate, IssuePublic, IssuesListPublic,
 from app.services.repositories import ensure_repository, normalize_repo_path
 
 if TYPE_CHECKING:
-    from app.clients.issues import IssueRepository
-    from app.clients.repositories import RepositoryRepository
+    from app.clients.issues import IssueStore
+    from app.clients.repositories import RepositoryStore
     from app.entities.users import User
 
 
 class IssueService:
     """Service for managing repository issues."""
 
-    def __init__(self, issue_repository: IssueRepository, repository_store: RepositoryRepository) -> None:
+    def __init__(self, issue_store: IssueStore, repository_store: RepositoryStore) -> None:
         """Initialize the issue service.
 
         Args:
-            issue_repository: Issue repository.
+            issue_store: Issue store.
             repository_store: Repository store.
         """
-        self.issue_repository = issue_repository
+        self.issue_store = issue_store
         self.repository_store = repository_store
 
     def list_issues(self, path: str, state: str) -> IssuesListPublic:
@@ -46,13 +46,13 @@ class IssueService:
             return IssuesListPublic(data=[], count=0, open_count=0, closed_count=0)
 
         filter_state = state if state in ("open", "closed") else None
-        issues = self.issue_repository.list_by_repo(repository.id, filter_state)
+        issues = self.issue_store.list_by_repo(repository.id, filter_state)
 
         return IssuesListPublic(
             data=[self._to_public(issue, repo_path) for issue in issues],
             count=len(issues),
-            open_count=self.issue_repository.count_by_state(repository.id, "open"),
-            closed_count=self.issue_repository.count_by_state(repository.id, "closed"),
+            open_count=self.issue_store.count_by_state(repository.id, "open"),
+            closed_count=self.issue_store.count_by_state(repository.id, "closed"),
         )
 
     def create_issue(self, path: str, body: IssueCreate, current_user: User) -> IssuePublic:
@@ -71,13 +71,13 @@ class IssueService:
 
         issue = Issue(
             repo_id=repository.id,
-            number=self.issue_repository.next_number(repository.id),
+            number=self.issue_store.next_number(repository.id),
             title=body.title,
             body=body.body,
             state="open",
             author_email=current_user.email,
         )
-        self.issue_repository.add(issue)
+        self.issue_store.add(issue)
 
         return self._to_public(issue, repo_path)
 
@@ -125,7 +125,7 @@ class IssueService:
             issue.state = body.state
 
         issue.updated_at = datetime.now(UTC)
-        self.issue_repository.update(issue)
+        self.issue_store.update(issue)
 
         return self._to_public(issue, repo_path)
 
@@ -146,7 +146,7 @@ class IssueService:
         if repository is None:
             raise HTTPException(status_code=404, detail="Issue not found")
 
-        issue = self.issue_repository.get_by_number(repository.id, number)
+        issue = self.issue_store.get_by_number(repository.id, number)
         if issue is None:
             raise HTTPException(status_code=404, detail="Issue not found")
         return issue

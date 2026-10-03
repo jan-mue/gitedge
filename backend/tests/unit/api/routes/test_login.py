@@ -104,7 +104,7 @@ def test_reset_password(client: TestClient, crud: CrudService) -> None:
 
     assert r.status_code == 204
 
-    user = crud.user_repository.get_by_email(email=email)
+    user = crud.user_store.get_by_email(email=email)
     assert user is not None
     verified, _ = verify_password(new_password, user.hashed_password)
     assert verified

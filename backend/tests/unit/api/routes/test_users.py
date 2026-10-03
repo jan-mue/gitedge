@@ -165,7 +165,7 @@ def test_update_user_me(client: TestClient, normal_user_token_headers: dict[str,
     assert updated_user["email"] == email
     assert updated_user["full_name"] == full_name
 
-    user_db = crud.user_repository.get_by_email(email=email)
+    user_db = crud.user_store.get_by_email(email=email)
     assert user_db
     assert user_db.email == email
     assert user_db.full_name == full_name
@@ -184,7 +184,7 @@ def test_update_password_me(client: TestClient, superuser_token_headers: dict[st
     )
     assert r.status_code == 204
 
-    user_db = crud.user_repository.get_by_email(email=settings.FIRST_SUPERUSER)
+    user_db = crud.user_store.get_by_email(email=settings.FIRST_SUPERUSER)
     assert user_db
     assert user_db.email == settings.FIRST_SUPERUSER
     verified, _ = verify_password(new_password, user_db.hashed_password)
@@ -200,7 +200,7 @@ def test_update_password_me(client: TestClient, superuser_token_headers: dict[st
         headers=superuser_token_headers,
         json=old_data,
     )
-    crud.user_repository.refresh(user_db)
+    crud.user_store.refresh(user_db)
 
     assert r.status_code == 204
     verified, _ = verify_password(settings.FIRST_SUPERUSER_PASSWORD, user_db.hashed_password)
@@ -267,7 +267,7 @@ def test_register_user(client: TestClient, crud: CrudService) -> None:
     assert created_user["email"] == username
     assert created_user["full_name"] == full_name
 
-    user_db = crud.user_repository.get_by_email(email=username)
+    user_db = crud.user_store.get_by_email(email=username)
     assert user_db
     assert user_db.email == username
     assert user_db.full_name == full_name
@@ -308,7 +308,7 @@ def test_update_user(client: TestClient, superuser_token_headers: dict[str, str]
 
     assert updated_user["full_name"] == "Updated_full_name"
 
-    user_db = crud.user_repository.get_by_email(email=username)
+    user_db = crud.user_store.get_by_email(email=username)
     assert user_db
     assert user_db.full_name == "Updated_full_name"
 
@@ -368,7 +368,7 @@ def test_delete_user_me(client: TestClient, crud: CrudService) -> None:
         headers=headers,
     )
     assert r.status_code == 204
-    user_db = crud.user_repository.get(user_id)
+    user_db = crud.user_store.get(user_id)
     assert user_db is None
 
 
@@ -393,7 +393,7 @@ def test_delete_user_super_user(client: TestClient, superuser_token_headers: dic
         headers=superuser_token_headers,
     )
     assert r.status_code == 204
-    user_db = crud.user_repository.get(user_id)
+    user_db = crud.user_store.get(user_id)
     assert user_db is None
 
 

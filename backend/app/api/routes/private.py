@@ -5,7 +5,7 @@ These endpoints should not be exposed in production.
 
 from fastapi import APIRouter
 
-from app.api.dependencies import UserRepositoryDep
+from app.api.dependencies import UserStoreDep
 from app.entities.users import User
 from app.schemas.base import GitEdgeBaseModel
 from app.schemas.users import UserPublic
@@ -24,14 +24,14 @@ class PrivateUserCreate(GitEdgeBaseModel):
 
 
 @router.post("/users/", response_model=UserPublic)
-async def create_user(user_in: PrivateUserCreate, user_repository: UserRepositoryDep) -> UserPublic:
+async def create_user(user_in: PrivateUserCreate, user_store: UserStoreDep) -> UserPublic:
     """Create a new user.
 
     This endpoint is intended for testing purposes only.
 
     Args:
         user_in: User creation data.
-        user_repository: User repository dependency.
+        user_store: User store dependency.
 
     Returns:
         The created user public data.
@@ -42,6 +42,6 @@ async def create_user(user_in: PrivateUserCreate, user_repository: UserRepositor
         hashed_password=get_password_hash(user_in.password),
     )
 
-    user_repository.add(user)
+    user_store.add(user)
 
     return UserPublic.model_validate(user)

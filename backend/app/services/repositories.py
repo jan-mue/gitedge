@@ -33,7 +33,7 @@ from app.services.markdown import render_markdown
 if TYPE_CHECKING:
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.redis import AbstractRedisClient
-    from app.clients.repositories import RepositoryRepository
+    from app.clients.repositories import RepositoryStore
     from app.entities.users import User
     from app.services.blob_backend import BlobBackend
     from app.services.blob_repository import BlobRepository
@@ -101,7 +101,7 @@ def repository_name_from_path(path: str) -> str:
     return name[:-4] if name.endswith(".git") else name
 
 
-def ensure_repository(store: RepositoryRepository, path: str, user: User) -> RepositoryEntity:
+def ensure_repository(store: RepositoryStore, path: str, user: User) -> RepositoryEntity:
     """Get an existing repository row or create one for the given path.
 
     Args:

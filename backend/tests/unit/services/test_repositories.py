@@ -23,7 +23,7 @@ from app.services.repositories import (
     repository_name_from_path,
 )
 from app.types import PackContents
-from tests.unit.utils.fakes import FakeBlobStorageClient, FakeRedisClient, FakeRepositoryRepository
+from tests.unit.utils.fakes import FakeBlobStorageClient, FakeRedisClient, FakeRepositoryStore
 
 if TYPE_CHECKING:
     from app.services.blob_repository import BlobRepository
@@ -109,7 +109,7 @@ def test_repository_name_from_path() -> None:
 
 
 def test_ensure_repository() -> None:
-    store = FakeRepositoryRepository()
+    store = FakeRepositoryStore()
     user = User(email="owner@example.com", hashed_password="x")
     user.id = uuid.uuid4()
 

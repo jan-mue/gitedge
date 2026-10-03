@@ -1,4 +1,4 @@
-"""Issue repository for database operations."""
+"""Issue store for database operations."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 
-from app.clients.database import CrudRepository, SQLRepository
+from app.clients.database import CrudStore, SQLStore
 from app.entities.issues import Issue
 
 if TYPE_CHECKING:
@@ -16,8 +16,8 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
-class IssueRepository(CrudRepository[Issue], ABC):
-    """Abstract issue repository with issue-specific queries."""
+class IssueStore(CrudStore[Issue], ABC):
+    """Abstract issue store with issue-specific queries."""
 
     @abstractmethod
     def get_by_number(self, repo_id: uuid.UUID, number: int) -> Issue | None:
@@ -36,11 +36,11 @@ class IssueRepository(CrudRepository[Issue], ABC):
         """Get the next issue or pull request number for a repository."""
 
 
-class SQLIssueRepository(IssueRepository, SQLRepository[Issue]):
-    """SQLAlchemy implementation of the issue repository."""
+class SQLIssueStore(IssueStore, SQLStore[Issue]):
+    """SQLAlchemy implementation of the issue store."""
 
     def __init__(self, db: Session) -> None:
-        """Initialize the issue repository.
+        """Initialize the issue store.
 
         Args:
             db: SQLAlchemy session.

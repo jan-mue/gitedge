@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from app.clients.database import CrudRepository, SQLRepository
+from app.clients.database import CrudStore, SQLStore
 from app.entities.repositories import Repository
 
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
-class RepositoryRepository(CrudRepository[Repository], ABC):
+class RepositoryStore(CrudStore[Repository], ABC):
     """Abstract repository store with additional repository-specific methods."""
 
     @abstractmethod
@@ -28,7 +28,7 @@ class RepositoryRepository(CrudRepository[Repository], ABC):
         """Get all repositories owned by a user."""
 
 
-class SQLRepositoryRepository(RepositoryRepository, SQLRepository[Repository]):
+class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
     """SQLAlchemy implementation of repository store."""
 
     def __init__(self, db: Session) -> None:

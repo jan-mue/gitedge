@@ -1,4 +1,4 @@
-"""Pull request repository for database operations."""
+"""Pull request store for database operations."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 
-from app.clients.database import CrudRepository, SQLRepository
+from app.clients.database import CrudStore, SQLStore
 from app.entities.issues import Issue
 from app.entities.pull_requests import PullRequest
 
@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
-class PullRequestRepository(CrudRepository[PullRequest], ABC):
-    """Abstract pull request repository with pull request-specific queries."""
+class PullRequestStore(CrudStore[PullRequest], ABC):
+    """Abstract pull request store with pull request-specific queries."""
 
     @abstractmethod
     def get_by_number(self, repo_id: uuid.UUID, number: int) -> PullRequest | None:
@@ -41,11 +41,11 @@ class PullRequestRepository(CrudRepository[PullRequest], ABC):
         """Get the next issue or pull request number for a repository."""
 
 
-class SQLPullRequestRepository(PullRequestRepository, SQLRepository[PullRequest]):
-    """SQLAlchemy implementation of the pull request repository."""
+class SQLPullRequestStore(PullRequestStore, SQLStore[PullRequest]):
+    """SQLAlchemy implementation of the pull request store."""
 
     def __init__(self, db: Session) -> None:
-        """Initialize the pull request repository.
+        """Initialize the pull request store.
 
         Args:
             db: SQLAlchemy session.
