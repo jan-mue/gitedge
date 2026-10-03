@@ -25,6 +25,9 @@ from app.entities.users import User
 from app.schemas.token import TokenPayload
 from app.services.blob_backend import BlobBackend
 from app.services.crud import CrudService
+from app.services.issues import IssueService
+from app.services.pull_requests import PullRequestService
+from app.services.repositories import RepositoryService
 from app.utils import security
 
 if TYPE_CHECKING:
@@ -223,3 +226,59 @@ def get_backend() -> BlobBackend:
 
 
 BackendDep = Annotated[BlobBackend, Depends(get_backend)]
+
+
+def get_repository_service(
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+    redis_client: RedisClientDep,
+) -> RepositoryService:
+    """Get the repository service dependency.
+
+    Args:
+        backend: Git backend dependency.
+        blob_client: Blob storage client dependency.
+        redis_client: Redis client dependency.
+
+    Returns:
+        Repository service instance.
+    """
+    return RepositoryService(backend, blob_client, redis_client)
+
+
+RepositoryServiceDep = Annotated[RepositoryService, Depends(get_repository_service)]
+
+
+def get_issue_service(session: SessionDep, repository_store: RepositoryRepositoryDep) -> IssueService:
+    """Get the issue service dependency.
+
+    Args:
+        session: SQLAlchemy session.
+        repository_store: Repository store dependency.
+
+    Returns:
+        Issue service instance.
+    """
+    return IssueService(session, repository_store)
+
+
+IssueServiceDep = Annotated[IssueService, Depends(get_issue_service)]
+
+
+def get_pull_request_service(
+    session: SessionDep,
+    repository_store: RepositoryRepositoryDep,
+) -> PullRequestService:
+    """Get the pull request service dependency.
+
+    Args:
+        session: SQLAlchemy session.
+        repository_store: Repository store dependency.
+
+    Returns:
+        Pull request service instance.
+    """
+    return PullRequestService(session, repository_store)
+
+
+PullRequestServiceDep = Annotated[PullRequestService, Depends(get_pull_request_service)]
