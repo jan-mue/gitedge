@@ -19,6 +19,46 @@ export type Body_login_login_access_token = {
 };
 
 /**
+ * BranchInfo
+ *
+ * Information about a branch.
+ */
+export type BranchInfo = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Is Default
+     */
+    is_default: boolean;
+};
+
+/**
+ * CommitInfo
+ *
+ * Information about a commit.
+ */
+export type CommitInfo = {
+    /**
+     * Sha
+     */
+    sha: string;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Author
+     */
+    author: string;
+    /**
+     * Timestamp
+     */
+    timestamp: number;
+};
+
+/**
  * CreateRepositoryRequest
  *
  * Request to create a new repository.
@@ -89,6 +129,110 @@ export type HTTPValidationError = {
 };
 
 /**
+ * IssueCreate
+ *
+ * Request to create a new issue.
+ */
+export type IssueCreate = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Body
+     */
+    body?: string | null;
+};
+
+/**
+ * IssuePublic
+ *
+ * Public issue representation.
+ */
+export type IssuePublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Repo Path
+     */
+    repo_path: string;
+    /**
+     * Number
+     */
+    number: number;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Body
+     */
+    body?: string | null;
+    /**
+     * State
+     */
+    state: string;
+    /**
+     * Author Email
+     */
+    author_email?: string | null;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+};
+
+/**
+ * IssueUpdate
+ *
+ * Request to update an issue.
+ */
+export type IssueUpdate = {
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Body
+     */
+    body?: string | null;
+    /**
+     * State
+     */
+    state?: string | null;
+};
+
+/**
+ * IssuesListPublic
+ *
+ * List of issues.
+ */
+export type IssuesListPublic = {
+    /**
+     * Data
+     */
+    data: Array<IssuePublic>;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Open Count
+     */
+    open_count: number;
+    /**
+     * Closed Count
+     */
+    closed_count: number;
+};
+
+/**
  * NewPassword
  *
  * Schema for password reset with token.
@@ -129,6 +273,158 @@ export type PrivateUserCreate = {
 };
 
 /**
+ * PullRequestCreate
+ *
+ * Request to create a new pull request.
+ */
+export type PullRequestCreate = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Body
+     */
+    body?: string | null;
+    /**
+     * Head Branch
+     */
+    head_branch: string;
+    /**
+     * Base Branch
+     */
+    base_branch?: string;
+};
+
+/**
+ * PullRequestPublic
+ *
+ * Public pull request representation.
+ */
+export type PullRequestPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Repo Path
+     */
+    repo_path: string;
+    /**
+     * Number
+     */
+    number: number;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Body
+     */
+    body?: string | null;
+    /**
+     * State
+     */
+    state: string;
+    /**
+     * Head Branch
+     */
+    head_branch: string;
+    /**
+     * Base Branch
+     */
+    base_branch: string;
+    /**
+     * Author Email
+     */
+    author_email?: string | null;
+    /**
+     * Merge Base
+     */
+    merge_base?: string | null;
+    /**
+     * Merged Commit Id
+     */
+    merged_commit_id?: string | null;
+    /**
+     * Has Merged
+     */
+    has_merged?: boolean;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+};
+
+/**
+ * PullRequestUpdate
+ *
+ * Request to update a pull request.
+ */
+export type PullRequestUpdate = {
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Body
+     */
+    body?: string | null;
+    /**
+     * State
+     */
+    state?: string | null;
+};
+
+/**
+ * PullRequestsListPublic
+ *
+ * List of pull requests.
+ */
+export type PullRequestsListPublic = {
+    /**
+     * Data
+     */
+    data: Array<PullRequestPublic>;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Open Count
+     */
+    open_count: number;
+    /**
+     * Closed Count
+     */
+    closed_count: number;
+};
+
+/**
+ * ReadmeContent
+ *
+ * README file content.
+ */
+export type ReadmeContent = {
+    /**
+     * Filename
+     */
+    filename: string;
+    /**
+     * Content
+     */
+    content: string;
+    /**
+     * Html
+     */
+    html: string;
+};
+
+/**
  * RepositoriesPublic
  *
  * List of repositories.
@@ -158,6 +454,35 @@ export type Repository = {
      * Path
      */
     path: string;
+};
+
+/**
+ * RepositoryInfo
+ *
+ * Extended repository information with metadata.
+ */
+export type RepositoryInfo = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Default Branch
+     */
+    default_branch: string;
+    /**
+     * Branch Count
+     */
+    branch_count: number;
+    /**
+     * Tag Count
+     */
+    tag_count: number;
+    last_commit?: CommitInfo | null;
 };
 
 /**
@@ -1110,6 +1435,382 @@ export type repositoriesGetBlobResponses = {
 };
 
 export type repositoriesGetBlobResponse = repositoriesGetBlobResponses[keyof repositoriesGetBlobResponses];
+
+export type repositoriesGetRepositoryInfoData = {
+    body?: never;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+    };
+    query?: {
+        /**
+         * Ref
+         */
+        ref?: string;
+    };
+    url: '/api/v1/repositories/{path}/info';
+};
+
+export type repositoriesGetRepositoryInfoErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetRepositoryInfoError = repositoriesGetRepositoryInfoErrors[keyof repositoriesGetRepositoryInfoErrors];
+
+export type repositoriesGetRepositoryInfoResponses = {
+    /**
+     * Successful Response
+     */
+    200: RepositoryInfo;
+};
+
+export type repositoriesGetRepositoryInfoResponse = repositoriesGetRepositoryInfoResponses[keyof repositoriesGetRepositoryInfoResponses];
+
+export type repositoriesGetReadmeData = {
+    body?: never;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+    };
+    query?: {
+        /**
+         * Ref
+         */
+        ref?: string;
+        /**
+         * Tree Path
+         */
+        tree_path?: string;
+    };
+    url: '/api/v1/repositories/{path}/readme';
+};
+
+export type repositoriesGetReadmeErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetReadmeError = repositoriesGetReadmeErrors[keyof repositoriesGetReadmeErrors];
+
+export type repositoriesGetReadmeResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReadmeContent;
+};
+
+export type repositoriesGetReadmeResponse = repositoriesGetReadmeResponses[keyof repositoriesGetReadmeResponses];
+
+export type repositoriesListBranchesData = {
+    body?: never;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{path}/branches';
+};
+
+export type repositoriesListBranchesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesListBranchesError = repositoriesListBranchesErrors[keyof repositoriesListBranchesErrors];
+
+export type repositoriesListBranchesResponses = {
+    /**
+     * Response Repositories-List Branches
+     *
+     * Successful Response
+     */
+    200: Array<BranchInfo>;
+};
+
+export type repositoriesListBranchesResponse = repositoriesListBranchesResponses[keyof repositoriesListBranchesResponses];
+
+export type repositoriesListIssuesData = {
+    body?: never;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+    };
+    query?: {
+        /**
+         * State
+         *
+         * Filter by state: open, closed, or all
+         */
+        state?: string;
+    };
+    url: '/api/v1/repositories/{path}/issues';
+};
+
+export type repositoriesListIssuesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesListIssuesError = repositoriesListIssuesErrors[keyof repositoriesListIssuesErrors];
+
+export type repositoriesListIssuesResponses = {
+    /**
+     * Successful Response
+     */
+    200: IssuesListPublic;
+};
+
+export type repositoriesListIssuesResponse = repositoriesListIssuesResponses[keyof repositoriesListIssuesResponses];
+
+export type repositoriesCreateIssueData = {
+    body: IssueCreate;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{path}/issues';
+};
+
+export type repositoriesCreateIssueErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesCreateIssueError = repositoriesCreateIssueErrors[keyof repositoriesCreateIssueErrors];
+
+export type repositoriesCreateIssueResponses = {
+    /**
+     * Successful Response
+     */
+    201: IssuePublic;
+};
+
+export type repositoriesCreateIssueResponse = repositoriesCreateIssueResponses[keyof repositoriesCreateIssueResponses];
+
+export type repositoriesGetIssueData = {
+    body?: never;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{path}/issues/{number}';
+};
+
+export type repositoriesGetIssueErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetIssueError = repositoriesGetIssueErrors[keyof repositoriesGetIssueErrors];
+
+export type repositoriesGetIssueResponses = {
+    /**
+     * Successful Response
+     */
+    200: IssuePublic;
+};
+
+export type repositoriesGetIssueResponse = repositoriesGetIssueResponses[keyof repositoriesGetIssueResponses];
+
+export type repositoriesUpdateIssueData = {
+    body: IssueUpdate;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{path}/issues/{number}';
+};
+
+export type repositoriesUpdateIssueErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesUpdateIssueError = repositoriesUpdateIssueErrors[keyof repositoriesUpdateIssueErrors];
+
+export type repositoriesUpdateIssueResponses = {
+    /**
+     * Successful Response
+     */
+    200: IssuePublic;
+};
+
+export type repositoriesUpdateIssueResponse = repositoriesUpdateIssueResponses[keyof repositoriesUpdateIssueResponses];
+
+export type repositoriesListPullRequestsData = {
+    body?: never;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+    };
+    query?: {
+        /**
+         * State
+         *
+         * Filter by state: open, closed, merged, or all
+         */
+        state?: string;
+    };
+    url: '/api/v1/repositories/{path}/pulls';
+};
+
+export type repositoriesListPullRequestsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesListPullRequestsError = repositoriesListPullRequestsErrors[keyof repositoriesListPullRequestsErrors];
+
+export type repositoriesListPullRequestsResponses = {
+    /**
+     * Successful Response
+     */
+    200: PullRequestsListPublic;
+};
+
+export type repositoriesListPullRequestsResponse = repositoriesListPullRequestsResponses[keyof repositoriesListPullRequestsResponses];
+
+export type repositoriesCreatePullRequestData = {
+    body: PullRequestCreate;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{path}/pulls';
+};
+
+export type repositoriesCreatePullRequestErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesCreatePullRequestError = repositoriesCreatePullRequestErrors[keyof repositoriesCreatePullRequestErrors];
+
+export type repositoriesCreatePullRequestResponses = {
+    /**
+     * Successful Response
+     */
+    201: PullRequestPublic;
+};
+
+export type repositoriesCreatePullRequestResponse = repositoriesCreatePullRequestResponses[keyof repositoriesCreatePullRequestResponses];
+
+export type repositoriesGetPullRequestData = {
+    body?: never;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{path}/pulls/{number}';
+};
+
+export type repositoriesGetPullRequestErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetPullRequestError = repositoriesGetPullRequestErrors[keyof repositoriesGetPullRequestErrors];
+
+export type repositoriesGetPullRequestResponses = {
+    /**
+     * Successful Response
+     */
+    200: PullRequestPublic;
+};
+
+export type repositoriesGetPullRequestResponse = repositoriesGetPullRequestResponses[keyof repositoriesGetPullRequestResponses];
+
+export type repositoriesUpdatePullRequestData = {
+    body: PullRequestUpdate;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{path}/pulls/{number}';
+};
+
+export type repositoriesUpdatePullRequestErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesUpdatePullRequestError = repositoriesUpdatePullRequestErrors[keyof repositoriesUpdatePullRequestErrors];
+
+export type repositoriesUpdatePullRequestResponses = {
+    /**
+     * Successful Response
+     */
+    200: PullRequestPublic;
+};
+
+export type repositoriesUpdatePullRequestResponse = repositoriesUpdatePullRequestResponses[keyof repositoriesUpdatePullRequestResponses];
 
 export type repositoriesGetRepositoryData = {
     body?: never;

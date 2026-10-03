@@ -2,433 +2,183 @@
 
 from __future__ import annotations
 
-import logging
-import stat
-from typing import TYPE_CHECKING, Protocol
+from typing import Annotated
 
-from dulwich.objects import Blob, Commit, ObjectID, Tree
-from dulwich.refs import SYMREF, Ref
-from fastapi import APIRouter, HTTPException
-from pygments import highlight
-from pygments.formatters import HtmlFormatter
-from pygments.lexers import TextLexer, get_lexer_for_filename
-from pygments.util import ClassNotFound
+from fastapi import APIRouter, Query
 
-from app.api.dependencies import BackendDep, BlobStorageClientDep, RedisClientDep
+from app.api.dependencies import (
+    CurrentUser,
+    IssueServiceDep,
+    PullRequestServiceDep,
+    RepositoryServiceDep,
+)
 from app.schemas.repositories import (
+    BranchInfo,
     CreateRepositoryRequest,
     FileContent,
+    IssueCreate,
+    IssuePublic,
+    IssuesListPublic,
+    IssueUpdate,
+    PullRequestCreate,
+    PullRequestPublic,
+    PullRequestsListPublic,
+    PullRequestUpdate,
+    ReadmeContent,
     RepositoriesPublic,
     Repository,
-    TreeEntry,
+    RepositoryInfo,
     TreeListing,
 )
-from app.services.blob_backend import load_repository_from_storage, save_repository_changes_to_storage
-
-if TYPE_CHECKING:
-    from app.clients.redis import AbstractRedisClient
-    from app.services.blob_repository import BlobRepository
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/repositories", tags=["repositories"])
 
 
-class StyleDefsProvider(Protocol):
-    """Protocol for formatters that expose get_style_defs()."""
-
-    def get_style_defs(self, arg: str = "") -> str:
-        """Return the CSS style definitions for the given scope."""
-
-
-def _get_style_defs(formatter: StyleDefsProvider, arg: str) -> str:
-    """Return CSS style definitions for a formatter.
-
-    Args:
-        formatter: Pygments formatter.
-        arg: CSS scope selector.
-
-    Returns:
-        The CSS definitions as a string.
-    """
-    return formatter.get_style_defs(arg)
-
-
-async def _load_repo(
-    backend: BackendDep,
-    blob_client: BlobStorageClientDep,
-    redis_client: AbstractRedisClient,
-    repo_path: str,
-) -> BlobRepository:
-    """Load a repository from storage.
-
-    Args:
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
-        redis_client: Redis client.
-        repo_path: Repository path (e.g., "user/repo.git").
-
-    Returns:
-        Loaded BlobRepository instance.
-
-    Raises:
-        HTTPException: If repository not found.
-    """
-    normalized = repo_path.strip("/")
-    if not normalized.endswith(".git"):
-        normalized = normalized + ".git"
-
-    logger.debug("Loading repository: raw=%s, normalized=%s", repo_path, normalized)
-
-    if backend.repository_exists(normalized):
-        logger.debug("Repository found in cache: %s", normalized)
-        return backend.open_repository(normalized)
-
-    packs, refs = await load_repository_from_storage(blob_client, redis_client, normalized)
-    logger.debug("Loaded from storage: %s (packs=%d, refs=%d)", normalized, len(packs), len(refs))
-    if not packs and not refs:
-        raise HTTPException(status_code=404, detail="Repository not found")
-    return backend.load_repository_from_data(normalized, packs, refs)
-
-
-def _resolve_ref(repo: BlobRepository, ref_name: str) -> bytes:
-    """Resolve a ref name to a commit SHA.
-
-    Args:
-        repo: The repository.
-        ref_name: Ref name (e.g., "main", "refs/heads/main").
-
-    Returns:
-        The commit SHA as bytes.
-
-    Raises:
-        HTTPException: If ref not found.
-    """
-    refs = repo.refs
-    candidates: tuple[str, ...] = (ref_name, f"refs/heads/{ref_name}", f"refs/tags/{ref_name}")
-    if ref_name in ("", "HEAD"):
-        candidates = (*candidates, "HEAD")
-
-    for candidate in candidates:
-        sha = refs.read_loose_ref(Ref(candidate.encode()))
-        if sha is not None and sha.startswith(SYMREF):
-            sha = refs.read_loose_ref(Ref(sha[len(SYMREF) :]))
-        if sha is not None:
-            return sha
-
-    raise HTTPException(status_code=404, detail=f"Ref '{ref_name}' not found")
-
-
-def _get_tree_at_path(repo: BlobRepository, commit_sha: bytes, path: str) -> Tree:
-    """Walk a commit's tree to a specific subdirectory.
-
-    Args:
-        repo: The repository.
-        commit_sha: The commit SHA.
-        path: Path within the repository (e.g., "src/app").
-
-    Returns:
-        The Tree object at the given path.
-
-    Raises:
-        HTTPException: If path not found or not a tree.
-    """
-    store = repo.object_store
-    commit = store[ObjectID(commit_sha)]
-    if not isinstance(commit, Commit):
-        raise HTTPException(status_code=404, detail="Not a valid commit")
-
-    tree = store[commit.tree]
-    if not isinstance(tree, Tree):
-        raise HTTPException(status_code=404, detail="Invalid tree")
-
-    if not path or path == "/":
-        return tree
-
-    parts = [p for p in path.split("/") if p]
-    current_tree = tree
-
-    for part in parts:
-        found = False
-        for entry in current_tree.items():
-            if entry.path.decode() == part:
-                obj = store[entry.sha]
-                if isinstance(obj, Tree):
-                    current_tree = obj
-                    found = True
-                    break
-                raise HTTPException(status_code=400, detail=f"'{part}' is not a directory")
-        if not found:
-            raise HTTPException(status_code=404, detail=f"Path '{path}' not found")
-
-    return current_tree
-
-
-def _get_blob_at_path(repo: BlobRepository, commit_sha: bytes, path: str) -> tuple[Blob, str]:
-    """Get a file blob at a specific path.
-
-    Args:
-        repo: The repository.
-        commit_sha: The commit SHA.
-        path: File path within the repository.
-
-    Returns:
-        Tuple of (Blob object, filename).
-
-    Raises:
-        HTTPException: If file not found or not a blob.
-    """
-    store = repo.object_store
-    commit = store[ObjectID(commit_sha)]
-    if not isinstance(commit, Commit):
-        raise HTTPException(status_code=404, detail="Not a valid commit")
-
-    tree = store[commit.tree]
-    if not isinstance(tree, Tree):
-        raise HTTPException(status_code=404, detail="Invalid tree")
-
-    parts = [p for p in path.split("/") if p]
-    if not parts:
-        raise HTTPException(status_code=400, detail="Path cannot be empty")
-
-    current_tree = tree
-    for part in parts[:-1]:
-        found = False
-        for entry in current_tree.items():
-            if entry.path.decode() == part:
-                obj = store[entry.sha]
-                if isinstance(obj, Tree):
-                    current_tree = obj
-                    found = True
-                    break
-                raise HTTPException(status_code=400, detail=f"'{part}' is not a directory")
-        if not found:
-            raise HTTPException(status_code=404, detail=f"Path '{path}' not found")
-
-    filename = parts[-1]
-    for entry in current_tree.items():
-        if entry.path.decode() == filename:
-            obj = store[entry.sha]
-            if isinstance(obj, Blob):
-                return obj, filename
-            raise HTTPException(status_code=400, detail=f"'{filename}' is not a file")
-
-    raise HTTPException(status_code=404, detail=f"File '{path}' not found")
-
-
-async def get_repositories_from_redis(redis_client: AbstractRedisClient) -> list[Repository]:
-    """Get list of repositories from Redis storage.
-
-    Scans the Redis keys to find unique repository paths.
-
-    Args:
-        redis_client: Redis client.
-
-    Returns:
-        List of Repository objects.
-    """
-    # Keys are in format: repo_path/refs/ref_name
-    repositories: dict[str, Repository] = {}
-
-    keys = await redis_client.scan_keys("*/refs/*")
-
-    for key_name in keys:
-        if "/refs/" in key_name:
-            repo_path = key_name.split("/refs/")[0]
-            if repo_path not in repositories:
-                name = repo_path.rstrip("/").split("/")[-1]
-                if name.endswith(".git"):
-                    name = name[:-4]
-                repositories[repo_path] = Repository(name=name, path=repo_path)
-
-    return list(repositories.values())
-
-
 @router.get("/")
-async def list_repositories(redis_client: RedisClientDep) -> RepositoriesPublic:
-    """List all repositories.
-
-    Returns a list of all Git repositories stored in the system.
-    """
-    repositories = await get_repositories_from_redis(redis_client)
-    return RepositoriesPublic(data=repositories, count=len(repositories))
+async def list_repositories(repository_service: RepositoryServiceDep) -> RepositoriesPublic:
+    """List all repositories."""
+    return await repository_service.list_repositories()
 
 
 @router.post("/", status_code=201)
 async def create_repository(
     body: CreateRepositoryRequest,
-    backend: BackendDep,
-    blob_client: BlobStorageClientDep,
-    redis_client: RedisClientDep,
+    repository_service: RepositoryServiceDep,
 ) -> Repository:
-    """Create a new empty Git repository.
-
-    Args:
-        body: Repository creation request.
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
-        redis_client: Redis client dependency.
-
-    Returns:
-        The created repository.
-    """
-    repo_path = f"{body.owner}/{body.name}.git"
-
-    backend.create_repository(repo_path)
-
-    # Save initial refs to storage (HEAD -> refs/heads/main)
-    changes = backend.get_repository_changes(repo_path)
-    if any(changes.values()):
-        await save_repository_changes_to_storage(blob_client, redis_client, repo_path, changes)
-        backend.clear_repository_changes(repo_path)
-
-    return Repository(name=body.name, path=repo_path)
+    """Create a new empty Git repository."""
+    return await repository_service.create_repository(body.owner, body.name)
 
 
 @router.get("/{path:path}/tree")
 async def get_tree(
     path: str,
+    repository_service: RepositoryServiceDep,
     ref: str = "main",
     tree_path: str = "",
-    *,
-    backend: BackendDep,
-    blob_client: BlobStorageClientDep,
-    redis_client: RedisClientDep,
 ) -> TreeListing:
-    """Get directory listing for a repository path.
-
-    Args:
-        path: Repository path (e.g., "user/repo" or "user/repo.git").
-        ref: Git ref to browse (default: "main").
-        tree_path: Subdirectory path within the repo.
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
-        redis_client: Redis client dependency.
-
-    Returns:
-        TreeListing with directory entries.
-    """
-    repo = await _load_repo(backend, blob_client, redis_client, path)
-    commit_sha = _resolve_ref(repo, ref)
-    tree = _get_tree_at_path(repo, commit_sha, tree_path)
-
-    entries: list[TreeEntry] = []
-    store = repo.object_store
-
-    for item in sorted(tree.items(), key=lambda e: (not stat.S_ISDIR(e.mode), e.path)):
-        name = item.path.decode()
-        entry_path = f"{tree_path}/{name}".lstrip("/") if tree_path else name
-        is_dir = stat.S_ISDIR(item.mode)
-
-        size = None
-        if not is_dir:
-            obj = store[item.sha]
-            if isinstance(obj, Blob):
-                size = len(obj.data)
-
-        entries.append(
-            TreeEntry(
-                name=name,
-                path=entry_path,
-                type="tree" if is_dir else "blob",
-                size=size,
-            )
-        )
-
-    return TreeListing(
-        entries=entries,
-        repo_path=path,
-        tree_path=tree_path,
-        ref=ref,
-    )
+    """Get directory listing for a repository path."""
+    return await repository_service.get_tree(path, ref, tree_path)
 
 
 @router.get("/{path:path}/blob")
 async def get_blob(
     path: str,
+    repository_service: RepositoryServiceDep,
     ref: str = "main",
     file_path: str = "",
-    *,
-    backend: BackendDep,
-    blob_client: BlobStorageClientDep,
-    redis_client: RedisClientDep,
 ) -> FileContent:
-    """Get file content with syntax highlighting.
+    """Get file content with syntax highlighting."""
+    return await repository_service.get_blob(path, ref, file_path)
 
-    Args:
-        path: Repository path (e.g., "user/repo" or "user/repo.git").
-        ref: Git ref (default: "main").
-        file_path: File path within the repository.
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
-        redis_client: Redis client dependency.
 
-    Returns:
-        FileContent with highlighted HTML and CSS.
-    """
-    if not file_path:
-        raise HTTPException(status_code=400, detail="file_path is required")
+@router.get("/{path:path}/info")
+async def get_repository_info(
+    path: str,
+    repository_service: RepositoryServiceDep,
+    ref: str = "main",
+) -> RepositoryInfo:
+    """Get extended repository information."""
+    return await repository_service.get_info(path, ref)
 
-    repo = await _load_repo(backend, blob_client, redis_client, path)
-    commit_sha = _resolve_ref(repo, ref)
-    blob, filename = _get_blob_at_path(repo, commit_sha, file_path)
 
-    raw_data = blob.data
-    try:
-        content = raw_data.decode("utf-8")
-    except UnicodeDecodeError:
-        content = "(binary file)"
+@router.get("/{path:path}/readme")
+async def get_readme(
+    path: str,
+    repository_service: RepositoryServiceDep,
+    ref: str = "main",
+    tree_path: str = "",
+) -> ReadmeContent:
+    """Get README content from a repository directory."""
+    return await repository_service.get_readme(path, ref, tree_path)
 
-    try:
-        lexer = get_lexer_for_filename(filename)
-    except ClassNotFound:
-        lexer = TextLexer()
 
-    formatter = HtmlFormatter(
-        style="default",
-        cssclass="highlight",
-        linenos="table",
-        lineanchors="L",
-        anchorlinenos=True,
-        wrapcode=True,
-    )
+@router.get("/{path:path}/branches")
+async def list_branches(path: str, repository_service: RepositoryServiceDep) -> list[BranchInfo]:
+    """List all branches in a repository."""
+    return await repository_service.list_branches(path)
 
-    # Create dark mode formatter for CSS only (same HTML, different colors)
-    dark_formatter = HtmlFormatter(
-        style="github-dark",
-        cssclass="highlight",
-    )
 
-    highlighted_html = highlight(content, lexer, formatter)
-    css = _get_style_defs(formatter, ".highlight")
+@router.get("/{path:path}/issues")
+async def list_issues(
+    path: str,
+    issue_service: IssueServiceDep,
+    state: Annotated[str, Query(description="Filter by state: open, closed, or all")] = "all",
+) -> IssuesListPublic:
+    """List issues for a repository."""
+    return issue_service.list_issues(path, state)
 
-    # Scope all dark CSS rules under .dark to prevent them from leaking into
-    # light mode. get_style_defs() only prefixes .highlight rules, but Pygments
-    # also emits global rules (td.linenos, span.linenos, pre) that need scoping.
-    raw_dark_css = _get_style_defs(dark_formatter, ".highlight")
-    css_dark = "\n".join(
-        f".dark {line}" if line and not line.startswith(".dark") else line for line in raw_dark_css.split("\n")
-    )
-    line_count = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
 
-    return FileContent(
-        name=filename,
-        path=file_path,
-        size=len(raw_data),
-        content=content,
-        highlighted_html=highlighted_html,
-        css=css,
-        css_dark=css_dark,
-        language=lexer.name,
-        line_count=line_count,
-    )
+@router.post("/{path:path}/issues", status_code=201)
+async def create_issue(
+    path: str,
+    body: IssueCreate,
+    issue_service: IssueServiceDep,
+    current_user: CurrentUser,
+) -> IssuePublic:
+    """Create a new issue."""
+    return issue_service.create_issue(path, body, current_user)
+
+
+@router.get("/{path:path}/issues/{number}")
+async def get_issue(path: str, number: int, issue_service: IssueServiceDep) -> IssuePublic:
+    """Get a single issue by number."""
+    return issue_service.get_issue(path, number)
+
+
+@router.patch("/{path:path}/issues/{number}")
+async def update_issue(
+    path: str,
+    number: int,
+    body: IssueUpdate,
+    issue_service: IssueServiceDep,
+) -> IssuePublic:
+    """Update an issue."""
+    return issue_service.update_issue(path, number, body)
+
+
+@router.get("/{path:path}/pulls")
+async def list_pull_requests(
+    path: str,
+    pull_request_service: PullRequestServiceDep,
+    state: Annotated[str, Query(description="Filter by state: open, closed, merged, or all")] = "all",
+) -> PullRequestsListPublic:
+    """List pull requests for a repository."""
+    return pull_request_service.list_pull_requests(path, state)
+
+
+@router.post("/{path:path}/pulls", status_code=201)
+async def create_pull_request(
+    path: str,
+    body: PullRequestCreate,
+    pull_request_service: PullRequestServiceDep,
+    current_user: CurrentUser,
+) -> PullRequestPublic:
+    """Create a new pull request."""
+    return pull_request_service.create_pull_request(path, body, current_user)
+
+
+@router.get("/{path:path}/pulls/{number}")
+async def get_pull_request(
+    path: str,
+    number: int,
+    pull_request_service: PullRequestServiceDep,
+) -> PullRequestPublic:
+    """Get a single pull request by number."""
+    return pull_request_service.get_pull_request(path, number)
+
+
+@router.patch("/{path:path}/pulls/{number}")
+async def update_pull_request(
+    path: str,
+    number: int,
+    body: PullRequestUpdate,
+    pull_request_service: PullRequestServiceDep,
+) -> PullRequestPublic:
+    """Update a pull request."""
+    return pull_request_service.update_pull_request(path, number, body)
 
 
 @router.get("/{path:path}")
-async def get_repository(path: str, redis_client: RedisClientDep) -> Repository:
+async def get_repository(path: str, repository_service: RepositoryServiceDep) -> Repository:
     """Get a specific repository by path."""
-    repositories = await get_repositories_from_redis(redis_client)
-    for repo in repositories:
-        if repo.path in (path, f"{path}.git"):
-            return repo
-    raise HTTPException(status_code=404, detail="Repository not found")
+    return await repository_service.get_repository(path)

@@ -17,13 +17,19 @@ from sqlalchemy.orm import Session
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
 from app.clients.database import get_db_session
 from app.clients.email import EmailClient, SMTPClient
+from app.clients.issues import IssueStore, SQLIssueStore
+from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
 from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClient
-from app.clients.users import SQLUserRepository, UserRepository
+from app.clients.repositories import RepositoryStore, SQLRepositoryStore
+from app.clients.users import SQLUserStore, UserStore
 from app.config import settings
 from app.entities.users import User
 from app.schemas.token import TokenPayload
 from app.services.blob_backend import BlobBackend
 from app.services.crud import CrudService
+from app.services.issues import IssueService
+from app.services.pull_requests import PullRequestService
+from app.services.repositories import RepositoryService
 from app.utils import security
 
 if TYPE_CHECKING:
@@ -48,26 +54,41 @@ SessionDep = Annotated[Session, Depends(get_db)]
 TokenDep = Annotated[str, Depends(reusable_oauth2)]
 
 
-def get_user_repository(session: SessionDep) -> UserRepository:
-    """Get user repository dependency.
+def get_user_store(session: SessionDep) -> UserStore:
+    """Get user store dependency.
 
     Args:
         session: SQLAlchemy session.
 
     Returns:
-        User repository instance.
+        User store instance.
     """
-    return SQLUserRepository(session)
+    return SQLUserStore(session)
 
 
-UserRepositoryDep = Annotated[UserRepository, Depends(get_user_repository)]
+UserStoreDep = Annotated[UserStore, Depends(get_user_store)]
 
 
-def get_current_user(user_repository: UserRepositoryDep, token: TokenDep) -> User:
+def get_repository_store(session: SessionDep) -> RepositoryStore:
+    """Get repository store dependency.
+
+    Args:
+        session: SQLAlchemy session.
+
+    Returns:
+        Repository store instance.
+    """
+    return SQLRepositoryStore(session)
+
+
+RepositoryStoreDep = Annotated[RepositoryStore, Depends(get_repository_store)]
+
+
+def get_current_user(user_store: UserStoreDep, token: TokenDep) -> User:
     """Get the current authenticated user.
 
     Args:
-        user_repository: User repository.
+        user_store: User store.
         token: JWT token from request.
 
     Returns:
@@ -88,7 +109,7 @@ def get_current_user(user_repository: UserRepositoryDep, token: TokenDep) -> Use
     if not token_data.sub:
         logger.error("Token has no sub claim")
         raise HTTPException(status_code=403, detail="Could not validate credentials")
-    user = user_repository.get(token_data.sub)
+    user = user_store.get(token_data.sub)
     if not user:
         logger.error("User not found for id: %s", token_data.sub)
         raise HTTPException(status_code=404, detail="User not found")
@@ -117,16 +138,16 @@ def get_current_active_superuser(current_user: CurrentUser) -> User:
     return current_user
 
 
-def get_crud_service(user_repository: UserRepositoryDep) -> CrudService:
+def get_crud_service(user_store: UserStoreDep) -> CrudService:
     """Get CRUD service dependency.
 
     Args:
-        user_repository: User repository.
+        user_store: User store.
 
     Returns:
         CRUD service instance.
     """
-    return CrudService(user_repository)
+    return CrudService(user_store)
 
 
 CrudServiceDep = Annotated[CrudService, Depends(get_crud_service)]
@@ -207,3 +228,89 @@ def get_backend() -> BlobBackend:
 
 
 BackendDep = Annotated[BlobBackend, Depends(get_backend)]
+
+
+def get_repository_service(
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+    redis_client: RedisClientDep,
+) -> RepositoryService:
+    """Get the repository service dependency.
+
+    Args:
+        backend: Git backend dependency.
+        blob_client: Blob storage client dependency.
+        redis_client: Redis client dependency.
+
+    Returns:
+        Repository service instance.
+    """
+    return RepositoryService(backend, blob_client, redis_client)
+
+
+RepositoryServiceDep = Annotated[RepositoryService, Depends(get_repository_service)]
+
+
+def get_issue_store(session: SessionDep) -> IssueStore:
+    """Get the issue store dependency.
+
+    Args:
+        session: SQLAlchemy session.
+
+    Returns:
+        Issue store instance.
+    """
+    return SQLIssueStore(session)
+
+
+IssueStoreDep = Annotated[IssueStore, Depends(get_issue_store)]
+
+
+def get_pull_request_store(session: SessionDep) -> PullRequestStore:
+    """Get the pull request store dependency.
+
+    Args:
+        session: SQLAlchemy session.
+
+    Returns:
+        Pull request store instance.
+    """
+    return SQLPullRequestStore(session)
+
+
+PullRequestStoreDep = Annotated[PullRequestStore, Depends(get_pull_request_store)]
+
+
+def get_issue_service(issue_store: IssueStoreDep, repository_store: RepositoryStoreDep) -> IssueService:
+    """Get the issue service dependency.
+
+    Args:
+        issue_store: Issue store dependency.
+        repository_store: Repository store dependency.
+
+    Returns:
+        Issue service instance.
+    """
+    return IssueService(issue_store, repository_store)
+
+
+IssueServiceDep = Annotated[IssueService, Depends(get_issue_service)]
+
+
+def get_pull_request_service(
+    pull_request_store: PullRequestStoreDep,
+    repository_store: RepositoryStoreDep,
+) -> PullRequestService:
+    """Get the pull request service dependency.
+
+    Args:
+        pull_request_store: Pull request store dependency.
+        repository_store: Repository store dependency.
+
+    Returns:
+        Pull request service instance.
+    """
+    return PullRequestService(pull_request_store, repository_store)
+
+
+PullRequestServiceDep = Annotated[PullRequestService, Depends(get_pull_request_service)]

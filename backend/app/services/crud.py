@@ -11,7 +11,7 @@ from app.utils.security import get_password_hash, verify_password
 if TYPE_CHECKING:
     import uuid
 
-    from app.clients.users import UserRepository
+    from app.clients.users import UserStore
 
 # Dummy hash to use for timing attack prevention when user is not found
 # This is an Argon2 hash of a random password, used to ensure constant-time comparison
@@ -21,13 +21,13 @@ DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$MjQyZWE1MzBjYjJlZTI0Yw$YTU4NGM5ZTZm
 class CrudService:
     """Service for CRUD operations on users."""
 
-    def __init__(self, user_repository: UserRepository) -> None:
+    def __init__(self, user_store: UserStore) -> None:
         """Initialize the CRUD service.
 
         Args:
-            user_repository: Repository for user database operations.
+            user_store: Store for user database operations.
         """
-        self.user_repository = user_repository
+        self.user_store = user_store
 
     def create_user(self, user_create: UserCreate) -> UserPublic:
         """Create a new user.
@@ -45,7 +45,7 @@ class CrudService:
             is_active=user_create.is_active,
             hashed_password=get_password_hash(user_create.password),
         )
-        self.user_repository.add(user)
+        self.user_store.add(user)
         return UserPublic.model_validate(user)
 
     def get_user_by_id(self, user_id: uuid.UUID) -> UserPublic | None:
@@ -57,7 +57,7 @@ class CrudService:
         Returns:
             The user's public data or None if not found.
         """
-        user = self.user_repository.get(user_id)
+        user = self.user_store.get(user_id)
         if not user:
             return None
         return UserPublic.model_validate(user)
@@ -71,7 +71,7 @@ class CrudService:
         Returns:
             The user's public data or None if not found.
         """
-        user = self.user_repository.get_by_email(email)
+        user = self.user_store.get_by_email(email)
         if not user:
             return None
         return UserPublic.model_validate(user)
@@ -91,7 +91,7 @@ class CrudService:
             password = user_data.pop("password")
             hashed_password = get_password_hash(password)
             user_data["hashed_password"] = hashed_password
-        self.user_repository.update(db_user, user_data)
+        self.user_store.update(db_user, user_data)
         return UserPublic.model_validate(db_user)
 
     def authenticate(self, email: str, password: str) -> User | None:
@@ -104,7 +104,7 @@ class CrudService:
         Returns:
             The user entity if authentication succeeds, None otherwise.
         """
-        db_user = self.user_repository.get_by_email(email)
+        db_user = self.user_store.get_by_email(email)
         if not db_user:
             # Prevent timing attacks by running password verification even when user doesn't exist
             # This ensures the response time is similar whether or not the email exists
@@ -115,5 +115,5 @@ class CrudService:
             return None
         if updated_password_hash:
             db_user.hashed_password = updated_password_hash
-            self.user_repository.update(db_user)
+            self.user_store.update(db_user)
         return db_user

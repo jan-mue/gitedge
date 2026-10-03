@@ -10,7 +10,7 @@ from app.api.dependencies import (
     CrudServiceDep,
     CurrentUser,
     EmailClientDep,
-    UserRepositoryDep,
+    UserStoreDep,
     get_current_active_superuser,
 )
 from app.config import settings
@@ -70,12 +70,12 @@ async def recover_password(email: str, crud_service: CrudServiceDep, email_clien
 
 
 @router.post("/reset-password/", status_code=status.HTTP_204_NO_CONTENT)
-async def reset_password(user_repository: UserRepositoryDep, body: NewPassword) -> None:
+async def reset_password(user_store: UserStoreDep, body: NewPassword) -> None:
     """Reset password."""
     email = verify_password_reset_token(token=body.token)
     if not email:
         raise HTTPException(status_code=400, detail="Invalid token")
-    user = user_repository.get_by_email(email=email)
+    user = user_store.get_by_email(email=email)
     if not user:
         # Don't reveal that the user doesn't exist - use same error as invalid token
         raise HTTPException(status_code=400, detail="Invalid token")
@@ -83,7 +83,7 @@ async def reset_password(user_repository: UserRepositoryDep, body: NewPassword) 
         raise HTTPException(status_code=400, detail="Inactive user")
     hashed_password = get_password_hash(password=body.new_password)
     user.hashed_password = hashed_password
-    user_repository.update(user)
+    user_store.update(user)
 
 
 @router.post(

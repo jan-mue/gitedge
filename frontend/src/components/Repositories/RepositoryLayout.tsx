@@ -1,8 +1,8 @@
-import { Link as RouterLink } from "@tanstack/react-router"
 import type { ReactNode } from "react"
 import { Suspense } from "react"
 
 import PendingItems from "@/components/Pending/PendingItems"
+import RepoHeader from "@/components/Repository/RepoHeader"
 
 interface RepositoryLayoutProps {
   owner: string
@@ -11,25 +11,13 @@ interface RepositoryLayoutProps {
 }
 
 const RepositoryLayout = ({ owner, repo, children }: RepositoryLayoutProps) => (
-  <div className="flex flex-col gap-6">
-    <div>
-      <h1 className="text-2xl font-bold tracking-tight">
-        <RouterLink
-          to="/$owner/$repo"
-          params={{ owner, repo }}
-          className="hover:underline"
-        >
-          {owner !== "_" && (
-            <>
-              {owner}
-              <span className="text-muted-foreground font-normal"> / </span>
-            </>
-          )}
-          {repo}
-        </RouterLink>
-      </h1>
+  <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 flex flex-col">
+    <RepoHeader owner={owner} repo={repo} />
+    <div className="px-6 md:px-8 py-6">
+      <div className="mx-auto max-w-7xl">
+        <Suspense fallback={<PendingItems />}>{children}</Suspense>
+      </div>
     </div>
-    <Suspense fallback={<PendingItems />}>{children}</Suspense>
   </div>
 )
 

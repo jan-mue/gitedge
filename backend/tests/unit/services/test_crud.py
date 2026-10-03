@@ -88,10 +88,10 @@ def test_update_user(crud: CrudService) -> None:
     new_password = random_lower_string()
     user_in_update = UserUpdate(password=new_password, is_superuser=True)
     if user.id is not None:
-        db_user = crud.user_repository.get(user.id)
+        db_user = crud.user_store.get(user.id)
         assert db_user is not None
         crud.update_user(db_user=db_user, user_in=user_in_update)
-    user_2 = crud.user_repository.get(user.id)
+    user_2 = crud.user_store.get(user.id)
     assert user_2
     assert user.email == user_2.email
     verified, _ = verify_password(new_password, user_2.hashed_password)

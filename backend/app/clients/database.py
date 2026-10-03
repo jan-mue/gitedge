@@ -40,8 +40,8 @@ def get_db_session() -> Session:
     return Session(autocommit=False, autoflush=False, bind=engine)
 
 
-class CrudRepository[T: Base](ABC):
-    """Abstract base class for CRUD repository operations."""
+class CrudStore[T: Base](ABC):
+    """Abstract base class for CRUD store operations."""
 
     @abstractmethod
     def get(self, primary_key: uuid.UUID) -> T | None:
@@ -72,15 +72,15 @@ class CrudRepository[T: Base](ABC):
         """Refresh an entity from the database."""
 
 
-class SQLRepository[T: Base](CrudRepository[T]):
-    """SQLAlchemy implementation of CRUD repository."""
+class SQLStore[T: Base](CrudStore[T]):
+    """SQLAlchemy implementation of a CRUD store."""
 
     def __init__(self, db: Session, entity_class: type[T]) -> None:
-        """Initialize the repository.
+        """Initialize the store.
 
         Args:
             db: SQLAlchemy session.
-            entity_class: The entity class this repository manages.
+            entity_class: The entity class this store manages.
         """
         self.db = db
         self.entity_class = entity_class

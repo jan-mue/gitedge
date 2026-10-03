@@ -12,64 +12,15 @@ from typing import TYPE_CHECKING, Any
 from dulwich.web import GunzipFilter, HTTPGitApplication, LimitedInputFilter
 from fastapi import APIRouter, Request, Response
 
-from app.api.dependencies import BackendDep, BlobStorageClientDep, RedisClientDep
-from app.services.blob_backend import BlobBackend, load_repository_from_storage, save_repository_changes_to_storage
+from app.api.dependencies import RepositoryServiceDep
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from types import TracebackType
 
-    from app.clients.blob_storage import BlobStorageClient
-    from app.clients.redis import AbstractRedisClient
+    from app.services.repositories import RepositoryService
 
 router = APIRouter(tags=["git"])
-
-
-async def _ensure_repository_loaded(
-    backend: BlobBackend,
-    blob_client: BlobStorageClient,
-    redis_client: AbstractRedisClient,
-    repo_path: str,
-) -> None:
-    """Ensure a repository is loaded from blob storage and Redis.
-
-    Args:
-        backend: Git backend to load the repository into.
-        blob_client: Blob storage client.
-        redis_client: Redis client.
-        repo_path: Repository path.
-    """
-    if backend.repository_exists(repo_path):
-        return
-
-    packs, refs = await load_repository_from_storage(blob_client, redis_client, repo_path)
-    if packs or refs:
-        backend.load_repository_from_data(repo_path, packs, refs)
-    else:
-        backend.create_repository(repo_path)
-
-
-async def _save_repository_changes(
-    backend: BlobBackend,
-    blob_client: BlobStorageClient,
-    redis_client: AbstractRedisClient,
-    repo_path: str,
-) -> None:
-    """Save repository changes to blob storage and Redis.
-
-    Args:
-        backend: Git backend to read changes from.
-        blob_client: Blob storage client.
-        redis_client: Redis client.
-        repo_path: Repository path.
-    """
-    changes = backend.get_repository_changes(repo_path)
-
-    if not any(changes.values()):
-        return
-
-    await save_repository_changes_to_storage(blob_client, redis_client, repo_path, changes)
-    backend.clear_repository_changes(repo_path)
 
 
 def _create_wsgi_environ(request: Request, body: bytes, path: str) -> dict[str, Any]:
@@ -122,10 +73,7 @@ async def _handle_git_request(
     request: Request,
     repo_path: str,
     service_path: str,
-    *,
-    backend: BlobBackend,
-    blob_client: BlobStorageClient,
-    redis_client: AbstractRedisClient,
+    repository_service: RepositoryService,
 ) -> Response:
     """Handle a Git HTTP request.
 
@@ -133,14 +81,12 @@ async def _handle_git_request(
         request: FastAPI request.
         repo_path: Repository path (e.g., "user/repo.git").
         service_path: Git service path (e.g., "/info/refs").
-        backend: Git backend for the request.
-        blob_client: Blob storage client.
-        redis_client: Redis client.
+        repository_service: Repository service.
 
     Returns:
         FastAPI Response.
     """
-    await _ensure_repository_loaded(backend, blob_client, redis_client, repo_path)
+    await repository_service.ensure_loaded(repo_path)
 
     body = await request.body()
 
@@ -165,13 +111,13 @@ async def _handle_git_request(
 
         return write
 
-    wsgi_app = HTTPGitApplication(backend)
+    wsgi_app = HTTPGitApplication(repository_service.backend)
     wsgi_app_filtered = GunzipFilter(LimitedInputFilter(wsgi_app))
 
     result = wsgi_app_filtered(environ, start_response)
     response_body.extend(result)
 
-    await _save_repository_changes(backend, blob_client, redis_client, repo_path)
+    await repository_service.save_changes(repo_path)
 
     status_code = int(response_status.split(maxsplit=1)[0])
     headers_dict = dict(response_headers)
@@ -191,78 +137,57 @@ async def _handle_git_request(
 async def get_info_refs(
     request: Request,
     repo_path: str,
-    *,
-    backend: BackendDep,
-    blob_client: BlobStorageClientDep,
-    redis_client: RedisClientDep,
+    repository_service: RepositoryServiceDep,
 ) -> Response:
     """Get repository references (used for clone/fetch discovery).
 
     Args:
         request: FastAPI request.
         repo_path: Repository path.
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
-        redis_client: Redis client dependency.
+        repository_service: Repository service.
 
     Returns:
         Response with refs.
     """
-    return await _handle_git_request(
-        request, repo_path, "/info/refs", backend=backend, blob_client=blob_client, redis_client=redis_client
-    )
+    return await _handle_git_request(request, repo_path, "/info/refs", repository_service)
 
 
 @router.get("/{repo_path:path}/HEAD")
 async def get_head(
     request: Request,
     repo_path: str,
-    *,
-    backend: BackendDep,
-    blob_client: BlobStorageClientDep,
-    redis_client: RedisClientDep,
+    repository_service: RepositoryServiceDep,
 ) -> Response:
     """Get repository HEAD.
 
     Args:
         request: FastAPI request.
         repo_path: Repository path.
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
-        redis_client: Redis client dependency.
+        repository_service: Repository service.
 
     Returns:
         Response with HEAD.
     """
-    return await _handle_git_request(
-        request, repo_path, "/HEAD", backend=backend, blob_client=blob_client, redis_client=redis_client
-    )
+    return await _handle_git_request(request, repo_path, "/HEAD", repository_service)
 
 
 @router.get("/{repo_path:path}/objects/info/packs")
 async def get_info_packs(
     request: Request,
     repo_path: str,
-    *,
-    backend: BackendDep,
-    blob_client: BlobStorageClientDep,
-    redis_client: RedisClientDep,
+    repository_service: RepositoryServiceDep,
 ) -> Response:
     """Get pack file info.
 
     Args:
         request: FastAPI request.
         repo_path: Repository path.
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
-        redis_client: Redis client dependency.
+        repository_service: Repository service.
 
     Returns:
         Response with pack info.
     """
-    return await _handle_git_request(
-        request, repo_path, "/objects/info/packs", backend=backend, blob_client=blob_client, redis_client=redis_client
-    )
+    return await _handle_git_request(request, repo_path, "/objects/info/packs", repository_service)
 
 
 @router.get("/{repo_path:path}/objects/{prefix:path}/{suffix}")
@@ -271,10 +196,7 @@ async def get_loose_object(
     repo_path: str,
     prefix: str,
     suffix: str,
-    *,
-    backend: BackendDep,
-    blob_client: BlobStorageClientDep,
-    redis_client: RedisClientDep,
+    repository_service: RepositoryServiceDep,
 ) -> Response:
     """Get a loose object.
 
@@ -283,21 +205,12 @@ async def get_loose_object(
         repo_path: Repository path.
         prefix: Object SHA prefix (2 chars).
         suffix: Object SHA suffix (38 chars).
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
-        redis_client: Redis client dependency.
+        repository_service: Repository service.
 
     Returns:
         Response with object data.
     """
-    return await _handle_git_request(
-        request,
-        repo_path,
-        f"/objects/{prefix}/{suffix}",
-        backend=backend,
-        blob_client=blob_client,
-        redis_client=redis_client,
-    )
+    return await _handle_git_request(request, repo_path, f"/objects/{prefix}/{suffix}", repository_service)
 
 
 @router.get("/{repo_path:path}/objects/pack/{pack_file}")
@@ -305,10 +218,7 @@ async def get_pack_file(
     request: Request,
     repo_path: str,
     pack_file: str,
-    *,
-    backend: BackendDep,
-    blob_client: BlobStorageClientDep,
-    redis_client: RedisClientDep,
+    repository_service: RepositoryServiceDep,
 ) -> Response:
     """Get a pack or index file.
 
@@ -316,70 +226,47 @@ async def get_pack_file(
         request: FastAPI request.
         repo_path: Repository path.
         pack_file: Pack file name.
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
-        redis_client: Redis client dependency.
+        repository_service: Repository service.
 
     Returns:
         Response with pack/index data.
     """
-    return await _handle_git_request(
-        request,
-        repo_path,
-        f"/objects/pack/{pack_file}",
-        backend=backend,
-        blob_client=blob_client,
-        redis_client=redis_client,
-    )
+    return await _handle_git_request(request, repo_path, f"/objects/pack/{pack_file}", repository_service)
 
 
 @router.post("/{repo_path:path}/git-upload-pack")
 async def git_upload_pack(
     request: Request,
     repo_path: str,
-    *,
-    backend: BackendDep,
-    blob_client: BlobStorageClientDep,
-    redis_client: RedisClientDep,
+    repository_service: RepositoryServiceDep,
 ) -> Response:
     """Handle git-upload-pack (clone/fetch).
 
     Args:
         request: FastAPI request.
         repo_path: Repository path.
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
-        redis_client: Redis client dependency.
+        repository_service: Repository service.
 
     Returns:
         Response with pack data.
     """
-    return await _handle_git_request(
-        request, repo_path, "/git-upload-pack", backend=backend, blob_client=blob_client, redis_client=redis_client
-    )
+    return await _handle_git_request(request, repo_path, "/git-upload-pack", repository_service)
 
 
 @router.post("/{repo_path:path}/git-receive-pack")
 async def git_receive_pack(
     request: Request,
     repo_path: str,
-    *,
-    backend: BackendDep,
-    blob_client: BlobStorageClientDep,
-    redis_client: RedisClientDep,
+    repository_service: RepositoryServiceDep,
 ) -> Response:
     """Handle git-receive-pack (push).
 
     Args:
         request: FastAPI request.
         repo_path: Repository path.
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
-        redis_client: Redis client dependency.
+        repository_service: Repository service.
 
     Returns:
         Response with push result.
     """
-    return await _handle_git_request(
-        request, repo_path, "/git-receive-pack", backend=backend, blob_client=blob_client, redis_client=redis_client
-    )
+    return await _handle_git_request(request, repo_path, "/git-receive-pack", repository_service)

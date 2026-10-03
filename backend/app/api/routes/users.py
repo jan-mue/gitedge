@@ -9,7 +9,7 @@ from app.api.dependencies import (
     CurrentUser,
     EmailClientDep,
     SessionDep,
-    UserRepositoryDep,
+    UserStoreDep,
     get_current_active_superuser,
 )
 from app.config import settings
@@ -29,10 +29,10 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/", dependencies=[Depends(get_current_active_superuser)])
-async def read_users(user_repository: UserRepositoryDep, skip: int = 0, limit: int = 100) -> UsersPublic:
+async def read_users(user_store: UserStoreDep, skip: int = 0, limit: int = 100) -> UsersPublic:
     """Retrieve users."""
-    count = user_repository.count()
-    users = user_repository.get_all(offset=skip, limit=limit)
+    count = user_store.count()
+    users = user_store.get_all(offset=skip, limit=limit)
 
     return UsersPublic(data=[UserPublic.model_validate(user) for user in users], count=count)
 
@@ -73,9 +73,7 @@ async def update_user_me(
 
 
 @router.patch("/me/password", status_code=status.HTTP_204_NO_CONTENT)
-async def update_password_me(
-    *, user_repository: UserRepositoryDep, body: UpdatePassword, current_user: CurrentUser
-) -> None:
+async def update_password_me(*, user_store: UserStoreDep, body: UpdatePassword, current_user: CurrentUser) -> None:
     """Update own password."""
     verified, _ = verify_password(body.current_password, current_user.hashed_password)
     if not verified:
@@ -84,7 +82,7 @@ async def update_password_me(
         raise HTTPException(status_code=400, detail="New password cannot be the same as the current one")
     hashed_password = get_password_hash(body.new_password)
     current_user.hashed_password = hashed_password
-    user_repository.update(current_user)
+    user_store.update(current_user)
 
 
 @router.get("/me")
@@ -123,11 +121,9 @@ async def register_user(crud_service: CrudServiceDep, user_in: UserRegister) -> 
 
 
 @router.get("/{user_id}")
-async def read_user_by_id(
-    user_id: uuid.UUID, user_repository: UserRepositoryDep, current_user: CurrentUser
-) -> UserPublic:
+async def read_user_by_id(user_id: uuid.UUID, user_store: UserStoreDep, current_user: CurrentUser) -> UserPublic:
     """Get a specific user by id."""
-    user = user_repository.get(user_id)
+    user = user_store.get(user_id)
     if user != current_user and not current_user.is_superuser:
         raise HTTPException(
             status_code=403,
@@ -140,10 +136,10 @@ async def read_user_by_id(
 
 @router.patch("/{user_id}", dependencies=[Depends(get_current_active_superuser)])
 async def update_user(
-    *, user_repository: UserRepositoryDep, crud_service: CrudServiceDep, user_id: uuid.UUID, user_in: UserUpdate
+    *, user_store: UserStoreDep, crud_service: CrudServiceDep, user_id: uuid.UUID, user_in: UserUpdate
 ) -> UserPublic:
     """Update a user."""
-    db_user = user_repository.get(user_id)
+    db_user = user_store.get(user_id)
     if not db_user:
         raise HTTPException(
             status_code=404,
@@ -161,11 +157,11 @@ async def update_user(
     "/{user_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(get_current_active_superuser)]
 )
 async def delete_user(
-    session: SessionDep, user_repository: UserRepositoryDep, current_user: CurrentUser, user_id: uuid.UUID
+    session: SessionDep, user_store: UserStoreDep, current_user: CurrentUser, user_id: uuid.UUID
 ) -> None:
     """Delete a user."""
     # TODO: move to service
-    user = user_repository.get(user_id)
+    user = user_store.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if user == current_user:

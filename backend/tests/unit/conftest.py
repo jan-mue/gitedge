@@ -8,13 +8,19 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app.api.dependencies import get_db
-from app.clients.users import SQLUserRepository
+from app.api.dependencies import get_db, get_issue_store, get_pull_request_store, get_repository_store
+from app.clients.users import SQLUserStore
 from app.config import settings
 from app.entities.base import Base
 from app.index import app
 from app.services.crud import CrudService
 from app.utils.database import init_db
+from tests.unit.utils.fakes import (
+    FakeIssueStore,
+    FakePullRequestStore,
+    FakeRepositoryStore,
+    FakeStores,
+)
 from tests.unit.utils.user import authentication_token_from_email
 from tests.unit.utils.utils import get_superuser_token_headers
 
@@ -58,14 +64,33 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture(scope="module")
 def crud(db: Session) -> CrudService:
-    user_repository = SQLUserRepository(db)
-    return CrudService(user_repository)
+    user_store = SQLUserStore(db)
+    return CrudService(user_store)
 
 
 @pytest.fixture(scope="module")
 def client() -> Generator[TestClient]:
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture
+def fake_stores() -> Generator[FakeStores]:
+    """Override the data access stores with in-memory fakes."""
+    fakes = FakeStores(
+        issues=FakeIssueStore(),
+        pull_requests=FakePullRequestStore(),
+        repository=FakeRepositoryStore(),
+    )
+    app.dependency_overrides[get_issue_store] = lambda: fakes.issues
+    app.dependency_overrides[get_pull_request_store] = lambda: fakes.pull_requests
+    app.dependency_overrides[get_repository_store] = lambda: fakes.repository
+
+    yield fakes
+
+    app.dependency_overrides.pop(get_issue_store, None)
+    app.dependency_overrides.pop(get_pull_request_store, None)
+    app.dependency_overrides.pop(get_repository_store, None)
 
 
 @pytest.fixture(scope="module")
