@@ -385,12 +385,8 @@ class RepositoryService:
         normalized = path.strip("/")
         name = repository_name_from_path(normalized)
 
-        last_commit = None
-        try:
-            commit_sha = self._resolve_ref(repo, ref)
-            last_commit = self._get_commit_info(repo, commit_sha)
-        except HTTPException:
-            pass
+        commit_sha = self._try_resolve_ref(repo, ref)
+        last_commit = self._get_commit_info(repo, commit_sha) if commit_sha is not None else None
 
         return RepositoryInfo(
             name=name,
@@ -458,18 +454,15 @@ class RepositoryService:
         return branches
 
     @staticmethod
-    def _resolve_ref(repo: BlobRepository, ref_name: str) -> bytes:
-        """Resolve a ref name to a commit SHA.
+    def _try_resolve_ref(repo: BlobRepository, ref_name: str) -> bytes | None:
+        """Resolve a ref name to a commit SHA, or None if the ref is missing.
 
         Args:
             repo: The repository.
             ref_name: Ref name (e.g., "main", "refs/heads/main").
 
         Returns:
-            The commit SHA as bytes.
-
-        Raises:
-            HTTPException: If the ref is not found.
+            The commit SHA as bytes, or None if the ref does not exist.
         """
         refs = repo.refs
         candidates: tuple[str, ...] = (ref_name, f"refs/heads/{ref_name}", f"refs/tags/{ref_name}")
@@ -483,7 +476,26 @@ class RepositoryService:
             if sha is not None:
                 return sha
 
-        raise HTTPException(status_code=404, detail=f"Ref '{ref_name}' not found")
+        return None
+
+    @staticmethod
+    def _resolve_ref(repo: BlobRepository, ref_name: str) -> bytes:
+        """Resolve a ref name to a commit SHA.
+
+        Args:
+            repo: The repository.
+            ref_name: Ref name (e.g., "main", "refs/heads/main").
+
+        Returns:
+            The commit SHA as bytes.
+
+        Raises:
+            HTTPException: If the ref is not found.
+        """
+        sha = RepositoryService._try_resolve_ref(repo, ref_name)
+        if sha is None:
+            raise HTTPException(status_code=404, detail=f"Ref '{ref_name}' not found")
+        return sha
 
     @staticmethod
     def _get_tree_at_path(repo: BlobRepository, commit_sha: bytes, path: str) -> Tree:
