@@ -534,6 +534,47 @@ class TestCreatePullRequest:
         expect(page.get_by_test_id("pr-1")).to_contain_text("My first pull request")
 
 
+class TestIssuesAndPullRequests:
+    """Test interactions between issues and pull requests."""
+
+    def test_issues_and_pull_requests_share_numbering(self, app_url: str, page: Page) -> None:
+        """Issues and pull requests share a number sequence and stay separate.
+
+        Args:
+            app_url: Base URL of the GitEdge frontend.
+            page: Playwright page.
+        """
+        _push_test_repo(app_url, "uitest/mixedrepo.git")
+
+        log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
+
+        page.goto(f"{app_url}/uitest/mixedrepo/issues/new")
+        page.get_by_test_id("issue-title-input").fill("Issue one")
+        page.get_by_test_id("issue-body-input").fill("Issue body")
+        page.get_by_test_id("submit-issue-btn").click()
+        expect(page.get_by_test_id("issue-1")).to_be_visible(timeout=15000)
+
+        page.goto(f"{app_url}/uitest/mixedrepo/pulls/new")
+        page.wait_for_selector(
+            '[data-testid="pr-source-branch"] option[value="main"]',
+            state="attached",
+        )
+        page.get_by_test_id("pr-source-branch").select_option("main")
+        page.get_by_test_id("pr-title-input").fill("Pull request two")
+        page.get_by_test_id("pr-body-input").fill("Pull request body")
+        page.get_by_test_id("submit-pr-btn").click()
+        expect(page.get_by_test_id("pr-2")).to_be_visible(timeout=15000)
+
+        # The issues list must not contain the pull request.
+        page.goto(f"{app_url}/uitest/mixedrepo/issues")
+        expect(page.get_by_test_id("issue-1")).to_be_visible(timeout=15000)
+        expect(page.get_by_test_id("issue-2")).to_have_count(0)
+
+        # The pull requests list shows the pull request.
+        page.goto(f"{app_url}/uitest/mixedrepo/pulls")
+        expect(page.get_by_test_id("pr-2")).to_be_visible(timeout=15000)
+
+
 class TestRepoStats:
     """Test the repository stats component."""
 

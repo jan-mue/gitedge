@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import concurrent.futures
 import json
 import os
 import random
@@ -17,6 +19,8 @@ from typing import TYPE_CHECKING, Any
 
 import psycopg
 import pytest
+import redis
+import sqlalchemy
 from alembic.command import upgrade
 from alembic.config import Config
 from playwright.sync_api import expect
@@ -27,12 +31,14 @@ from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 from xprocess import ProcessStarter
 
+from app.clients.blob_storage import S3Client
+from app.clients.database import get_db_session
 from app.config import settings
 from app.constants import BACKEND_DIR
 from app.utils.security import get_password_hash
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Coroutine, Generator
 
     from playwright.sync_api import Page
     from xprocess import XProcess
@@ -141,6 +147,81 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
             conn.commit()
 
         yield env
+
+
+def _delete_repository_rows() -> None:
+    """Delete all repository-related rows from the database."""
+    with get_db_session() as session:
+        session.execute(sqlalchemy.text("DELETE FROM pull_request"))
+        session.execute(sqlalchemy.text("DELETE FROM issue"))
+        session.execute(sqlalchemy.text("DELETE FROM repository"))
+        session.commit()
+
+
+def _delete_redis_keys(redis_url: str) -> None:
+    """Delete all keys from Redis.
+
+    Args:
+        redis_url: Redis connection URL.
+    """
+    client = redis.Redis.from_url(redis_url)
+    try:
+        for key in client.scan_iter("*"):
+            client.delete(key)
+    finally:
+        client.close()
+
+
+async def _delete_blob_objects(infrastructure: dict[str, str]) -> None:
+    """Delete all objects from blob storage.
+
+    Args:
+        infrastructure: Infrastructure connection details.
+    """
+    client = S3Client(
+        endpoint=infrastructure["S3_ENDPOINT"],
+        access_key=infrastructure["S3_ACCESS_KEY"],
+        secret_key=infrastructure["S3_SECRET_KEY"],
+        bucket=infrastructure["S3_BUCKET"],
+        secure=infrastructure["S3_SECURE"] == "True",
+    )
+    for key in await client.list_keys(""):
+        await client.delete(key)
+
+
+def _run_async(coroutine: Coroutine[Any, Any, None]) -> None:
+    """Run a coroutine in a dedicated thread with its own event loop.
+
+    Args:
+        coroutine: The coroutine to run.
+    """
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        executor.submit(asyncio.run, coroutine).result()
+
+
+def delete_all_repositories(infrastructure: dict[str, str]) -> None:
+    """Delete all repositories from the database, Redis and blob storage.
+
+    Args:
+        infrastructure: Infrastructure connection details.
+    """
+    _delete_repository_rows()
+    _delete_redis_keys(infrastructure["REDIS_URL"])
+    _run_async(_delete_blob_objects(infrastructure))
+
+
+@pytest.fixture(autouse=True)
+def clean_repositories(infrastructure: dict[str, str]) -> Generator[None]:
+    """Remove all repositories after each test.
+
+    Args:
+        infrastructure: Infrastructure connection details.
+
+    Yields:
+        None.
+    """
+    yield
+    delete_all_repositories(infrastructure)
 
 
 @pytest.fixture(scope="session")
