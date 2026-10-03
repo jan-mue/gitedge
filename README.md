@@ -160,6 +160,19 @@ The frontend lives in `frontend/` and is built with [Vite](https://vitejs.dev/),
 and [Tailwind CSS](https://tailwindcss.com/). See `frontend/package.json` for all
 available scripts.
 
+### Disabling sign-ups
+
+Self-service registration can be turned off by setting the matching variables on
+both projects:
+
+- `SIGNUPS_ENABLED` (backend, default `true`) — when `false`,
+  `POST /api/v1/users/signup` responds with `403` and no account is created.
+- `VITE_SIGNUPS_ENABLED` (frontend, default `true`) — when `false`, the
+  "Sign up" link is hidden on the login page and `/signup` redirects to
+  `/login`.
+
+Set both to `false` to close registration end to end.
+
 ### Database migrations
 
 Migrations live in `backend/migrations/`. Create and apply them from the

@@ -105,6 +105,11 @@ async def delete_user_me(session: SessionDep, current_user: CurrentUser) -> None
 @router.post("/signup")
 async def register_user(crud_service: CrudServiceDep, user_in: UserRegister) -> UserPublic:
     """Create new user without the need to be logged in."""
+    if not settings.SIGNUPS_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Sign-ups are disabled",
+        )
     user = crud_service.get_user_by_email(email=user_in.email)
     if user:
         raise HTTPException(

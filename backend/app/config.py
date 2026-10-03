@@ -86,6 +86,8 @@ class Settings(BaseSettings):
     SECRET_KEY: str = secrets.token_urlsafe(32)
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
+    # Allow public self-service sign-ups via POST /users/signup.
+    SIGNUPS_ENABLED: bool = True
     FRONTEND_HOST: str = "http://localhost:5173"
     VERCEL_ENV: Literal["development", "preview", "production"] = "development"
     # Set by Vercel when `relatedProjects` is declared in vercel.json.
