@@ -20,6 +20,12 @@ import { Route as LayoutRepositoriesRouteImport } from './routes/_layout/reposit
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutOwnerRepoIndexRouteImport } from './routes/_layout/$owner/$repo/index'
 import { Route as LayoutOwnerRepoBlobRouteImport } from './routes/_layout/$owner/$repo/blob'
+import { Route as LayoutOwnerRepoIssuesRouteImport } from './routes/_layout/$owner/$repo/issues'
+import { Route as LayoutOwnerRepoPullsRouteImport } from './routes/_layout/$owner/$repo/pulls'
+import { Route as LayoutOwnerRepoIssuesIndexRouteImport } from './routes/_layout/$owner/$repo/issues.index'
+import { Route as LayoutOwnerRepoIssuesNewRouteImport } from './routes/_layout/$owner/$repo/issues.new'
+import { Route as LayoutOwnerRepoPullsIndexRouteImport } from './routes/_layout/$owner/$repo/pulls.index'
+import { Route as LayoutOwnerRepoPullsNewRouteImport } from './routes/_layout/$owner/$repo/pulls.new'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -75,6 +81,39 @@ const LayoutOwnerRepoBlobRoute = LayoutOwnerRepoBlobRouteImport.update({
   path: '/$owner/$repo/blob',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutOwnerRepoIssuesRoute = LayoutOwnerRepoIssuesRouteImport.update({
+  id: '/$owner/$repo/issues',
+  path: '/$owner/$repo/issues',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutOwnerRepoPullsRoute = LayoutOwnerRepoPullsRouteImport.update({
+  id: '/$owner/$repo/pulls',
+  path: '/$owner/$repo/pulls',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutOwnerRepoIssuesIndexRoute =
+  LayoutOwnerRepoIssuesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => LayoutOwnerRepoIssuesRoute,
+  } as any)
+const LayoutOwnerRepoIssuesNewRoute =
+  LayoutOwnerRepoIssuesNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => LayoutOwnerRepoIssuesRoute,
+  } as any)
+const LayoutOwnerRepoPullsIndexRoute =
+  LayoutOwnerRepoPullsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => LayoutOwnerRepoPullsRoute,
+  } as any)
+const LayoutOwnerRepoPullsNewRoute = LayoutOwnerRepoPullsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => LayoutOwnerRepoPullsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -86,7 +125,13 @@ export interface FileRoutesByFullPath {
   '/repositories': typeof LayoutRepositoriesRoute
   '/settings': typeof LayoutSettingsRoute
   '/$owner/$repo/blob': typeof LayoutOwnerRepoBlobRoute
+  '/$owner/$repo/issues': typeof LayoutOwnerRepoIssuesRouteWithChildren
+  '/$owner/$repo/pulls': typeof LayoutOwnerRepoPullsRouteWithChildren
   '/$owner/$repo/': typeof LayoutOwnerRepoIndexRoute
+  '/$owner/$repo/issues/new': typeof LayoutOwnerRepoIssuesNewRoute
+  '/$owner/$repo/pulls/new': typeof LayoutOwnerRepoPullsNewRoute
+  '/$owner/$repo/issues/': typeof LayoutOwnerRepoIssuesIndexRoute
+  '/$owner/$repo/pulls/': typeof LayoutOwnerRepoPullsIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -99,6 +144,10 @@ export interface FileRoutesByTo {
   '/': typeof LayoutIndexRoute
   '/$owner/$repo/blob': typeof LayoutOwnerRepoBlobRoute
   '/$owner/$repo': typeof LayoutOwnerRepoIndexRoute
+  '/$owner/$repo/issues/new': typeof LayoutOwnerRepoIssuesNewRoute
+  '/$owner/$repo/pulls/new': typeof LayoutOwnerRepoPullsNewRoute
+  '/$owner/$repo/issues': typeof LayoutOwnerRepoIssuesIndexRoute
+  '/$owner/$repo/pulls': typeof LayoutOwnerRepoPullsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -112,7 +161,13 @@ export interface FileRoutesById {
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/$owner/$repo/blob': typeof LayoutOwnerRepoBlobRoute
+  '/_layout/$owner/$repo/issues': typeof LayoutOwnerRepoIssuesRouteWithChildren
+  '/_layout/$owner/$repo/pulls': typeof LayoutOwnerRepoPullsRouteWithChildren
   '/_layout/$owner/$repo/': typeof LayoutOwnerRepoIndexRoute
+  '/_layout/$owner/$repo/issues/new': typeof LayoutOwnerRepoIssuesNewRoute
+  '/_layout/$owner/$repo/pulls/new': typeof LayoutOwnerRepoPullsNewRoute
+  '/_layout/$owner/$repo/issues/': typeof LayoutOwnerRepoIssuesIndexRoute
+  '/_layout/$owner/$repo/pulls/': typeof LayoutOwnerRepoPullsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -126,7 +181,13 @@ export interface FileRouteTypes {
     | '/repositories'
     | '/settings'
     | '/$owner/$repo/blob'
+    | '/$owner/$repo/issues'
+    | '/$owner/$repo/pulls'
     | '/$owner/$repo/'
+    | '/$owner/$repo/issues/new'
+    | '/$owner/$repo/pulls/new'
+    | '/$owner/$repo/issues/'
+    | '/$owner/$repo/pulls/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -139,6 +200,10 @@ export interface FileRouteTypes {
     | '/'
     | '/$owner/$repo/blob'
     | '/$owner/$repo'
+    | '/$owner/$repo/issues/new'
+    | '/$owner/$repo/pulls/new'
+    | '/$owner/$repo/issues'
+    | '/$owner/$repo/pulls'
   id:
     | '__root__'
     | '/_layout'
@@ -151,7 +216,13 @@ export interface FileRouteTypes {
     | '/_layout/settings'
     | '/_layout/'
     | '/_layout/$owner/$repo/blob'
+    | '/_layout/$owner/$repo/issues'
+    | '/_layout/$owner/$repo/pulls'
     | '/_layout/$owner/$repo/'
+    | '/_layout/$owner/$repo/issues/new'
+    | '/_layout/$owner/$repo/pulls/new'
+    | '/_layout/$owner/$repo/issues/'
+    | '/_layout/$owner/$repo/pulls/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -241,8 +312,78 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutOwnerRepoBlobRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/$owner/$repo/issues': {
+      id: '/_layout/$owner/$repo/issues'
+      path: '/$owner/$repo/issues'
+      fullPath: '/$owner/$repo/issues'
+      preLoaderRoute: typeof LayoutOwnerRepoIssuesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/$owner/$repo/pulls': {
+      id: '/_layout/$owner/$repo/pulls'
+      path: '/$owner/$repo/pulls'
+      fullPath: '/$owner/$repo/pulls'
+      preLoaderRoute: typeof LayoutOwnerRepoPullsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/$owner/$repo/issues/': {
+      id: '/_layout/$owner/$repo/issues/'
+      path: '/'
+      fullPath: '/$owner/$repo/issues/'
+      preLoaderRoute: typeof LayoutOwnerRepoIssuesIndexRouteImport
+      parentRoute: typeof LayoutOwnerRepoIssuesRoute
+    }
+    '/_layout/$owner/$repo/issues/new': {
+      id: '/_layout/$owner/$repo/issues/new'
+      path: '/new'
+      fullPath: '/$owner/$repo/issues/new'
+      preLoaderRoute: typeof LayoutOwnerRepoIssuesNewRouteImport
+      parentRoute: typeof LayoutOwnerRepoIssuesRoute
+    }
+    '/_layout/$owner/$repo/pulls/': {
+      id: '/_layout/$owner/$repo/pulls/'
+      path: '/'
+      fullPath: '/$owner/$repo/pulls/'
+      preLoaderRoute: typeof LayoutOwnerRepoPullsIndexRouteImport
+      parentRoute: typeof LayoutOwnerRepoPullsRoute
+    }
+    '/_layout/$owner/$repo/pulls/new': {
+      id: '/_layout/$owner/$repo/pulls/new'
+      path: '/new'
+      fullPath: '/$owner/$repo/pulls/new'
+      preLoaderRoute: typeof LayoutOwnerRepoPullsNewRouteImport
+      parentRoute: typeof LayoutOwnerRepoPullsRoute
+    }
   }
 }
+
+interface LayoutOwnerRepoIssuesRouteChildren {
+  LayoutOwnerRepoIssuesNewRoute: typeof LayoutOwnerRepoIssuesNewRoute
+  LayoutOwnerRepoIssuesIndexRoute: typeof LayoutOwnerRepoIssuesIndexRoute
+}
+
+const LayoutOwnerRepoIssuesRouteChildren: LayoutOwnerRepoIssuesRouteChildren = {
+  LayoutOwnerRepoIssuesNewRoute: LayoutOwnerRepoIssuesNewRoute,
+  LayoutOwnerRepoIssuesIndexRoute: LayoutOwnerRepoIssuesIndexRoute,
+}
+
+const LayoutOwnerRepoIssuesRouteWithChildren =
+  LayoutOwnerRepoIssuesRoute._addFileChildren(
+    LayoutOwnerRepoIssuesRouteChildren,
+  )
+
+interface LayoutOwnerRepoPullsRouteChildren {
+  LayoutOwnerRepoPullsNewRoute: typeof LayoutOwnerRepoPullsNewRoute
+  LayoutOwnerRepoPullsIndexRoute: typeof LayoutOwnerRepoPullsIndexRoute
+}
+
+const LayoutOwnerRepoPullsRouteChildren: LayoutOwnerRepoPullsRouteChildren = {
+  LayoutOwnerRepoPullsNewRoute: LayoutOwnerRepoPullsNewRoute,
+  LayoutOwnerRepoPullsIndexRoute: LayoutOwnerRepoPullsIndexRoute,
+}
+
+const LayoutOwnerRepoPullsRouteWithChildren =
+  LayoutOwnerRepoPullsRoute._addFileChildren(LayoutOwnerRepoPullsRouteChildren)
 
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
@@ -250,6 +391,8 @@ interface LayoutRouteChildren {
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
   LayoutOwnerRepoBlobRoute: typeof LayoutOwnerRepoBlobRoute
+  LayoutOwnerRepoIssuesRoute: typeof LayoutOwnerRepoIssuesRouteWithChildren
+  LayoutOwnerRepoPullsRoute: typeof LayoutOwnerRepoPullsRouteWithChildren
   LayoutOwnerRepoIndexRoute: typeof LayoutOwnerRepoIndexRoute
 }
 
@@ -259,6 +402,8 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutOwnerRepoBlobRoute: LayoutOwnerRepoBlobRoute,
+  LayoutOwnerRepoIssuesRoute: LayoutOwnerRepoIssuesRouteWithChildren,
+  LayoutOwnerRepoPullsRoute: LayoutOwnerRepoPullsRouteWithChildren,
   LayoutOwnerRepoIndexRoute: LayoutOwnerRepoIndexRoute,
 }
 

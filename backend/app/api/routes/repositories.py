@@ -4,29 +4,58 @@ from __future__ import annotations
 
 import logging
 import stat
-from typing import TYPE_CHECKING, Protocol
+import time
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Annotated, Protocol
 
 from dulwich.objects import Blob, Commit, ObjectID, Tree
 from dulwich.refs import SYMREF, Ref
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import TextLexer, get_lexer_for_filename
 from pygments.util import ClassNotFound
+from sqlalchemy import func as sa_func
+from sqlalchemy import select
 
-from app.api.dependencies import BackendDep, BlobStorageClientDep, RedisClientDep
+from app.api.dependencies import (
+    BackendDep,
+    BlobStorageClientDep,
+    CurrentUser,
+    RedisClientDep,
+    RepositoryRepositoryDep,
+    SessionDep,
+)
+from app.entities.issues import Issue
+from app.entities.pull_requests import PullRequest
+from app.entities.repositories import Repository as RepositoryEntity
 from app.schemas.repositories import (
+    BranchInfo,
+    CommitInfo,
     CreateRepositoryRequest,
     FileContent,
+    IssueCreate,
+    IssuePublic,
+    IssuesListPublic,
+    IssueUpdate,
+    PullRequestCreate,
+    PullRequestPublic,
+    PullRequestsListPublic,
+    PullRequestUpdate,
+    ReadmeContent,
     RepositoriesPublic,
     Repository,
+    RepositoryInfo,
     TreeEntry,
     TreeListing,
 )
 from app.services.blob_backend import load_repository_from_storage, save_repository_changes_to_storage
+from app.services.markdown import render_markdown
 
 if TYPE_CHECKING:
     from app.clients.redis import AbstractRedisClient
+    from app.clients.repositories import RepositoryRepository
+    from app.entities.users import User
     from app.services.blob_repository import BlobRepository
 
 logger = logging.getLogger(__name__)
@@ -422,6 +451,691 @@ async def get_blob(
         language=lexer.name,
         line_count=line_count,
     )
+
+
+_README_NAMES = frozenset(
+    {
+        "README.md",
+        "README.MD",
+        "readme.md",
+        "README",
+        "README.txt",
+        "README.rst",
+        "Readme.md",
+    }
+)
+
+
+def _get_ref_counts(repo: BlobRepository) -> tuple[int, int, str]:
+    """Count branches and tags, and determine default branch.
+
+    Args:
+        repo: The repository.
+
+    Returns:
+        Tuple of (branch_count, tag_count, default_branch).
+    """
+    refs = repo.refs
+    all_keys = refs.allkeys()
+    branch_count = 0
+    tag_count = 0
+    default_branch = "main"
+
+    for key in all_keys:
+        key_str = key.decode() if isinstance(key, bytes) else str(key)
+        if key_str.startswith("refs/heads/"):
+            branch_count += 1
+        elif key_str.startswith("refs/tags/"):
+            tag_count += 1
+
+    head_val = refs.read_loose_ref(Ref(b"HEAD"))
+    if head_val is not None and head_val.startswith(SYMREF):
+        target = head_val[len(SYMREF) :]
+        target_str = target.decode() if isinstance(target, bytes) else str(target)
+        if target_str.startswith("refs/heads/"):
+            default_branch = target_str[len("refs/heads/") :]
+
+    return branch_count, tag_count, default_branch
+
+
+def _get_commit_info(repo: BlobRepository, commit_sha: bytes) -> CommitInfo:
+    """Extract commit information from a commit SHA.
+
+    Args:
+        repo: The repository.
+        commit_sha: The commit SHA.
+
+    Returns:
+        CommitInfo with commit details.
+    """
+    store = repo.object_store
+    commit = store[ObjectID(commit_sha)]
+    if not isinstance(commit, Commit):
+        return CommitInfo(sha="", message="", author="", timestamp=0)
+
+    sha_str = commit_sha.decode() if isinstance(commit_sha, bytes) else str(commit_sha)
+    message = commit.message.decode("utf-8", errors="replace").strip()
+    author_raw = commit.author.decode("utf-8", errors="replace")
+    # Extract just the name part (before <email>)
+    author = author_raw.split("<")[0].strip() if "<" in author_raw else author_raw
+    timestamp = commit.author_time if hasattr(commit, "author_time") else int(time.time())
+
+    return CommitInfo(
+        sha=sha_str[:10],
+        message=message,
+        author=author,
+        timestamp=timestamp,
+    )
+
+
+def _find_readme_in_tree(repo: BlobRepository, tree: Tree) -> tuple[str, str] | None:
+    """Find and read a README file in a tree.
+
+    Args:
+        repo: The repository.
+        tree: The tree to search.
+
+    Returns:
+        Tuple of (filename, content) or None if no README found.
+    """
+    store = repo.object_store
+
+    for item in tree.items():
+        name = item.path.decode()
+        if name in _README_NAMES and not stat.S_ISDIR(item.mode):
+            obj = store[item.sha]
+            if isinstance(obj, Blob):
+                try:
+                    content = obj.data.decode("utf-8")
+                except UnicodeDecodeError:
+                    content = "(binary file)"
+                return name, content
+
+    return None
+
+
+@router.get("/{path:path}/info")
+async def get_repository_info(
+    path: str,
+    *,
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+    redis_client: RedisClientDep,
+    ref: str = "main",
+) -> RepositoryInfo:
+    """Get extended repository information.
+
+    Includes branch/tag counts, default branch, and last commit info.
+
+    Args:
+        path: Repository path (e.g., "user/repo" or "user/repo.git").
+        backend: Git backend dependency.
+        blob_client: Blob storage dependency.
+        redis_client: Redis client dependency.
+        ref: Git ref (default: "main").
+
+    Returns:
+        RepositoryInfo with metadata.
+    """
+    repo = await _load_repo(backend, blob_client, redis_client, path)
+
+    branch_count, tag_count, default_branch = _get_ref_counts(repo)
+
+    # Get name from path
+    normalized = path.strip("/")
+    name = normalized.rstrip("/").split("/")[-1]
+    if name.endswith(".git"):
+        name = name[:-4]
+
+    # Get last commit info
+    last_commit = None
+    try:
+        commit_sha = _resolve_ref(repo, ref)
+        last_commit = _get_commit_info(repo, commit_sha)
+    except HTTPException:
+        pass
+
+    return RepositoryInfo(
+        name=name,
+        path=normalized if normalized.endswith(".git") else f"{normalized}.git",
+        default_branch=default_branch,
+        branch_count=branch_count,
+        tag_count=tag_count,
+        last_commit=last_commit,
+    )
+
+
+@router.get("/{path:path}/readme")
+async def get_readme(
+    path: str,
+    *,
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+    redis_client: RedisClientDep,
+    ref: str = "main",
+    tree_path: str = "",
+) -> ReadmeContent:
+    """Get README content from a repository directory.
+
+    Searches for common README filenames in the specified directory.
+
+    Args:
+        path: Repository path (e.g., "user/repo" or "user/repo.git").
+        backend: Git backend dependency.
+        blob_client: Blob storage dependency.
+        redis_client: Redis client dependency.
+        ref: Git ref (default: "main").
+        tree_path: Subdirectory path within the repo.
+
+    Returns:
+        ReadmeContent with filename and raw content.
+
+    Raises:
+        HTTPException: 404 if no README found.
+    """
+    repo = await _load_repo(backend, blob_client, redis_client, path)
+    commit_sha = _resolve_ref(repo, ref)
+    tree = _get_tree_at_path(repo, commit_sha, tree_path)
+
+    result = _find_readme_in_tree(repo, tree)
+    if result is None:
+        raise HTTPException(status_code=404, detail="README not found")
+
+    filename, content = result
+    html = render_markdown(content) if filename.lower().endswith((".md", ".markdown")) else ""
+    return ReadmeContent(filename=filename, content=content, html=html)
+
+
+@router.get("/{path:path}/branches")
+async def list_branches(
+    path: str,
+    *,
+    backend: BackendDep,
+    blob_client: BlobStorageClientDep,
+    redis_client: RedisClientDep,
+) -> list[BranchInfo]:
+    """List all branches in a repository.
+
+    Args:
+        path: Repository path (e.g., "user/repo" or "user/repo.git").
+        backend: Git backend dependency.
+        blob_client: Blob storage dependency.
+        redis_client: Redis client dependency.
+
+    Returns:
+        List of BranchInfo with branch names and default flag.
+    """
+    repo = await _load_repo(backend, blob_client, redis_client, path)
+    refs = repo.refs
+    all_keys = refs.allkeys()
+
+    default_branch = "main"
+    head_val = refs.read_loose_ref(Ref(b"HEAD"))
+    if head_val is not None and head_val.startswith(SYMREF):
+        target = head_val[len(SYMREF) :]
+        target_str = target.decode() if isinstance(target, bytes) else str(target)
+        if target_str.startswith("refs/heads/"):
+            default_branch = target_str[len("refs/heads/") :]
+
+    branches: list[BranchInfo] = []
+    for key in sorted(all_keys):
+        key_str = key.decode() if isinstance(key, bytes) else str(key)
+        if key_str.startswith("refs/heads/"):
+            branch_name = key_str[len("refs/heads/") :]
+            branches.append(BranchInfo(name=branch_name, is_default=branch_name == default_branch))
+
+    return branches
+
+
+# --- Issue endpoints ---
+
+
+def _normalize_repo_path(path: str) -> str:
+    """Normalize repository path to include .git suffix.
+
+    Args:
+        path: Repository path (e.g., "user/repo" or "user/repo.git").
+
+    Returns:
+        Normalized path with .git suffix.
+    """
+    normalized = path.strip("/")
+    if not normalized.endswith(".git"):
+        normalized = normalized + ".git"
+    return normalized
+
+
+def _ensure_repository(
+    repository_store: RepositoryRepository,
+    repo_path: str,
+    current_user: User,
+) -> RepositoryEntity:
+    """Get an existing repository row or create one for the given path.
+
+    Args:
+        repository_store: Repository store dependency.
+        repo_path: Normalized repository path (e.g., "user/repo.git").
+        current_user: The authenticated user.
+
+    Returns:
+        The repository entity.
+    """
+    repository = repository_store.get_by_path(repo_path)
+    if repository is None:
+        name = repo_path.rstrip("/").split("/")[-1]
+        if name.endswith(".git"):
+            name = name[:-4]
+        repository = RepositoryEntity(name=name, path=repo_path, owner_id=current_user.id)
+        repository_store.add(repository)
+    return repository
+
+
+def _issue_to_public(issue: Issue, repo_path: str) -> IssuePublic:
+    """Convert an issue entity to its public representation.
+
+    Args:
+        issue: The issue entity.
+        repo_path: The repository path.
+
+    Returns:
+        The public issue representation.
+    """
+    return IssuePublic(
+        id=issue.id,
+        repo_path=repo_path,
+        number=issue.number,
+        title=issue.title,
+        body=issue.body,
+        state=issue.state,
+        author_email=issue.author_email,
+        created_at=issue.created_at,
+        updated_at=issue.updated_at,
+    )
+
+
+def _pull_request_to_public(pr: PullRequest, repo_path: str) -> PullRequestPublic:
+    """Convert a pull request entity to its public representation.
+
+    Args:
+        pr: The pull request entity.
+        repo_path: The repository path.
+
+    Returns:
+        The public pull request representation.
+    """
+    return PullRequestPublic(
+        id=pr.id,
+        repo_path=repo_path,
+        number=pr.number,
+        title=pr.title,
+        body=pr.body,
+        state=pr.state,
+        head_branch=pr.head_branch,
+        base_branch=pr.base_branch,
+        author_email=pr.author_email,
+        merge_base=pr.merge_base,
+        merged_commit_id=pr.merged_commit_id,
+        has_merged=pr.has_merged,
+        created_at=pr.created_at,
+        updated_at=pr.updated_at,
+    )
+
+
+@router.get("/{path:path}/issues")
+async def list_issues(
+    path: str,
+    session: SessionDep,
+    repository_store: RepositoryRepositoryDep,
+    state: Annotated[str, Query(description="Filter by state: open, closed, or all")] = "all",
+) -> IssuesListPublic:
+    """List issues for a repository.
+
+    Args:
+        path: Repository path (e.g., "user/repo").
+        session: Database session.
+        repository_store: Repository store dependency.
+        state: Filter by state (open, closed, all).
+
+    Returns:
+        IssuesListPublic with issues and counts.
+    """
+    repo_path = _normalize_repo_path(path)
+    repository = repository_store.get_by_path(repo_path)
+    if repository is None:
+        return IssuesListPublic(data=[], count=0, open_count=0, closed_count=0)
+
+    stmt = select(Issue).where(Issue.repo_id == repository.id)
+    if state in ("open", "closed"):
+        stmt = stmt.where(Issue.state == state)
+    stmt = stmt.order_by(Issue.number.desc())
+
+    issues = list(session.execute(stmt).scalars().all())
+
+    open_count = session.execute(
+        select(sa_func.count()).select_from(Issue).where(Issue.repo_id == repository.id, Issue.state == "open")
+    ).scalar_one()
+    closed_count = session.execute(
+        select(sa_func.count()).select_from(Issue).where(Issue.repo_id == repository.id, Issue.state == "closed")
+    ).scalar_one()
+
+    return IssuesListPublic(
+        data=[_issue_to_public(issue, repo_path) for issue in issues],
+        count=len(issues),
+        open_count=open_count,
+        closed_count=closed_count,
+    )
+
+
+@router.post("/{path:path}/issues", status_code=201)
+async def create_issue(
+    path: str,
+    body: IssueCreate,
+    session: SessionDep,
+    repository_store: RepositoryRepositoryDep,
+    current_user: CurrentUser,
+) -> IssuePublic:
+    """Create a new issue.
+
+    Args:
+        path: Repository path (e.g., "user/repo").
+        body: Issue creation data.
+        session: Database session.
+        repository_store: Repository store dependency.
+        current_user: The authenticated user.
+
+    Returns:
+        The created issue.
+    """
+    repo_path = _normalize_repo_path(path)
+    repository = _ensure_repository(repository_store, repo_path, current_user)
+
+    # Get next issue number for this repo
+    max_number = session.execute(select(sa_func.max(Issue.number)).where(Issue.repo_id == repository.id)).scalar_one()
+    next_number = (max_number or 0) + 1
+
+    issue = Issue(
+        repo_id=repository.id,
+        number=next_number,
+        title=body.title,
+        body=body.body,
+        state="open",
+        author_email=current_user.email,
+    )
+    session.add(issue)
+    session.commit()
+    session.refresh(issue)
+
+    return _issue_to_public(issue, repo_path)
+
+
+@router.get("/{path:path}/issues/{number}")
+async def get_issue(
+    path: str,
+    number: int,
+    session: SessionDep,
+    repository_store: RepositoryRepositoryDep,
+) -> IssuePublic:
+    """Get a single issue by number.
+
+    Args:
+        path: Repository path.
+        number: Issue number.
+        session: Database session.
+        repository_store: Repository store dependency.
+
+    Returns:
+        The issue.
+
+    Raises:
+        HTTPException: If issue not found.
+    """
+    repo_path = _normalize_repo_path(path)
+    repository = repository_store.get_by_path(repo_path)
+    if repository is None:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    issue = session.execute(
+        select(Issue).where(Issue.repo_id == repository.id, Issue.number == number)
+    ).scalar_one_or_none()
+    if issue is None:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    return _issue_to_public(issue, repo_path)
+
+
+@router.patch("/{path:path}/issues/{number}")
+async def update_issue(
+    path: str,
+    number: int,
+    body: IssueUpdate,
+    session: SessionDep,
+    repository_store: RepositoryRepositoryDep,
+) -> IssuePublic:
+    """Update an issue.
+
+    Args:
+        path: Repository path.
+        number: Issue number.
+        body: Fields to update.
+        session: Database session.
+        repository_store: Repository store dependency.
+
+    Returns:
+        The updated issue.
+
+    Raises:
+        HTTPException: If issue not found.
+    """
+    repo_path = _normalize_repo_path(path)
+    repository = repository_store.get_by_path(repo_path)
+    if repository is None:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    issue = session.execute(
+        select(Issue).where(Issue.repo_id == repository.id, Issue.number == number)
+    ).scalar_one_or_none()
+    if issue is None:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    if body.title is not None:
+        issue.title = body.title
+    if body.body is not None:
+        issue.body = body.body
+    if body.state is not None:
+        if body.state not in ("open", "closed"):
+            raise HTTPException(status_code=400, detail="State must be 'open' or 'closed'")
+        issue.state = body.state
+
+    issue.updated_at = datetime.now(UTC)
+    session.commit()
+    session.refresh(issue)
+
+    return _issue_to_public(issue, repo_path)
+
+
+# --- Pull request endpoints ---
+
+
+@router.get("/{path:path}/pulls")
+async def list_pull_requests(
+    path: str,
+    session: SessionDep,
+    repository_store: RepositoryRepositoryDep,
+    state: Annotated[str, Query(description="Filter by state: open, closed, merged, or all")] = "all",
+) -> PullRequestsListPublic:
+    """List pull requests for a repository.
+
+    Args:
+        path: Repository path (e.g., "user/repo").
+        session: Database session.
+        repository_store: Repository store dependency.
+        state: Filter by state (open, closed, merged, all).
+
+    Returns:
+        PullRequestsListPublic with PRs and counts.
+    """
+    repo_path = _normalize_repo_path(path)
+    repository = repository_store.get_by_path(repo_path)
+    if repository is None:
+        return PullRequestsListPublic(data=[], count=0, open_count=0, closed_count=0)
+
+    stmt = select(PullRequest).where(PullRequest.repo_id == repository.id)
+    if state in ("open", "closed", "merged"):
+        stmt = stmt.where(PullRequest.state == state)
+    stmt = stmt.order_by(PullRequest.number.desc())
+
+    prs = list(session.execute(stmt).scalars().all())
+
+    open_count = session.execute(
+        select(sa_func.count())
+        .select_from(PullRequest)
+        .where(PullRequest.repo_id == repository.id, PullRequest.state == "open")
+    ).scalar_one()
+    closed_count = session.execute(
+        select(sa_func.count())
+        .select_from(PullRequest)
+        .where(PullRequest.repo_id == repository.id, PullRequest.state.in_(["closed", "merged"]))
+    ).scalar_one()
+
+    return PullRequestsListPublic(
+        data=[_pull_request_to_public(pr, repo_path) for pr in prs],
+        count=len(prs),
+        open_count=open_count,
+        closed_count=closed_count,
+    )
+
+
+@router.post("/{path:path}/pulls", status_code=201)
+async def create_pull_request(
+    path: str,
+    body: PullRequestCreate,
+    session: SessionDep,
+    repository_store: RepositoryRepositoryDep,
+    current_user: CurrentUser,
+) -> PullRequestPublic:
+    """Create a new pull request.
+
+    Args:
+        path: Repository path (e.g., "user/repo").
+        body: Pull request creation data.
+        session: Database session.
+        repository_store: Repository store dependency.
+        current_user: The authenticated user.
+
+    Returns:
+        The created pull request.
+    """
+    repo_path = _normalize_repo_path(path)
+    repository = _ensure_repository(repository_store, repo_path, current_user)
+
+    # Get next PR number for this repo
+    max_number = session.execute(
+        select(sa_func.max(PullRequest.number)).where(PullRequest.repo_id == repository.id)
+    ).scalar_one()
+    next_number = (max_number or 0) + 1
+
+    pr = PullRequest(
+        repo_id=repository.id,
+        number=next_number,
+        title=body.title,
+        body=body.body,
+        state="open",
+        author_email=current_user.email,
+        head_repo_id=repository.id,
+        base_repo_id=repository.id,
+        head_branch=body.head_branch,
+        base_branch=body.base_branch,
+    )
+    session.add(pr)
+    session.commit()
+    session.refresh(pr)
+
+    return _pull_request_to_public(pr, repo_path)
+
+
+@router.get("/{path:path}/pulls/{number}")
+async def get_pull_request(
+    path: str,
+    number: int,
+    session: SessionDep,
+    repository_store: RepositoryRepositoryDep,
+) -> PullRequestPublic:
+    """Get a single pull request by number.
+
+    Args:
+        path: Repository path.
+        number: Pull request number.
+        session: Database session.
+        repository_store: Repository store dependency.
+
+    Returns:
+        The pull request.
+
+    Raises:
+        HTTPException: If pull request not found.
+    """
+    repo_path = _normalize_repo_path(path)
+    repository = repository_store.get_by_path(repo_path)
+    if repository is None:
+        raise HTTPException(status_code=404, detail="Pull request not found")
+
+    pr = session.execute(
+        select(PullRequest).where(PullRequest.repo_id == repository.id, PullRequest.number == number)
+    ).scalar_one_or_none()
+    if pr is None:
+        raise HTTPException(status_code=404, detail="Pull request not found")
+
+    return _pull_request_to_public(pr, repo_path)
+
+
+@router.patch("/{path:path}/pulls/{number}")
+async def update_pull_request(
+    path: str,
+    number: int,
+    body: PullRequestUpdate,
+    session: SessionDep,
+    repository_store: RepositoryRepositoryDep,
+) -> PullRequestPublic:
+    """Update a pull request.
+
+    Args:
+        path: Repository path.
+        number: Pull request number.
+        body: Fields to update.
+        session: Database session.
+        repository_store: Repository store dependency.
+
+    Returns:
+        The updated pull request.
+
+    Raises:
+        HTTPException: If pull request not found.
+    """
+    repo_path = _normalize_repo_path(path)
+    repository = repository_store.get_by_path(repo_path)
+    if repository is None:
+        raise HTTPException(status_code=404, detail="Pull request not found")
+
+    pr = session.execute(
+        select(PullRequest).where(PullRequest.repo_id == repository.id, PullRequest.number == number)
+    ).scalar_one_or_none()
+    if pr is None:
+        raise HTTPException(status_code=404, detail="Pull request not found")
+
+    if body.title is not None:
+        pr.title = body.title
+    if body.body is not None:
+        pr.body = body.body
+    if body.state is not None:
+        if body.state not in ("open", "closed", "merged"):
+            raise HTTPException(status_code=400, detail="State must be 'open', 'closed', or 'merged'")
+        pr.state = body.state
+
+    pr.updated_at = datetime.now(UTC)
+    session.commit()
+    session.refresh(pr)
+
+    return _pull_request_to_public(pr, repo_path)
 
 
 @router.get("/{path:path}")

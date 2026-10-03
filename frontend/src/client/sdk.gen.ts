@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, type Options as Options2, type RequestResult, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { gitGetHeadData, gitGetHeadErrors, gitGetHeadResponses, gitGetInfoPacksData, gitGetInfoPacksErrors, gitGetInfoPacksResponses, gitGetInfoRefsData, gitGetInfoRefsErrors, gitGetInfoRefsResponses, gitGetLooseObjectData, gitGetLooseObjectErrors, gitGetLooseObjectResponses, gitGetPackFileData, gitGetPackFileErrors, gitGetPackFileResponses, gitGitReceivePackData, gitGitReceivePackErrors, gitGitReceivePackResponses, gitGitUploadPackData, gitGitUploadPackErrors, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryErrors, repositoriesCreateRepositoryResponses, repositoriesGetBlobData, repositoriesGetBlobErrors, repositoriesGetBlobResponses, repositoriesGetRepositoryData, repositoriesGetRepositoryErrors, repositoriesGetRepositoryResponses, repositoriesGetTreeData, repositoriesGetTreeErrors, repositoriesGetTreeResponses, repositoriesListRepositoriesData, repositoriesListRepositoriesResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
+import type { gitGetHeadData, gitGetHeadErrors, gitGetHeadResponses, gitGetInfoPacksData, gitGetInfoPacksErrors, gitGetInfoPacksResponses, gitGetInfoRefsData, gitGetInfoRefsErrors, gitGetInfoRefsResponses, gitGetLooseObjectData, gitGetLooseObjectErrors, gitGetLooseObjectResponses, gitGetPackFileData, gitGetPackFileErrors, gitGetPackFileResponses, gitGitReceivePackData, gitGitReceivePackErrors, gitGitReceivePackResponses, gitGitUploadPackData, gitGitUploadPackErrors, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, repositoriesCreateIssueData, repositoriesCreateIssueErrors, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestErrors, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryErrors, repositoriesCreateRepositoryResponses, repositoriesGetBlobData, repositoriesGetBlobErrors, repositoriesGetBlobResponses, repositoriesGetIssueData, repositoriesGetIssueErrors, repositoriesGetIssueResponses, repositoriesGetPullRequestData, repositoriesGetPullRequestErrors, repositoriesGetPullRequestResponses, repositoriesGetReadmeData, repositoriesGetReadmeErrors, repositoriesGetReadmeResponses, repositoriesGetRepositoryData, repositoriesGetRepositoryErrors, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoErrors, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetTreeData, repositoriesGetTreeErrors, repositoriesGetTreeResponses, repositoriesListBranchesData, repositoriesListBranchesErrors, repositoriesListBranchesResponses, repositoriesListIssuesData, repositoriesListIssuesErrors, repositoriesListIssuesResponses, repositoriesListPullRequestsData, repositoriesListPullRequestsErrors, repositoriesListPullRequestsResponses, repositoriesListRepositoriesData, repositoriesListRepositoriesResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueErrors, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestErrors, repositoriesUpdatePullRequestResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -505,6 +505,292 @@ export class RepositoriesService {
             responseType: 'json',
             url: '/api/v1/repositories/{path}/blob',
             ...options
+        });
+    }
+    
+    /**
+     * Get Repository Info
+     *
+     * Get extended repository information.
+     *
+     * Includes branch/tag counts, default branch, and last commit info.
+     *
+     * Args:
+     * path: Repository path (e.g., "user/repo" or "user/repo.git").
+     * backend: Git backend dependency.
+     * blob_client: Blob storage dependency.
+     * redis_client: Redis client dependency.
+     * ref: Git ref (default: "main").
+     *
+     * Returns:
+     * RepositoryInfo with metadata.
+     */
+    public static getRepositoryInfo<ThrowOnError extends boolean = true>(options: Options<repositoriesGetRepositoryInfoData, ThrowOnError>): RequestResult<repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryInfoErrors, ThrowOnError> {
+        return (options.client ?? client).get<repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryInfoErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/repositories/{path}/info',
+            ...options
+        });
+    }
+    
+    /**
+     * Get Readme
+     *
+     * Get README content from a repository directory.
+     *
+     * Searches for common README filenames in the specified directory.
+     *
+     * Args:
+     * path: Repository path (e.g., "user/repo" or "user/repo.git").
+     * backend: Git backend dependency.
+     * blob_client: Blob storage dependency.
+     * redis_client: Redis client dependency.
+     * ref: Git ref (default: "main").
+     * tree_path: Subdirectory path within the repo.
+     *
+     * Returns:
+     * ReadmeContent with filename and raw content.
+     *
+     * Raises:
+     * HTTPException: 404 if no README found.
+     */
+    public static getReadme<ThrowOnError extends boolean = true>(options: Options<repositoriesGetReadmeData, ThrowOnError>): RequestResult<repositoriesGetReadmeResponses, repositoriesGetReadmeErrors, ThrowOnError> {
+        return (options.client ?? client).get<repositoriesGetReadmeResponses, repositoriesGetReadmeErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/repositories/{path}/readme',
+            ...options
+        });
+    }
+    
+    /**
+     * List Branches
+     *
+     * List all branches in a repository.
+     *
+     * Args:
+     * path: Repository path (e.g., "user/repo" or "user/repo.git").
+     * backend: Git backend dependency.
+     * blob_client: Blob storage dependency.
+     * redis_client: Redis client dependency.
+     *
+     * Returns:
+     * List of BranchInfo with branch names and default flag.
+     */
+    public static listBranches<ThrowOnError extends boolean = true>(options: Options<repositoriesListBranchesData, ThrowOnError>): RequestResult<repositoriesListBranchesResponses, repositoriesListBranchesErrors, ThrowOnError> {
+        return (options.client ?? client).get<repositoriesListBranchesResponses, repositoriesListBranchesErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/repositories/{path}/branches',
+            ...options
+        });
+    }
+    
+    /**
+     * List Issues
+     *
+     * List issues for a repository.
+     *
+     * Args:
+     * path: Repository path (e.g., "user/repo").
+     * session: Database session.
+     * repository_store: Repository store dependency.
+     * state: Filter by state (open, closed, all).
+     *
+     * Returns:
+     * IssuesListPublic with issues and counts.
+     */
+    public static listIssues<ThrowOnError extends boolean = true>(options: Options<repositoriesListIssuesData, ThrowOnError>): RequestResult<repositoriesListIssuesResponses, repositoriesListIssuesErrors, ThrowOnError> {
+        return (options.client ?? client).get<repositoriesListIssuesResponses, repositoriesListIssuesErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/repositories/{path}/issues',
+            ...options
+        });
+    }
+    
+    /**
+     * Create Issue
+     *
+     * Create a new issue.
+     *
+     * Args:
+     * path: Repository path (e.g., "user/repo").
+     * body: Issue creation data.
+     * session: Database session.
+     * repository_store: Repository store dependency.
+     * current_user: The authenticated user.
+     *
+     * Returns:
+     * The created issue.
+     */
+    public static createIssue<ThrowOnError extends boolean = true>(options: Options<repositoriesCreateIssueData, ThrowOnError>): RequestResult<repositoriesCreateIssueResponses, repositoriesCreateIssueErrors, ThrowOnError> {
+        return (options.client ?? client).post<repositoriesCreateIssueResponses, repositoriesCreateIssueErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/repositories/{path}/issues',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Get Issue
+     *
+     * Get a single issue by number.
+     *
+     * Args:
+     * path: Repository path.
+     * number: Issue number.
+     * session: Database session.
+     * repository_store: Repository store dependency.
+     *
+     * Returns:
+     * The issue.
+     *
+     * Raises:
+     * HTTPException: If issue not found.
+     */
+    public static getIssue<ThrowOnError extends boolean = true>(options: Options<repositoriesGetIssueData, ThrowOnError>): RequestResult<repositoriesGetIssueResponses, repositoriesGetIssueErrors, ThrowOnError> {
+        return (options.client ?? client).get<repositoriesGetIssueResponses, repositoriesGetIssueErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/repositories/{path}/issues/{number}',
+            ...options
+        });
+    }
+    
+    /**
+     * Update Issue
+     *
+     * Update an issue.
+     *
+     * Args:
+     * path: Repository path.
+     * number: Issue number.
+     * body: Fields to update.
+     * session: Database session.
+     * repository_store: Repository store dependency.
+     *
+     * Returns:
+     * The updated issue.
+     *
+     * Raises:
+     * HTTPException: If issue not found.
+     */
+    public static updateIssue<ThrowOnError extends boolean = true>(options: Options<repositoriesUpdateIssueData, ThrowOnError>): RequestResult<repositoriesUpdateIssueResponses, repositoriesUpdateIssueErrors, ThrowOnError> {
+        return (options.client ?? client).patch<repositoriesUpdateIssueResponses, repositoriesUpdateIssueErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/repositories/{path}/issues/{number}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * List Pull Requests
+     *
+     * List pull requests for a repository.
+     *
+     * Args:
+     * path: Repository path (e.g., "user/repo").
+     * session: Database session.
+     * repository_store: Repository store dependency.
+     * state: Filter by state (open, closed, merged, all).
+     *
+     * Returns:
+     * PullRequestsListPublic with PRs and counts.
+     */
+    public static listPullRequests<ThrowOnError extends boolean = true>(options: Options<repositoriesListPullRequestsData, ThrowOnError>): RequestResult<repositoriesListPullRequestsResponses, repositoriesListPullRequestsErrors, ThrowOnError> {
+        return (options.client ?? client).get<repositoriesListPullRequestsResponses, repositoriesListPullRequestsErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/repositories/{path}/pulls',
+            ...options
+        });
+    }
+    
+    /**
+     * Create Pull Request
+     *
+     * Create a new pull request.
+     *
+     * Args:
+     * path: Repository path (e.g., "user/repo").
+     * body: Pull request creation data.
+     * session: Database session.
+     * repository_store: Repository store dependency.
+     * current_user: The authenticated user.
+     *
+     * Returns:
+     * The created pull request.
+     */
+    public static createPullRequest<ThrowOnError extends boolean = true>(options: Options<repositoriesCreatePullRequestData, ThrowOnError>): RequestResult<repositoriesCreatePullRequestResponses, repositoriesCreatePullRequestErrors, ThrowOnError> {
+        return (options.client ?? client).post<repositoriesCreatePullRequestResponses, repositoriesCreatePullRequestErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/repositories/{path}/pulls',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Get Pull Request
+     *
+     * Get a single pull request by number.
+     *
+     * Args:
+     * path: Repository path.
+     * number: Pull request number.
+     * session: Database session.
+     * repository_store: Repository store dependency.
+     *
+     * Returns:
+     * The pull request.
+     *
+     * Raises:
+     * HTTPException: If pull request not found.
+     */
+    public static getPullRequest<ThrowOnError extends boolean = true>(options: Options<repositoriesGetPullRequestData, ThrowOnError>): RequestResult<repositoriesGetPullRequestResponses, repositoriesGetPullRequestErrors, ThrowOnError> {
+        return (options.client ?? client).get<repositoriesGetPullRequestResponses, repositoriesGetPullRequestErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/repositories/{path}/pulls/{number}',
+            ...options
+        });
+    }
+    
+    /**
+     * Update Pull Request
+     *
+     * Update a pull request.
+     *
+     * Args:
+     * path: Repository path.
+     * number: Pull request number.
+     * body: Fields to update.
+     * session: Database session.
+     * repository_store: Repository store dependency.
+     *
+     * Returns:
+     * The updated pull request.
+     *
+     * Raises:
+     * HTTPException: If pull request not found.
+     */
+    public static updatePullRequest<ThrowOnError extends boolean = true>(options: Options<repositoriesUpdatePullRequestData, ThrowOnError>): RequestResult<repositoriesUpdatePullRequestResponses, repositoriesUpdatePullRequestErrors, ThrowOnError> {
+        return (options.client ?? client).patch<repositoriesUpdatePullRequestResponses, repositoriesUpdatePullRequestErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/repositories/{path}/pulls/{number}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
         });
     }
     

@@ -18,6 +18,7 @@ from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClie
 from app.clients.database import get_db_session
 from app.clients.email import EmailClient, SMTPClient
 from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClient
+from app.clients.repositories import RepositoryRepository, SQLRepositoryRepository
 from app.clients.users import SQLUserRepository, UserRepository
 from app.config import settings
 from app.entities.users import User
@@ -61,6 +62,21 @@ def get_user_repository(session: SessionDep) -> UserRepository:
 
 
 UserRepositoryDep = Annotated[UserRepository, Depends(get_user_repository)]
+
+
+def get_repository_store(session: SessionDep) -> RepositoryRepository:
+    """Get repository store dependency.
+
+    Args:
+        session: SQLAlchemy session.
+
+    Returns:
+        Repository store instance.
+    """
+    return SQLRepositoryRepository(session)
+
+
+RepositoryRepositoryDep = Annotated[RepositoryRepository, Depends(get_repository_store)]
 
 
 def get_current_user(user_repository: UserRepositoryDep, token: TokenDep) -> User:
