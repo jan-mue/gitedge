@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import fnmatch
 import logging
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from app.clients.blob_storage import BlobStorageClient
 from app.clients.database import CrudRepository
 from app.clients.email import EmailClient
 from app.clients.issues import IssueRepository
 from app.clients.pull_requests import PullRequestRepository
+from app.clients.redis import AbstractRedisClient
 from app.clients.repositories import RepositoryRepository
 from app.entities.base import Base
 from app.entities.issues import Issue
@@ -27,6 +30,54 @@ logger = logging.getLogger(__name__)
 class FakeEmailClient(EmailClient):
     def send_email(self, email_to: str, subject: str = "", html_content: str = "") -> None:
         logger.info("Sending email to %s with subject %s and content %s", email_to, subject, html_content)
+
+
+class FakeBlobStorageClient(BlobStorageClient):
+    """In-memory blob storage client."""
+
+    def __init__(self) -> None:
+        """Initialize the client."""
+        self.objects: dict[str, bytes] = {}
+
+    async def put(self, key: str, data: bytes) -> None:
+        """Store binary data at the given key."""
+        self.objects[key] = data
+
+    async def get(self, key: str) -> bytes | None:
+        """Retrieve binary data for the given key."""
+        return self.objects.get(key)
+
+    async def delete(self, key: str) -> None:
+        """Delete data at the given key."""
+        self.objects.pop(key, None)
+
+    async def list_keys(self, prefix: str) -> list[str]:
+        """List all keys with the given prefix."""
+        return [key for key in self.objects if key.startswith(prefix)]
+
+
+class FakeRedisClient(AbstractRedisClient):
+    """In-memory Redis client."""
+
+    def __init__(self) -> None:
+        """Initialize the client."""
+        self.values: dict[str, bytes] = {}
+
+    async def get(self, key: str) -> bytes | None:
+        """Get a value from Redis."""
+        return self.values.get(key)
+
+    async def set(self, key: str, value: str | bytes) -> None:
+        """Set a value in Redis."""
+        self.values[key] = value.encode() if isinstance(value, str) else value
+
+    async def delete(self, key: str) -> None:
+        """Delete a key from Redis."""
+        self.values.pop(key, None)
+
+    async def scan_keys(self, pattern: str) -> list[str]:
+        """Scan for keys matching a pattern."""
+        return fnmatch.filter(self.values, pattern)
 
 
 class FakeCrudRepository[T: Base](CrudRepository[T]):
