@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app.api.main import api_router
 from app.api.routes import git
 from app.config import settings
+from app.lifespan import lifespan
 from app.utils.setup_logging import setup_logging
 
 if TYPE_CHECKING:
@@ -35,6 +36,7 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     generate_unique_id_function=custom_generate_unique_id,
+    lifespan=lifespan,
 )
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import func, select
@@ -14,46 +15,37 @@ from app.entities.base import Base
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import AsyncIterator
 
     from sqlalchemy.ext.asyncio import AsyncEngine
 
 logger = logging.getLogger(__name__)
 
-_engine: AsyncEngine | None = None
-_session_factory: async_sessionmaker[AsyncSession] | None = None
+
+@asynccontextmanager
+async def create_db_engine() -> AsyncIterator[AsyncEngine]:
+    """Create a database engine bound to the context's lifetime.
+
+    Yields:
+        SQLAlchemy AsyncEngine instance, disposed when the context exits.
+    """
+    engine = create_async_engine(str(settings.DATABASE_URL), echo=False)
+    try:
+        yield engine
+    finally:
+        await engine.dispose()
 
 
-def get_engine() -> AsyncEngine:
-    """Get or create the async SQLAlchemy engine from DATABASE_URL.
+def create_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
+    """Create an async session factory bound to the given engine.
+
+    Args:
+        engine: The async engine to bind sessions to.
 
     Returns:
-        SQLAlchemy AsyncEngine instance.
+        Async session factory.
     """
-    global _engine  # noqa: PLW0603
-    if _engine is None:
-        _engine = create_async_engine(str(settings.DATABASE_URL), echo=False)
-    return _engine
-
-
-def get_session_factory() -> async_sessionmaker[AsyncSession]:
-    """Get or create the async session factory.
-
-    Returns:
-        Async session factory bound to the engine.
-    """
-    global _session_factory  # noqa: PLW0603
-    if _session_factory is None:
-        _session_factory = async_sessionmaker(bind=get_engine(), expire_on_commit=False, autoflush=False)
-    return _session_factory
-
-
-def get_db_session() -> AsyncSession:
-    """Get an async database session.
-
-    Returns:
-        SQLAlchemy AsyncSession instance.
-    """
-    return get_session_factory()()
+    return async_sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)
 
 
 class CrudStore[T: Base](ABC):

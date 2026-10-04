@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from app.clients.database import get_db_session
+from app.clients.database import create_db_engine, create_session_factory
 from app.utils.database import init_db
 
 logger = logging.getLogger(__name__)
@@ -11,8 +11,10 @@ logger = logging.getLogger(__name__)
 
 async def init() -> None:
     """Initialize the database with any required initial data."""
-    async with get_db_session() as session:
-        await init_db(session)
+    async with create_db_engine() as engine:
+        session_factory = create_session_factory(engine)
+        async with session_factory() as session:
+            await init_db(session)
 
 
 def main() -> None:

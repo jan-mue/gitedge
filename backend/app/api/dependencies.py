@@ -7,7 +7,7 @@ from functools import cache
 from typing import TYPE_CHECKING, Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
@@ -15,7 +15,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
-from app.clients.database import get_db_session
 from app.clients.email import EmailClient, SMTPClient
 from app.clients.issues import IssueStore, SQLIssueStore
 from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
@@ -35,18 +34,24 @@ from app.utils import security
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
 logger = logging.getLogger(__name__)
 
 reusable_oauth2 = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/login/access-token")
 
 
-async def get_db() -> AsyncGenerator[AsyncSession]:
-    """Get database session dependency.
+async def get_db(request: Request) -> AsyncGenerator[AsyncSession]:
+    """Get database session dependency from the lifespan state.
+
+    Args:
+        request: The incoming request exposing the lifespan state.
 
     Yields:
         SQLAlchemy async session.
     """
-    async with get_db_session() as session:
+    session_factory: async_sessionmaker[AsyncSession] = request.state.db_session_factory
+    async with session_factory() as session:
         yield session
 
 

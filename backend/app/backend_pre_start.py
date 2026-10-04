@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import select
 from tenacity import after_log, before_log, retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
-from app.clients.database import get_db_session
+from app.clients.database import create_db_engine, create_session_factory
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +24,10 @@ wait_seconds = 1
 )
 async def init() -> None:
     """Check that the database is reachable, retrying until it is."""
-    async with get_db_session() as session:
-        await session.execute(select(1))
+    async with create_db_engine() as engine:
+        session_factory = create_session_factory(engine)
+        async with session_factory() as session:
+            await session.execute(select(1))
 
 
 def main() -> None:
