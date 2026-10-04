@@ -151,11 +151,9 @@ def _delete_repository_rows() -> None:
     """Delete all repository-related rows from the database."""
     db_url = str(settings.DATABASE_URL).replace("postgresql+psycopg://", "postgresql://")
     with psycopg.connect(db_url) as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM pull_request")
-            cur.execute("DELETE FROM issue")
-            cur.execute("DELETE FROM repository")
-        conn.commit()
+        conn.execute("DELETE FROM pull_request")
+        conn.execute("DELETE FROM issue")
+        conn.execute("DELETE FROM repository")
 
 
 def _delete_redis_keys(redis_url: str) -> None:
