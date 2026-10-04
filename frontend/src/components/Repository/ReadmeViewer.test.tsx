@@ -5,13 +5,7 @@ import ReadmeViewer from "./ReadmeViewer"
 
 describe("ReadmeViewer", () => {
   test("renders the filename and rendered markdown", () => {
-    render(
-      <ReadmeViewer
-        html="<h1>Title</h1>"
-        content="# Title"
-        filename="README.md"
-      />,
-    )
+    render(<ReadmeViewer html="<h1>Title</h1>" content="# Title" filename="README.md" />)
 
     expect(screen.getByTestId("readme-viewer")).toBeInTheDocument()
     expect(screen.getByText("README.md")).toBeInTheDocument()

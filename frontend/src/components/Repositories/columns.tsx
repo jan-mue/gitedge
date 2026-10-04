@@ -22,11 +22,7 @@ function CopyPath({ path }: { path: string }) {
           copy(path)
         }}
       >
-        {isCopied ? (
-          <Check className="size-3 text-green-500" />
-        ) : (
-          <Copy className="size-3" />
-        )}
+        {isCopied ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
         <span className="sr-only">Copy path</span>
       </Button>
     </div>

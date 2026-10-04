@@ -26,9 +26,7 @@ describe("cn", () => {
   test("handles conditional classes", () => {
     const isActive = true
     const isDisabled = false
-    expect(cn("base", isActive && "active", isDisabled && "disabled")).toBe(
-      "base active",
-    )
+    expect(cn("base", isActive && "active", isDisabled && "disabled")).toBe("base active")
   })
 
   test("handles arrays of classes", () => {
@@ -64,9 +62,7 @@ describe("cn", () => {
   })
 
   test("handles mixed input types", () => {
-    expect(
-      cn("base", ["array-class"], { "object-class": true }, undefined),
-    ).toBe("base array-class object-class")
+    expect(cn("base", ["array-class"], { "object-class": true }, undefined)).toBe("base array-class object-class")
   })
 
   test("handles deeply nested arrays", () => {
@@ -74,9 +70,7 @@ describe("cn", () => {
   })
 
   test("handles variant classes from tailwind", () => {
-    expect(cn("hover:bg-red-500", "hover:bg-blue-500")).toBe(
-      "hover:bg-blue-500",
-    )
+    expect(cn("hover:bg-red-500", "hover:bg-blue-500")).toBe("hover:bg-blue-500")
   })
 
   test("handles responsive classes", () => {

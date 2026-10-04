@@ -4,14 +4,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import { type UpdatePassword, UsersService } from "@/client"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
 import useCustomToast from "@/hooks/useCustomToast"
@@ -27,9 +20,7 @@ const formSchema = z
       .string()
       .min(1, { message: "Password is required" })
       .min(8, { message: "Password must be at least 8 characters" }),
-    confirm_password: z
-      .string()
-      .min(1, { message: "Password confirmation is required" }),
+    confirm_password: z.string().min(1, { message: "Password confirmation is required" }),
   })
   .refine((data) => data.new_password === data.confirm_password, {
     message: "The passwords don't match",
@@ -52,8 +43,7 @@ const ChangePassword = () => {
   })
 
   const mutation = useMutation({
-    mutationFn: (data: UpdatePassword) =>
-      UsersService.updatePasswordMe({ body: data }),
+    mutationFn: (data: UpdatePassword) => UsersService.updatePasswordMe({ body: data }),
     onSuccess: () => {
       showSuccessToast("Password updated successfully")
       form.reset()
@@ -69,10 +59,7 @@ const ChangePassword = () => {
     <div className="max-w-md">
       <h3 className="text-lg font-semibold py-4">Change Password</h3>
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4"
-        >
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <FormField
             control={form.control}
             name="current_password"
@@ -130,11 +117,7 @@ const ChangePassword = () => {
             )}
           />
 
-          <LoadingButton
-            type="submit"
-            loading={mutation.isPending}
-            className="self-start"
-          >
+          <LoadingButton type="submit" loading={mutation.isPending} className="self-start">
             Update Password
           </LoadingButton>
         </form>

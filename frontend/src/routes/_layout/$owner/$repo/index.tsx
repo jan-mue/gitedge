@@ -69,21 +69,9 @@ function TreeContent() {
 
   return (
     <div className="flex flex-col gap-4">
-      <RepoStats
-        owner={owner}
-        repo={repo}
-        gitRef={tree.ref}
-        searchRef={searchRef}
-      />
+      <RepoStats owner={owner} repo={repo} gitRef={tree.ref} searchRef={searchRef} />
 
-      {treePath && (
-        <RepoBreadcrumbs
-          owner={owner}
-          repo={repo}
-          path={treePath}
-          searchRef={searchRef}
-        />
-      )}
+      {treePath && <RepoBreadcrumbs owner={owner} repo={repo} path={treePath} searchRef={searchRef} />}
 
       <FileBrowser
         entries={tree.entries}
@@ -94,13 +82,7 @@ function TreeContent() {
         lastCommit={repoInfo?.last_commit}
       />
 
-      {readme && (
-        <ReadmeViewer
-          html={readme.html}
-          content={readme.content}
-          filename={readme.filename}
-        />
-      )}
+      {readme && <ReadmeViewer html={readme.html} content={readme.content} filename={readme.filename} />}
     </div>
   )
 }

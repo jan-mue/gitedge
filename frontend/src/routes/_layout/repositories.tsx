@@ -37,9 +37,7 @@ function RepositoriesTableContent() {
           <GitBranch className="h-8 w-8 text-muted-foreground" />
         </div>
         <h3 className="text-lg font-semibold">No repositories yet</h3>
-        <p className="text-muted-foreground">
-          Create a repository or push one to get started
-        </p>
+        <p className="text-muted-foreground">Create a repository or push one to get started</p>
       </div>
     )
   }
@@ -61,9 +59,7 @@ function Repositories() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Repositories</h1>
-          <p className="text-muted-foreground">
-            View and manage your Git repositories
-          </p>
+          <p className="text-muted-foreground">View and manage your Git repositories</p>
         </div>
         <CreateRepository />
       </div>

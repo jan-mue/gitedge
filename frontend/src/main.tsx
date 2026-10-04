@@ -1,9 +1,4 @@
-import {
-  MutationCache,
-  QueryCache,
-  QueryClient,
-  QueryClientProvider,
-} from "@tanstack/react-query"
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
 import { AxiosError } from "axios"
 import { StrictMode } from "react"
@@ -20,10 +15,7 @@ client.setConfig({
 })
 
 const handleApiError = (error: Error) => {
-  if (
-    error instanceof AxiosError &&
-    [401, 403].includes(error.response?.status ?? 0)
-  ) {
+  if (error instanceof AxiosError && [401, 403].includes(error.response?.status ?? 0)) {
     localStorage.removeItem("access_token")
     window.location.href = "/login"
   }

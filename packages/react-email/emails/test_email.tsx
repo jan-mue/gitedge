@@ -8,10 +8,7 @@ type TestEmailProps = {
   email: string
 }
 
-export default function TestEmail({
-  project_name = "{{ project_name }}",
-  email = "{{ email }}",
-}: TestEmailProps) {
+export default function TestEmail({ project_name = "{{ project_name }}", email = "{{ email }}" }: TestEmailProps) {
   return (
     <Layout
       title={`${project_name} - Test email`}
@@ -21,8 +18,7 @@ export default function TestEmail({
       <Heading>Test email</Heading>
       <Text className="text-[15px] leading-7 text-body">Hi,</Text>
       <Text className="text-[15px] leading-7 text-body">
-        This is a test email from {project_name}. If you're reading it, email
-        delivery is configured correctly.
+        This is a test email from {project_name}. If you're reading it, email delivery is configured correctly.
       </Text>
       <Callout>
         <Detail label="Sent to" value={email} />

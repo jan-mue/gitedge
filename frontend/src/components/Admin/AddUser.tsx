@@ -18,14 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import useCustomToast from "@/hooks/useCustomToast"
@@ -39,9 +32,7 @@ const formSchema = z
       .string()
       .min(1, { message: "Password is required" })
       .min(8, { message: "Password must be at least 8 characters" }),
-    confirm_password: z
-      .string()
-      .min(1, { message: "Please confirm your password" }),
+    confirm_password: z.string().min(1, { message: "Please confirm your password" }),
     is_superuser: z.boolean(),
     is_active: z.boolean(),
   })
@@ -99,9 +90,7 @@ const AddUser = () => {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add User</DialogTitle>
-          <DialogDescription>
-            Fill in the form below to add a new user to the system.
-          </DialogDescription>
+          <DialogDescription>Fill in the form below to add a new user to the system.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -115,12 +104,7 @@ const AddUser = () => {
                       Email <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Email"
-                        type="email"
-                        {...field}
-                        required
-                      />
+                      <Input placeholder="Email" type="email" {...field} required />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -150,12 +134,7 @@ const AddUser = () => {
                       Set Password <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Password"
-                        type="password"
-                        {...field}
-                        required
-                      />
+                      <Input placeholder="Password" type="password" {...field} required />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -168,16 +147,10 @@ const AddUser = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Confirm Password{" "}
-                      <span className="text-destructive">*</span>
+                      Confirm Password <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Password"
-                        type="password"
-                        {...field}
-                        required
-                      />
+                      <Input placeholder="Password" type="password" {...field} required />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -190,10 +163,7 @@ const AddUser = () => {
                 render={({ field }) => (
                   <FormItem className="flex items-center gap-3 space-y-0">
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <FormLabel className="font-normal">Is superuser?</FormLabel>
                   </FormItem>
@@ -206,10 +176,7 @@ const AddUser = () => {
                 render={({ field }) => (
                   <FormItem className="flex items-center gap-3 space-y-0">
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <FormLabel className="font-normal">Is active?</FormLabel>
                   </FormItem>

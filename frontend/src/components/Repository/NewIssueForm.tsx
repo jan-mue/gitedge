@@ -55,10 +55,7 @@ const NewIssueForm = ({ owner, repo }: NewIssueFormProps) => {
 
       <div className="space-y-4">
         <div>
-          <label
-            htmlFor="issue-title"
-            className="block text-sm font-medium text-foreground mb-1.5"
-          >
+          <label htmlFor="issue-title" className="block text-sm font-medium text-foreground mb-1.5">
             Title
           </label>
           <input
@@ -73,10 +70,7 @@ const NewIssueForm = ({ owner, repo }: NewIssueFormProps) => {
         </div>
 
         <div>
-          <label
-            htmlFor="issue-body"
-            className="block text-sm font-medium text-foreground mb-1.5"
-          >
+          <label htmlFor="issue-body" className="block text-sm font-medium text-foreground mb-1.5">
             Description
           </label>
           <textarea
@@ -105,9 +99,7 @@ const NewIssueForm = ({ owner, repo }: NewIssueFormProps) => {
             data-testid="submit-issue-btn"
             className="px-4 py-2 text-sm rounded bg-success text-success-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {createIssueMutation.isPending
-              ? "Submitting..."
-              : "Submit new issue"}
+            {createIssueMutation.isPending ? "Submitting..." : "Submit new issue"}
           </button>
         </div>
       </div>

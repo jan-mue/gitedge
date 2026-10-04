@@ -17,11 +17,7 @@ export const columns: ColumnDef<UserTableData>[] = [
       const fullName = row.original.full_name
       return (
         <div className="flex items-center gap-2">
-          <span
-            className={cn("font-medium", !fullName && "text-muted-foreground")}
-          >
-            {fullName || "N/A"}
-          </span>
+          <span className={cn("font-medium", !fullName && "text-muted-foreground")}>{fullName || "N/A"}</span>
           {row.original.isCurrentUser && (
             <Badge variant="outline" className="text-xs">
               You
@@ -34,9 +30,7 @@ export const columns: ColumnDef<UserTableData>[] = [
   {
     accessorKey: "email",
     header: "Email",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground">{row.original.email}</span>
-    ),
+    cell: ({ row }) => <span className="text-muted-foreground">{row.original.email}</span>,
   },
   {
     accessorKey: "is_superuser",
@@ -52,12 +46,7 @@ export const columns: ColumnDef<UserTableData>[] = [
     header: "Status",
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
-        <span
-          className={cn(
-            "size-2 rounded-full",
-            row.original.is_active ? "bg-green-500" : "bg-gray-400",
-          )}
-        />
+        <span className={cn("size-2 rounded-full", row.original.is_active ? "bg-green-500" : "bg-gray-400")} />
         <span className={row.original.is_active ? "" : "text-muted-foreground"}>
           {row.original.is_active ? "Active" : "Inactive"}
         </span>

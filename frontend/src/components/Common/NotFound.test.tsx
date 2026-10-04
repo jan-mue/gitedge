@@ -27,9 +27,7 @@ describe("NotFound", () => {
   test("renders page not found message", () => {
     render(<NotFound />)
 
-    expect(
-      screen.getByText("The page you are looking for was not found."),
-    ).toBeInTheDocument()
+    expect(screen.getByText("The page you are looking for was not found.")).toBeInTheDocument()
   })
 
   test("renders Go Back button", () => {
@@ -78,9 +76,7 @@ describe("NotFound", () => {
   test("description has muted color", () => {
     render(<NotFound />)
 
-    const description = screen.getByText(
-      "The page you are looking for was not found.",
-    )
+    const description = screen.getByText("The page you are looking for was not found.")
     expect(description).toHaveClass("text-muted-foreground")
   })
 })

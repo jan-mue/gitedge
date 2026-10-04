@@ -44,25 +44,16 @@ function BlobContent() {
   })
 
   const parentParts = filePath.split("/").filter(Boolean)
-  const parentPath =
-    parentParts.length > 1 ? parentParts.slice(0, -1).join("/") : ""
+  const parentPath = parentParts.length > 1 ? parentParts.slice(0, -1).join("/") : ""
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <RepoBreadcrumbs
-          owner={owner}
-          repo={repo}
-          path={filePath}
-          searchRef={searchRef}
-        />
+        <RepoBreadcrumbs owner={owner} repo={repo} path={filePath} searchRef={searchRef} />
         <RefBadge gitRef={searchRef ?? "main"} />
       </div>
 
-      <CodeViewer
-        file={file}
-        backLink={{ owner, repo, searchRef, path: parentPath }}
-      />
+      <CodeViewer file={file} backLink={{ owner, repo, searchRef, path: parentPath }} />
     </div>
   )
 }

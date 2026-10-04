@@ -1,12 +1,5 @@
 import { Link as RouterLink, useMatches } from "@tanstack/react-router"
-import {
-  CircleDot,
-  Code,
-  GitFork,
-  GitPullRequest,
-  Moon,
-  Sun,
-} from "lucide-react"
+import { CircleDot, Code, GitFork, GitPullRequest, Moon, Sun } from "lucide-react"
 
 import { useTheme } from "@/components/theme-provider"
 
@@ -43,9 +36,7 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
 
   const isActive = (tabPath: string) => {
     if (tabPath === "/$owner/$repo") {
-      return (
-        currentPath === "/$owner/$repo/" || currentPath === "/$owner/$repo/blob"
-      )
+      return currentPath === "/$owner/$repo/" || currentPath === "/$owner/$repo/blob"
     }
     return currentPath.startsWith(tabPath)
   }
@@ -55,18 +46,11 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
   }
 
   return (
-    <header
-      className="border-b border-border bg-background"
-      data-testid="repo-header"
-    >
+    <header className="border-b border-border bg-background" data-testid="repo-header">
       <div className="container max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <RouterLink
-              to="/$owner/$repo"
-              params={{ owner, repo }}
-              className="flex items-center gap-2"
-            >
+            <RouterLink to="/$owner/$repo" params={{ owner, repo }} className="flex items-center gap-2">
               <div className="w-7 h-7 rounded bg-primary flex items-center justify-center">
                 <GitFork className="w-4 h-4 text-primary-foreground" />
               </div>
@@ -81,18 +65,10 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
               type="button"
               onClick={toggleTheme}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-border bg-secondary text-foreground text-sm hover:bg-accent transition-colors"
-              title={
-                resolvedTheme === "dark"
-                  ? "Switch to light theme"
-                  : "Switch to dark theme"
-              }
+              title={resolvedTheme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
               data-testid="theme-toggle"
             >
-              {resolvedTheme === "dark" ? (
-                <Sun className="w-3.5 h-3.5" />
-              ) : (
-                <Moon className="w-3.5 h-3.5" />
-              )}
+              {resolvedTheme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
             </button>
           </div>
         </div>

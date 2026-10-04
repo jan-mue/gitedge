@@ -1,23 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation } from "@tanstack/react-query"
-import {
-  createFileRoute,
-  Link as RouterLink,
-  redirect,
-} from "@tanstack/react-router"
+import { createFileRoute, Link as RouterLink, redirect } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import { LoginService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { isLoggedIn } from "@/hooks/useAuth"
@@ -80,10 +69,7 @@ function RecoverPassword() {
   return (
     <AuthLayout>
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-6"
-        >
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
           <div className="flex flex-col items-center gap-2 text-center">
             <h1 className="text-2xl font-bold">Password Recovery</h1>
           </div>
@@ -96,23 +82,14 @@ function RecoverPassword() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input
-                      data-testid="email-input"
-                      placeholder="user@example.com"
-                      type="email"
-                      {...field}
-                    />
+                    <Input data-testid="email-input" placeholder="user@example.com" type="email" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <LoadingButton
-              type="submit"
-              className="w-full"
-              loading={mutation.isPending}
-            >
+            <LoadingButton type="submit" className="w-full" loading={mutation.isPending}>
               Continue
             </LoadingButton>
           </div>
