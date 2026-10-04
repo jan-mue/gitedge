@@ -111,6 +111,49 @@ class BranchInfo(GitEdgeBaseModel):
     is_default: bool
 
 
+class CommitListItem(GitEdgeBaseModel):
+    """A single commit in a repository's history."""
+
+    sha: str
+    message: str
+    author: str
+    author_email: str | None = None
+    timestamp: int
+
+
+class CommitsPublic(GitEdgeBaseModel):
+    """A page of commit history."""
+
+    data: list[CommitListItem]
+    count: int
+    ref: str
+
+
+class CommitFileChange(GitEdgeBaseModel):
+    """A file changed by a commit, with its unified diff."""
+
+    path: str
+    old_path: str | None = None
+    change_type: str  # "add", "modify", "delete", "rename"
+    additions: int
+    deletions: int
+    patch: str
+
+
+class CommitDetail(GitEdgeBaseModel):
+    """Detailed information about a single commit."""
+
+    sha: str
+    message: str
+    author: str
+    author_email: str | None = None
+    timestamp: int
+    parents: list[str]
+    files: list[CommitFileChange]
+    additions: int
+    deletions: int
+
+
 class IssueCreate(GitEdgeBaseModel):
     """Request to create a new issue."""
 

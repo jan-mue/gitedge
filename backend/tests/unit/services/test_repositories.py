@@ -284,3 +284,43 @@ async def test_list_branches(service: RepositoryService) -> None:
     assert len(branches) == 1
     assert branches[0].name == "main"
     assert branches[0].is_default is True
+
+
+async def test_list_commits(service: RepositoryService) -> None:
+    commit_id = _populate_repo(service.backend)
+
+    commits = await service.list_commits("owner/repo.git", "main")
+    assert commits.count == 1
+    assert commits.ref == "main"
+    assert commits.data[0].sha == commit_id.decode()
+    assert commits.data[0].message == "Initial commit"
+    assert commits.data[0].author == "Test User"
+
+
+async def test_list_commits_missing_ref(service: RepositoryService) -> None:
+    _populate_repo(service.backend)
+
+    commits = await service.list_commits("owner/repo.git", "missing")
+    assert commits.count == 0
+    assert commits.data == []
+
+
+async def test_get_commit(service: RepositoryService) -> None:
+    commit_id = _populate_repo(service.backend)
+
+    detail = await service.get_commit("owner/repo.git", commit_id.decode())
+    assert detail.sha == commit_id.decode()
+    assert detail.message == "Initial commit"
+    assert detail.author == "Test User"
+    assert detail.parents == []
+    assert {file.path for file in detail.files} == {"README.md", "src/main.py"}
+    assert detail.additions > 0
+    assert all(file.change_type == "add" for file in detail.files)
+    assert any(file.patch.startswith("diff --git") for file in detail.files)
+
+
+async def test_get_commit_not_found(service: RepositoryService) -> None:
+    _populate_repo(service.backend)
+
+    with pytest.raises(HTTPException):
+        await service.get_commit("owner/repo.git", "0" * 40)

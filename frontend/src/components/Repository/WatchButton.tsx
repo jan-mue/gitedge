@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link as RouterLink } from "@tanstack/react-router"
-import { Eye } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 
 import { WatchersService } from "@/client"
 
@@ -28,6 +28,7 @@ const WatchButton = ({ owner, repo }: WatchButtonProps) => {
 
   const isWatching = state?.is_watching ?? false
   const count = state?.watchers_count ?? 0
+  const Icon = isWatching ? EyeOff : Eye
 
   return (
     <div className="flex items-stretch" data-testid="watch-button">
@@ -35,20 +36,16 @@ const WatchButton = ({ owner, repo }: WatchButtonProps) => {
         type="button"
         onClick={() => mutation.mutate()}
         disabled={mutation.isPending}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-l border border-border text-sm transition-colors ${
-          isWatching
-            ? "bg-primary text-primary-foreground border-primary"
-            : "bg-secondary text-foreground hover:bg-accent"
-        }`}
+        className="flex items-center gap-1.5 rounded-l border border-r-0 border-border bg-secondary px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent disabled:opacity-50"
       >
-        <Eye className="w-3.5 h-3.5" />
-        <span>{isWatching ? "Watching" : "Watch"}</span>
+        <Icon className="h-3.5 w-3.5" />
+        <span>{isWatching ? "Unwatch" : "Watch"}</span>
       </button>
       <RouterLink
         to="/$owner/$repo/watchers"
         params={{ owner, repo }}
-        className="flex items-center px-2.5 py-1.5 rounded-r border border-l-0 border-border bg-secondary text-sm text-foreground hover:bg-accent transition-colors"
         data-testid="watch-count"
+        className="flex items-center justify-center rounded-r border border-border bg-secondary px-2.5 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
       >
         {count}
       </RouterLink>

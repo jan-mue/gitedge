@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useNavigate } from "@tanstack/react-router"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
 import { GitFork } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
@@ -54,6 +54,11 @@ const ForkButton = ({ owner, repo }: ForkButtonProps) => {
     defaultValues: { name: repo },
   })
 
+  const { data: forks } = useQuery({
+    queryKey: ["forks", repoPath],
+    queryFn: async () => (await ForksService.listForks({ path: { path: repoPath } })).data,
+  })
+
   const mutation = useMutation({
     mutationFn: (data: FormData) => ForksService.forkRepository({ path: { path: repoPath }, body: data }),
     onSuccess: (response) => {
@@ -71,12 +76,26 @@ const ForkButton = ({ owner, repo }: ForkButtonProps) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" data-testid="fork-button">
-          <GitFork className="w-3.5 h-3.5" />
-          Fork
-        </Button>
-      </DialogTrigger>
+      <div className="flex items-stretch">
+        <DialogTrigger asChild>
+          <button
+            type="button"
+            data-testid="fork-button"
+            className="flex items-center gap-1.5 rounded-l border border-border bg-secondary px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
+          >
+            <GitFork className="h-3.5 w-3.5" />
+            Fork
+          </button>
+        </DialogTrigger>
+        <RouterLink
+          to="/$owner/$repo/forks"
+          params={{ owner, repo }}
+          data-testid="fork-count"
+          className="flex items-center rounded-r border border-l-0 border-border bg-secondary px-2.5 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
+        >
+          {forks?.count ?? 0}
+        </RouterLink>
+      </div>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Fork repository</DialogTitle>

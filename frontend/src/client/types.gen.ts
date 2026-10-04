@@ -163,6 +163,82 @@ export type CommentsPublic = {
 };
 
 /**
+ * CommitDetail
+ *
+ * Detailed information about a single commit.
+ */
+export type CommitDetail = {
+    /**
+     * Sha
+     */
+    sha: string;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Author
+     */
+    author: string;
+    /**
+     * Author Email
+     */
+    author_email?: string | null;
+    /**
+     * Timestamp
+     */
+    timestamp: number;
+    /**
+     * Parents
+     */
+    parents: Array<string>;
+    /**
+     * Files
+     */
+    files: Array<CommitFileChange>;
+    /**
+     * Additions
+     */
+    additions: number;
+    /**
+     * Deletions
+     */
+    deletions: number;
+};
+
+/**
+ * CommitFileChange
+ *
+ * A file changed by a commit, with its unified diff.
+ */
+export type CommitFileChange = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Old Path
+     */
+    old_path?: string | null;
+    /**
+     * Change Type
+     */
+    change_type: string;
+    /**
+     * Additions
+     */
+    additions: number;
+    /**
+     * Deletions
+     */
+    deletions: number;
+    /**
+     * Patch
+     */
+    patch: string;
+};
+
+/**
  * CommitInfo
  *
  * Information about a commit.
@@ -184,6 +260,54 @@ export type CommitInfo = {
      * Timestamp
      */
     timestamp: number;
+};
+
+/**
+ * CommitListItem
+ *
+ * A single commit in a repository's history.
+ */
+export type CommitListItem = {
+    /**
+     * Sha
+     */
+    sha: string;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Author
+     */
+    author: string;
+    /**
+     * Author Email
+     */
+    author_email?: string | null;
+    /**
+     * Timestamp
+     */
+    timestamp: number;
+};
+
+/**
+ * CommitsPublic
+ *
+ * A page of commit history.
+ */
+export type CommitsPublic = {
+    /**
+     * Data
+     */
+    data: Array<CommitListItem>;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Ref
+     */
+    ref: string;
 };
 
 /**
@@ -2762,6 +2886,83 @@ export type repositoriesListBranchesResponses = {
 };
 
 export type repositoriesListBranchesResponse = repositoriesListBranchesResponses[keyof repositoriesListBranchesResponses];
+
+export type repositoriesListCommitsData = {
+    body?: never;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+    };
+    query?: {
+        /**
+         * Ref
+         */
+        ref?: string;
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{path}/commits';
+};
+
+export type repositoriesListCommitsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesListCommitsError = repositoriesListCommitsErrors[keyof repositoriesListCommitsErrors];
+
+export type repositoriesListCommitsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommitsPublic;
+};
+
+export type repositoriesListCommitsResponse = repositoriesListCommitsResponses[keyof repositoriesListCommitsResponses];
+
+export type repositoriesGetCommitData = {
+    body?: never;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+        /**
+         * Sha
+         */
+        sha: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{path}/commits/{sha}';
+};
+
+export type repositoriesGetCommitErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetCommitError = repositoriesGetCommitErrors[keyof repositoriesGetCommitErrors];
+
+export type repositoriesGetCommitResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommitDetail;
+};
+
+export type repositoriesGetCommitResponse = repositoriesGetCommitResponses[keyof repositoriesGetCommitResponses];
 
 export type repositoriesListIssuesData = {
     body?: never;

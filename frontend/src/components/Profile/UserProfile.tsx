@@ -58,7 +58,7 @@ const UserProfile = ({ username }: UserProfileProps) => {
   const list = tab === "repositories" ? (repos?.data ?? []) : (starred?.data ?? [])
 
   return (
-    <div className="space-y-6" data-testid="user-profile">
+    <div className="container mx-auto max-w-7xl space-y-6 px-4 py-6" data-testid="user-profile">
       <div className="flex items-center gap-4">
         <Avatar className="size-16">
           <AvatarFallback className="text-xl">{(user?.full_name || username).slice(0, 1).toUpperCase()}</AvatarFallback>

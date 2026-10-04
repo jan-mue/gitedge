@@ -257,8 +257,8 @@ class TestRepoHeader:
         page.get_by_test_id("tab-code").click()
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=10000)
 
-    def test_theme_toggle(self, app_url: str, page: Page) -> None:
-        """Test that the theme toggle button is present and clickable.
+    def test_repo_actions_are_visible(self, app_url: str, page: Page) -> None:
+        """Test that the star, watch and fork actions are present.
 
         Args:
             app_url: Base URL of the GitEdge frontend.
@@ -271,10 +271,9 @@ class TestRepoHeader:
 
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
-        # Verify theme toggle is visible and clickable
-        theme_toggle = page.get_by_test_id("theme-toggle")
-        expect(theme_toggle).to_be_visible()
-        theme_toggle.click()
+        expect(page.get_by_test_id("star-button")).to_be_visible()
+        expect(page.get_by_test_id("watch-button")).to_be_visible()
+        expect(page.get_by_test_id("fork-button")).to_be_visible()
 
 
 class TestBranchSwitcher:

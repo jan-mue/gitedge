@@ -106,7 +106,7 @@ class TestLogout:
         user_menu = page.get_by_test_id("user-menu")
         expect(user_menu).to_be_visible(timeout=30000)
         user_menu.click()
-        page.get_by_role("menuitem", name="Log out").click()
+        page.get_by_role("menuitem", name="Sign Out").click()
         page.wait_for_url(f"{app_url}/login")
 
     @pytest.mark.usefixtures("logged_in_superuser")
@@ -116,7 +116,7 @@ class TestLogout:
         user_menu = page.get_by_test_id("user-menu")
         expect(user_menu).to_be_visible(timeout=30000)
         user_menu.click()
-        page.get_by_role("menuitem", name="Log out").click()
+        page.get_by_role("menuitem", name="Sign Out").click()
         page.wait_for_url(f"{app_url}/login")
 
         page.goto(f"{app_url}/settings")

@@ -356,7 +356,7 @@ def log_in_user(page: Page, base_url: str, email: str, password: str) -> None:
 
 def log_out_user(page: Page, base_url: str) -> None:
     page.get_by_test_id("user-menu").click()
-    page.get_by_role("menuitem", name="Log out").click()
+    page.get_by_role("menuitem", name="Sign Out").click()
     page.goto(f"{base_url}/login")
 
 

@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router"
+import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
 import { Check, FileText, Folder, MoreHorizontal } from "lucide-react"
 
 import type { CommitInfo, TreeEntry } from "@/client"
@@ -59,9 +59,14 @@ const FileBrowser = ({ entries, owner, repo, treePath, searchRef, lastCommit }: 
             {lastCommit.author.charAt(0).toUpperCase()}
           </div>
           <span className="text-sm font-medium text-foreground">{lastCommit.author}</span>
-          <code className="px-1.5 py-0.5 text-xs font-mono bg-accent rounded text-primary">
+          <RouterLink
+            to="/$owner/$repo/commits/$hash"
+            params={{ owner, repo, hash: lastCommit.sha }}
+            data-testid="last-commit-sha"
+            className="rounded bg-accent px-1.5 py-0.5 font-mono text-xs text-primary hover:underline"
+          >
             {lastCommit.sha.slice(0, 10)}
-          </code>
+          </RouterLink>
           <Check className="w-4 h-4 text-success" />
           <span className="text-sm text-foreground truncate flex-1">{lastCommit.message.split("\n")[0]}</span>
           <button type="button" className="p-1 rounded hover:bg-accent transition-colors">

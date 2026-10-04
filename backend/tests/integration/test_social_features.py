@@ -136,7 +136,7 @@ class TestStarAndWatch:
         expect(page.get_by_test_id("watch-count")).to_have_text("0")
 
         watch_button.click()
-        expect(watch_button).to_have_text("Watching", timeout=10000)
+        expect(watch_button).to_have_text("Unwatch", timeout=10000)
         expect(page.get_by_test_id("watch-count")).to_have_text("1")
 
 

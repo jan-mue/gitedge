@@ -1,9 +1,9 @@
 import { Link as RouterLink, useMatches } from "@tanstack/react-router"
-import { Activity, CircleDot, Code, GitBranch, GitFork, GitPullRequest, Moon, Sun, Tag } from "lucide-react"
+import { Activity, CircleDot, Code, GitBranch, GitFork, GitPullRequest, MoreHorizontal, Rss, Tag } from "lucide-react"
 import ForkButton from "@/components/Repository/ForkButton"
 import StarButton from "@/components/Repository/StarButton"
 import WatchButton from "@/components/Repository/WatchButton"
-import { useTheme } from "@/components/theme-provider"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 interface RepoHeaderProps {
   owner: string
@@ -11,46 +11,17 @@ interface RepoHeaderProps {
 }
 
 const tabs = [
-  {
-    label: "Code",
-    icon: Code,
-    path: "/$owner/$repo" as const,
-    testId: "tab-code",
-  },
-  {
-    label: "Issues",
-    icon: CircleDot,
-    path: "/$owner/$repo/issues" as const,
-    testId: "tab-issues",
-  },
-  {
-    label: "Pull Requests",
-    icon: GitPullRequest,
-    path: "/$owner/$repo/pulls" as const,
-    testId: "tab-pulls",
-  },
-  {
-    label: "Releases",
-    icon: Tag,
-    path: "/$owner/$repo/releases" as const,
-    testId: "tab-releases",
-  },
-  {
-    label: "Branches",
-    icon: GitBranch,
-    path: "/$owner/$repo/branches" as const,
-    testId: "tab-branches",
-  },
-  {
-    label: "Activity",
-    icon: Activity,
-    path: "/$owner/$repo/activity" as const,
-    testId: "tab-activity",
-  },
+  { label: "Code", icon: Code, path: "/$owner/$repo" as const, testId: "tab-code" },
+  { label: "Issues", icon: CircleDot, path: "/$owner/$repo/issues" as const, testId: "tab-issues" },
+  { label: "Pull requests", icon: GitPullRequest, path: "/$owner/$repo/pulls" as const, testId: "tab-pulls" },
+  { label: "Releases", icon: Tag, path: "/$owner/$repo/releases" as const, testId: "tab-releases" },
+  { label: "Branches", icon: GitBranch, path: "/$owner/$repo/branches" as const, testId: "tab-branches" },
+  { label: "Activity", icon: Activity, path: "/$owner/$repo/activity" as const, testId: "tab-activity" },
 ] as const
 
+const VISIBLE_TABS_MOBILE = 4
+
 const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
-  const { setTheme, resolvedTheme } = useTheme()
   const matches = useMatches()
   const currentPath = matches[matches.length - 1]?.fullPath ?? ""
 
@@ -61,60 +32,124 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
     return currentPath.startsWith(tabPath)
   }
 
-  const toggleTheme = () => {
-    setTheme(resolvedTheme === "dark" ? "light" : "dark")
-  }
+  const visibleTabs = tabs.slice(0, VISIBLE_TABS_MOBILE)
+  const overflowTabs = tabs.slice(VISIBLE_TABS_MOBILE)
 
   return (
-    <header className="border-b border-border bg-background" data-testid="repo-header">
-      <div className="container max-w-7xl mx-auto px-4 py-3">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <RouterLink to="/$owner/$repo" params={{ owner, repo }} className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded bg-primary flex items-center justify-center">
-                <GitFork className="w-4 h-4 text-primary-foreground" />
+    <header className="border-b border-border" data-testid="repo-header">
+      <div className="container mx-auto max-w-7xl px-4 py-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <RouterLink to="/$owner/$repo" params={{ owner, repo }} className="shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded bg-primary">
+                <GitFork className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="text-foreground font-medium">
-                {owner} / <span className="font-bold">{repo}</span>
-              </span>
             </RouterLink>
+            <span className="block truncate text-base font-medium text-foreground">
+              <RouterLink
+                to="/profile/$username"
+                params={{ username: owner }}
+                className="hover:text-primary hover:underline"
+              >
+                {owner}
+              </RouterLink>
+              {" / "}
+              <RouterLink
+                to="/$owner/$repo"
+                params={{ owner, repo }}
+                className="font-bold hover:text-primary hover:underline"
+              >
+                {repo}
+              </RouterLink>
+            </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="hidden shrink-0 items-center gap-2 sm:flex">
+            <button
+              type="button"
+              className="inline-flex h-8 items-center gap-1.5 rounded border border-border bg-secondary px-3 text-sm text-foreground transition-colors hover:bg-accent"
+              title="RSS feed"
+            >
+              <Rss className="h-3.5 w-3.5" />
+            </button>
             <WatchButton owner={owner} repo={repo} />
             <StarButton owner={owner} repo={repo} />
             <ForkButton owner={owner} repo={repo} />
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-border bg-secondary text-foreground text-sm hover:bg-accent transition-colors"
-              title={resolvedTheme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-              data-testid="theme-toggle"
-            >
-              {resolvedTheme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded border border-border bg-secondary text-foreground transition-colors hover:bg-accent"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>Copy URL</DropdownMenuItem>
+                <DropdownMenuItem>Cite this repository</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
 
-      <div className="container max-w-7xl mx-auto px-4">
-        <nav className="flex gap-1 overflow-x-auto -mb-px">
+      <div className="container mx-auto max-w-7xl px-4">
+        <nav className="flex -mb-px gap-1 overflow-x-auto">
           {tabs.map((tab) => (
             <RouterLink
               key={tab.label}
               to={tab.path}
               params={{ owner, repo }}
               data-testid={tab.testId}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 transition-colors whitespace-nowrap ${
+              className={`hidden items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-3 text-sm transition-colors md:flex ${
                 isActive(tab.path)
-                  ? "border-primary text-foreground font-medium"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                  ? "border-primary font-medium text-foreground"
+                  : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
               }`}
             >
-              <tab.icon className="w-4 h-4" />
+              <tab.icon className="h-4 w-4" />
               <span>{tab.label}</span>
             </RouterLink>
           ))}
+
+          {visibleTabs.map((tab) => (
+            <RouterLink
+              key={`m-${tab.label}`}
+              to={tab.path}
+              params={{ owner, repo }}
+              className={`flex items-center gap-1 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm transition-colors md:hidden ${
+                isActive(tab.path)
+                  ? "border-primary font-medium text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <tab.icon className="h-3.5 w-3.5" />
+              <span>{tab.label}</span>
+            </RouterLink>
+          ))}
+
+          {overflowTabs.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 border-b-2 border-transparent px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground md:hidden"
+                >
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {overflowTabs.map((tab) => (
+                  <DropdownMenuItem key={tab.label} asChild>
+                    <RouterLink to={tab.path} params={{ owner, repo }} className="flex items-center gap-2">
+                      <tab.icon className="h-4 w-4" />
+                      {tab.label}
+                    </RouterLink>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </nav>
       </div>
     </header>

@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event"
+import type { ReactNode } from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 
 import { render, screen } from "@/test/test-utils"
@@ -10,6 +11,11 @@ const listBranches = vi.hoisted(() => vi.fn())
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => navigate,
+  Link: ({ children, "data-testid": testId }: { children: ReactNode; "data-testid"?: string }) => (
+    <a data-testid={testId} href="/">
+      {children}
+    </a>
+  ),
 }))
 
 vi.mock("@/client", () => ({

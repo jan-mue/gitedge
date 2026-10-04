@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import io
 import logging
+import re
 import stat
 import time
 from typing import TYPE_CHECKING, Protocol
 
 from dulwich.objects import Blob, Commit, ObjectID, Tag, Tree
+from dulwich.patch import write_commit_diff
 from dulwich.refs import SYMREF, Ref
 from fastapi import HTTPException
 from pygments import highlight
@@ -19,7 +22,11 @@ from app.entities.repositories import Repository as RepositoryEntity
 from app.schemas.releases import TagInfo, TagsPublic
 from app.schemas.repositories import (
     BranchInfo,
+    CommitDetail,
+    CommitFileChange,
     CommitInfo,
+    CommitListItem,
+    CommitsPublic,
     FileContent,
     ReadmeContent,
     RepositoriesPublic,
@@ -52,6 +59,23 @@ _README_NAMES = frozenset(
         "Readme.md",
     }
 )
+
+_DIFF_HEADER_RE = re.compile(r"^diff --git a/(?P<old>.+) b/(?P<new>.+)$")
+
+
+def _split_author(raw: str) -> tuple[str, str | None]:
+    """Split a raw Git author/committer line into a name and email.
+
+    Args:
+        raw: The raw "Name <email>" value.
+
+    Returns:
+        Tuple of (name, email), with email None when not present.
+    """
+    match = re.match(r"^(?P<name>.*?)\s*<(?P<email>[^>]*)>\s*$", raw)
+    if match:
+        return match.group("name").strip(), match.group("email").strip() or None
+    return raw.strip(), None
 
 
 class StyleDefsProvider(Protocol):
@@ -607,6 +631,144 @@ class RepositoryService:
         tags.sort(key=lambda tag: tag.name, reverse=True)
         return TagsPublic(data=tags, count=len(tags))
 
+    async def list_commits(self, path: str, ref: str = "main", offset: int = 0, limit: int = 50) -> CommitsPublic:
+        """List commits reachable from a ref, newest first.
+
+        Args:
+            path: Repository path.
+            ref: Git ref to start the history from.
+            offset: Number of commits to skip.
+            limit: Maximum number of commits to return.
+
+        Returns:
+            CommitsPublic with the requested page of commits.
+        """
+        repo = await self.load_repository(path)
+        commit_sha = self._try_resolve_ref(repo, ref)
+        if commit_sha is None:
+            return CommitsPublic(data=[], count=0, ref=ref)
+
+        data: list[CommitListItem] = []
+        skipped = 0
+        for entry in repo.get_walker(include=[ObjectID(commit_sha)]):
+            if skipped < offset:
+                skipped += 1
+                continue
+            if len(data) >= limit:
+                break
+
+            commit = entry.commit
+            sha = commit.id.decode() if isinstance(commit.id, bytes) else str(commit.id)
+            author, author_email = _split_author(commit.author.decode("utf-8", errors="replace"))
+            data.append(
+                CommitListItem(
+                    sha=sha,
+                    message=commit.message.decode("utf-8", errors="replace").strip(),
+                    author=author,
+                    author_email=author_email,
+                    timestamp=commit.author_time,
+                )
+            )
+
+        return CommitsPublic(data=data, count=len(data), ref=ref)
+
+    async def get_commit(self, path: str, sha: str) -> CommitDetail:
+        """Get detailed information about a single commit, including its diff.
+
+        Args:
+            path: Repository path.
+            sha: Full commit SHA.
+
+        Returns:
+            CommitDetail with metadata and per-file unified diffs.
+
+        Raises:
+            HTTPException: If the commit is not found.
+        """
+        repo = await self.load_repository(path)
+        store = repo.object_store
+        try:
+            obj = store[ObjectID(sha.encode())]
+        except (KeyError, ValueError) as e:
+            raise HTTPException(status_code=404, detail="Commit not found") from e
+        if not isinstance(obj, Commit):
+            raise HTTPException(status_code=404, detail="Commit not found")
+
+        buffer = io.BytesIO()
+        write_commit_diff(buffer, store, obj)
+        files = self._parse_patch(buffer.getvalue().decode("utf-8", errors="replace"))
+
+        author, author_email = _split_author(obj.author.decode("utf-8", errors="replace"))
+        sha_str = obj.id.decode() if isinstance(obj.id, bytes) else str(obj.id)
+        return CommitDetail(
+            sha=sha_str,
+            message=obj.message.decode("utf-8", errors="replace").strip(),
+            author=author,
+            author_email=author_email,
+            timestamp=obj.author_time,
+            parents=[p.decode() if isinstance(p, bytes) else str(p) for p in obj.parents],
+            files=files,
+            additions=sum(file.additions for file in files),
+            deletions=sum(file.deletions for file in files),
+        )
+
+    @staticmethod
+    def _parse_patch(patch_text: str) -> list[CommitFileChange]:
+        """Parse a unified diff into per-file changes.
+
+        Args:
+            patch_text: The full unified diff text.
+
+        Returns:
+            A CommitFileChange per changed file.
+        """
+        blocks: list[str] = []
+        current: list[str] = []
+        for line in patch_text.splitlines():
+            if line.startswith("diff --git "):
+                if current:
+                    blocks.append("\n".join(current))
+                current = [line]
+            elif current:
+                current.append(line)
+        if current:
+            blocks.append("\n".join(current))
+
+        files: list[CommitFileChange] = []
+        for block in blocks:
+            lines = block.splitlines()
+            match = _DIFF_HEADER_RE.match(lines[0])
+            old_path = match.group("old") if match else lines[0]
+            new_path = match.group("new") if match else old_path
+
+            change_type = "modify"
+            if any(line.startswith("new file mode") for line in lines):
+                change_type = "add"
+            elif any(line.startswith("deleted file mode") for line in lines):
+                change_type = "delete"
+            elif any(line.startswith("rename from") for line in lines):
+                change_type = "rename"
+
+            for line in lines:
+                if line.startswith("rename from "):
+                    old_path = line[len("rename from ") :]
+                elif line.startswith("rename to "):
+                    new_path = line[len("rename to ") :]
+
+            path = old_path if change_type == "delete" else new_path
+            files.append(
+                CommitFileChange(
+                    path=path,
+                    old_path=old_path if old_path != path else None,
+                    change_type=change_type,
+                    additions=sum(1 for line in lines if line.startswith("+") and not line.startswith("+++")),
+                    deletions=sum(1 for line in lines if line.startswith("-") and not line.startswith("---")),
+                    patch=block,
+                )
+            )
+
+        return files
+
     @staticmethod
     def _try_resolve_ref(repo: BlobRepository, ref_name: str) -> bytes | None:
         """Resolve a ref name to a commit SHA, or None if the ref is missing.
@@ -802,7 +964,7 @@ class RepositoryService:
         author = author_raw.split("<")[0].strip() if "<" in author_raw else author_raw
         timestamp = commit.author_time if hasattr(commit, "author_time") else int(time.time())
 
-        return CommitInfo(sha=sha_str[:10], message=message, author=author, timestamp=timestamp)
+        return CommitInfo(sha=sha_str, message=message, author=author, timestamp=timestamp)
 
     @staticmethod
     def _find_readme_in_tree(repo: BlobRepository, tree: Tree) -> tuple[str, str] | None:

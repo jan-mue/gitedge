@@ -14,6 +14,8 @@ from app.api.dependencies import (
 )
 from app.schemas.repositories import (
     BranchInfo,
+    CommitDetail,
+    CommitsPublic,
     CreateRepositoryRequest,
     FileContent,
     IssueCreate,
@@ -96,6 +98,24 @@ async def get_readme(
 async def list_branches(path: str, repository_service: RepositoryServiceDep) -> list[BranchInfo]:
     """List all branches in a repository."""
     return await repository_service.list_branches(path)
+
+
+@router.get("/{path:path}/commits")
+async def list_commits(
+    path: str,
+    repository_service: RepositoryServiceDep,
+    ref: str = "main",
+    offset: int = 0,
+    limit: int = 50,
+) -> CommitsPublic:
+    """List commit history for a repository ref."""
+    return await repository_service.list_commits(path, ref, offset, limit)
+
+
+@router.get("/{path:path}/commits/{sha}")
+async def get_commit(path: str, sha: str, repository_service: RepositoryServiceDep) -> CommitDetail:
+    """Get a single commit with its diff."""
+    return await repository_service.get_commit(path, sha)
 
 
 @router.get("/{path:path}/issues")
