@@ -46,12 +46,8 @@ describe("DataTable", () => {
     render(<DataTable columns={columns} data={testData} />)
 
     expect(screen.getByRole("columnheader", { name: "ID" })).toBeInTheDocument()
-    expect(
-      screen.getByRole("columnheader", { name: "Name" }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole("columnheader", { name: "Email" }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole("columnheader", { name: "Name" })).toBeInTheDocument()
+    expect(screen.getByRole("columnheader", { name: "Email" })).toBeInTheDocument()
   })
 
   test("renders table with data rows", () => {
@@ -95,18 +91,14 @@ describe("DataTable", () => {
   test("does not show pagination when data fits on one page", () => {
     render(<DataTable columns={columns} data={testData} />)
 
-    expect(
-      screen.queryByRole("button", { name: /go to first page/i }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /go to first page/i })).not.toBeInTheDocument()
   })
 
   test("shows pagination when data exceeds page size", () => {
     const largeData = generateLargeDataset(15)
     render(<DataTable columns={columns} data={largeData} />)
 
-    expect(
-      screen.getByRole("button", { name: /go to next page/i }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /go to next page/i })).toBeInTheDocument()
   })
 
   test("pagination buttons navigate between pages", async () => {
@@ -125,18 +117,14 @@ describe("DataTable", () => {
     const largeData = generateLargeDataset(15)
     render(<DataTable columns={columns} data={largeData} />)
 
-    expect(
-      screen.getByRole("button", { name: /go to first page/i }),
-    ).toBeDisabled()
+    expect(screen.getByRole("button", { name: /go to first page/i })).toBeDisabled()
   })
 
   test("previous page button is disabled on first page", () => {
     const largeData = generateLargeDataset(15)
     render(<DataTable columns={columns} data={largeData} />)
 
-    expect(
-      screen.getByRole("button", { name: /go to previous page/i }),
-    ).toBeDisabled()
+    expect(screen.getByRole("button", { name: /go to previous page/i })).toBeDisabled()
   })
 
   test("can navigate to last page", async () => {
@@ -156,9 +144,7 @@ describe("DataTable", () => {
 
     await user.click(screen.getByRole("button", { name: /go to last page/i }))
 
-    expect(
-      screen.getByRole("button", { name: /go to next page/i }),
-    ).toBeDisabled()
+    expect(screen.getByRole("button", { name: /go to next page/i })).toBeDisabled()
   })
 
   test("shows correct page count", () => {
@@ -167,9 +153,7 @@ describe("DataTable", () => {
 
     // Default page size is 10, so 25 items = 3 pages
     // Check that pagination controls are present (page count appears in pagination)
-    expect(
-      screen.getByRole("button", { name: /go to last page/i }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /go to last page/i })).toBeInTheDocument()
   })
 
   test("shows current page number", () => {

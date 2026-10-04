@@ -27,8 +27,7 @@ const useAuth = () => {
   })
 
   const signUpMutation = useMutation({
-    mutationFn: (data: UserRegister) =>
-      UsersService.registerUser({ body: data }),
+    mutationFn: (data: UserRegister) => UsersService.registerUser({ body: data }),
     onSuccess: () => {
       navigate({ to: "/login" })
     },

@@ -11,13 +11,9 @@ vi.mock("@/client", () => ({
 }))
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    children,
-    "data-testid": testId,
-  }: {
-    children: ReactNode
-    "data-testid"?: string
-  }) => <span data-testid={testId}>{children}</span>,
+  Link: ({ children, "data-testid": testId }: { children: ReactNode; "data-testid"?: string }) => (
+    <span data-testid={testId}>{children}</span>
+  ),
 }))
 
 describe("IssuesList", () => {
@@ -59,9 +55,7 @@ describe("IssuesList", () => {
 
     render(<IssuesList owner="owner" repo="repo" />)
 
-    expect(await screen.findByTestId("issue-1")).toHaveTextContent(
-      "First issue",
-    )
+    expect(await screen.findByTestId("issue-1")).toHaveTextContent("First issue")
     expect(screen.getByText("1 Open")).toBeInTheDocument()
     expect(screen.getByText("0 Closed")).toBeInTheDocument()
     expect(screen.getByTestId("new-issue-btn")).toBeInTheDocument()

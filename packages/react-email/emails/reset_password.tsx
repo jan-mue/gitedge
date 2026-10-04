@@ -26,8 +26,8 @@ export default function ResetPassword({
       <Heading>Reset your password</Heading>
       <Text className="text-[15px] leading-7 text-body">Hi {username},</Text>
       <Text className="text-[15px] leading-7 text-body">
-        We've received a request to reset the password for your {project_name}{" "}
-        account. Choose a new one by clicking the button below:
+        We've received a request to reset the password for your {project_name} account. Choose a new one by clicking the
+        button below:
       </Text>
       <LinkButton href={link}>Reset password</LinkButton>
       <Text className="text-sm leading-6 text-muted">
@@ -35,12 +35,9 @@ export default function ResetPassword({
         <br />
         <Link href={link}>{link}</Link>
       </Text>
+      <Text className="text-sm leading-6 text-muted">This link will expire in {valid_hours} hours.</Text>
       <Text className="text-sm leading-6 text-muted">
-        This link will expire in {valid_hours} hours.
-      </Text>
-      <Text className="text-sm leading-6 text-muted">
-        If you didn't request a password recovery, you can safely ignore this
-        email.
+        If you didn't request a password recovery, you can safely ignore this email.
       </Text>
     </Layout>
   )

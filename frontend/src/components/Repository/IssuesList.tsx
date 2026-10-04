@@ -14,8 +14,7 @@ const IssuesList = ({ owner, repo }: IssuesListProps) => {
 
   const { data: issuesData } = useQuery({
     queryKey: ["issues", repoPath],
-    queryFn: async () =>
-      (await RepositoriesService.listIssues({ path: { path: repoPath } })).data,
+    queryFn: async () => (await RepositoriesService.listIssues({ path: { path: repoPath } })).data,
   })
 
   const issues = issuesData?.data ?? []
@@ -73,28 +72,16 @@ const IssuesList = ({ owner, repo }: IssuesListProps) => {
             </span>
           </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <button
-              type="button"
-              className="hover:text-foreground transition-colors"
-            >
+            <button type="button" className="hover:text-foreground transition-colors">
               Label
             </button>
-            <button
-              type="button"
-              className="hover:text-foreground transition-colors"
-            >
+            <button type="button" className="hover:text-foreground transition-colors">
               Author
             </button>
-            <button
-              type="button"
-              className="hover:text-foreground transition-colors"
-            >
+            <button type="button" className="hover:text-foreground transition-colors">
               Assignee
             </button>
-            <button
-              type="button"
-              className="hover:text-foreground transition-colors"
-            >
+            <button type="button" className="hover:text-foreground transition-colors">
               Sort
             </button>
           </div>
@@ -112,13 +99,10 @@ const IssuesList = ({ owner, repo }: IssuesListProps) => {
                   className={`w-4 h-4 flex-shrink-0 ${issue.state === "open" ? "text-success" : "text-muted-foreground"}`}
                 />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-foreground hover:text-primary">
-                    {issue.title}
-                  </span>
+                  <span className="text-sm font-medium text-foreground hover:text-primary">{issue.title}</span>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     #{issue.number}
-                    {issue.created_at &&
-                      ` opened ${new Date(issue.created_at).toLocaleDateString()}`}
+                    {issue.created_at && ` opened ${new Date(issue.created_at).toLocaleDateString()}`}
                   </p>
                 </div>
               </div>
@@ -131,9 +115,7 @@ const IssuesList = ({ owner, repo }: IssuesListProps) => {
           >
             <MessageSquare className="w-12 h-12 mb-3 opacity-50" />
             <p className="text-sm font-medium">No issues yet</p>
-            <p className="text-xs mt-1">
-              Issues are used to track bugs, enhancements, and tasks.
-            </p>
+            <p className="text-xs mt-1">Issues are used to track bugs, enhancements, and tasks.</p>
           </div>
         )}
       </div>

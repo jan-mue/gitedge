@@ -14,9 +14,7 @@ describe("Footer", () => {
     render(<Footer />)
 
     const currentYear = new Date().getFullYear()
-    expect(
-      screen.getByText(new RegExp(String(currentYear))),
-    ).toBeInTheDocument()
+    expect(screen.getByText(new RegExp(String(currentYear)))).toBeInTheDocument()
   })
 
   test("renders GitHub link", () => {
@@ -24,10 +22,7 @@ describe("Footer", () => {
 
     const githubLink = screen.getByRole("link", { name: /github/i })
     expect(githubLink).toBeInTheDocument()
-    expect(githubLink).toHaveAttribute(
-      "href",
-      "https://github.com/jan-mue/gitedge",
-    )
+    expect(githubLink).toHaveAttribute("href", "https://github.com/jan-mue/gitedge")
   })
 
   test("GitHub link opens in new tab", () => {

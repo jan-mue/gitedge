@@ -23,14 +23,7 @@ const formatRelativeDate = (timestamp: number): string => {
   return `${Math.floor(diff / 31536000)} years ago`
 }
 
-const FileBrowser = ({
-  entries,
-  owner,
-  repo,
-  treePath,
-  searchRef,
-  lastCommit,
-}: FileBrowserProps) => {
+const FileBrowser = ({ entries, owner, repo, treePath, searchRef, lastCommit }: FileBrowserProps) => {
   const navigate = useNavigate()
 
   const handleEntryClick = (entry: TreeEntry) => {
@@ -59,29 +52,19 @@ const FileBrowser = ({
   }
 
   return (
-    <div
-      className="border border-border rounded-lg overflow-hidden"
-      data-testid="file-tree"
-    >
+    <div className="border border-border rounded-lg overflow-hidden" data-testid="file-tree">
       {lastCommit && (
         <div className="flex items-center gap-3 px-4 py-2.5 bg-secondary border-b border-border">
           <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-xs font-medium text-accent-foreground">
             {lastCommit.author.charAt(0).toUpperCase()}
           </div>
-          <span className="text-sm font-medium text-foreground">
-            {lastCommit.author}
-          </span>
+          <span className="text-sm font-medium text-foreground">{lastCommit.author}</span>
           <code className="px-1.5 py-0.5 text-xs font-mono bg-accent rounded text-primary">
             {lastCommit.sha.slice(0, 10)}
           </code>
           <Check className="w-4 h-4 text-success" />
-          <span className="text-sm text-foreground truncate flex-1">
-            {lastCommit.message.split("\n")[0]}
-          </span>
-          <button
-            type="button"
-            className="p-1 rounded hover:bg-accent transition-colors"
-          >
+          <span className="text-sm text-foreground truncate flex-1">{lastCommit.message.split("\n")[0]}</span>
+          <button type="button" className="p-1 rounded hover:bg-accent transition-colors">
             <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
           </button>
           <span className="text-sm text-muted-foreground whitespace-nowrap">
@@ -108,9 +91,7 @@ const FileBrowser = ({
           type="button"
           onClick={() => handleEntryClick(entry)}
           className={`flex items-center gap-3 px-4 py-2 hover:bg-accent/50 text-sm transition-colors w-full text-left ${
-            index < entries.length - 1 || treePath
-              ? "border-b border-border"
-              : ""
+            index < entries.length - 1 || treePath ? "border-b border-border" : ""
           }`}
           data-testid={`tree-entry-${entry.name}`}
         >
@@ -119,22 +100,12 @@ const FileBrowser = ({
           ) : (
             <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           )}
-          <span
-            className={
-              entry.type === "tree"
-                ? "text-primary font-medium"
-                : "text-foreground"
-            }
-          >
-            {entry.name}
-          </span>
+          <span className={entry.type === "tree" ? "text-primary font-medium" : "text-foreground"}>{entry.name}</span>
         </button>
       ))}
 
       {entries.length === 0 && !treePath && (
-        <div className="text-center text-muted-foreground py-8 text-sm">
-          This repository is empty
-        </div>
+        <div className="text-center text-muted-foreground py-8 text-sm">This repository is empty</div>
       )}
     </div>
   )

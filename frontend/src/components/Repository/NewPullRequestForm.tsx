@@ -22,9 +22,7 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
 
   const { data: branches } = useQuery({
     queryKey: ["branches", repoPath],
-    queryFn: async () =>
-      (await RepositoriesService.listBranches({ path: { path: repoPath } }))
-        .data,
+    queryFn: async () => (await RepositoriesService.listBranches({ path: { path: repoPath } })).data,
   })
 
   const createPRMutation = useMutation({
@@ -70,10 +68,7 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <label
-              htmlFor="head-branch"
-              className="block text-sm font-medium text-foreground mb-1.5"
-            >
+            <label htmlFor="head-branch" className="block text-sm font-medium text-foreground mb-1.5">
               Source branch
             </label>
             <select
@@ -93,10 +88,7 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
           </div>
           <span className="mt-6 text-muted-foreground">&rarr;</span>
           <div className="flex-1">
-            <label
-              htmlFor="base-branch"
-              className="block text-sm font-medium text-foreground mb-1.5"
-            >
+            <label htmlFor="base-branch" className="block text-sm font-medium text-foreground mb-1.5">
               Target branch
             </label>
             <select
@@ -116,10 +108,7 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
         </div>
 
         <div>
-          <label
-            htmlFor="pr-title"
-            className="block text-sm font-medium text-foreground mb-1.5"
-          >
+          <label htmlFor="pr-title" className="block text-sm font-medium text-foreground mb-1.5">
             Title
           </label>
           <input
@@ -134,10 +123,7 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
         </div>
 
         <div>
-          <label
-            htmlFor="pr-body"
-            className="block text-sm font-medium text-foreground mb-1.5"
-          >
+          <label htmlFor="pr-body" className="block text-sm font-medium text-foreground mb-1.5">
             Description
           </label>
           <textarea
@@ -162,9 +148,7 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={
-              !title.trim() || !headBranch.trim() || createPRMutation.isPending
-            }
+            disabled={!title.trim() || !headBranch.trim() || createPRMutation.isPending}
             data-testid="submit-pr-btn"
             className="px-4 py-2 text-sm rounded bg-success text-success-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           >

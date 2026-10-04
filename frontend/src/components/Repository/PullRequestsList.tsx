@@ -14,9 +14,7 @@ const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
 
   const { data: pullsData } = useQuery({
     queryKey: ["pulls", repoPath],
-    queryFn: async () =>
-      (await RepositoriesService.listPullRequests({ path: { path: repoPath } }))
-        .data,
+    queryFn: async () => (await RepositoriesService.listPullRequests({ path: { path: repoPath } })).data,
   })
 
   const pulls = pullsData?.data ?? []
@@ -74,28 +72,16 @@ const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
             </span>
           </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <button
-              type="button"
-              className="hover:text-foreground transition-colors"
-            >
+            <button type="button" className="hover:text-foreground transition-colors">
               Label
             </button>
-            <button
-              type="button"
-              className="hover:text-foreground transition-colors"
-            >
+            <button type="button" className="hover:text-foreground transition-colors">
               Author
             </button>
-            <button
-              type="button"
-              className="hover:text-foreground transition-colors"
-            >
+            <button type="button" className="hover:text-foreground transition-colors">
               Assignee
             </button>
-            <button
-              type="button"
-              className="hover:text-foreground transition-colors"
-            >
+            <button type="button" className="hover:text-foreground transition-colors">
               Sort
             </button>
           </div>
@@ -113,13 +99,10 @@ const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
                   className={`w-4 h-4 flex-shrink-0 ${pr.state === "open" ? "text-success" : pr.state === "merged" ? "text-purple-500" : "text-muted-foreground"}`}
                 />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-foreground hover:text-primary">
-                    {pr.title}
-                  </span>
+                  <span className="text-sm font-medium text-foreground hover:text-primary">{pr.title}</span>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     #{pr.number} {pr.head_branch} &rarr; {pr.base_branch}
-                    {pr.created_at &&
-                      ` opened ${new Date(pr.created_at).toLocaleDateString()}`}
+                    {pr.created_at && ` opened ${new Date(pr.created_at).toLocaleDateString()}`}
                   </p>
                 </div>
               </div>
@@ -132,9 +115,7 @@ const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
           >
             <GitPullRequest className="w-12 h-12 mb-3 opacity-50" />
             <p className="text-sm font-medium">No pull requests yet</p>
-            <p className="text-xs mt-1">
-              Pull requests help you collaborate on code with others.
-            </p>
+            <p className="text-xs mt-1">Pull requests help you collaborate on code with others.</p>
           </div>
         )}
       </div>

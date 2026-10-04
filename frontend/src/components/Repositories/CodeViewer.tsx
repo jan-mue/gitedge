@@ -20,23 +20,14 @@ const CodeViewer = ({ file, backLink }: CodeViewerProps) => {
   useSyntaxHighlightCSS(file.css, file.css_dark)
 
   return (
-    <div
-      className="file-viewer border rounded-lg overflow-hidden"
-      data-testid="file-viewer"
-    >
+    <div className="file-viewer border rounded-lg overflow-hidden" data-testid="file-viewer">
       <FileHeader file={file} backLink={backLink} />
       <HighlightedContent html={file.highlighted_html} />
     </div>
   )
 }
 
-const FileHeader = ({
-  file,
-  backLink,
-}: {
-  file: FileContent
-  backLink: CodeViewerProps["backLink"]
-}) => (
+const FileHeader = ({ file, backLink }: { file: FileContent; backLink: CodeViewerProps["backLink"] }) => (
   <div className="flex items-center justify-between bg-muted/50 border-b px-4 py-2">
     <div className="flex items-center gap-2 text-sm">
       <File className="h-4 w-4 text-muted-foreground" />

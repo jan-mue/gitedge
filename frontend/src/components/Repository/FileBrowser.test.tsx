@@ -35,9 +35,7 @@ describe("FileBrowser", () => {
 
     await user.click(screen.getByTestId("tree-entry-src"))
 
-    expect(navigate).toHaveBeenCalledWith(
-      expect.objectContaining({ search: { ref: undefined, path: "src" } }),
-    )
+    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ search: { ref: undefined, path: "src" } }))
   })
 
   test("navigates to the blob route for a file", async () => {
@@ -54,34 +52,18 @@ describe("FileBrowser", () => {
   })
 
   test("renders a parent link in a subdirectory", () => {
-    render(
-      <FileBrowser
-        entries={entries}
-        owner="owner"
-        repo="repo"
-        treePath="src/lib"
-      />,
-    )
+    render(<FileBrowser entries={entries} owner="owner" repo="repo" treePath="src/lib" />)
 
     expect(screen.getByTestId("tree-entry-parent")).toBeInTheDocument()
   })
 
   test("navigates to the parent directory", async () => {
     const user = userEvent.setup()
-    render(
-      <FileBrowser
-        entries={entries}
-        owner="owner"
-        repo="repo"
-        treePath="src/lib"
-      />,
-    )
+    render(<FileBrowser entries={entries} owner="owner" repo="repo" treePath="src/lib" />)
 
     await user.click(screen.getByTestId("tree-entry-parent"))
 
-    expect(navigate).toHaveBeenCalledWith(
-      expect.objectContaining({ search: { ref: undefined, path: "src" } }),
-    )
+    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ search: { ref: undefined, path: "src" } }))
   })
 
   test("renders the last commit bar", () => {

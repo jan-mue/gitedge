@@ -1,13 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import {
-  Check,
-  Copy,
-  GitBranch,
-  GitCommitHorizontal,
-  Lock,
-  Tag,
-} from "lucide-react"
+import { Check, Copy, GitBranch, GitCommitHorizontal, Lock, Tag } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { RepositoriesService } from "@/client"
@@ -42,17 +35,12 @@ const RepoStats = ({ owner, repo, gitRef, searchRef }: RepoStatsProps) => {
 
   const { data: branches } = useQuery({
     queryKey: ["branches", repoPath],
-    queryFn: async () =>
-      (await RepositoriesService.listBranches({ path: { path: repoPath } }))
-        .data,
+    queryFn: async () => (await RepositoriesService.listBranches({ path: { path: repoPath } })).data,
     enabled: branchDropdownOpen,
   })
 
   const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (
-      dropdownRef.current &&
-      !dropdownRef.current.contains(event.target as Node)
-    ) {
+    if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
       setBranchDropdownOpen(false)
     }
   }, [])
@@ -80,23 +68,17 @@ const RepoStats = ({ owner, repo, gitRef, searchRef }: RepoStatsProps) => {
           {repoInfo.last_commit && (
             <span className="flex items-center gap-1.5">
               <GitCommitHorizontal className="w-4 h-4" />
-              <span className="text-foreground font-medium">
-                {repoInfo.last_commit.sha.slice(0, 10)}
-              </span>
+              <span className="text-foreground font-medium">{repoInfo.last_commit.sha.slice(0, 10)}</span>
             </span>
           )}
           <span className="flex items-center gap-1.5">
             <GitBranch className="w-4 h-4" />
-            <span className="text-foreground font-medium">
-              {repoInfo.branch_count}
-            </span>{" "}
+            <span className="text-foreground font-medium">{repoInfo.branch_count}</span>{" "}
             {repoInfo.branch_count === 1 ? "branch" : "branches"}
           </span>
           <span className="flex items-center gap-1.5">
             <Tag className="w-4 h-4" />
-            <span className="text-foreground font-medium">
-              {repoInfo.tag_count}
-            </span>{" "}
+            <span className="text-foreground font-medium">{repoInfo.tag_count}</span>{" "}
             {repoInfo.tag_count === 1 ? "tag" : "tags"}
           </span>
         </div>
@@ -138,18 +120,10 @@ const RepoStats = ({ owner, repo, gitRef, searchRef }: RepoStatsProps) => {
                       <span className="w-3.5 h-3.5 flex-shrink-0" />
                     )}
                     <span className="truncate">{branch.name}</span>
-                    {branch.is_default && (
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        default
-                      </span>
-                    )}
+                    {branch.is_default && <span className="ml-auto text-xs text-muted-foreground">default</span>}
                   </button>
                 ))}
-                {!branches && (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">
-                    Loading...
-                  </div>
-                )}
+                {!branches && <div className="px-3 py-2 text-sm text-muted-foreground">Loading...</div>}
               </div>
             </div>
           )}

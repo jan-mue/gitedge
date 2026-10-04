@@ -14,13 +14,7 @@ interface RepoBreadcrumbsProps {
   lastSegmentIsStatic?: boolean
 }
 
-const RepoBreadcrumbs = ({
-  owner,
-  repo,
-  path,
-  searchRef,
-  lastSegmentIsStatic = true,
-}: RepoBreadcrumbsProps) => {
+const RepoBreadcrumbs = ({ owner, repo, path, searchRef, lastSegmentIsStatic = true }: RepoBreadcrumbsProps) => {
   const parts = path ? path.split("/").filter(Boolean) : []
 
   return (

@@ -6,14 +6,7 @@ import { z } from "zod"
 
 import { UsersService, type UserUpdateMe } from "@/client"
 import { Button } from "@/components/ui/button"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import useAuth from "@/hooks/useAuth"
@@ -49,8 +42,7 @@ const UserInformation = () => {
   }
 
   const mutation = useMutation({
-    mutationFn: (data: UserUpdateMe) =>
-      UsersService.updateUserMe({ body: data }),
+    mutationFn: (data: UserUpdateMe) => UsersService.updateUserMe({ body: data }),
     onSuccess: () => {
       showSuccessToast("User updated successfully")
       toggleEditMode()
@@ -84,10 +76,7 @@ const UserInformation = () => {
     <div className="max-w-md">
       <h3 className="text-lg font-semibold py-4">User Information</h3>
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4"
-        >
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <FormField
             control={form.control}
             name="full_name"
@@ -103,12 +92,7 @@ const UserInformation = () => {
               ) : (
                 <FormItem>
                   <FormLabel>Full name</FormLabel>
-                  <p
-                    className={cn(
-                      "py-2 truncate max-w-sm",
-                      !field.value && "text-muted-foreground",
-                    )}
-                  >
+                  <p className={cn("py-2 truncate max-w-sm", !field.value && "text-muted-foreground")}>
                     {field.value || "N/A"}
                   </p>
                 </FormItem>
@@ -140,19 +124,10 @@ const UserInformation = () => {
           <div className="flex gap-3">
             {editMode ? (
               <>
-                <LoadingButton
-                  type="submit"
-                  loading={mutation.isPending}
-                  disabled={!form.formState.isDirty}
-                >
+                <LoadingButton type="submit" loading={mutation.isPending} disabled={!form.formState.isDirty}>
                   Save
                 </LoadingButton>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onCancel}
-                  disabled={mutation.isPending}
-                >
+                <Button type="button" variant="outline" onClick={onCancel} disabled={mutation.isPending}>
                   Cancel
                 </Button>
               </>

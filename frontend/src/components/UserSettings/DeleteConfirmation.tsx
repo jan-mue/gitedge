@@ -52,10 +52,8 @@ const DeleteConfirmation = () => {
           <DialogHeader>
             <DialogTitle>Confirmation Required</DialogTitle>
             <DialogDescription>
-              All your account data will be{" "}
-              <strong>permanently deleted.</strong> If you are sure, please
-              click <strong>"Confirm"</strong> to proceed. This action cannot be
-              undone.
+              All your account data will be <strong>permanently deleted.</strong> If you are sure, please click{" "}
+              <strong>"Confirm"</strong> to proceed. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -65,11 +63,7 @@ const DeleteConfirmation = () => {
                 Cancel
               </Button>
             </DialogClose>
-            <LoadingButton
-              variant="destructive"
-              type="submit"
-              loading={mutation.isPending}
-            >
+            <LoadingButton variant="destructive" type="submit" loading={mutation.isPending}>
               Delete
             </LoadingButton>
           </DialogFooter>

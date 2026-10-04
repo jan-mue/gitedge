@@ -11,13 +11,9 @@ vi.mock("@/client", () => ({
 }))
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    children,
-    "data-testid": testId,
-  }: {
-    children: ReactNode
-    "data-testid"?: string
-  }) => <span data-testid={testId}>{children}</span>,
+  Link: ({ children, "data-testid": testId }: { children: ReactNode; "data-testid"?: string }) => (
+    <span data-testid={testId}>{children}</span>
+  ),
 }))
 
 describe("PullRequestsList", () => {
@@ -64,9 +60,7 @@ describe("PullRequestsList", () => {
 
     render(<PullRequestsList owner="owner" repo="repo" />)
 
-    expect(await screen.findByTestId("pr-1")).toHaveTextContent(
-      "First pull request",
-    )
+    expect(await screen.findByTestId("pr-1")).toHaveTextContent("First pull request")
     expect(screen.getByText("1 Open")).toBeInTheDocument()
     expect(screen.getByTestId("new-pr-btn")).toBeInTheDocument()
   })

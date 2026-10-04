@@ -13,13 +13,9 @@ vi.mock("@/client", () => ({
 }))
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    children,
-    "data-testid": testId,
-  }: {
-    children: ReactNode
-    "data-testid"?: string
-  }) => <span data-testid={testId}>{children}</span>,
+  Link: ({ children, "data-testid": testId }: { children: ReactNode; "data-testid"?: string }) => (
+    <span data-testid={testId}>{children}</span>
+  ),
   useNavigate: () => navigate,
 }))
 

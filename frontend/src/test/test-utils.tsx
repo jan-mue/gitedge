@@ -1,11 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-  RouterProvider,
-} from "@tanstack/react-router"
+import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from "@tanstack/react-router"
 import { type RenderOptions, render } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import type { ReactElement, ReactNode } from "react"
@@ -44,10 +38,7 @@ function createWrapper() {
   }
 }
 
-function customRender(
-  ui: ReactElement,
-  options?: Omit<RenderOptions, "wrapper">,
-) {
+function customRender(ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) {
   return {
     user: userEvent.setup(),
     ...render(ui, { wrapper: createWrapper(), ...options }),

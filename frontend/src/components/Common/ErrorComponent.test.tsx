@@ -27,9 +27,7 @@ describe("ErrorComponent", () => {
   test("renders error description message", () => {
     render(<ErrorComponent />)
 
-    expect(
-      screen.getByText("Something went wrong. Please try again."),
-    ).toBeInTheDocument()
+    expect(screen.getByText("Something went wrong. Please try again.")).toBeInTheDocument()
   })
 
   test("renders Go Home button", () => {
@@ -78,9 +76,7 @@ describe("ErrorComponent", () => {
   test("description has muted color", () => {
     render(<ErrorComponent />)
 
-    const description = screen.getByText(
-      "Something went wrong. Please try again.",
-    )
+    const description = screen.getByText("Something went wrong. Please try again.")
     expect(description).toHaveClass("text-muted-foreground")
   })
 })

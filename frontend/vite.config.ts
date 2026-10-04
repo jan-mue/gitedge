@@ -10,9 +10,7 @@ const BACKEND_PROJECT_NAME = "gitedge-backend"
 
 function normalizeApiUrl(value: string): string {
   const trimmed = value.trim()
-  const withScheme = /^[a-z][a-z\d+\-.]*:\/\//i.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`
+  const withScheme = /^[a-z][a-z\d+\-.]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
   return withScheme.replace(/\/+$/, "")
 }
 
@@ -21,9 +19,7 @@ function resolveApiUrl(): string {
   if (vercelEnv === "production") {
     const productionUrl = process.env.VITE_API_URL
     if (!productionUrl) {
-      throw new Error(
-        "Missing VITE_API_URL environment variable for a production build.",
-      )
+      throw new Error("Missing VITE_API_URL environment variable for a production build.")
     }
     return normalizeApiUrl(productionUrl)
   }

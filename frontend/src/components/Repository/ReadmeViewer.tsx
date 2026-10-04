@@ -11,16 +11,9 @@ const MarkdownContent = ({ html }: { html: string }) => (
   <div className="markdown-body" dangerouslySetInnerHTML={{ __html: html }} />
 )
 
-const ReadmeViewer = ({
-  html,
-  content,
-  filename = "README.md",
-}: ReadmeViewerProps) => {
+const ReadmeViewer = ({ html, content, filename = "README.md" }: ReadmeViewerProps) => {
   return (
-    <div
-      className="border border-border rounded-lg mt-4 overflow-hidden"
-      data-testid="readme-viewer"
-    >
+    <div className="border border-border rounded-lg mt-4 overflow-hidden" data-testid="readme-viewer">
       <div className="flex items-center gap-2 px-4 py-2.5 bg-secondary border-b border-border">
         <BookOpen className="w-4 h-4 text-muted-foreground" />
         <span className="text-sm font-medium text-foreground">{filename}</span>
@@ -29,9 +22,7 @@ const ReadmeViewer = ({
         {html ? (
           <MarkdownContent html={html} />
         ) : (
-          <pre className="whitespace-pre-wrap text-sm text-foreground font-mono">
-            {content}
-          </pre>
+          <pre className="whitespace-pre-wrap text-sm text-foreground font-mono">{content}</pre>
         )}
       </div>
     </div>

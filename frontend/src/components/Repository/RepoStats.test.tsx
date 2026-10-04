@@ -46,9 +46,7 @@ describe("RepoStats", () => {
     render(<RepoStats owner="owner" repo="repo" gitRef="main" />)
 
     expect(screen.getByTestId("repo-stats")).toBeInTheDocument()
-    expect(screen.getByTestId("clone-url")).toHaveValue(
-      `${window.location.origin}/owner/repo.git`,
-    )
+    expect(screen.getByTestId("clone-url")).toHaveValue(`${window.location.origin}/owner/repo.git`)
     expect(screen.getByTestId("copy-clone-url")).toBeInTheDocument()
   })
 
@@ -78,8 +76,6 @@ describe("RepoStats", () => {
     await user.click(screen.getByTestId("branch-selector"))
     await user.click(await screen.findByTestId("branch-option-develop"))
 
-    expect(navigate).toHaveBeenCalledWith(
-      expect.objectContaining({ search: { ref: "develop" } }),
-    )
+    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ search: { ref: "develop" } }))
   })
 })

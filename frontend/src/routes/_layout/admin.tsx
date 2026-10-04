@@ -11,8 +11,7 @@ import useAuth from "@/hooks/useAuth"
 
 function getUsersQueryOptions() {
   return {
-    queryFn: async () =>
-      (await UsersService.readUsers({ query: { skip: 0, limit: 100 } })).data,
+    queryFn: async () => (await UsersService.readUsers({ query: { skip: 0, limit: 100 } })).data,
     queryKey: ["users"],
   }
 }
@@ -62,9 +61,7 @@ function Admin() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Users</h1>
-          <p className="text-muted-foreground">
-            Manage user accounts and permissions
-          </p>
+          <p className="text-muted-foreground">Manage user accounts and permissions</p>
         </div>
         <AddUser />
       </div>

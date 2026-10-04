@@ -1,13 +1,4 @@
-import {
-  Body,
-  Head,
-  Hr,
-  Html,
-  Preview,
-  Section,
-  Tailwind,
-  Text,
-} from "@react-email/components"
+import { Body, Head, Hr, Html, Preview, Section, Tailwind, Text } from "@react-email/components"
 
 type LayoutProps = React.PropsWithChildren & {
   title: string
@@ -15,12 +6,7 @@ type LayoutProps = React.PropsWithChildren & {
   preview?: string
 }
 
-export const Layout = ({
-  project_name,
-  title,
-  preview,
-  children,
-}: LayoutProps) => {
+export const Layout = ({ project_name, title, preview, children }: LayoutProps) => {
   return (
     <Tailwind
       config={{
@@ -58,10 +44,7 @@ export const Layout = ({
       <Html lang="en" dir="ltr">
         <Head>
           <title>{title}</title>
-          <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0"
-          />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         </Head>
         {preview ? <Preview>{preview}</Preview> : null}
         <Body className="bg-surface font-sans text-body max-w-[560px] w-full mx-auto my-0 py-12 px-6">

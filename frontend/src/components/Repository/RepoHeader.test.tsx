@@ -6,13 +6,7 @@ import { render, screen } from "@/test/test-utils"
 import RepoHeader from "./RepoHeader"
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    children,
-    "data-testid": testId,
-  }: {
-    children: ReactNode
-    "data-testid"?: string
-  }) => (
+  Link: ({ children, "data-testid": testId }: { children: ReactNode; "data-testid"?: string }) => (
     <a data-testid={testId} href="/">
       {children}
     </a>
