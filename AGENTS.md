@@ -14,8 +14,6 @@ refs in Redis, metadata in PostgreSQL.
 ```shell
 uv sync --locked                                  # Install Python deps (repo root)
 bun install --frozen-lockfile                     # Install JS/TS deps (repo root)
-cd backend && uv run python run_app_locally.py    # Backend (http://localhost:8000)
-bun run dev                                       # Frontend (http://localhost:5173)
 bun run --filter frontend build                   # Type-check + build frontend
 pre-commit run -a                                 # Run all linters/formatters
 ```
