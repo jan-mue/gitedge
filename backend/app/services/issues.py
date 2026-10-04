@@ -30,7 +30,7 @@ class IssueService:
         self.issue_store = issue_store
         self.repository_store = repository_store
 
-    def list_issues(self, path: str, state: str) -> IssuesListPublic:
+    async def list_issues(self, path: str, state: str) -> IssuesListPublic:
         """List issues for a repository.
 
         Args:
@@ -41,21 +41,21 @@ class IssueService:
             IssuesListPublic with the issues and counts.
         """
         repo_path = normalize_repo_path(path)
-        repository = self.repository_store.get_by_path(repo_path)
+        repository = await self.repository_store.get_by_path(repo_path)
         if repository is None:
             return IssuesListPublic(data=[], count=0, open_count=0, closed_count=0)
 
         filter_state = state if state in ("open", "closed") else None
-        issues = self.issue_store.list_by_repo(repository.id, filter_state)
+        issues = await self.issue_store.list_by_repo(repository.id, filter_state)
 
         return IssuesListPublic(
             data=[self._to_public(issue, repo_path) for issue in issues],
             count=len(issues),
-            open_count=self.issue_store.count_by_state(repository.id, "open"),
-            closed_count=self.issue_store.count_by_state(repository.id, "closed"),
+            open_count=await self.issue_store.count_by_state(repository.id, "open"),
+            closed_count=await self.issue_store.count_by_state(repository.id, "closed"),
         )
 
-    def create_issue(self, path: str, body: IssueCreate, current_user: User) -> IssuePublic:
+    async def create_issue(self, path: str, body: IssueCreate, current_user: User) -> IssuePublic:
         """Create a new issue.
 
         Args:
@@ -67,21 +67,21 @@ class IssueService:
             The created issue.
         """
         repo_path = normalize_repo_path(path)
-        repository = ensure_repository(self.repository_store, repo_path, current_user)
+        repository = await ensure_repository(self.repository_store, repo_path, current_user)
 
         issue = Issue(
             repo_id=repository.id,
-            number=self.issue_store.next_number(repository.id),
+            number=await self.issue_store.next_number(repository.id),
             title=body.title,
             body=body.body,
             state="open",
             author_email=current_user.email,
         )
-        self.issue_store.add(issue)
+        await self.issue_store.add(issue)
 
         return self._to_public(issue, repo_path)
 
-    def get_issue(self, path: str, number: int) -> IssuePublic:
+    async def get_issue(self, path: str, number: int) -> IssuePublic:
         """Get a single issue by number.
 
         Args:
@@ -95,10 +95,10 @@ class IssueService:
             HTTPException: If the issue is not found.
         """
         repo_path = normalize_repo_path(path)
-        issue = self._find_issue(repo_path, number)
+        issue = await self._find_issue(repo_path, number)
         return self._to_public(issue, repo_path)
 
-    def update_issue(self, path: str, number: int, body: IssueUpdate) -> IssuePublic:
+    async def update_issue(self, path: str, number: int, body: IssueUpdate) -> IssuePublic:
         """Update an issue.
 
         Args:
@@ -113,7 +113,7 @@ class IssueService:
             HTTPException: If the issue is not found or the state is invalid.
         """
         repo_path = normalize_repo_path(path)
-        issue = self._find_issue(repo_path, number)
+        issue = await self._find_issue(repo_path, number)
 
         if body.title is not None:
             issue.title = body.title
@@ -125,11 +125,11 @@ class IssueService:
             issue.state = body.state
 
         issue.updated_at = datetime.now(UTC)
-        self.issue_store.update(issue)
+        await self.issue_store.update(issue)
 
         return self._to_public(issue, repo_path)
 
-    def _find_issue(self, repo_path: str, number: int) -> Issue:
+    async def _find_issue(self, repo_path: str, number: int) -> Issue:
         """Find an issue by repository path and number.
 
         Args:
@@ -142,11 +142,11 @@ class IssueService:
         Raises:
             HTTPException: If the repository or issue is not found.
         """
-        repository = self.repository_store.get_by_path(repo_path)
+        repository = await self.repository_store.get_by_path(repo_path)
         if repository is None:
             raise HTTPException(status_code=404, detail="Issue not found")
 
-        issue = self.issue_store.get_by_number(repository.id, number)
+        issue = await self.issue_store.get_by_number(repository.id, number)
         if issue is None:
             raise HTTPException(status_code=404, detail="Issue not found")
         return issue

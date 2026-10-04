@@ -4,14 +4,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.dependencies import (
-    CrudServiceDep,
-    CurrentUser,
-    EmailClientDep,
-    SessionDep,
-    UserStoreDep,
-    get_current_active_superuser,
-)
+from app.api.dependencies import CrudServiceDep, CurrentUser, EmailClientDep, UserStoreDep, get_current_active_superuser
 from app.config import settings
 from app.schemas.users import (
     UpdatePassword,
@@ -31,8 +24,8 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.get("/", dependencies=[Depends(get_current_active_superuser)])
 async def read_users(user_store: UserStoreDep, skip: int = 0, limit: int = 100) -> UsersPublic:
     """Retrieve users."""
-    count = user_store.count()
-    users = user_store.get_all(offset=skip, limit=limit)
+    count = await user_store.count()
+    users = await user_store.get_all(offset=skip, limit=limit)
 
     return UsersPublic(data=[UserPublic.model_validate(user) for user in users], count=count)
 
@@ -40,14 +33,14 @@ async def read_users(user_store: UserStoreDep, skip: int = 0, limit: int = 100) 
 @router.post("/", dependencies=[Depends(get_current_active_superuser)])
 async def create_user(*, crud_service: CrudServiceDep, user_in: UserCreate, email_client: EmailClientDep) -> UserPublic:
     """Create new user."""
-    user = crud_service.get_user_by_email(email=user_in.email)
+    user = await crud_service.get_user_by_email(email=user_in.email)
     if user:
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system.",
         )
 
-    user = crud_service.create_user(user_create=user_in)
+    user = await crud_service.create_user(user_create=user_in)
     if settings.emails_enabled and user_in.email:
         email_data = generate_new_account_email(
             email_to=user_in.email, username=user_in.email, password=user_in.password
@@ -66,10 +59,10 @@ async def update_user_me(
 ) -> UserPublic:
     """Update own user."""
     if user_in.email:
-        existing_user = crud_service.get_user_by_email(email=user_in.email)
+        existing_user = await crud_service.get_user_by_email(email=user_in.email)
         if existing_user and existing_user.id != current_user.id:
             raise HTTPException(status_code=409, detail="User with this email already exists")
-    return crud_service.update_user(db_user=current_user, user_in=user_in)
+    return await crud_service.update_user(db_user=current_user, user_in=user_in)
 
 
 @router.patch("/me/password", status_code=status.HTTP_204_NO_CONTENT)
@@ -82,7 +75,7 @@ async def update_password_me(*, user_store: UserStoreDep, body: UpdatePassword, 
         raise HTTPException(status_code=400, detail="New password cannot be the same as the current one")
     hashed_password = get_password_hash(body.new_password)
     current_user.hashed_password = hashed_password
-    user_store.update(current_user)
+    await user_store.update(current_user)
 
 
 @router.get("/me")
@@ -92,14 +85,12 @@ async def read_user_me(current_user: CurrentUser) -> UserPublic:
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user_me(session: SessionDep, current_user: CurrentUser) -> None:
+async def delete_user_me(user_store: UserStoreDep, current_user: CurrentUser) -> None:
     """Delete own user."""
     if current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Super users are not allowed to delete themselves")
     # TODO: delete repositories
-    # TODO: move to service
-    session.delete(current_user)
-    session.commit()
+    await user_store.delete(current_user)
 
 
 @router.post("/signup")
@@ -110,20 +101,20 @@ async def register_user(crud_service: CrudServiceDep, user_in: UserRegister) -> 
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Sign-ups are disabled",
         )
-    user = crud_service.get_user_by_email(email=user_in.email)
+    user = await crud_service.get_user_by_email(email=user_in.email)
     if user:
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system",
         )
     user_create = UserCreate.model_validate(user_in)
-    return crud_service.create_user(user_create=user_create)
+    return await crud_service.create_user(user_create=user_create)
 
 
 @router.get("/{user_id}")
 async def read_user_by_id(user_id: uuid.UUID, user_store: UserStoreDep, current_user: CurrentUser) -> UserPublic:
     """Get a specific user by id."""
-    user = user_store.get(user_id)
+    user = await user_store.get(user_id)
     if user != current_user and not current_user.is_superuser:
         raise HTTPException(
             status_code=403,
@@ -139,33 +130,29 @@ async def update_user(
     *, user_store: UserStoreDep, crud_service: CrudServiceDep, user_id: uuid.UUID, user_in: UserUpdate
 ) -> UserPublic:
     """Update a user."""
-    db_user = user_store.get(user_id)
+    db_user = await user_store.get(user_id)
     if not db_user:
         raise HTTPException(
             status_code=404,
             detail="The user with this id does not exist in the system",
         )
     if user_in.email:
-        existing_user = crud_service.get_user_by_email(email=user_in.email)
+        existing_user = await crud_service.get_user_by_email(email=user_in.email)
         if existing_user and existing_user.id != user_id:
             raise HTTPException(status_code=409, detail="User with this email already exists")
 
-    return crud_service.update_user(db_user=db_user, user_in=user_in)
+    return await crud_service.update_user(db_user=db_user, user_in=user_in)
 
 
 @router.delete(
     "/{user_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(get_current_active_superuser)]
 )
-async def delete_user(
-    session: SessionDep, user_store: UserStoreDep, current_user: CurrentUser, user_id: uuid.UUID
-) -> None:
+async def delete_user(user_store: UserStoreDep, current_user: CurrentUser, user_id: uuid.UUID) -> None:
     """Delete a user."""
-    # TODO: move to service
-    user = user_store.get(user_id)
+    user = await user_store.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if user == current_user:
         raise HTTPException(status_code=403, detail="Super users are not allowed to delete themselves")
     # TODO: delete repositories
-    session.delete(user)
-    session.commit()
+    await user_store.delete(user)

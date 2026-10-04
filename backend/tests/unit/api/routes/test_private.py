@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from app.services.crud import CrudService
 
 
-def test_create_user(client: TestClient, crud: CrudService) -> None:
+async def test_create_user(client: TestClient, crud: CrudService) -> None:
     r = client.post(
         f"{settings.API_V1_STR}/private/users/",
         json={
@@ -25,7 +25,7 @@ def test_create_user(client: TestClient, crud: CrudService) -> None:
 
     data = r.json()
 
-    user = crud.get_user_by_id(uuid.UUID(data["id"]))
+    user = await crud.get_user_by_id(uuid.UUID(data["id"]))
 
     assert user
     assert user.email == "pollo@listo.com"

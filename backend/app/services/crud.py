@@ -29,7 +29,7 @@ class CrudService:
         """
         self.user_store = user_store
 
-    def create_user(self, user_create: UserCreate) -> UserPublic:
+    async def create_user(self, user_create: UserCreate) -> UserPublic:
         """Create a new user.
 
         Args:
@@ -45,10 +45,10 @@ class CrudService:
             is_active=user_create.is_active,
             hashed_password=get_password_hash(user_create.password),
         )
-        self.user_store.add(user)
+        await self.user_store.add(user)
         return UserPublic.model_validate(user)
 
-    def get_user_by_id(self, user_id: uuid.UUID) -> UserPublic | None:
+    async def get_user_by_id(self, user_id: uuid.UUID) -> UserPublic | None:
         """Get a user by their ID.
 
         Args:
@@ -57,12 +57,12 @@ class CrudService:
         Returns:
             The user's public data or None if not found.
         """
-        user = self.user_store.get(user_id)
+        user = await self.user_store.get(user_id)
         if not user:
             return None
         return UserPublic.model_validate(user)
 
-    def get_user_by_email(self, email: str) -> UserPublic | None:
+    async def get_user_by_email(self, email: str) -> UserPublic | None:
         """Get a user by their email.
 
         Args:
@@ -71,12 +71,12 @@ class CrudService:
         Returns:
             The user's public data or None if not found.
         """
-        user = self.user_store.get_by_email(email)
+        user = await self.user_store.get_by_email(email)
         if not user:
             return None
         return UserPublic.model_validate(user)
 
-    def update_user(self, db_user: User, user_in: UserUpdate | UserUpdateMe) -> UserPublic:
+    async def update_user(self, db_user: User, user_in: UserUpdate | UserUpdateMe) -> UserPublic:
         """Update a user.
 
         Args:
@@ -91,10 +91,10 @@ class CrudService:
             password = user_data.pop("password")
             hashed_password = get_password_hash(password)
             user_data["hashed_password"] = hashed_password
-        self.user_store.update(db_user, user_data)
+        await self.user_store.update(db_user, user_data)
         return UserPublic.model_validate(db_user)
 
-    def authenticate(self, email: str, password: str) -> User | None:
+    async def authenticate(self, email: str, password: str) -> User | None:
         """Authenticate a user by email and password.
 
         Args:
@@ -104,7 +104,7 @@ class CrudService:
         Returns:
             The user entity if authentication succeeds, None otherwise.
         """
-        db_user = self.user_store.get_by_email(email)
+        db_user = await self.user_store.get_by_email(email)
         if not db_user:
             # Prevent timing attacks by running password verification even when user doesn't exist
             # This ensures the response time is similar whether or not the email exists
@@ -115,5 +115,5 @@ class CrudService:
             return None
         if updated_password_hash:
             db_user.hashed_password = updated_password_hash
-            self.user_store.update(db_user)
+            await self.user_store.update(db_user)
         return db_user

@@ -50,7 +50,7 @@ def test_use_access_token(client: TestClient, superuser_token_headers: dict[str,
     assert "email" in result
 
 
-def test_recovery_password(
+async def test_recovery_password(
     client: TestClient, normal_user_token_headers: dict[str, str], mocker: MockerFixture
 ) -> None:
     # Override email client with fake
@@ -68,7 +68,7 @@ def test_recovery_password(
     assert r.status_code == 204
 
 
-def test_recovery_password_user_not_exits(client: TestClient, normal_user_token_headers: dict[str, str]) -> None:
+async def test_recovery_password_user_not_exits(client: TestClient, normal_user_token_headers: dict[str, str]) -> None:
     email = "jVgQr@example.com"
     r = client.post(
         f"{settings.API_V1_STR}/password-recovery/{email}",
@@ -78,12 +78,12 @@ def test_recovery_password_user_not_exits(client: TestClient, normal_user_token_
     assert r.status_code == 204
 
 
-def test_reset_password(client: TestClient, crud: CrudService) -> None:
+async def test_reset_password(client: TestClient, crud: CrudService) -> None:
     email = random_email()
     password = random_lower_string()
     new_password = random_lower_string()
 
-    crud.create_user(
+    await crud.create_user(
         UserCreate(
             email=email,
             full_name="Test User",
@@ -104,7 +104,7 @@ def test_reset_password(client: TestClient, crud: CrudService) -> None:
 
     assert r.status_code == 204
 
-    user = crud.user_store.get_by_email(email=email)
+    user = await crud.user_store.get_by_email(email=email)
     assert user is not None
     verified, _ = verify_password(new_password, user.hashed_password)
     assert verified

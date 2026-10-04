@@ -21,28 +21,28 @@ def user_authentication_headers(*, client: TestClient, email: str, password: str
     return {"Authorization": f"Bearer {auth_token}"}
 
 
-def create_random_user(crud: CrudService) -> UserPublic:
+async def create_random_user(crud: CrudService) -> UserPublic:
     email = random_email()
     password = random_lower_string()
     user_in = UserCreate(email=email, password=password)
-    return crud.create_user(user_create=user_in)
+    return await crud.create_user(user_create=user_in)
 
 
-def authentication_token_from_email(*, client: TestClient, email: str, crud: CrudService) -> dict[str, str]:
+async def authentication_token_from_email(*, client: TestClient, email: str, crud: CrudService) -> dict[str, str]:
     """
     Return a valid token for the user with given email.
 
     If the user doesn't exist it is created first.
     """
     password = random_lower_string()
-    user = crud.user_store.get_by_email(email=email)
+    user = await crud.user_store.get_by_email(email=email)
     if not user:
         user_in_create = UserCreate(email=email, password=password)
-        crud.create_user(user_create=user_in_create)
+        await crud.create_user(user_create=user_in_create)
     else:
         user_in_update = UserUpdate(password=password)
         if not user.id:
             raise Exception("User id not set")
-        crud.update_user(db_user=user, user_in=user_in_update)
+        await crud.update_user(db_user=user, user_in=user_in_update)
 
     return user_authentication_headers(client=client, email=email, password=password)

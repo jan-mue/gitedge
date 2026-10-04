@@ -108,16 +108,16 @@ def test_repository_name_from_path() -> None:
     assert repository_name_from_path("repo") == "repo"
 
 
-def test_ensure_repository() -> None:
+async def test_ensure_repository() -> None:
     store = FakeRepositoryStore()
     user = User(email="owner@example.com", hashed_password="x")
     user.id = uuid.uuid4()
 
-    repository = ensure_repository(store, "owner/repo", user)
+    repository = await ensure_repository(store, "owner/repo", user)
     assert repository.name == "repo"
     assert repository.path == "owner/repo.git"
     assert repository.owner_id == user.id
-    assert ensure_repository(store, "owner/repo", user) is repository
+    assert await ensure_repository(store, "owner/repo", user) is repository
 
 
 async def test_create_repository(service: RepositoryService) -> None:

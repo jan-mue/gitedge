@@ -1,124 +1,134 @@
-"""Database client using SQLAlchemy with PostgreSQL."""
+"""Database client using SQLAlchemy with PostgreSQL over asyncio."""
+
+from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Engine, create_engine, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
 from app.entities.base import Base
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import AsyncIterator
+
+    from sqlalchemy.ext.asyncio import AsyncEngine
 
 logger = logging.getLogger(__name__)
 
-_engine: Engine | None = None
+
+@asynccontextmanager
+async def create_db_engine() -> AsyncIterator[AsyncEngine]:
+    """Create a database engine bound to the context's lifetime.
+
+    Yields:
+        SQLAlchemy AsyncEngine instance, disposed when the context exits.
+    """
+    engine = create_async_engine(str(settings.DATABASE_URL), echo=False)
+    try:
+        yield engine
+    finally:
+        await engine.dispose()
 
 
-def get_engine() -> Engine:
-    """Get or create SQLAlchemy engine from DATABASE_URL.
+def create_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
+    """Create an async session factory bound to the given engine.
+
+    Args:
+        engine: The async engine to bind sessions to.
 
     Returns:
-        SQLAlchemy Engine instance.
+        Async session factory.
     """
-    global _engine  # noqa: PLW0603
-    if _engine is None:
-        _engine = create_engine(str(settings.DATABASE_URL), echo=False)
-    return _engine
-
-
-def get_db_session() -> Session:
-    """Get a database session.
-
-    Returns:
-        SQLAlchemy Session instance.
-    """
-    engine = get_engine()
-    return Session(autocommit=False, autoflush=False, bind=engine)
+    return async_sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)
 
 
 class CrudStore[T: Base](ABC):
     """Abstract base class for CRUD store operations."""
 
     @abstractmethod
-    def get(self, primary_key: uuid.UUID) -> T | None:
+    async def get(self, primary_key: uuid.UUID) -> T | None:
         """Get an entity by its primary key."""
 
     @abstractmethod
-    def get_all(self, offset: int = 0, limit: int = 100) -> list[T]:
+    async def get_all(self, offset: int = 0, limit: int = 100) -> list[T]:
         """Get all entities with pagination."""
 
     @abstractmethod
-    def count(self) -> int:
+    async def count(self) -> int:
         """Count all entities."""
 
     @abstractmethod
-    def add(self, obj: T) -> None:
+    async def add(self, obj: T) -> None:
         """Add a new entity."""
 
     @abstractmethod
-    def update(self, obj: T, new_data: dict[str, Any] | None = None) -> None:
+    async def update(self, obj: T, new_data: dict[str, Any] | None = None) -> None:
         """Update an existing entity."""
 
     @abstractmethod
-    def delete(self, obj: T) -> None:
+    async def delete(self, obj: T) -> None:
         """Delete an entity."""
 
     @abstractmethod
-    def refresh(self, obj: T) -> None:
+    async def refresh(self, obj: T) -> None:
         """Refresh an entity from the database."""
 
 
 class SQLStore[T: Base](CrudStore[T]):
-    """SQLAlchemy implementation of a CRUD store."""
+    """SQLAlchemy implementation of an async CRUD store."""
 
-    def __init__(self, db: Session, entity_class: type[T]) -> None:
+    def __init__(self, db: AsyncSession, entity_class: type[T]) -> None:
         """Initialize the store.
 
         Args:
-            db: SQLAlchemy session.
+            db: SQLAlchemy async session.
             entity_class: The entity class this store manages.
         """
         self.db = db
         self.entity_class = entity_class
 
-    def get(self, primary_key: uuid.UUID) -> T | None:
+    async def get(self, primary_key: uuid.UUID) -> T | None:
         """Get an entity by its primary key.
 
         Args:
             primary_key: Primary key of the entity.
         """
-        return self.db.scalar(select(self.entity_class).where(self.entity_class.id == primary_key))
+        return await self.db.scalar(select(self.entity_class).where(self.entity_class.id == primary_key))
 
-    def get_all(self, offset: int = 0, limit: int = 100) -> list[T]:
+    async def get_all(self, offset: int = 0, limit: int = 100) -> list[T]:
         """Get all entities with pagination."""
-        return list(self.db.scalars(select(self.entity_class).offset(offset).limit(limit)).all())
+        result = await self.db.scalars(select(self.entity_class).offset(offset).limit(limit))
+        return list(result.all())
 
-    def count(self) -> int:
+    async def count(self) -> int:
         """Count all entities."""
-        return self.db.execute(select(func.count()).select_from(self.entity_class)).scalar_one()
+        result = await self.db.execute(select(func.count()).select_from(self.entity_class))
+        return result.scalar_one()
 
-    def add(self, obj: T) -> None:
+    async def add(self, obj: T) -> None:
         """Add a new entity."""
         self.db.add(obj)
-        self.db.commit()
-        self.db.refresh(obj)
+        await self.db.commit()
+        await self.db.refresh(obj)
 
-    def update(self, obj: T, new_data: dict[str, Any] | None = None) -> None:
+    async def update(self, obj: T, new_data: dict[str, Any] | None = None) -> None:
         """Update an existing entity."""
         if new_data:
             for key, value in new_data.items():
                 setattr(obj, key, value)
-        self.db.commit()
+        await self.db.commit()
 
-    def delete(self, obj: T) -> None:
+    async def delete(self, obj: T) -> None:
         """Delete an entity."""
-        self.db.delete(obj)
-        self.db.commit()
+        await self.db.delete(obj)
+        await self.db.commit()
 
-    def refresh(self, obj: T) -> None:
+    async def refresh(self, obj: T) -> None:
         """Refresh an entity from the database."""
-        self.db.refresh(obj)
+        await self.db.refresh(obj)

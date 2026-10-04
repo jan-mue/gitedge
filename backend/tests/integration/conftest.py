@@ -20,7 +20,6 @@ from typing import TYPE_CHECKING, Any
 import psycopg
 import pytest
 import redis
-import sqlalchemy
 from alembic.command import upgrade
 from alembic.config import Config
 from playwright.sync_api import expect
@@ -32,7 +31,6 @@ from testcontainers.redis import RedisContainer
 from xprocess import ProcessStarter
 
 from app.clients.blob_storage import S3Client
-from app.clients.database import get_db_session
 from app.config import settings
 from app.constants import BACKEND_DIR
 from app.utils.security import get_password_hash
@@ -151,11 +149,11 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
 
 def _delete_repository_rows() -> None:
     """Delete all repository-related rows from the database."""
-    with get_db_session() as session:
-        session.execute(sqlalchemy.text("DELETE FROM pull_request"))
-        session.execute(sqlalchemy.text("DELETE FROM issue"))
-        session.execute(sqlalchemy.text("DELETE FROM repository"))
-        session.commit()
+    db_url = str(settings.DATABASE_URL).replace("postgresql+psycopg://", "postgresql://")
+    with psycopg.connect(db_url) as conn:
+        conn.execute("DELETE FROM pull_request")
+        conn.execute("DELETE FROM issue")
+        conn.execute("DELETE FROM repository")
 
 
 def _delete_redis_keys(redis_url: str) -> None:

@@ -105,7 +105,7 @@ async def list_issues(
     state: Annotated[str, Query(description="Filter by state: open, closed, or all")] = "all",
 ) -> IssuesListPublic:
     """List issues for a repository."""
-    return issue_service.list_issues(path, state)
+    return await issue_service.list_issues(path, state)
 
 
 @router.post("/{path:path}/issues", status_code=201)
@@ -116,13 +116,13 @@ async def create_issue(
     current_user: CurrentUser,
 ) -> IssuePublic:
     """Create a new issue."""
-    return issue_service.create_issue(path, body, current_user)
+    return await issue_service.create_issue(path, body, current_user)
 
 
 @router.get("/{path:path}/issues/{number}")
 async def get_issue(path: str, number: int, issue_service: IssueServiceDep) -> IssuePublic:
     """Get a single issue by number."""
-    return issue_service.get_issue(path, number)
+    return await issue_service.get_issue(path, number)
 
 
 @router.patch("/{path:path}/issues/{number}")
@@ -133,7 +133,7 @@ async def update_issue(
     issue_service: IssueServiceDep,
 ) -> IssuePublic:
     """Update an issue."""
-    return issue_service.update_issue(path, number, body)
+    return await issue_service.update_issue(path, number, body)
 
 
 @router.get("/{path:path}/pulls")
@@ -143,7 +143,7 @@ async def list_pull_requests(
     state: Annotated[str, Query(description="Filter by state: open, closed, merged, or all")] = "all",
 ) -> PullRequestsListPublic:
     """List pull requests for a repository."""
-    return pull_request_service.list_pull_requests(path, state)
+    return await pull_request_service.list_pull_requests(path, state)
 
 
 @router.post("/{path:path}/pulls", status_code=201)
@@ -154,7 +154,7 @@ async def create_pull_request(
     current_user: CurrentUser,
 ) -> PullRequestPublic:
     """Create a new pull request."""
-    return pull_request_service.create_pull_request(path, body, current_user)
+    return await pull_request_service.create_pull_request(path, body, current_user)
 
 
 @router.get("/{path:path}/pulls/{number}")
@@ -164,7 +164,7 @@ async def get_pull_request(
     pull_request_service: PullRequestServiceDep,
 ) -> PullRequestPublic:
     """Get a single pull request by number."""
-    return pull_request_service.get_pull_request(path, number)
+    return await pull_request_service.get_pull_request(path, number)
 
 
 @router.patch("/{path:path}/pulls/{number}")
@@ -175,7 +175,7 @@ async def update_pull_request(
     pull_request_service: PullRequestServiceDep,
 ) -> PullRequestPublic:
     """Update a pull request."""
-    return pull_request_service.update_pull_request(path, number, body)
+    return await pull_request_service.update_pull_request(path, number, body)
 
 
 @router.get("/{path:path}")
