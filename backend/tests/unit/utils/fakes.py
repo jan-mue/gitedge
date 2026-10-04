@@ -12,20 +12,30 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.schema import ColumnDefault
 
+from app.clients.activity import ActivityStore
 from app.clients.blob_storage import BlobStorageClient
+from app.clients.comments import CommentStore
 from app.clients.database import CrudStore
 from app.clients.email import EmailClient
 from app.clients.issues import IssueStore
 from app.clients.pull_requests import PullRequestStore
 from app.clients.redis import AbstractRedisClient
+from app.clients.releases import ReleaseStore
 from app.clients.repositories import RepositoryStore
+from app.clients.stars import StarStore
 from app.clients.users import UserStore
+from app.clients.watchers import WatcherStore
 from app.config import settings
+from app.entities.activity import Activity
 from app.entities.base import Base
+from app.entities.comments import Comment
 from app.entities.issues import Issue
 from app.entities.pull_requests import PullRequest
+from app.entities.releases import Release
 from app.entities.repositories import Repository
+from app.entities.stars import Star
 from app.entities.users import User
+from app.entities.watchers import Watcher
 from app.utils.security import get_password_hash
 
 if TYPE_CHECKING:
@@ -144,6 +154,10 @@ class FakeUserStore(FakeCrudStore[User], UserStore):
         """Get a user by their email address."""
         return next((user for user in self.items.values() if user.email == email), None)
 
+    async def get_by_username(self, username: str) -> User | None:
+        """Get a user by their username."""
+        return next((user for user in self.items.values() if user.username == username), None)
+
 
 class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
     """In-memory repository store."""
@@ -156,6 +170,15 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
         """Get all repositories owned by a user."""
         repositories = [repository for repository in self.items.values() if repository.owner_id == owner_id]
         return repositories[offset : offset + limit]
+
+    async def list_by_fork_of(self, fork_of_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
+        """Get all repositories forked from a given repository."""
+        repositories = [repository for repository in self.items.values() if repository.fork_of_id == fork_of_id]
+        return repositories[offset : offset + limit]
+
+    async def count_by_fork_of(self, fork_of_id: uuid.UUID) -> int:
+        """Count repositories forked from a given repository."""
+        return sum(1 for repository in self.items.values() if repository.fork_of_id == fork_of_id)
 
 
 class FakeIssueStore(FakeCrudStore[Issue], IssueStore):
@@ -221,6 +244,116 @@ class FakePullRequestStore(FakeCrudStore[PullRequest], PullRequestStore):
         return (max(numbers) if numbers else 0) + 1
 
 
+class FakeStarStore(FakeCrudStore[Star], StarStore):
+    """In-memory star store."""
+
+    async def get_by_user_and_repo(self, user_id: uuid.UUID, repo_id: uuid.UUID) -> Star | None:
+        """Get a star for a user and repository, if it exists."""
+        return next(
+            (star for star in self.items.values() if star.user_id == user_id and star.repo_id == repo_id),
+            None,
+        )
+
+    async def list_by_repo(self, repo_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Star]:
+        """List stars for a repository, newest first."""
+        stars = [star for star in self.items.values() if star.repo_id == repo_id]
+        stars.sort(key=lambda star: star.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
+        return stars[offset : offset + limit]
+
+    async def list_by_user(self, user_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Star]:
+        """List repositories starred by a user, newest first."""
+        stars = [star for star in self.items.values() if star.user_id == user_id]
+        stars.sort(key=lambda star: star.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
+        return stars[offset : offset + limit]
+
+    async def count_by_repo(self, repo_id: uuid.UUID) -> int:
+        """Count stars for a repository."""
+        return sum(1 for star in self.items.values() if star.repo_id == repo_id)
+
+
+class FakeWatcherStore(FakeCrudStore[Watcher], WatcherStore):
+    """In-memory watcher store."""
+
+    async def get_by_user_and_repo(self, user_id: uuid.UUID, repo_id: uuid.UUID) -> Watcher | None:
+        """Get a watcher for a user and repository, if it exists."""
+        return next(
+            (watcher for watcher in self.items.values() if watcher.user_id == user_id and watcher.repo_id == repo_id),
+            None,
+        )
+
+    async def list_by_repo(self, repo_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Watcher]:
+        """List watchers for a repository, newest first."""
+        watchers = [watcher for watcher in self.items.values() if watcher.repo_id == repo_id]
+        watchers.sort(key=lambda watcher: watcher.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
+        return watchers[offset : offset + limit]
+
+    async def count_by_repo(self, repo_id: uuid.UUID) -> int:
+        """Count watchers for a repository."""
+        return sum(1 for watcher in self.items.values() if watcher.repo_id == repo_id)
+
+
+class FakeCommentStore(FakeCrudStore[Comment], CommentStore):
+    """In-memory comment store."""
+
+    async def list_by_issue(self, issue_id: uuid.UUID) -> list[Comment]:
+        """List comments for an issue, oldest first."""
+        comments = [comment for comment in self.items.values() if comment.issue_id == issue_id]
+        comments.sort(key=lambda comment: comment.created_at or datetime.min.replace(tzinfo=UTC))
+        return comments
+
+    async def count_by_issue(self, issue_id: uuid.UUID) -> int:
+        """Count comments for an issue."""
+        return sum(1 for comment in self.items.values() if comment.issue_id == issue_id)
+
+
+class FakeReleaseStore(FakeCrudStore[Release], ReleaseStore):
+    """In-memory release store."""
+
+    async def list_by_repo(self, repo_id: uuid.UUID, include_drafts: bool = False) -> list[Release]:
+        """List releases for a repository, newest first."""
+        releases = [
+            release
+            for release in self.items.values()
+            if release.repo_id == repo_id and (include_drafts or not release.is_draft)
+        ]
+        releases.sort(key=lambda release: release.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
+        return releases
+
+    async def get_by_tag(self, repo_id: uuid.UUID, tag_name: str) -> Release | None:
+        """Get a release by repository id and tag name."""
+        return next(
+            (release for release in self.items.values() if release.repo_id == repo_id and release.tag_name == tag_name),
+            None,
+        )
+
+
+class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
+    """In-memory activity store."""
+
+    def _sorted(self) -> list[Activity]:
+        return sorted(
+            self.items.values(),
+            key=lambda activity: activity.created_at or datetime.min.replace(tzinfo=UTC),
+            reverse=True,
+        )
+
+    async def list_recent(self, offset: int = 0, limit: int = 50) -> list[Activity]:
+        """List recent activity across all repositories, newest first."""
+        return self._sorted()[offset : offset + limit]
+
+    async def list_by_repo(self, repo_id: uuid.UUID, offset: int = 0, limit: int = 50) -> list[Activity]:
+        """List activity for a repository, newest first."""
+        activities = [activity for activity in self._sorted() if activity.repo_id == repo_id]
+        return activities[offset : offset + limit]
+
+    async def list_by_repos(self, repo_ids: list[uuid.UUID], offset: int = 0, limit: int = 50) -> list[Activity]:
+        """List activity for a set of repositories, newest first."""
+        if not repo_ids:
+            return []
+        activities = [activity for activity in self._sorted() if activity.repo_id in repo_ids]
+        return activities[offset : offset + limit]
+
+
 @dataclass
 class FakeStores:
     """Container for the in-memory store fakes."""
@@ -229,6 +362,11 @@ class FakeStores:
     issues: FakeIssueStore
     pull_requests: FakePullRequestStore
     repository: FakeRepositoryStore
+    stars: FakeStarStore
+    watchers: FakeWatcherStore
+    comments: FakeCommentStore
+    releases: FakeReleaseStore
+    activity: FakeActivityStore
 
 
 @lru_cache(maxsize=1)
@@ -246,6 +384,7 @@ def build_fake_stores() -> FakeStores:
     users = FakeUserStore()
     users.persist(
         User(
+            username=settings.FIRST_SUPERUSER.split("@")[0],
             email=settings.FIRST_SUPERUSER,
             hashed_password=_superuser_hashed_password(),
             is_active=True,
@@ -258,4 +397,9 @@ def build_fake_stores() -> FakeStores:
         issues=FakeIssueStore(),
         pull_requests=FakePullRequestStore(),
         repository=FakeRepositoryStore(),
+        stars=FakeStarStore(),
+        watchers=FakeWatcherStore(),
+        comments=FakeCommentStore(),
+        releases=FakeReleaseStore(),
+        activity=FakeActivityStore(),
     )

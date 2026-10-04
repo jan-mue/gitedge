@@ -16,15 +16,25 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
+import { Route as LayoutExploreRouteImport } from './routes/_layout/explore'
 import { Route as LayoutRepositoriesRouteImport } from './routes/_layout/repositories'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutProfileUsernameRouteImport } from './routes/_layout/profile.$username'
 import { Route as LayoutOwnerRepoIndexRouteImport } from './routes/_layout/$owner/$repo/index'
+import { Route as LayoutOwnerRepoActivityRouteImport } from './routes/_layout/$owner/$repo/activity'
 import { Route as LayoutOwnerRepoBlobRouteImport } from './routes/_layout/$owner/$repo/blob'
+import { Route as LayoutOwnerRepoBranchesRouteImport } from './routes/_layout/$owner/$repo/branches'
+import { Route as LayoutOwnerRepoForksRouteImport } from './routes/_layout/$owner/$repo/forks'
 import { Route as LayoutOwnerRepoIssuesRouteImport } from './routes/_layout/$owner/$repo/issues'
 import { Route as LayoutOwnerRepoPullsRouteImport } from './routes/_layout/$owner/$repo/pulls'
+import { Route as LayoutOwnerRepoReleasesRouteImport } from './routes/_layout/$owner/$repo/releases'
+import { Route as LayoutOwnerRepoStarsRouteImport } from './routes/_layout/$owner/$repo/stars'
+import { Route as LayoutOwnerRepoWatchersRouteImport } from './routes/_layout/$owner/$repo/watchers'
 import { Route as LayoutOwnerRepoIssuesIndexRouteImport } from './routes/_layout/$owner/$repo/issues.index'
+import { Route as LayoutOwnerRepoIssuesNumberRouteImport } from './routes/_layout/$owner/$repo/issues.$number'
 import { Route as LayoutOwnerRepoIssuesNewRouteImport } from './routes/_layout/$owner/$repo/issues.new'
 import { Route as LayoutOwnerRepoPullsIndexRouteImport } from './routes/_layout/$owner/$repo/pulls.index'
+import { Route as LayoutOwnerRepoPullsNumberRouteImport } from './routes/_layout/$owner/$repo/pulls.$number'
 import { Route as LayoutOwnerRepoPullsNewRouteImport } from './routes/_layout/$owner/$repo/pulls.new'
 
 const LayoutRoute = LayoutRouteImport.update({
@@ -61,6 +71,11 @@ const LayoutAdminRoute = LayoutAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutExploreRoute = LayoutExploreRouteImport.update({
+  id: '/explore',
+  path: '/explore',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutRepositoriesRoute = LayoutRepositoriesRouteImport.update({
   id: '/repositories',
   path: '/repositories',
@@ -71,14 +86,34 @@ const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutProfileUsernameRoute = LayoutProfileUsernameRouteImport.update({
+  id: '/profile/$username',
+  path: '/profile/$username',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutOwnerRepoIndexRoute = LayoutOwnerRepoIndexRouteImport.update({
   id: '/$owner/$repo/',
   path: '/$owner/$repo/',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutOwnerRepoActivityRoute = LayoutOwnerRepoActivityRouteImport.update({
+  id: '/$owner/$repo/activity',
+  path: '/$owner/$repo/activity',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutOwnerRepoBlobRoute = LayoutOwnerRepoBlobRouteImport.update({
   id: '/$owner/$repo/blob',
   path: '/$owner/$repo/blob',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutOwnerRepoBranchesRoute = LayoutOwnerRepoBranchesRouteImport.update({
+  id: '/$owner/$repo/branches',
+  path: '/$owner/$repo/branches',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutOwnerRepoForksRoute = LayoutOwnerRepoForksRouteImport.update({
+  id: '/$owner/$repo/forks',
+  path: '/$owner/$repo/forks',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutOwnerRepoIssuesRoute = LayoutOwnerRepoIssuesRouteImport.update({
@@ -91,10 +126,31 @@ const LayoutOwnerRepoPullsRoute = LayoutOwnerRepoPullsRouteImport.update({
   path: '/$owner/$repo/pulls',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutOwnerRepoReleasesRoute = LayoutOwnerRepoReleasesRouteImport.update({
+  id: '/$owner/$repo/releases',
+  path: '/$owner/$repo/releases',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutOwnerRepoStarsRoute = LayoutOwnerRepoStarsRouteImport.update({
+  id: '/$owner/$repo/stars',
+  path: '/$owner/$repo/stars',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutOwnerRepoWatchersRoute = LayoutOwnerRepoWatchersRouteImport.update({
+  id: '/$owner/$repo/watchers',
+  path: '/$owner/$repo/watchers',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutOwnerRepoIssuesIndexRoute =
   LayoutOwnerRepoIssuesIndexRouteImport.update({
     id: '/',
     path: '/',
+    getParentRoute: () => LayoutOwnerRepoIssuesRoute,
+  } as any)
+const LayoutOwnerRepoIssuesNumberRoute =
+  LayoutOwnerRepoIssuesNumberRouteImport.update({
+    id: '/$number',
+    path: '/$number',
     getParentRoute: () => LayoutOwnerRepoIssuesRoute,
   } as any)
 const LayoutOwnerRepoIssuesNewRoute =
@@ -107,6 +163,12 @@ const LayoutOwnerRepoPullsIndexRoute =
   LayoutOwnerRepoPullsIndexRouteImport.update({
     id: '/',
     path: '/',
+    getParentRoute: () => LayoutOwnerRepoPullsRoute,
+  } as any)
+const LayoutOwnerRepoPullsNumberRoute =
+  LayoutOwnerRepoPullsNumberRouteImport.update({
+    id: '/$number',
+    path: '/$number',
     getParentRoute: () => LayoutOwnerRepoPullsRoute,
   } as any)
 const LayoutOwnerRepoPullsNewRoute = LayoutOwnerRepoPullsNewRouteImport.update({
@@ -122,13 +184,23 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
+  '/explore': typeof LayoutExploreRoute
   '/repositories': typeof LayoutRepositoriesRoute
   '/settings': typeof LayoutSettingsRoute
+  '/profile/$username': typeof LayoutProfileUsernameRoute
+  '/$owner/$repo/activity': typeof LayoutOwnerRepoActivityRoute
   '/$owner/$repo/blob': typeof LayoutOwnerRepoBlobRoute
+  '/$owner/$repo/branches': typeof LayoutOwnerRepoBranchesRoute
+  '/$owner/$repo/forks': typeof LayoutOwnerRepoForksRoute
   '/$owner/$repo/issues': typeof LayoutOwnerRepoIssuesRouteWithChildren
   '/$owner/$repo/pulls': typeof LayoutOwnerRepoPullsRouteWithChildren
+  '/$owner/$repo/releases': typeof LayoutOwnerRepoReleasesRoute
+  '/$owner/$repo/stars': typeof LayoutOwnerRepoStarsRoute
+  '/$owner/$repo/watchers': typeof LayoutOwnerRepoWatchersRoute
   '/$owner/$repo/': typeof LayoutOwnerRepoIndexRoute
+  '/$owner/$repo/issues/$number': typeof LayoutOwnerRepoIssuesNumberRoute
   '/$owner/$repo/issues/new': typeof LayoutOwnerRepoIssuesNewRoute
+  '/$owner/$repo/pulls/$number': typeof LayoutOwnerRepoPullsNumberRoute
   '/$owner/$repo/pulls/new': typeof LayoutOwnerRepoPullsNewRoute
   '/$owner/$repo/issues/': typeof LayoutOwnerRepoIssuesIndexRoute
   '/$owner/$repo/pulls/': typeof LayoutOwnerRepoPullsIndexRoute
@@ -139,12 +211,22 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
+  '/explore': typeof LayoutExploreRoute
   '/repositories': typeof LayoutRepositoriesRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
+  '/profile/$username': typeof LayoutProfileUsernameRoute
+  '/$owner/$repo/activity': typeof LayoutOwnerRepoActivityRoute
   '/$owner/$repo/blob': typeof LayoutOwnerRepoBlobRoute
+  '/$owner/$repo/branches': typeof LayoutOwnerRepoBranchesRoute
+  '/$owner/$repo/forks': typeof LayoutOwnerRepoForksRoute
+  '/$owner/$repo/releases': typeof LayoutOwnerRepoReleasesRoute
+  '/$owner/$repo/stars': typeof LayoutOwnerRepoStarsRoute
+  '/$owner/$repo/watchers': typeof LayoutOwnerRepoWatchersRoute
   '/$owner/$repo': typeof LayoutOwnerRepoIndexRoute
+  '/$owner/$repo/issues/$number': typeof LayoutOwnerRepoIssuesNumberRoute
   '/$owner/$repo/issues/new': typeof LayoutOwnerRepoIssuesNewRoute
+  '/$owner/$repo/pulls/$number': typeof LayoutOwnerRepoPullsNumberRoute
   '/$owner/$repo/pulls/new': typeof LayoutOwnerRepoPullsNewRoute
   '/$owner/$repo/issues': typeof LayoutOwnerRepoIssuesIndexRoute
   '/$owner/$repo/pulls': typeof LayoutOwnerRepoPullsIndexRoute
@@ -157,14 +239,24 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_layout/admin': typeof LayoutAdminRoute
+  '/_layout/explore': typeof LayoutExploreRoute
   '/_layout/repositories': typeof LayoutRepositoriesRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
+  '/_layout/profile/$username': typeof LayoutProfileUsernameRoute
+  '/_layout/$owner/$repo/activity': typeof LayoutOwnerRepoActivityRoute
   '/_layout/$owner/$repo/blob': typeof LayoutOwnerRepoBlobRoute
+  '/_layout/$owner/$repo/branches': typeof LayoutOwnerRepoBranchesRoute
+  '/_layout/$owner/$repo/forks': typeof LayoutOwnerRepoForksRoute
   '/_layout/$owner/$repo/issues': typeof LayoutOwnerRepoIssuesRouteWithChildren
   '/_layout/$owner/$repo/pulls': typeof LayoutOwnerRepoPullsRouteWithChildren
+  '/_layout/$owner/$repo/releases': typeof LayoutOwnerRepoReleasesRoute
+  '/_layout/$owner/$repo/stars': typeof LayoutOwnerRepoStarsRoute
+  '/_layout/$owner/$repo/watchers': typeof LayoutOwnerRepoWatchersRoute
   '/_layout/$owner/$repo/': typeof LayoutOwnerRepoIndexRoute
+  '/_layout/$owner/$repo/issues/$number': typeof LayoutOwnerRepoIssuesNumberRoute
   '/_layout/$owner/$repo/issues/new': typeof LayoutOwnerRepoIssuesNewRoute
+  '/_layout/$owner/$repo/pulls/$number': typeof LayoutOwnerRepoPullsNumberRoute
   '/_layout/$owner/$repo/pulls/new': typeof LayoutOwnerRepoPullsNewRoute
   '/_layout/$owner/$repo/issues/': typeof LayoutOwnerRepoIssuesIndexRoute
   '/_layout/$owner/$repo/pulls/': typeof LayoutOwnerRepoPullsIndexRoute
@@ -178,13 +270,23 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/admin'
+    | '/explore'
     | '/repositories'
     | '/settings'
+    | '/profile/$username'
+    | '/$owner/$repo/activity'
     | '/$owner/$repo/blob'
+    | '/$owner/$repo/branches'
+    | '/$owner/$repo/forks'
     | '/$owner/$repo/issues'
     | '/$owner/$repo/pulls'
+    | '/$owner/$repo/releases'
+    | '/$owner/$repo/stars'
+    | '/$owner/$repo/watchers'
     | '/$owner/$repo/'
+    | '/$owner/$repo/issues/$number'
     | '/$owner/$repo/issues/new'
+    | '/$owner/$repo/pulls/$number'
     | '/$owner/$repo/pulls/new'
     | '/$owner/$repo/issues/'
     | '/$owner/$repo/pulls/'
@@ -195,12 +297,22 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/admin'
+    | '/explore'
     | '/repositories'
     | '/settings'
     | '/'
+    | '/profile/$username'
+    | '/$owner/$repo/activity'
     | '/$owner/$repo/blob'
+    | '/$owner/$repo/branches'
+    | '/$owner/$repo/forks'
+    | '/$owner/$repo/releases'
+    | '/$owner/$repo/stars'
+    | '/$owner/$repo/watchers'
     | '/$owner/$repo'
+    | '/$owner/$repo/issues/$number'
     | '/$owner/$repo/issues/new'
+    | '/$owner/$repo/pulls/$number'
     | '/$owner/$repo/pulls/new'
     | '/$owner/$repo/issues'
     | '/$owner/$repo/pulls'
@@ -212,14 +324,24 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/_layout/admin'
+    | '/_layout/explore'
     | '/_layout/repositories'
     | '/_layout/settings'
     | '/_layout/'
+    | '/_layout/profile/$username'
+    | '/_layout/$owner/$repo/activity'
     | '/_layout/$owner/$repo/blob'
+    | '/_layout/$owner/$repo/branches'
+    | '/_layout/$owner/$repo/forks'
     | '/_layout/$owner/$repo/issues'
     | '/_layout/$owner/$repo/pulls'
+    | '/_layout/$owner/$repo/releases'
+    | '/_layout/$owner/$repo/stars'
+    | '/_layout/$owner/$repo/watchers'
     | '/_layout/$owner/$repo/'
+    | '/_layout/$owner/$repo/issues/$number'
     | '/_layout/$owner/$repo/issues/new'
+    | '/_layout/$owner/$repo/pulls/$number'
     | '/_layout/$owner/$repo/pulls/new'
     | '/_layout/$owner/$repo/issues/'
     | '/_layout/$owner/$repo/pulls/'
@@ -284,6 +406,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAdminRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/explore': {
+      id: '/_layout/explore'
+      path: '/explore'
+      fullPath: '/explore'
+      preLoaderRoute: typeof LayoutExploreRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/repositories': {
       id: '/_layout/repositories'
       path: '/repositories'
@@ -298,6 +427,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/profile/$username': {
+      id: '/_layout/profile/$username'
+      path: '/profile/$username'
+      fullPath: '/profile/$username'
+      preLoaderRoute: typeof LayoutProfileUsernameRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/$owner/$repo/': {
       id: '/_layout/$owner/$repo/'
       path: '/$owner/$repo'
@@ -305,11 +441,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutOwnerRepoIndexRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/$owner/$repo/activity': {
+      id: '/_layout/$owner/$repo/activity'
+      path: '/$owner/$repo/activity'
+      fullPath: '/$owner/$repo/activity'
+      preLoaderRoute: typeof LayoutOwnerRepoActivityRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/$owner/$repo/blob': {
       id: '/_layout/$owner/$repo/blob'
       path: '/$owner/$repo/blob'
       fullPath: '/$owner/$repo/blob'
       preLoaderRoute: typeof LayoutOwnerRepoBlobRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/$owner/$repo/branches': {
+      id: '/_layout/$owner/$repo/branches'
+      path: '/$owner/$repo/branches'
+      fullPath: '/$owner/$repo/branches'
+      preLoaderRoute: typeof LayoutOwnerRepoBranchesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/$owner/$repo/forks': {
+      id: '/_layout/$owner/$repo/forks'
+      path: '/$owner/$repo/forks'
+      fullPath: '/$owner/$repo/forks'
+      preLoaderRoute: typeof LayoutOwnerRepoForksRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/$owner/$repo/issues': {
@@ -326,11 +483,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutOwnerRepoPullsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/$owner/$repo/releases': {
+      id: '/_layout/$owner/$repo/releases'
+      path: '/$owner/$repo/releases'
+      fullPath: '/$owner/$repo/releases'
+      preLoaderRoute: typeof LayoutOwnerRepoReleasesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/$owner/$repo/stars': {
+      id: '/_layout/$owner/$repo/stars'
+      path: '/$owner/$repo/stars'
+      fullPath: '/$owner/$repo/stars'
+      preLoaderRoute: typeof LayoutOwnerRepoStarsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/$owner/$repo/watchers': {
+      id: '/_layout/$owner/$repo/watchers'
+      path: '/$owner/$repo/watchers'
+      fullPath: '/$owner/$repo/watchers'
+      preLoaderRoute: typeof LayoutOwnerRepoWatchersRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/$owner/$repo/issues/': {
       id: '/_layout/$owner/$repo/issues/'
       path: '/'
       fullPath: '/$owner/$repo/issues/'
       preLoaderRoute: typeof LayoutOwnerRepoIssuesIndexRouteImport
+      parentRoute: typeof LayoutOwnerRepoIssuesRoute
+    }
+    '/_layout/$owner/$repo/issues/$number': {
+      id: '/_layout/$owner/$repo/issues/$number'
+      path: '/$number'
+      fullPath: '/$owner/$repo/issues/$number'
+      preLoaderRoute: typeof LayoutOwnerRepoIssuesNumberRouteImport
       parentRoute: typeof LayoutOwnerRepoIssuesRoute
     }
     '/_layout/$owner/$repo/issues/new': {
@@ -347,6 +532,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutOwnerRepoPullsIndexRouteImport
       parentRoute: typeof LayoutOwnerRepoPullsRoute
     }
+    '/_layout/$owner/$repo/pulls/$number': {
+      id: '/_layout/$owner/$repo/pulls/$number'
+      path: '/$number'
+      fullPath: '/$owner/$repo/pulls/$number'
+      preLoaderRoute: typeof LayoutOwnerRepoPullsNumberRouteImport
+      parentRoute: typeof LayoutOwnerRepoPullsRoute
+    }
     '/_layout/$owner/$repo/pulls/new': {
       id: '/_layout/$owner/$repo/pulls/new'
       path: '/new'
@@ -358,11 +550,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface LayoutOwnerRepoIssuesRouteChildren {
+  LayoutOwnerRepoIssuesNumberRoute: typeof LayoutOwnerRepoIssuesNumberRoute
   LayoutOwnerRepoIssuesNewRoute: typeof LayoutOwnerRepoIssuesNewRoute
   LayoutOwnerRepoIssuesIndexRoute: typeof LayoutOwnerRepoIssuesIndexRoute
 }
 
 const LayoutOwnerRepoIssuesRouteChildren: LayoutOwnerRepoIssuesRouteChildren = {
+  LayoutOwnerRepoIssuesNumberRoute: LayoutOwnerRepoIssuesNumberRoute,
   LayoutOwnerRepoIssuesNewRoute: LayoutOwnerRepoIssuesNewRoute,
   LayoutOwnerRepoIssuesIndexRoute: LayoutOwnerRepoIssuesIndexRoute,
 }
@@ -373,11 +567,13 @@ const LayoutOwnerRepoIssuesRouteWithChildren =
   )
 
 interface LayoutOwnerRepoPullsRouteChildren {
+  LayoutOwnerRepoPullsNumberRoute: typeof LayoutOwnerRepoPullsNumberRoute
   LayoutOwnerRepoPullsNewRoute: typeof LayoutOwnerRepoPullsNewRoute
   LayoutOwnerRepoPullsIndexRoute: typeof LayoutOwnerRepoPullsIndexRoute
 }
 
 const LayoutOwnerRepoPullsRouteChildren: LayoutOwnerRepoPullsRouteChildren = {
+  LayoutOwnerRepoPullsNumberRoute: LayoutOwnerRepoPullsNumberRoute,
   LayoutOwnerRepoPullsNewRoute: LayoutOwnerRepoPullsNewRoute,
   LayoutOwnerRepoPullsIndexRoute: LayoutOwnerRepoPullsIndexRoute,
 }
@@ -387,23 +583,39 @@ const LayoutOwnerRepoPullsRouteWithChildren =
 
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
+  LayoutExploreRoute: typeof LayoutExploreRoute
   LayoutRepositoriesRoute: typeof LayoutRepositoriesRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
+  LayoutProfileUsernameRoute: typeof LayoutProfileUsernameRoute
+  LayoutOwnerRepoActivityRoute: typeof LayoutOwnerRepoActivityRoute
   LayoutOwnerRepoBlobRoute: typeof LayoutOwnerRepoBlobRoute
+  LayoutOwnerRepoBranchesRoute: typeof LayoutOwnerRepoBranchesRoute
+  LayoutOwnerRepoForksRoute: typeof LayoutOwnerRepoForksRoute
   LayoutOwnerRepoIssuesRoute: typeof LayoutOwnerRepoIssuesRouteWithChildren
   LayoutOwnerRepoPullsRoute: typeof LayoutOwnerRepoPullsRouteWithChildren
+  LayoutOwnerRepoReleasesRoute: typeof LayoutOwnerRepoReleasesRoute
+  LayoutOwnerRepoStarsRoute: typeof LayoutOwnerRepoStarsRoute
+  LayoutOwnerRepoWatchersRoute: typeof LayoutOwnerRepoWatchersRoute
   LayoutOwnerRepoIndexRoute: typeof LayoutOwnerRepoIndexRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
+  LayoutExploreRoute: LayoutExploreRoute,
   LayoutRepositoriesRoute: LayoutRepositoriesRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
+  LayoutProfileUsernameRoute: LayoutProfileUsernameRoute,
+  LayoutOwnerRepoActivityRoute: LayoutOwnerRepoActivityRoute,
   LayoutOwnerRepoBlobRoute: LayoutOwnerRepoBlobRoute,
+  LayoutOwnerRepoBranchesRoute: LayoutOwnerRepoBranchesRoute,
+  LayoutOwnerRepoForksRoute: LayoutOwnerRepoForksRoute,
   LayoutOwnerRepoIssuesRoute: LayoutOwnerRepoIssuesRouteWithChildren,
   LayoutOwnerRepoPullsRoute: LayoutOwnerRepoPullsRouteWithChildren,
+  LayoutOwnerRepoReleasesRoute: LayoutOwnerRepoReleasesRoute,
+  LayoutOwnerRepoStarsRoute: LayoutOwnerRepoStarsRoute,
+  LayoutOwnerRepoWatchersRoute: LayoutOwnerRepoWatchersRoute,
   LayoutOwnerRepoIndexRoute: LayoutOwnerRepoIndexRoute,
 }
 

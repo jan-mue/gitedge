@@ -11,6 +11,16 @@ class Repository(GitEdgeBaseModel):
 
     name: str
     path: str
+    owner: str | None = None
+    description: str | None = None
+    default_branch: str = "main"
+    is_private: bool = False
+    stars_count: int = 0
+    forks_count: int = 0
+    watchers_count: int = 0
+    fork_of: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class RepositoriesPublic(GitEdgeBaseModel):
@@ -73,9 +83,16 @@ class RepositoryInfo(GitEdgeBaseModel):
 
     name: str
     path: str
+    owner: str | None = None
+    description: str | None = None
+    is_private: bool = False
     default_branch: str
     branch_count: int
     tag_count: int
+    stars_count: int = 0
+    forks_count: int = 0
+    watchers_count: int = 0
+    fork_of: str | None = None
     last_commit: CommitInfo | None = None
 
 

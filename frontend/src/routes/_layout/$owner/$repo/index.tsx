@@ -1,4 +1,4 @@
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 
 import { RepositoriesService } from "@/client"
@@ -33,7 +33,11 @@ function TreeContent() {
   const { ref: searchRef, path: treePath } = Route.useSearch()
   const repoPath = owner === "_" ? `${repo}.git` : `${owner}/${repo}.git`
 
-  const { data: tree } = useSuspenseQuery({
+  const {
+    data: tree,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["tree", repoPath, searchRef ?? "main", treePath ?? ""],
     queryFn: async () =>
       (
@@ -42,6 +46,7 @@ function TreeContent() {
           query: { ref: searchRef, tree_path: treePath },
         })
       ).data,
+    retry: false,
   })
 
   const { data: repoInfo } = useQuery({
@@ -65,24 +70,46 @@ function TreeContent() {
         })
       ).data,
     retry: false,
+    enabled: Boolean(tree),
   })
+
+  const gitRef = tree?.ref ?? searchRef ?? "main"
 
   return (
     <div className="flex flex-col gap-4">
-      <RepoStats owner={owner} repo={repo} gitRef={tree.ref} searchRef={searchRef} />
+      <RepoStats owner={owner} repo={repo} gitRef={gitRef} searchRef={searchRef} />
 
-      {treePath && <RepoBreadcrumbs owner={owner} repo={repo} path={treePath} searchRef={searchRef} />}
+      {tree ? (
+        <>
+          {treePath && <RepoBreadcrumbs owner={owner} repo={repo} path={treePath} searchRef={searchRef} />}
 
-      <FileBrowser
-        entries={tree.entries}
-        owner={owner}
-        repo={repo}
-        treePath={treePath}
-        searchRef={searchRef}
-        lastCommit={repoInfo?.last_commit}
-      />
+          <FileBrowser
+            entries={tree.entries}
+            owner={owner}
+            repo={repo}
+            treePath={treePath}
+            searchRef={searchRef}
+            lastCommit={repoInfo?.last_commit}
+          />
 
-      {readme && <ReadmeViewer html={readme.html} content={readme.content} filename={readme.filename} />}
+          {readme && <ReadmeViewer html={readme.html} content={readme.content} filename={readme.filename} />}
+        </>
+      ) : (
+        !isLoading && (
+          <div
+            className="flex flex-col items-center justify-center rounded-lg border border-border bg-card py-16 text-center"
+            data-testid="empty-repository"
+          >
+            <h2 className="text-lg font-semibold text-foreground">
+              {isError ? "This repository is empty" : "No files"}
+            </h2>
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">Push some code to get started:</p>
+            <code className="mt-3 rounded bg-secondary px-3 py-2 font-mono text-xs text-foreground">
+              git clone {window.location.origin}/{repoPath.replace(/\.git$/, "")}.git
+            </code>
+          </div>
+        )
+      )}
     </div>
   )
 }

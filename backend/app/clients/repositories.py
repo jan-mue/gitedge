@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.repositories import Repository
@@ -26,6 +26,14 @@ class RepositoryStore(CrudStore[Repository], ABC):
     @abstractmethod
     async def get_by_owner(self, owner_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
         """Get all repositories owned by a user."""
+
+    @abstractmethod
+    async def list_by_fork_of(self, fork_of_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
+        """Get all repositories forked from a given repository."""
+
+    @abstractmethod
+    async def count_by_fork_of(self, fork_of_id: uuid.UUID) -> int:
+        """Count repositories forked from a given repository."""
 
 
 class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
@@ -49,3 +57,21 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
             select(Repository).where(Repository.owner_id == owner_id).offset(offset).limit(limit)
         )
         return list(result.all())
+
+    async def list_by_fork_of(self, fork_of_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
+        """Get all repositories forked from a given repository."""
+        result = await self.db.scalars(
+            select(Repository)
+            .where(Repository.fork_of_id == fork_of_id)
+            .order_by(Repository.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        return list(result.all())
+
+    async def count_by_fork_of(self, fork_of_id: uuid.UUID) -> int:
+        """Count repositories forked from a given repository."""
+        result = await self.db.execute(
+            select(func.count()).select_from(Repository).where(Repository.fork_of_id == fork_of_id)
+        )
+        return result.scalar_one()

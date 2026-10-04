@@ -10,6 +10,7 @@ from app.schemas.base import GitEdgeBaseModel
 class UserBase(GitEdgeBaseModel):
     """Base user schema with common fields."""
 
+    username: str | None = Field(default=None, max_length=255)
     email: EmailStr = Field(max_length=255)
     is_active: bool = True
     is_superuser: bool = False
@@ -27,6 +28,7 @@ class UserCreate(UserBase):
 class UserRegister(GitEdgeBaseModel):
     """Schema for user self-registration."""
 
+    username: str | None = Field(default=None, max_length=255)
     email: EmailStr = Field(max_length=255)
     password: str = Field(min_length=8, max_length=40)
     full_name: str | None = Field(default=None, max_length=255)
@@ -44,6 +46,7 @@ class UserUpdateMe(GitEdgeBaseModel):
 
     full_name: str | None = Field(default=None, max_length=255)
     email: EmailStr | None = Field(default=None, max_length=255)
+    username: str | None = Field(default=None, max_length=255)
 
 
 class UpdatePassword(GitEdgeBaseModel):

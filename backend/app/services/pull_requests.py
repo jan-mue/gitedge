@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from app.clients.pull_requests import PullRequestStore
     from app.clients.repositories import RepositoryStore
     from app.entities.users import User
+    from app.services.activity import ActivityService
 
 
 class PullRequestService:
@@ -29,15 +30,18 @@ class PullRequestService:
         self,
         pull_request_store: PullRequestStore,
         repository_store: RepositoryStore,
+        activity_service: ActivityService | None = None,
     ) -> None:
         """Initialize the pull request service.
 
         Args:
             pull_request_store: Pull request store.
             repository_store: Repository store.
+            activity_service: Optional service used to record activity.
         """
         self.pull_request_store = pull_request_store
         self.repository_store = repository_store
+        self.activity_service = activity_service
 
     async def list_pull_requests(self, path: str, state: str) -> PullRequestsListPublic:
         """List pull requests for a repository.
@@ -92,6 +96,16 @@ class PullRequestService:
         )
         await self.pull_request_store.add(pull_request)
 
+        if self.activity_service is not None:
+            await self.activity_service.record(
+                actor=current_user,
+                repo=repository,
+                kind="pull_request_open",
+                title=pull_request.title,
+                target_type="pull_request",
+                target_number=pull_request.number,
+            )
+
         return self._to_public(pull_request, repo_path)
 
     async def get_pull_request(self, path: str, number: int) -> PullRequestPublic:
@@ -139,6 +153,21 @@ class PullRequestService:
 
         pull_request.updated_at = datetime.now(UTC)
         await self.pull_request_store.update(pull_request)
+
+        if self.activity_service is not None and body.state is not None:
+            kind = {
+                "merged": "pull_request_merge",
+                "closed": "pull_request_close",
+            }.get(body.state, "pull_request_reopen")
+            repository = await self.repository_store.get_by_path(repo_path)
+            await self.activity_service.record(
+                actor=None,
+                repo=repository,
+                kind=kind,
+                title=pull_request.title,
+                target_type="pull_request",
+                target_number=pull_request.number,
+            )
 
         return self._to_public(pull_request, repo_path)
 

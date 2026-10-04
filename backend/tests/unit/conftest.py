@@ -8,10 +8,15 @@ from fastapi.testclient import TestClient
 
 from app.api.dependencies import (
     check_database_connection,
+    get_activity_store,
+    get_comment_store,
     get_issue_store,
     get_pull_request_store,
+    get_release_store,
     get_repository_store,
+    get_star_store,
     get_user_store,
+    get_watcher_store,
 )
 from app.config import settings
 from app.index import app
@@ -35,6 +40,11 @@ def fake_stores() -> Generator[FakeStores]:
     app.dependency_overrides[get_issue_store] = lambda: fakes.issues
     app.dependency_overrides[get_pull_request_store] = lambda: fakes.pull_requests
     app.dependency_overrides[get_repository_store] = lambda: fakes.repository
+    app.dependency_overrides[get_star_store] = lambda: fakes.stars
+    app.dependency_overrides[get_watcher_store] = lambda: fakes.watchers
+    app.dependency_overrides[get_comment_store] = lambda: fakes.comments
+    app.dependency_overrides[get_release_store] = lambda: fakes.releases
+    app.dependency_overrides[get_activity_store] = lambda: fakes.activity
 
     yield fakes
 
@@ -42,6 +52,11 @@ def fake_stores() -> Generator[FakeStores]:
     app.dependency_overrides.pop(get_issue_store, None)
     app.dependency_overrides.pop(get_pull_request_store, None)
     app.dependency_overrides.pop(get_repository_store, None)
+    app.dependency_overrides.pop(get_star_store, None)
+    app.dependency_overrides.pop(get_watcher_store, None)
+    app.dependency_overrides.pop(get_comment_store, None)
+    app.dependency_overrides.pop(get_release_store, None)
+    app.dependency_overrides.pop(get_activity_store, None)
 
 
 @pytest.fixture

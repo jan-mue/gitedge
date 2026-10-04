@@ -131,16 +131,17 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
 
         user_id = str(uuid.uuid4())
         hashed_password = get_password_hash(FIRST_SUPERUSER_PASSWORD)
+        username = FIRST_SUPERUSER.split("@")[0]
 
         with psycopg.connect(db_url.replace("postgresql+psycopg://", "postgresql://")) as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO "user" (id, email, is_active, is_superuser, full_name, hashed_password)
-                    VALUES (%s, %s, True, True, 'Admin User', %s)
+                    INSERT INTO "user" (id, username, email, is_active, is_superuser, full_name, hashed_password)
+                    VALUES (%s, %s, %s, True, True, 'Admin User', %s)
                     ON CONFLICT (email) DO NOTHING
                 """,
-                    (user_id, "admin@example.com", hashed_password),
+                    (user_id, username, "admin@example.com", hashed_password),
                 )
             conn.commit()
 
@@ -151,6 +152,11 @@ def _delete_repository_rows() -> None:
     """Delete all repository-related rows from the database."""
     db_url = str(settings.DATABASE_URL).replace("postgresql+psycopg://", "postgresql://")
     with psycopg.connect(db_url) as conn:
+        conn.execute("DELETE FROM activity")
+        conn.execute("DELETE FROM comment")
+        conn.execute("DELETE FROM star")
+        conn.execute("DELETE FROM watcher")
+        conn.execute("DELETE FROM release")
         conn.execute("DELETE FROM pull_request")
         conn.execute("DELETE FROM issue")
         conn.execute("DELETE FROM repository")
@@ -344,7 +350,7 @@ def log_in_user(page: Page, base_url: str, email: str, password: str) -> None:
     page.get_by_test_id("password-input").fill(password)
     page.get_by_role("button", name="Log In").click()
     page.wait_for_url(f"{base_url}/")
-    expect(page.get_by_text("Welcome back, nice to see you again!")).to_be_visible()
+    expect(page.get_by_test_id("dashboard-feed")).to_be_visible()
     expect(page.get_by_test_id("user-menu")).to_be_visible(timeout=30000)
 
 

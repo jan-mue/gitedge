@@ -99,7 +99,13 @@ const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
                   className={`w-4 h-4 flex-shrink-0 ${pr.state === "open" ? "text-success" : pr.state === "merged" ? "text-purple-500" : "text-muted-foreground"}`}
                 />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-foreground hover:text-primary">{pr.title}</span>
+                  <RouterLink
+                    to="/$owner/$repo/pulls/$number"
+                    params={{ owner, repo, number: String(pr.number) }}
+                    className="text-sm font-medium text-foreground hover:text-primary"
+                  >
+                    {pr.title}
+                  </RouterLink>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     #{pr.number} {pr.head_branch} &rarr; {pr.base_branch}
                     {pr.created_at && ` opened ${new Date(pr.created_at).toLocaleDateString()}`}

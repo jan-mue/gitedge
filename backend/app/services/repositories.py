@@ -7,7 +7,7 @@ import stat
 import time
 from typing import TYPE_CHECKING, Protocol
 
-from dulwich.objects import Blob, Commit, ObjectID, Tree
+from dulwich.objects import Blob, Commit, ObjectID, Tag, Tree
 from dulwich.refs import SYMREF, Ref
 from fastapi import HTTPException
 from pygments import highlight
@@ -16,6 +16,7 @@ from pygments.lexers import TextLexer, get_lexer_for_filename
 from pygments.util import ClassNotFound
 
 from app.entities.repositories import Repository as RepositoryEntity
+from app.schemas.releases import TagInfo, TagsPublic
 from app.schemas.repositories import (
     BranchInfo,
     CommitInfo,
@@ -101,6 +102,42 @@ def repository_name_from_path(path: str) -> str:
     return name[:-4] if name.endswith(".git") else name
 
 
+def repository_owner_from_path(path: str) -> str | None:
+    """Derive the repository owner segment from its path.
+
+    Args:
+        path: Repository path (e.g., "user/repo.git").
+
+    Returns:
+        The owner slug, or None for root-level repositories.
+    """
+    parts = normalize_repo_path(path).rstrip("/").removesuffix(".git").split("/")
+    return parts[0] if len(parts) > 1 else None
+
+
+def to_repository_schema(entity: RepositoryEntity) -> Repository:
+    """Convert a repository entity to its public schema.
+
+    Args:
+        entity: The repository entity.
+
+    Returns:
+        The public repository representation.
+    """
+    return Repository(
+        name=entity.name,
+        path=entity.path,
+        owner=repository_owner_from_path(entity.path),
+        description=entity.description,
+        default_branch=entity.default_branch,
+        is_private=entity.is_private,
+        stars_count=entity.stars_count,
+        forks_count=entity.forks_count,
+        created_at=entity.created_at,
+        updated_at=entity.updated_at,
+    )
+
+
 async def ensure_repository(store: RepositoryStore, path: str, user: User) -> RepositoryEntity:
     """Get an existing repository row or create one for the given path.
 
@@ -128,6 +165,7 @@ class RepositoryService:
         backend: BlobBackend,
         blob_client: BlobStorageClient,
         redis_client: AbstractRedisClient,
+        repository_store: RepositoryStore | None = None,
     ) -> None:
         """Initialize the repository service.
 
@@ -135,10 +173,13 @@ class RepositoryService:
             backend: Git backend.
             blob_client: Blob storage client.
             redis_client: Redis client.
+            repository_store: Optional repository store used to enrich
+                repository metadata with database records.
         """
         self.backend = backend
         self.blob_client = blob_client
         self.redis_client = redis_client
+        self.repository_store = repository_store
 
     async def list_repositories(self) -> RepositoriesPublic:
         """List all repositories.
@@ -155,10 +196,59 @@ class RepositoryService:
             if "/refs/" in key_name:
                 repo_path = key_name.split("/refs/")[0]
                 if repo_path not in repositories:
-                    repositories[repo_path] = Repository(name=repository_name_from_path(repo_path), path=repo_path)
+                    repositories[repo_path] = Repository(
+                        name=repository_name_from_path(repo_path),
+                        path=repo_path,
+                        owner=repository_owner_from_path(repo_path),
+                    )
 
         data = list(repositories.values())
+        await self._enrich_repositories(data)
         return RepositoriesPublic(data=data, count=len(data))
+
+    async def get_user_repositories(self, user: User, offset: int = 0, limit: int = 100) -> RepositoriesPublic:
+        """List repositories owned by a user.
+
+        Args:
+            user: The repository owner.
+            offset: Pagination offset.
+            limit: Maximum number of repositories.
+
+        Returns:
+            RepositoriesPublic with the user's repositories.
+
+        Raises:
+            HTTPException: If the repository store is unavailable.
+        """
+        if self.repository_store is None:
+            raise HTTPException(status_code=503, detail="Repository store unavailable")
+        entities = await self.repository_store.get_by_owner(user.id, offset, limit)
+        data = [to_repository_schema(entity) for entity in entities]
+        await self._enrich_repositories(data)
+        return RepositoriesPublic(data=data, count=len(data))
+
+    async def _enrich_repositories(self, repositories: list[Repository]) -> None:
+        """Enrich repository schemas with metadata from the database.
+
+        Args:
+            repositories: The repository schemas to enrich in place.
+        """
+        if self.repository_store is None:
+            return
+        entities = await self.repository_store.get_all(offset=0, limit=10000)
+        by_path = {entity.path: entity for entity in entities}
+        for repository in repositories:
+            entity = by_path.get(repository.path)
+            if entity is None:
+                continue
+            repository.owner = repository_owner_from_path(repository.path)
+            repository.description = entity.description
+            repository.default_branch = entity.default_branch
+            repository.is_private = entity.is_private
+            repository.stars_count = entity.stars_count
+            repository.forks_count = entity.forks_count
+            repository.created_at = entity.created_at
+            repository.updated_at = entity.updated_at
 
     async def get_repository(self, path: str) -> Repository:
         """Get a specific repository by path.
@@ -388,12 +478,37 @@ class RepositoryService:
         commit_sha = self._try_resolve_ref(repo, ref)
         last_commit = self._get_commit_info(repo, commit_sha) if commit_sha is not None else None
 
+        repo_path = normalize_repo_path(normalized)
+        owner = repository_owner_from_path(repo_path)
+        description = None
+        is_private = False
+        stars_count = 0
+        forks_count = 0
+        fork_of = None
+        if self.repository_store is not None:
+            entity = await self.repository_store.get_by_path(repo_path)
+            if entity is not None:
+                description = entity.description
+                is_private = entity.is_private
+                stars_count = entity.stars_count
+                forks_count = entity.forks_count
+                if entity.fork_of_id is not None:
+                    parent = await self.repository_store.get(entity.fork_of_id)
+                    if parent is not None:
+                        fork_of = parent.path
+
         return RepositoryInfo(
             name=name,
-            path=normalize_repo_path(normalized),
+            path=repo_path,
+            owner=owner,
+            description=description,
+            is_private=is_private,
             default_branch=default_branch,
             branch_count=branch_count,
             tag_count=tag_count,
+            stars_count=stars_count,
+            forks_count=forks_count,
+            fork_of=fork_of,
             last_commit=last_commit,
         )
 
@@ -452,6 +567,45 @@ class RepositoryService:
                 branches.append(BranchInfo(name=branch_name, is_default=branch_name == default_branch))
 
         return branches
+
+    async def list_tags(self, path: str) -> TagsPublic:
+        """List all tags in a repository.
+
+        Args:
+            path: Repository path.
+
+        Returns:
+            TagsPublic with tag names, target commit SHAs and timestamps.
+        """
+        repo = await self.load_repository(path)
+        refs = repo.refs
+        store = repo.object_store
+
+        tags: list[TagInfo] = []
+        for key in sorted(refs.allkeys()):
+            key_str = key.decode() if isinstance(key, bytes) else str(key)
+            if not key_str.startswith("refs/tags/"):
+                continue
+            name = key_str[len("refs/tags/") :]
+            sha = refs.read_loose_ref(Ref(key if isinstance(key, bytes) else key.encode()))
+            if sha is None:
+                continue
+
+            commit_sha = sha
+            timestamp: int | None = None
+            obj = store[ObjectID(sha)]
+            if isinstance(obj, Tag):
+                commit_sha = obj.object[1]
+                timestamp = obj.tag_time
+            commit_obj = store[ObjectID(commit_sha)]
+            if isinstance(commit_obj, Commit) and timestamp is None:
+                timestamp = commit_obj.commit_time
+
+            sha_str = commit_sha.decode() if isinstance(commit_sha, bytes) else str(commit_sha)
+            tags.append(TagInfo(name=name, commit_sha=sha_str, timestamp=timestamp))
+
+        tags.sort(key=lambda tag: tag.name, reverse=True)
+        return TagsPublic(data=tags, count=len(tags))
 
     @staticmethod
     def _try_resolve_ref(repo: BlobRepository, ref_name: str) -> bytes | None:

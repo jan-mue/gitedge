@@ -15,20 +15,28 @@ if TYPE_CHECKING:
     from app.clients.issues import IssueStore
     from app.clients.repositories import RepositoryStore
     from app.entities.users import User
+    from app.services.activity import ActivityService
 
 
 class IssueService:
     """Service for managing repository issues."""
 
-    def __init__(self, issue_store: IssueStore, repository_store: RepositoryStore) -> None:
+    def __init__(
+        self,
+        issue_store: IssueStore,
+        repository_store: RepositoryStore,
+        activity_service: ActivityService | None = None,
+    ) -> None:
         """Initialize the issue service.
 
         Args:
             issue_store: Issue store.
             repository_store: Repository store.
+            activity_service: Optional service used to record activity.
         """
         self.issue_store = issue_store
         self.repository_store = repository_store
+        self.activity_service = activity_service
 
     async def list_issues(self, path: str, state: str) -> IssuesListPublic:
         """List issues for a repository.
@@ -79,6 +87,16 @@ class IssueService:
         )
         await self.issue_store.add(issue)
 
+        if self.activity_service is not None:
+            await self.activity_service.record(
+                actor=current_user,
+                repo=repository,
+                kind="issue_open",
+                title=issue.title,
+                target_type="issue",
+                target_number=issue.number,
+            )
+
         return self._to_public(issue, repo_path)
 
     async def get_issue(self, path: str, number: int) -> IssuePublic:
@@ -126,6 +144,18 @@ class IssueService:
 
         issue.updated_at = datetime.now(UTC)
         await self.issue_store.update(issue)
+
+        if self.activity_service is not None and body.state is not None:
+            kind = "issue_close" if body.state == "closed" else "issue_reopen"
+            repository = await self.repository_store.get_by_path(repo_path)
+            await self.activity_service.record(
+                actor=None,
+                repo=repository,
+                kind=kind,
+                title=issue.title,
+                target_type="issue",
+                target_number=issue.number,
+            )
 
         return self._to_public(issue, repo_path)
 

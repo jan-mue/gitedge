@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import re
+import uuid
 from typing import TYPE_CHECKING
+
+from fastapi import HTTPException
 
 from app.entities.users import User
 from app.schemas.users import UserCreate, UserPublic, UserUpdate, UserUpdateMe
 from app.utils.security import get_password_hash, verify_password
 
 if TYPE_CHECKING:
-    import uuid
-
     from app.clients.users import UserStore
 
 # Dummy hash to use for timing attack prevention when user is not found
@@ -38,7 +40,12 @@ class CrudService:
         Returns:
             The created user's public data.
         """
+        username = user_create.username or self._slug_from_email(user_create.email)
+        if await self.user_store.get_by_username(username) is not None:
+            username = f"{username}-{uuid.uuid4().hex[:6]}"
+
         user = User(
+            username=username,
             email=user_create.email,
             full_name=user_create.full_name,
             is_superuser=user_create.is_superuser,
@@ -47,6 +54,20 @@ class CrudService:
         )
         await self.user_store.add(user)
         return UserPublic.model_validate(user)
+
+    @staticmethod
+    def _slug_from_email(email: str) -> str:
+        """Derive a username slug from an email address.
+
+        Args:
+            email: The user's email address.
+
+        Returns:
+            A lowercase alphanumeric slug.
+        """
+        local_part = email.split("@", maxsplit=1)[0]
+        slug = re.sub(r"[^a-zA-Z0-9]+", "-", local_part).strip("-").lower()
+        return slug or uuid.uuid4().hex[:12]
 
     async def get_user_by_id(self, user_id: uuid.UUID) -> UserPublic | None:
         """Get a user by their ID.
@@ -91,6 +112,10 @@ class CrudService:
             password = user_data.pop("password")
             hashed_password = get_password_hash(password)
             user_data["hashed_password"] = hashed_password
+        if user_data.get("username"):
+            existing = await self.user_store.get_by_username(user_data["username"])
+            if existing is not None and existing.id != db_user.id:
+                raise HTTPException(status_code=409, detail="User with this username already exists")
         await self.user_store.update(db_user, user_data)
         return UserPublic.model_validate(db_user)
 

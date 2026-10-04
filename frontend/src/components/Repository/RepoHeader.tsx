@@ -1,6 +1,8 @@
 import { Link as RouterLink, useMatches } from "@tanstack/react-router"
-import { CircleDot, Code, GitFork, GitPullRequest, Moon, Sun } from "lucide-react"
-
+import { Activity, CircleDot, Code, GitBranch, GitFork, GitPullRequest, Moon, Sun, Tag } from "lucide-react"
+import ForkButton from "@/components/Repository/ForkButton"
+import StarButton from "@/components/Repository/StarButton"
+import WatchButton from "@/components/Repository/WatchButton"
 import { useTheme } from "@/components/theme-provider"
 
 interface RepoHeaderProps {
@@ -27,6 +29,24 @@ const tabs = [
     path: "/$owner/$repo/pulls" as const,
     testId: "tab-pulls",
   },
+  {
+    label: "Releases",
+    icon: Tag,
+    path: "/$owner/$repo/releases" as const,
+    testId: "tab-releases",
+  },
+  {
+    label: "Branches",
+    icon: GitBranch,
+    path: "/$owner/$repo/branches" as const,
+    testId: "tab-branches",
+  },
+  {
+    label: "Activity",
+    icon: Activity,
+    path: "/$owner/$repo/activity" as const,
+    testId: "tab-activity",
+  },
 ] as const
 
 const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
@@ -48,7 +68,7 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
   return (
     <header className="border-b border-border bg-background" data-testid="repo-header">
       <div className="container max-w-7xl mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-2">
             <RouterLink to="/$owner/$repo" params={{ owner, repo }} className="flex items-center gap-2">
               <div className="w-7 h-7 rounded bg-primary flex items-center justify-center">
@@ -61,6 +81,9 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
           </div>
 
           <div className="flex items-center gap-2">
+            <WatchButton owner={owner} repo={repo} />
+            <StarButton owner={owner} repo={repo} />
+            <ForkButton owner={owner} repo={repo} />
             <button
               type="button"
               onClick={toggleTheme}
