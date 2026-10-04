@@ -1,5 +1,6 @@
 """Wait for the database to become available before the app starts."""
 
+import asyncio
 import logging
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -21,16 +22,16 @@ wait_seconds = 1
     before=before_log(logger, logging.INFO),
     after=after_log(logger, logging.WARNING),
 )
-def init() -> None:
+async def init() -> None:
     """Check that the database is reachable, retrying until it is."""
-    with get_db_session() as session:
-        session.execute(select(1))
+    async with get_db_session() as session:
+        await session.execute(select(1))
 
 
 def main() -> None:
     """Initialize the service by waiting for the database."""
     logger.info("Initializing service")
-    init()
+    asyncio.run(init())
     logger.info("Service finished initializing")
 
 

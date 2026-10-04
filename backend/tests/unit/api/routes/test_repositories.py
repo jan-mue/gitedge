@@ -16,7 +16,7 @@ ISSUES_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/issues"
 PULLS_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/pulls"
 
 
-def test_create_issue(
+async def test_create_issue(
     client: TestClient,
     fake_stores: FakeStores,
     superuser_token_headers: dict[str, str],
@@ -32,7 +32,7 @@ def test_create_issue(
     assert issue["repo_path"] == REPO_PATH
     assert issue["author_email"] == settings.FIRST_SUPERUSER
 
-    assert fake_stores.repository.get_by_path(REPO_PATH) is not None
+    assert await fake_stores.repository.get_by_path(REPO_PATH) is not None
     assert len(fake_stores.issues.items) == 1
 
 

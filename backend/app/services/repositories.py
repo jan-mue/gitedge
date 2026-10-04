@@ -101,7 +101,7 @@ def repository_name_from_path(path: str) -> str:
     return name[:-4] if name.endswith(".git") else name
 
 
-def ensure_repository(store: RepositoryStore, path: str, user: User) -> RepositoryEntity:
+async def ensure_repository(store: RepositoryStore, path: str, user: User) -> RepositoryEntity:
     """Get an existing repository row or create one for the given path.
 
     Args:
@@ -113,10 +113,10 @@ def ensure_repository(store: RepositoryStore, path: str, user: User) -> Reposito
         The repository entity.
     """
     repo_path = normalize_repo_path(path)
-    repository = store.get_by_path(repo_path)
+    repository = await store.get_by_path(repo_path)
     if repository is None:
         repository = RepositoryEntity(name=repository_name_from_path(repo_path), path=repo_path, owner_id=user.id)
-        store.add(repository)
+        await store.add(repository)
     return repository
 
 

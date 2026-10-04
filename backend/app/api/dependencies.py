@@ -12,7 +12,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
 from app.clients.database import get_db_session
@@ -33,24 +33,24 @@ from app.services.repositories import RepositoryService
 from app.utils import security
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator
 
 logger = logging.getLogger(__name__)
 
 reusable_oauth2 = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/login/access-token")
 
 
-def get_db() -> Generator[Session]:
+async def get_db() -> AsyncGenerator[AsyncSession]:
     """Get database session dependency.
 
     Yields:
-        SQLAlchemy session.
+        SQLAlchemy async session.
     """
-    with get_db_session() as session:
+    async with get_db_session() as session:
         yield session
 
 
-SessionDep = Annotated[Session, Depends(get_db)]
+SessionDep = Annotated[AsyncSession, Depends(get_db)]
 TokenDep = Annotated[str, Depends(reusable_oauth2)]
 
 
@@ -84,7 +84,7 @@ def get_repository_store(session: SessionDep) -> RepositoryStore:
 RepositoryStoreDep = Annotated[RepositoryStore, Depends(get_repository_store)]
 
 
-def get_current_user(user_store: UserStoreDep, token: TokenDep) -> User:
+async def get_current_user(user_store: UserStoreDep, token: TokenDep) -> User:
     """Get the current authenticated user.
 
     Args:
@@ -109,7 +109,7 @@ def get_current_user(user_store: UserStoreDep, token: TokenDep) -> User:
     if not token_data.sub:
         logger.error("Token has no sub claim")
         raise HTTPException(status_code=403, detail="Could not validate credentials")
-    user = user_store.get(token_data.sub)
+    user = await user_store.get(token_data.sub)
     if not user:
         logger.error("User not found for id: %s", token_data.sub)
         raise HTTPException(status_code=404, detail="User not found")
@@ -153,17 +153,17 @@ def get_crud_service(user_store: UserStoreDep) -> CrudService:
 CrudServiceDep = Annotated[CrudService, Depends(get_crud_service)]
 
 
-def check_database_connection(session: SessionDep) -> bool:
+async def check_database_connection(session: SessionDep) -> bool:
     """Check if database connection is working.
 
     Args:
-        session: SQLAlchemy session.
+        session: SQLAlchemy async session.
 
     Returns:
         True if connection works, False otherwise.
     """
     try:
-        session.connection()  # don't close the connection, as it belongs to the session
+        await session.connection()  # don't close the connection, as it belongs to the session
     except SQLAlchemyError:
         logger.exception("Database connection error")
         return False

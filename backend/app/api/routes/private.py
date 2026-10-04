@@ -42,6 +42,6 @@ async def create_user(user_in: PrivateUserCreate, user_store: UserStoreDep) -> U
         hashed_password=get_password_hash(user_in.password),
     )
 
-    user_store.add(user)
+    await user_store.add(user)
 
     return UserPublic.model_validate(user)
