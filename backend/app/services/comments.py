@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 
+from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.comments import Comment
 from app.schemas.comments import CommentCreate, CommentPublic, CommentsPublic
 from app.services.repositories import normalize_repo_path
@@ -102,9 +103,9 @@ class CommentService:
             await self.activity_service.record(
                 actor=current_user,
                 repo=repository,
-                kind="comment",
+                kind=ActivityKind.COMMENT,
                 title=issue.title,
-                target_type=issue.kind,
+                target_type=ActivityTargetType(issue.kind),
                 target_number=issue.number,
             )
 

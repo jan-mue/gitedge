@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import UUID, Boolean, ForeignKey, Integer, String, Text
+from sqlalchemy import UUID, Boolean, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.entities.base import Base
@@ -21,8 +21,6 @@ class Repository(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_private: Mapped[bool] = mapped_column(Boolean, default=False)
     default_branch: Mapped[str] = mapped_column(String(255), default="main")
-    stars_count: Mapped[int] = mapped_column(Integer, default=0)
-    forks_count: Mapped[int] = mapped_column(Integer, default=0)
     fork_of_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("repository.id"), nullable=True, index=True
     )

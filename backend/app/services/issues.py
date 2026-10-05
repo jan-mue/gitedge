@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 
-from app.entities.issues import Issue
+from app.entities.activity import ActivityKind, ActivityTargetType
+from app.entities.issues import Issue, IssueState
 from app.schemas.repositories import IssueCreate, IssuePublic, IssuesListPublic, IssueUpdate
 from app.services.repositories import ensure_repository, normalize_repo_path
 
@@ -53,14 +54,14 @@ class IssueService:
         if repository is None:
             return IssuesListPublic(data=[], count=0, open_count=0, closed_count=0)
 
-        filter_state = state if state in ("open", "closed") else None
+        filter_state = IssueState(state) if state in (IssueState.OPEN, IssueState.CLOSED) else None
         issues = await self.issue_store.list_by_repo(repository.id, filter_state)
 
         return IssuesListPublic(
             data=[self._to_public(issue, repo_path) for issue in issues],
             count=len(issues),
-            open_count=await self.issue_store.count_by_state(repository.id, "open"),
-            closed_count=await self.issue_store.count_by_state(repository.id, "closed"),
+            open_count=await self.issue_store.count_by_state(repository.id, IssueState.OPEN),
+            closed_count=await self.issue_store.count_by_state(repository.id, IssueState.CLOSED),
         )
 
     async def create_issue(self, path: str, body: IssueCreate, current_user: User) -> IssuePublic:
@@ -82,7 +83,7 @@ class IssueService:
             number=await self.issue_store.next_number(repository.id),
             title=body.title,
             body=body.body,
-            state="open",
+            state=IssueState.OPEN,
             author_email=current_user.email,
         )
         await self.issue_store.add(issue)
@@ -91,9 +92,9 @@ class IssueService:
             await self.activity_service.record(
                 actor=current_user,
                 repo=repository,
-                kind="issue_open",
+                kind=ActivityKind.ISSUE_OPEN,
                 title=issue.title,
-                target_type="issue",
+                target_type=ActivityTargetType.ISSUE,
                 target_number=issue.number,
             )
 
@@ -138,7 +139,7 @@ class IssueService:
         if body.body is not None:
             issue.body = body.body
         if body.state is not None:
-            if body.state not in ("open", "closed"):
+            if body.state not in (IssueState.OPEN, IssueState.CLOSED):
                 raise HTTPException(status_code=400, detail="State must be 'open' or 'closed'")
             issue.state = body.state
 
@@ -146,14 +147,14 @@ class IssueService:
         await self.issue_store.update(issue)
 
         if self.activity_service is not None and body.state is not None:
-            kind = "issue_close" if body.state == "closed" else "issue_reopen"
+            kind = ActivityKind.ISSUE_CLOSE if body.state == IssueState.CLOSED else ActivityKind.ISSUE_REOPEN
             repository = await self.repository_store.get_by_path(repo_path)
             await self.activity_service.record(
                 actor=None,
                 repo=repository,
                 kind=kind,
                 title=issue.title,
-                target_type="issue",
+                target_type=ActivityTargetType.ISSUE,
                 target_number=issue.number,
             )
 

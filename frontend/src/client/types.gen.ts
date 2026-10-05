@@ -21,6 +21,13 @@ export type ActivitiesPublic = {
 };
 
 /**
+ * ActivityKind
+ *
+ * Kinds of activity recorded in the feed.
+ */
+export type ActivityKind = 'star' | 'watch' | 'fork' | 'issue_open' | 'issue_close' | 'issue_reopen' | 'comment' | 'pull_request_open' | 'pull_request_merge' | 'pull_request_close' | 'pull_request_reopen' | 'release';
+
+/**
  * ActivityPublic
  *
  * Public activity representation.
@@ -30,10 +37,7 @@ export type ActivityPublic = {
      * Id
      */
     id: string;
-    /**
-     * Kind
-     */
-    kind: string;
+    kind: ActivityKind;
     /**
      * Title
      */
@@ -50,10 +54,7 @@ export type ActivityPublic = {
      * Repo Path
      */
     repo_path?: string | null;
-    /**
-     * Target Type
-     */
-    target_type?: string | null;
+    target_type?: ActivityTargetType | null;
     /**
      * Target Number
      */
@@ -63,6 +64,13 @@ export type ActivityPublic = {
      */
     created_at?: string | null;
 };
+
+/**
+ * ActivityTargetType
+ *
+ * Types of targets an activity event can reference.
+ */
+export type ActivityTargetType = 'repository' | 'issue' | 'pull_request' | 'release';
 
 /**
  * Body_login-login_access_token
@@ -163,6 +171,13 @@ export type CommentsPublic = {
 };
 
 /**
+ * CommitChangeType
+ *
+ * How a file changed within a commit.
+ */
+export type CommitChangeType = 'add' | 'modify' | 'delete' | 'rename';
+
+/**
  * CommitDetail
  *
  * Detailed information about a single commit.
@@ -220,10 +235,7 @@ export type CommitFileChange = {
      * Old Path
      */
     old_path?: string | null;
-    /**
-     * Change Type
-     */
-    change_type: string;
+    change_type: CommitChangeType;
     /**
      * Additions
      */
@@ -498,10 +510,7 @@ export type IssuePublic = {
      * Body
      */
     body?: string | null;
-    /**
-     * State
-     */
-    state: string;
+    state: IssueState;
     /**
      * Author Email
      */
@@ -517,6 +526,13 @@ export type IssuePublic = {
 };
 
 /**
+ * IssueState
+ *
+ * State of an issue or pull request.
+ */
+export type IssueState = 'open' | 'closed' | 'merged';
+
+/**
  * IssueUpdate
  *
  * Request to update an issue.
@@ -530,10 +546,7 @@ export type IssueUpdate = {
      * Body
      */
     body?: string | null;
-    /**
-     * State
-     */
-    state?: string | null;
+    state?: IssueState | null;
 };
 
 /**
@@ -650,10 +663,7 @@ export type PullRequestPublic = {
      * Body
      */
     body?: string | null;
-    /**
-     * State
-     */
-    state: string;
+    state: IssueState;
     /**
      * Head Branch
      */
@@ -702,10 +712,7 @@ export type PullRequestUpdate = {
      * Body
      */
     body?: string | null;
-    /**
-     * State
-     */
-    state?: string | null;
+    state?: IssueState | null;
 };
 
 /**
@@ -1087,15 +1094,19 @@ export type TreeEntry = {
      * Path
      */
     path: string;
-    /**
-     * Type
-     */
-    type: string;
+    type: TreeEntryType;
     /**
      * Size
      */
     size?: number | null;
 };
+
+/**
+ * TreeEntryType
+ *
+ * Type of a Git tree entry.
+ */
+export type TreeEntryType = 'tree' | 'blob';
 
 /**
  * TreeListing

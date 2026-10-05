@@ -22,6 +22,7 @@ from app.entities.repositories import Repository as RepositoryEntity
 from app.schemas.releases import TagInfo, TagsPublic
 from app.schemas.repositories import (
     BranchInfo,
+    CommitChangeType,
     CommitDetail,
     CommitFileChange,
     CommitInfo,
@@ -33,15 +34,19 @@ from app.schemas.repositories import (
     Repository,
     RepositoryInfo,
     TreeEntry,
+    TreeEntryType,
     TreeListing,
 )
 from app.services.blob_backend import load_repository_from_storage, save_repository_changes_to_storage
 from app.services.markdown import render_markdown
 
 if TYPE_CHECKING:
+    import uuid
+
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.redis import AbstractRedisClient
     from app.clients.repositories import RepositoryStore
+    from app.clients.stars import StarStore
     from app.entities.users import User
     from app.services.blob_backend import BlobBackend
     from app.services.blob_repository import BlobRepository
@@ -155,8 +160,6 @@ def to_repository_schema(entity: RepositoryEntity) -> Repository:
         description=entity.description,
         default_branch=entity.default_branch,
         is_private=entity.is_private,
-        stars_count=entity.stars_count,
-        forks_count=entity.forks_count,
         created_at=entity.created_at,
         updated_at=entity.updated_at,
     )
@@ -190,6 +193,7 @@ class RepositoryService:
         blob_client: BlobStorageClient,
         redis_client: AbstractRedisClient,
         repository_store: RepositoryStore | None = None,
+        star_store: StarStore | None = None,
     ) -> None:
         """Initialize the repository service.
 
@@ -199,11 +203,25 @@ class RepositoryService:
             redis_client: Redis client.
             repository_store: Optional repository store used to enrich
                 repository metadata with database records.
+            star_store: Optional star store used to compute star counts.
         """
         self.backend = backend
         self.blob_client = blob_client
         self.redis_client = redis_client
         self.repository_store = repository_store
+        self.star_store = star_store
+
+    async def _apply_counts(self, repository: Repository, repo_id: uuid.UUID) -> None:
+        """Fill a repository schema's star and fork counts from related tables.
+
+        Args:
+            repository: The repository schema to update in place.
+            repo_id: The repository entity id.
+        """
+        if self.star_store is not None:
+            repository.stars_count = await self.star_store.count_by_repo(repo_id)
+        if self.repository_store is not None:
+            repository.forks_count = await self.repository_store.count_by_fork_of(repo_id)
 
     async def list_repositories(self) -> RepositoriesPublic:
         """List all repositories.
@@ -269,8 +287,7 @@ class RepositoryService:
             repository.description = entity.description
             repository.default_branch = entity.default_branch
             repository.is_private = entity.is_private
-            repository.stars_count = entity.stars_count
-            repository.forks_count = entity.forks_count
+            await self._apply_counts(repository, entity.id)
             repository.created_at = entity.created_at
             repository.updated_at = entity.updated_at
 
@@ -402,7 +419,7 @@ class RepositoryService:
                 TreeEntry(
                     name=name,
                     path=entry_path,
-                    type="tree" if is_dir else "blob",
+                    type=TreeEntryType.TREE if is_dir else TreeEntryType.BLOB,
                     size=size,
                 )
             )
@@ -514,8 +531,8 @@ class RepositoryService:
             if entity is not None:
                 description = entity.description
                 is_private = entity.is_private
-                stars_count = entity.stars_count
-                forks_count = entity.forks_count
+                stars_count = await self.star_store.count_by_repo(entity.id) if self.star_store is not None else 0
+                forks_count = await self.repository_store.count_by_fork_of(entity.id)
                 if entity.fork_of_id is not None:
                     parent = await self.repository_store.get(entity.fork_of_id)
                     if parent is not None:
@@ -741,13 +758,13 @@ class RepositoryService:
             old_path = match.group("old") if match else lines[0]
             new_path = match.group("new") if match else old_path
 
-            change_type = "modify"
+            change_type = CommitChangeType.MODIFY
             if any(line.startswith("new file mode") for line in lines):
-                change_type = "add"
+                change_type = CommitChangeType.ADD
             elif any(line.startswith("deleted file mode") for line in lines):
-                change_type = "delete"
+                change_type = CommitChangeType.DELETE
             elif any(line.startswith("rename from") for line in lines):
-                change_type = "rename"
+                change_type = CommitChangeType.RENAME
 
             for line in lines:
                 if line.startswith("rename from "):
@@ -755,7 +772,7 @@ class RepositoryService:
                 elif line.startswith("rename to "):
                     new_path = line[len("rename to ") :]
 
-            path = old_path if change_type == "delete" else new_path
+            path = old_path if change_type == CommitChangeType.DELETE else new_path
             files.append(
                 CommitFileChange(
                     path=path,

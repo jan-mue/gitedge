@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 
+from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.releases import Release
 from app.schemas.releases import ReleaseCreate, ReleasePublic, ReleasesPublic
 from app.services.repositories import ensure_repository, normalize_repo_path
@@ -117,9 +118,9 @@ class ReleaseService:
         await self.activity_service.record(
             actor=current_user,
             repo=repository,
-            kind="release",
+            kind=ActivityKind.RELEASE,
             title=body.name or body.tag_name,
-            target_type="release",
+            target_type=ActivityTargetType.RELEASE,
         )
         return await self._to_public(release, repo_path)
 

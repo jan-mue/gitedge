@@ -2,8 +2,26 @@
 
 import uuid
 from datetime import datetime
+from enum import StrEnum
 
+from app.entities.issues import IssueState
 from app.schemas.base import GitEdgeBaseModel
+
+
+class TreeEntryType(StrEnum):
+    """Type of a Git tree entry."""
+
+    TREE = "tree"
+    BLOB = "blob"
+
+
+class CommitChangeType(StrEnum):
+    """How a file changed within a commit."""
+
+    ADD = "add"
+    MODIFY = "modify"
+    DELETE = "delete"
+    RENAME = "rename"
 
 
 class Repository(GitEdgeBaseModel):
@@ -35,7 +53,7 @@ class TreeEntry(GitEdgeBaseModel):
 
     name: str
     path: str
-    type: str  # "tree" or "blob"
+    type: TreeEntryType
     size: int | None = None
 
 
@@ -134,7 +152,7 @@ class CommitFileChange(GitEdgeBaseModel):
 
     path: str
     old_path: str | None = None
-    change_type: str  # "add", "modify", "delete", "rename"
+    change_type: CommitChangeType
     additions: int
     deletions: int
     patch: str
@@ -166,7 +184,7 @@ class IssueUpdate(GitEdgeBaseModel):
 
     title: str | None = None
     body: str | None = None
-    state: str | None = None
+    state: IssueState | None = None
 
 
 class IssuePublic(GitEdgeBaseModel):
@@ -177,7 +195,7 @@ class IssuePublic(GitEdgeBaseModel):
     number: int
     title: str
     body: str | None = None
-    state: str
+    state: IssueState
     author_email: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -206,7 +224,7 @@ class PullRequestUpdate(GitEdgeBaseModel):
 
     title: str | None = None
     body: str | None = None
-    state: str | None = None
+    state: IssueState | None = None
 
 
 class PullRequestPublic(GitEdgeBaseModel):
@@ -217,7 +235,7 @@ class PullRequestPublic(GitEdgeBaseModel):
     number: int
     title: str
     body: str | None = None
-    state: str
+    state: IssueState
     head_branch: str
     base_branch: str
     author_email: str | None = None

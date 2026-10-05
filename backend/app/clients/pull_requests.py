@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select
 
 from app.clients.database import CrudStore, SQLStore
-from app.entities.issues import Issue
+from app.entities.issues import Issue, IssueState
 from app.entities.pull_requests import PullRequest
 
 if TYPE_CHECKING:
@@ -25,15 +25,15 @@ class PullRequestStore(CrudStore[PullRequest], ABC):
         """Get a pull request by repository id and number."""
 
     @abstractmethod
-    async def list_by_repo(self, repo_id: uuid.UUID, state: str | None = None) -> list[PullRequest]:
+    async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[PullRequest]:
         """List pull requests for a repository, newest first."""
 
     @abstractmethod
-    async def count_by_state(self, repo_id: uuid.UUID, state: str) -> int:
+    async def count_by_state(self, repo_id: uuid.UUID, state: IssueState) -> int:
         """Count pull requests in a repository by state."""
 
     @abstractmethod
-    async def count_by_states(self, repo_id: uuid.UUID, states: list[str]) -> int:
+    async def count_by_states(self, repo_id: uuid.UUID, states: list[IssueState]) -> int:
         """Count pull requests in a repository matching any of the given states."""
 
     @abstractmethod
@@ -58,7 +58,7 @@ class SQLPullRequestStore(PullRequestStore, SQLStore[PullRequest]):
             select(PullRequest).where(PullRequest.repo_id == repo_id, PullRequest.number == number)
         )
 
-    async def list_by_repo(self, repo_id: uuid.UUID, state: str | None = None) -> list[PullRequest]:
+    async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[PullRequest]:
         """List pull requests for a repository, newest first."""
         stmt = select(PullRequest).where(PullRequest.repo_id == repo_id)
         if state is not None:
@@ -67,7 +67,7 @@ class SQLPullRequestStore(PullRequestStore, SQLStore[PullRequest]):
         result = await self.db.scalars(stmt)
         return list(result.all())
 
-    async def count_by_state(self, repo_id: uuid.UUID, state: str) -> int:
+    async def count_by_state(self, repo_id: uuid.UUID, state: IssueState) -> int:
         """Count pull requests in a repository by state."""
         result = await self.db.execute(
             select(func.count())
@@ -76,7 +76,7 @@ class SQLPullRequestStore(PullRequestStore, SQLStore[PullRequest]):
         )
         return result.scalar_one()
 
-    async def count_by_states(self, repo_id: uuid.UUID, states: list[str]) -> int:
+    async def count_by_states(self, repo_id: uuid.UUID, states: list[IssueState]) -> int:
         """Count pull requests in a repository matching any of the given states."""
         result = await self.db.execute(
             select(func.count())

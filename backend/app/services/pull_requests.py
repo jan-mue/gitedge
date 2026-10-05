@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 
+from app.entities.activity import ActivityKind, ActivityTargetType
+from app.entities.issues import IssueState
 from app.entities.pull_requests import PullRequest
 from app.schemas.repositories import (
     PullRequestCreate,
@@ -58,14 +60,16 @@ class PullRequestService:
         if repository is None:
             return PullRequestsListPublic(data=[], count=0, open_count=0, closed_count=0)
 
-        filter_state = state if state in ("open", "closed", "merged") else None
+        filter_state = IssueState(state) if state in (IssueState.OPEN, IssueState.CLOSED, IssueState.MERGED) else None
         pull_requests = await self.pull_request_store.list_by_repo(repository.id, filter_state)
 
         return PullRequestsListPublic(
             data=[self._to_public(pr, repo_path) for pr in pull_requests],
             count=len(pull_requests),
-            open_count=await self.pull_request_store.count_by_state(repository.id, "open"),
-            closed_count=await self.pull_request_store.count_by_states(repository.id, ["closed", "merged"]),
+            open_count=await self.pull_request_store.count_by_state(repository.id, IssueState.OPEN),
+            closed_count=await self.pull_request_store.count_by_states(
+                repository.id, [IssueState.CLOSED, IssueState.MERGED]
+            ),
         )
 
     async def create_pull_request(self, path: str, body: PullRequestCreate, current_user: User) -> PullRequestPublic:
@@ -87,7 +91,7 @@ class PullRequestService:
             number=await self.pull_request_store.next_number(repository.id),
             title=body.title,
             body=body.body,
-            state="open",
+            state=IssueState.OPEN,
             author_email=current_user.email,
             head_repo_id=repository.id,
             base_repo_id=repository.id,
@@ -100,9 +104,9 @@ class PullRequestService:
             await self.activity_service.record(
                 actor=current_user,
                 repo=repository,
-                kind="pull_request_open",
+                kind=ActivityKind.PULL_REQUEST_OPEN,
                 title=pull_request.title,
-                target_type="pull_request",
+                target_type=ActivityTargetType.PULL_REQUEST,
                 target_number=pull_request.number,
             )
 
@@ -147,7 +151,7 @@ class PullRequestService:
         if body.body is not None:
             pull_request.body = body.body
         if body.state is not None:
-            if body.state not in ("open", "closed", "merged"):
+            if body.state not in (IssueState.OPEN, IssueState.CLOSED, IssueState.MERGED):
                 raise HTTPException(status_code=400, detail="State must be 'open', 'closed', or 'merged'")
             pull_request.state = body.state
 
@@ -156,16 +160,16 @@ class PullRequestService:
 
         if self.activity_service is not None and body.state is not None:
             kind = {
-                "merged": "pull_request_merge",
-                "closed": "pull_request_close",
-            }.get(body.state, "pull_request_reopen")
+                IssueState.MERGED: ActivityKind.PULL_REQUEST_MERGE,
+                IssueState.CLOSED: ActivityKind.PULL_REQUEST_CLOSE,
+            }.get(body.state, ActivityKind.PULL_REQUEST_REOPEN)
             repository = await self.repository_store.get_by_path(repo_path)
             await self.activity_service.record(
                 actor=None,
                 repo=repository,
                 kind=kind,
                 title=pull_request.title,
-                target_type="pull_request",
+                target_type=ActivityTargetType.PULL_REQUEST,
                 target_number=pull_request.number,
             )
 

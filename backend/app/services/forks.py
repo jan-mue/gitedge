@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 
+from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.repositories import Repository
 from app.schemas.social import ForkCreate, ForkPublic, ForksPublic
 from app.services.repositories import (
@@ -16,6 +17,7 @@ from app.services.repositories import (
 
 if TYPE_CHECKING:
     from app.clients.repositories import RepositoryStore
+    from app.clients.stars import StarStore
     from app.entities.users import User
     from app.services.activity import ActivityService
     from app.services.repositories import RepositoryService
@@ -29,6 +31,7 @@ class ForkService:
         repository_store: RepositoryStore,
         repository_service: RepositoryService,
         activity_service: ActivityService,
+        star_store: StarStore | None = None,
     ) -> None:
         """Initialize the fork service.
 
@@ -36,10 +39,12 @@ class ForkService:
             repository_store: Repository store.
             repository_service: Repository service used to create the Git repo.
             activity_service: Service used to record activity.
+            star_store: Optional star store used to compute star counts.
         """
         self.repository_store = repository_store
         self.repository_service = repository_service
         self.activity_service = activity_service
+        self.star_store = star_store
 
     async def fork(self, path: str, body: ForkCreate, current_user: User) -> ForkPublic:
         """Fork a repository.
@@ -82,13 +87,15 @@ class ForkService:
 
         await self.repository_service.create_repository(owner, name)
 
-        source.forks_count = await self.repository_store.count_by_fork_of(source.id)
-        await self.repository_store.update(source)
         await self.activity_service.record(
-            actor=current_user, repo=source, kind="fork", title=source.name, target_type="repository"
+            actor=current_user,
+            repo=source,
+            kind=ActivityKind.FORK,
+            title=source.name,
+            target_type=ActivityTargetType.REPOSITORY,
         )
 
-        return self._to_public(fork)
+        return await self._to_public(fork)
 
     async def list_forks(self, path: str, offset: int = 0, limit: int = 100) -> ForksPublic:
         """List forks of a repository.
@@ -106,18 +113,26 @@ class ForkService:
         if source is None:
             return ForksPublic(data=[], count=0)
         forks = await self.repository_store.list_by_fork_of(source.id, offset, limit)
-        return ForksPublic(data=[self._to_public(fork) for fork in forks], count=len(forks))
+        return ForksPublic(data=[await self._to_public(fork) for fork in forks], count=len(forks))
 
-    @staticmethod
-    def _to_public(fork: Repository) -> ForkPublic:
-        """Convert a fork entity to its public representation."""
+    async def _to_public(self, fork: Repository) -> ForkPublic:
+        """Convert a fork entity to its public representation.
+
+        Args:
+            fork: The fork repository entity.
+
+        Returns:
+            The public fork representation.
+        """
+        stars_count = await self.star_store.count_by_repo(fork.id) if self.star_store is not None else 0
+        forks_count = await self.repository_store.count_by_fork_of(fork.id)
         return ForkPublic(
             id=fork.id,
             path=fork.path,
             name=fork.name,
             owner=repository_owner_from_path(fork.path),
             description=fork.description,
-            stars_count=fork.stars_count,
-            forks_count=fork.forks_count,
+            stars_count=stars_count,
+            forks_count=forks_count,
             created_at=fork.created_at,
         )

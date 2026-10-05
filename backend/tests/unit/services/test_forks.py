@@ -45,9 +45,8 @@ async def test_fork_repository() -> None:
     assert fork.owner == "alice"
     assert repository_service.backend.repository_exists("alice/repo.git")
 
-    updated_source = await repository_store.get(source.id)
-    assert updated_source is not None
-    assert updated_source.forks_count == 1
+    assert await repository_store.count_by_fork_of(source.id) == 1
+    assert fork.forks_count == 0
     assert len(activity_store.items) == 1
 
     forks = await fork_service.list_forks("owner/repo")

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.stars import Star
 from app.schemas.repositories import RepositoriesPublic
 from app.schemas.social import StargazersPublic, StarState
@@ -56,10 +57,12 @@ class StarService:
         existing = await self.star_store.get_by_user_and_repo(user.id, repository.id)
         if existing is None:
             await self.star_store.add(Star(user_id=user.id, repo_id=repository.id))
-            repository.stars_count = await self.star_store.count_by_repo(repository.id)
-            await self.repository_store.update(repository)
             await self.activity_service.record(
-                actor=user, repo=repository, kind="star", title=repository.name, target_type="repository"
+                actor=user,
+                repo=repository,
+                kind=ActivityKind.STAR,
+                title=repository.name,
+                target_type=ActivityTargetType.REPOSITORY,
             )
         return StarState(is_starred=True, stars_count=await self.star_store.count_by_repo(repository.id))
 
@@ -80,8 +83,6 @@ class StarService:
         existing = await self.star_store.get_by_user_and_repo(user.id, repository.id)
         if existing is not None:
             await self.star_store.delete(existing)
-            repository.stars_count = await self.star_store.count_by_repo(repository.id)
-            await self.repository_store.update(repository)
         return StarState(is_starred=False, stars_count=await self.star_store.count_by_repo(repository.id))
 
     async def state(self, path: str, user: User) -> StarState:
@@ -143,5 +144,8 @@ class StarService:
         for star in stars:
             repository = await self.repository_store.get(star.repo_id)
             if repository is not None:
-                repositories.append(to_repository_schema(repository))
+                schema = to_repository_schema(repository)
+                schema.stars_count = await self.star_store.count_by_repo(repository.id)
+                schema.forks_count = await self.repository_store.count_by_fork_of(repository.id)
+                repositories.append(schema)
         return RepositoriesPublic(data=repositories, count=len(repositories))

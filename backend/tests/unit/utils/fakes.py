@@ -29,7 +29,7 @@ from app.config import settings
 from app.entities.activity import Activity
 from app.entities.base import Base
 from app.entities.comments import Comment
-from app.entities.issues import Issue
+from app.entities.issues import Issue, IssueState
 from app.entities.pull_requests import PullRequest
 from app.entities.releases import Release
 from app.entities.repositories import Repository
@@ -191,14 +191,14 @@ class FakeIssueStore(FakeCrudStore[Issue], IssueStore):
             None,
         )
 
-    async def list_by_repo(self, repo_id: uuid.UUID, state: str | None = None) -> list[Issue]:
+    async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[Issue]:
         """List issues for a repository, newest first."""
         issues = [issue for issue in self.items.values() if issue.repo_id == repo_id]
         if state is not None:
             issues = [issue for issue in issues if issue.state == state]
         return sorted(issues, key=lambda issue: issue.number, reverse=True)
 
-    async def count_by_state(self, repo_id: uuid.UUID, state: str) -> int:
+    async def count_by_state(self, repo_id: uuid.UUID, state: IssueState) -> int:
         """Count issues in a repository by state."""
         return sum(1 for issue in self.items.values() if issue.repo_id == repo_id and issue.state == state)
 
@@ -223,18 +223,18 @@ class FakePullRequestStore(FakeCrudStore[PullRequest], PullRequestStore):
             None,
         )
 
-    async def list_by_repo(self, repo_id: uuid.UUID, state: str | None = None) -> list[PullRequest]:
+    async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[PullRequest]:
         """List pull requests for a repository, newest first."""
         pull_requests = [pr for pr in self.items.values() if pr.repo_id == repo_id]
         if state is not None:
             pull_requests = [pr for pr in pull_requests if pr.state == state]
         return sorted(pull_requests, key=lambda pr: pr.number, reverse=True)
 
-    async def count_by_state(self, repo_id: uuid.UUID, state: str) -> int:
+    async def count_by_state(self, repo_id: uuid.UUID, state: IssueState) -> int:
         """Count pull requests in a repository by state."""
         return sum(1 for pr in self.items.values() if pr.repo_id == repo_id and pr.state == state)
 
-    async def count_by_states(self, repo_id: uuid.UUID, states: list[str]) -> int:
+    async def count_by_states(self, repo_id: uuid.UUID, states: list[IssueState]) -> int:
         """Count pull requests in a repository matching any of the given states."""
         return sum(1 for pr in self.items.values() if pr.repo_id == repo_id and pr.state in states)
 

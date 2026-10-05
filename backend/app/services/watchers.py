@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.watchers import Watcher
 from app.schemas.social import WatchersPublic, WatcherState
 from app.schemas.users import UserPublic
@@ -56,7 +57,11 @@ class WatcherService:
         if existing is None:
             await self.watcher_store.add(Watcher(user_id=user.id, repo_id=repository.id))
             await self.activity_service.record(
-                actor=user, repo=repository, kind="watch", title=repository.name, target_type="repository"
+                actor=user,
+                repo=repository,
+                kind=ActivityKind.WATCH,
+                title=repository.name,
+                target_type=ActivityTargetType.REPOSITORY,
             )
         return WatcherState(is_watching=True, watchers_count=await self.watcher_store.count_by_repo(repository.id))
 

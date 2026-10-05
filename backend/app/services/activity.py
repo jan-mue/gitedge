@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.entities.activity import Activity
+from app.entities.activity import Activity, ActivityKind, ActivityTargetType
 from app.schemas.activity import ActivitiesPublic, ActivityPublic
 from app.services.repositories import normalize_repo_path
 
@@ -47,9 +47,9 @@ class ActivityService:
         *,
         actor: User | None,
         repo: Repository | None,
-        kind: str,
+        kind: ActivityKind,
         title: str | None = None,
-        target_type: str | None = None,
+        target_type: ActivityTargetType | None = None,
         target_number: int | None = None,
     ) -> Activity:
         """Record an activity event.
@@ -57,9 +57,9 @@ class ActivityService:
         Args:
             actor: The user performing the action, if any.
             repo: The repository the action relates to, if any.
-            kind: The activity kind (e.g. "issue_open", "star").
+            kind: The activity kind.
             title: Optional human readable title.
-            target_type: Optional target type (e.g. "issue", "pull_request").
+            target_type: Optional target type.
             target_number: Optional target number within the repository.
 
         Returns:

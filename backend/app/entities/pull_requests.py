@@ -5,14 +5,14 @@ import uuid
 from sqlalchemy import UUID, Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.entities.issues import Issue
+from app.entities.issues import Issue, IssueKind
 
 
 class PullRequest(Issue):
     """Pull request database model - extends Issue (joined table inheritance)."""
 
     __tablename__ = "pull_request"
-    __mapper_args__ = {"polymorphic_identity": "pull_request"}
+    __mapper_args__ = {"polymorphic_identity": IssueKind.PULL_REQUEST}
 
     # Use the same id as Issue (foreign key to Issue primary key) - override parent
     id: Mapped[uuid.UUID] = mapped_column(

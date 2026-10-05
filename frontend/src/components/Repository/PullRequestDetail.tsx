@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link as RouterLink, useParams } from "@tanstack/react-router"
 import { ArrowLeft, CircleCheck, GitMerge, GitPullRequest } from "lucide-react"
 
-import { RepositoriesService } from "@/client"
+import { type IssueState, RepositoriesService } from "@/client"
 import CommentsSection from "@/components/Repository/CommentsSection"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -42,7 +42,7 @@ const PullRequestDetail = () => {
   })
 
   const mutation = useMutation({
-    mutationFn: (state: string) =>
+    mutationFn: (state: IssueState) =>
       RepositoriesService.updatePullRequest({
         path: { path: repoPath, number: prNumber },
         body: { state },

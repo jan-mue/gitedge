@@ -246,11 +246,27 @@ def get_backend() -> BlobBackend:
 BackendDep = Annotated[BlobBackend, Depends(get_backend)]
 
 
+def get_star_store(session: SessionDep) -> StarStore:
+    """Get the star store dependency.
+
+    Args:
+        session: SQLAlchemy session.
+
+    Returns:
+        Star store instance.
+    """
+    return SQLStarStore(session)
+
+
+StarStoreDep = Annotated[StarStore, Depends(get_star_store)]
+
+
 def get_repository_service(
     backend: BackendDep,
     blob_client: BlobStorageClientDep,
     redis_client: RedisClientDep,
     repository_store: RepositoryStoreDep,
+    star_store: StarStoreDep,
 ) -> RepositoryService:
     """Get the repository service dependency.
 
@@ -259,11 +275,12 @@ def get_repository_service(
         blob_client: Blob storage client dependency.
         redis_client: Redis client dependency.
         repository_store: Repository store dependency.
+        star_store: Star store dependency.
 
     Returns:
         Repository service instance.
     """
-    return RepositoryService(backend, blob_client, redis_client, repository_store)
+    return RepositoryService(backend, blob_client, redis_client, repository_store, star_store)
 
 
 RepositoryServiceDep = Annotated[RepositoryService, Depends(get_repository_service)]
@@ -297,21 +314,6 @@ def get_pull_request_store(session: SessionDep) -> PullRequestStore:
 
 
 PullRequestStoreDep = Annotated[PullRequestStore, Depends(get_pull_request_store)]
-
-
-def get_star_store(session: SessionDep) -> StarStore:
-    """Get the star store dependency.
-
-    Args:
-        session: SQLAlchemy session.
-
-    Returns:
-        Star store instance.
-    """
-    return SQLStarStore(session)
-
-
-StarStoreDep = Annotated[StarStore, Depends(get_star_store)]
 
 
 def get_watcher_store(session: SessionDep) -> WatcherStore:
@@ -547,6 +549,7 @@ def get_fork_service(
     repository_store: RepositoryStoreDep,
     repository_service: RepositoryServiceDep,
     activity_service: ActivityServiceDep,
+    star_store: StarStoreDep,
 ) -> ForkService:
     """Get the fork service dependency.
 
@@ -554,11 +557,12 @@ def get_fork_service(
         repository_store: Repository store dependency.
         repository_service: Repository service dependency.
         activity_service: Activity service dependency.
+        star_store: Star store dependency.
 
     Returns:
         Fork service instance.
     """
-    return ForkService(repository_store, repository_service, activity_service)
+    return ForkService(repository_store, repository_service, activity_service, star_store)
 
 
 ForkServiceDep = Annotated[ForkService, Depends(get_fork_service)]
