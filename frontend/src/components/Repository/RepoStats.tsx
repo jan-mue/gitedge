@@ -14,10 +14,11 @@ interface RepoStatsProps {
 }
 
 const RepoStats = ({ owner, repo, gitRef, searchRef }: RepoStatsProps) => {
-  const [, copy] = useCopyToClipboard()
+  const [copiedText, copy] = useCopyToClipboard()
   const navigate = useNavigate()
   const cloneUrl = `${window.location.origin}/${owner}/${repo}.git`
   const repoPath = `${owner}/${repo}.git`
+  const isCopied = copiedText === cloneUrl
 
   const [branchDropdownOpen, setBranchDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -143,26 +144,42 @@ const RepoStats = ({ owner, repo, gitRef, searchRef }: RepoStatsProps) => {
         </button>
 
         <div className="ml-auto flex items-center gap-2">
-          <span className="flex items-center gap-1.5 rounded bg-success px-2 py-1 text-xs font-bold text-success-foreground">
+          <span className="flex h-8 items-center gap-1.5 rounded bg-success px-2.5 text-xs font-bold text-success-foreground">
             <Lock className="h-3 w-3" />
             HTTPS
           </span>
-          <div className="flex items-center">
+          <div className="flex h-8 items-stretch">
             <input
               type="text"
               readOnly
               value={cloneUrl}
               data-testid="clone-url"
-              className="w-72 rounded-l border border-border bg-secondary px-2.5 py-1.5 font-mono text-xs text-muted-foreground"
+              onFocus={(e) => e.currentTarget.select()}
+              className="h-8 w-72 rounded-l border border-border bg-secondary px-2.5 font-mono text-xs text-muted-foreground focus:outline-none"
             />
-            <button
-              type="button"
-              onClick={() => copy(cloneUrl)}
-              data-testid="copy-clone-url"
-              className="rounded-r border border-l-0 border-border bg-secondary px-2 py-1.5 transition-colors hover:bg-accent"
-            >
-              <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-            </button>
+            <div className="relative flex">
+              <button
+                type="button"
+                onClick={() => copy(cloneUrl)}
+                aria-label="Copy clone URL"
+                data-testid="copy-clone-url"
+                className="flex h-8 w-9 items-center justify-center rounded-r border border-l-0 border-border bg-secondary transition-colors hover:bg-accent"
+              >
+                {isCopied ? (
+                  <Check className="h-3.5 w-3.5 text-success" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                )}
+              </button>
+              {isCopied && (
+                <span
+                  role="status"
+                  className="absolute bottom-full right-0 mb-2 whitespace-nowrap rounded border border-border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
+                >
+                  Copied to clipboard
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
