@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, type Options as Options2, type RequestResult, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { activityGetFeedData, activityGetFeedErrors, activityGetFeedResponses, activityGetRepositoryActivityData, activityGetRepositoryActivityErrors, activityGetRepositoryActivityResponses, commentsCreateCommentData, commentsCreateCommentErrors, commentsCreateCommentResponses, commentsListCommentsData, commentsListCommentsErrors, commentsListCommentsResponses, forksForkRepositoryData, forksForkRepositoryErrors, forksForkRepositoryResponses, forksListForksData, forksListForksErrors, forksListForksResponses, gitGetHeadData, gitGetHeadErrors, gitGetHeadResponses, gitGetInfoPacksData, gitGetInfoPacksErrors, gitGetInfoPacksResponses, gitGetInfoRefsData, gitGetInfoRefsErrors, gitGetInfoRefsResponses, gitGetLooseObjectData, gitGetLooseObjectErrors, gitGetLooseObjectResponses, gitGetPackFileData, gitGetPackFileErrors, gitGetPackFileResponses, gitGitReceivePackData, gitGitReceivePackErrors, gitGitReceivePackResponses, gitGitUploadPackData, gitGitUploadPackErrors, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesListUserRepositoriesData, profilesListUserRepositoriesErrors, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesErrors, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameData, profilesReadUserByUsernameErrors, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseErrors, releasesCreateReleaseResponses, releasesGetReleaseData, releasesGetReleaseErrors, releasesGetReleaseResponses, releasesListReleasesData, releasesListReleasesErrors, releasesListReleasesResponses, releasesListTagsData, releasesListTagsErrors, releasesListTagsResponses, repositoriesCreateIssueData, repositoriesCreateIssueErrors, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestErrors, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryErrors, repositoriesCreateRepositoryResponses, repositoriesGetBlobData, repositoriesGetBlobErrors, repositoriesGetBlobResponses, repositoriesGetCommitData, repositoriesGetCommitErrors, repositoriesGetCommitResponses, repositoriesGetIssueData, repositoriesGetIssueErrors, repositoriesGetIssueResponses, repositoriesGetPullRequestData, repositoriesGetPullRequestErrors, repositoriesGetPullRequestResponses, repositoriesGetReadmeData, repositoriesGetReadmeErrors, repositoriesGetReadmeResponses, repositoriesGetRepositoryData, repositoriesGetRepositoryErrors, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoErrors, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetTreeData, repositoriesGetTreeErrors, repositoriesGetTreeResponses, repositoriesListBranchesData, repositoriesListBranchesErrors, repositoriesListBranchesResponses, repositoriesListCommitsData, repositoriesListCommitsErrors, repositoriesListCommitsResponses, repositoriesListIssuesData, repositoriesListIssuesErrors, repositoriesListIssuesResponses, repositoriesListPullRequestsData, repositoriesListPullRequestsErrors, repositoriesListPullRequestsResponses, repositoriesListRepositoriesData, repositoriesListRepositoriesResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueErrors, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestErrors, repositoriesUpdatePullRequestResponses, starsGetStarStateData, starsGetStarStateErrors, starsGetStarStateResponses, starsListStargazersData, starsListStargazersErrors, starsListStargazersResponses, starsListStarredRepositoriesData, starsListStarredRepositoriesErrors, starsListStarredRepositoriesResponses, starsStarRepositoryData, starsStarRepositoryErrors, starsStarRepositoryResponses, starsUnstarRepositoryData, starsUnstarRepositoryErrors, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, watchersGetWatchStateData, watchersGetWatchStateErrors, watchersGetWatchStateResponses, watchersListWatchersData, watchersListWatchersErrors, watchersListWatchersResponses, watchersUnwatchRepositoryData, watchersUnwatchRepositoryErrors, watchersUnwatchRepositoryResponses, watchersWatchRepositoryData, watchersWatchRepositoryErrors, watchersWatchRepositoryResponses } from './types.gen';
+import type { activityGetFeedData, activityGetFeedErrors, activityGetFeedResponses, activityGetRepositoryActivityData, activityGetRepositoryActivityErrors, activityGetRepositoryActivityResponses, commentsCreateCommentData, commentsCreateCommentErrors, commentsCreateCommentResponses, commentsListCommentsData, commentsListCommentsErrors, commentsListCommentsResponses, forksForkRepositoryData, forksForkRepositoryErrors, forksForkRepositoryResponses, forksListForksData, forksListForksErrors, forksListForksResponses, gitGetHeadData, gitGetHeadErrors, gitGetHeadResponses, gitGetInfoPacksData, gitGetInfoPacksErrors, gitGetInfoPacksResponses, gitGetInfoRefsData, gitGetInfoRefsErrors, gitGetInfoRefsResponses, gitGetLooseObjectData, gitGetLooseObjectErrors, gitGetLooseObjectResponses, gitGetPackFileData, gitGetPackFileErrors, gitGetPackFileResponses, gitGitReceivePackData, gitGitReceivePackErrors, gitGitReceivePackResponses, gitGitUploadPackData, gitGitUploadPackErrors, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesListUserRepositoriesData, profilesListUserRepositoriesErrors, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesErrors, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameData, profilesReadUserByUsernameErrors, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseErrors, releasesCreateReleaseResponses, releasesGetReleaseData, releasesGetReleaseErrors, releasesGetReleaseResponses, releasesListReleasesData, releasesListReleasesErrors, releasesListReleasesResponses, releasesListTagsData, releasesListTagsErrors, releasesListTagsResponses, repositoriesCreateIssueData, repositoriesCreateIssueErrors, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestErrors, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryErrors, repositoriesCreateRepositoryResponses, repositoriesGetBlobData, repositoriesGetBlobErrors, repositoriesGetBlobResponses, repositoriesGetCommitData, repositoriesGetCommitErrors, repositoriesGetCommitResponses, repositoriesGetIssueData, repositoriesGetIssueErrors, repositoriesGetIssueResponses, repositoriesGetPullRequestData, repositoriesGetPullRequestErrors, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesErrors, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestResponses, repositoriesGetReadmeData, repositoriesGetReadmeErrors, repositoriesGetReadmeResponses, repositoriesGetRepositoryData, repositoriesGetRepositoryErrors, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoErrors, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetTreeData, repositoriesGetTreeErrors, repositoriesGetTreeResponses, repositoriesListBranchesData, repositoriesListBranchesErrors, repositoriesListBranchesResponses, repositoriesListCommitsData, repositoriesListCommitsErrors, repositoriesListCommitsResponses, repositoriesListIssuesData, repositoriesListIssuesErrors, repositoriesListIssuesResponses, repositoriesListPullRequestsData, repositoriesListPullRequestsErrors, repositoriesListPullRequestsResponses, repositoriesListRepositoriesData, repositoriesListRepositoriesResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueErrors, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestErrors, repositoriesUpdatePullRequestResponses, starsGetStarStateData, starsGetStarStateErrors, starsGetStarStateResponses, starsListStargazersData, starsListStargazersErrors, starsListStargazersResponses, starsListStarredRepositoriesData, starsListStarredRepositoriesErrors, starsListStarredRepositoriesResponses, starsStarRepositoryData, starsStarRepositoryErrors, starsStarRepositoryResponses, starsUnstarRepositoryData, starsUnstarRepositoryErrors, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, watchersGetWatchStateData, watchersGetWatchStateErrors, watchersGetWatchStateResponses, watchersListWatchersData, watchersListWatchersErrors, watchersListWatchersResponses, watchersUnwatchRepositoryData, watchersUnwatchRepositoryErrors, watchersUnwatchRepositoryResponses, watchersWatchRepositoryData, watchersWatchRepositoryErrors, watchersWatchRepositoryResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -220,20 +220,6 @@ export class UsersService {
     }
     
     /**
-     * Read User By Id
-     *
-     * Get a specific user by id.
-     */
-    public static readUserById<ThrowOnError extends boolean = true>(options: Options<usersReadUserByIdData, ThrowOnError>): RequestResult<usersReadUserByIdResponses, usersReadUserByIdErrors, ThrowOnError> {
-        return (options.client ?? client).get<usersReadUserByIdResponses, usersReadUserByIdErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/users/{user_id}',
-            ...options
-        });
-    }
-    
-    /**
      * Update User
      *
      * Update a user.
@@ -399,47 +385,6 @@ export class GitService {
         return (options.client ?? client).post<gitGitReceivePackResponses, gitGitReceivePackErrors, ThrowOnError>({
             responseType: 'json',
             url: '/api/v1/{repo_path}/git-receive-pack',
-            ...options
-        });
-    }
-}
-
-export class ProfilesService {
-    /**
-     * Read User By Username
-     *
-     * Get a user by username.
-     */
-    public static readUserByUsername<ThrowOnError extends boolean = true>(options: Options<profilesReadUserByUsernameData, ThrowOnError>): RequestResult<profilesReadUserByUsernameResponses, profilesReadUserByUsernameErrors, ThrowOnError> {
-        return (options.client ?? client).get<profilesReadUserByUsernameResponses, profilesReadUserByUsernameErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/users/by-username/{username}',
-            ...options
-        });
-    }
-    
-    /**
-     * List User Repositories
-     *
-     * List repositories owned by a user.
-     */
-    public static listUserRepositories<ThrowOnError extends boolean = true>(options: Options<profilesListUserRepositoriesData, ThrowOnError>): RequestResult<profilesListUserRepositoriesResponses, profilesListUserRepositoriesErrors, ThrowOnError> {
-        return (options.client ?? client).get<profilesListUserRepositoriesResponses, profilesListUserRepositoriesErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/users/by-username/{username}/repositories',
-            ...options
-        });
-    }
-    
-    /**
-     * List User Starred Repositories
-     *
-     * List repositories starred by a user.
-     */
-    public static listUserStarredRepositories<ThrowOnError extends boolean = true>(options: Options<profilesListUserStarredRepositoriesData, ThrowOnError>): RequestResult<profilesListUserStarredRepositoriesResponses, profilesListUserStarredRepositoriesErrors, ThrowOnError> {
-        return (options.client ?? client).get<profilesListUserStarredRepositoriesResponses, profilesListUserStarredRepositoriesErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/users/by-username/{username}/starred',
             ...options
         });
     }
@@ -727,6 +672,47 @@ export class ActivityService {
     }
 }
 
+export class ProfilesService {
+    /**
+     * Read User By Username
+     *
+     * Get a user by username.
+     */
+    public static readUserByUsername<ThrowOnError extends boolean = true>(options: Options<profilesReadUserByUsernameData, ThrowOnError>): RequestResult<profilesReadUserByUsernameResponses, profilesReadUserByUsernameErrors, ThrowOnError> {
+        return (options.client ?? client).get<profilesReadUserByUsernameResponses, profilesReadUserByUsernameErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/users/{username}',
+            ...options
+        });
+    }
+    
+    /**
+     * List User Repositories
+     *
+     * List repositories owned by a user.
+     */
+    public static listUserRepositories<ThrowOnError extends boolean = true>(options: Options<profilesListUserRepositoriesData, ThrowOnError>): RequestResult<profilesListUserRepositoriesResponses, profilesListUserRepositoriesErrors, ThrowOnError> {
+        return (options.client ?? client).get<profilesListUserRepositoriesResponses, profilesListUserRepositoriesErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/users/{username}/repositories',
+            ...options
+        });
+    }
+    
+    /**
+     * List User Starred Repositories
+     *
+     * List repositories starred by a user.
+     */
+    public static listUserStarredRepositories<ThrowOnError extends boolean = true>(options: Options<profilesListUserStarredRepositoriesData, ThrowOnError>): RequestResult<profilesListUserStarredRepositoriesResponses, profilesListUserStarredRepositoriesErrors, ThrowOnError> {
+        return (options.client ?? client).get<profilesListUserStarredRepositoriesResponses, profilesListUserStarredRepositoriesErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/users/{username}/starred',
+            ...options
+        });
+    }
+}
+
 export class RepositoriesService {
     /**
      * List Repositories
@@ -968,6 +954,19 @@ export class RepositoriesService {
                 'Content-Type': 'application/json',
                 ...options.headers
             }
+        });
+    }
+    
+    /**
+     * Get Pull Request Files
+     *
+     * List the files changed by a pull request, diffed against its base branch.
+     */
+    public static getPullRequestFiles<ThrowOnError extends boolean = true>(options: Options<repositoriesGetPullRequestFilesData, ThrowOnError>): RequestResult<repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestFilesErrors, ThrowOnError> {
+        return (options.client ?? client).get<repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestFilesErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/repositories/{path}/pulls/{number}/files',
+            ...options
         });
     }
     

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -78,7 +79,7 @@ class TestCommitHistory:
         _push_repo_with_commits(app_url, "commits/historyrepo.git", count=3)
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/commits/historyrepo/commits")
+        page.goto(f"{app_url}/commits/historyrepo/commits/branch/main")
         commits = page.get_by_test_id("commits-list")
         expect(commits).to_be_visible(timeout=15000)
         expect(commits).to_contain_text("Initial commit")
@@ -86,6 +87,7 @@ class TestCommitHistory:
 
         commits.get_by_role("link", name="Commit number 3").click()
         expect(page.get_by_test_id("commit-detail")).to_be_visible(timeout=15000)
+        expect(page).to_have_url(re.compile(r"/commits/historyrepo/commit/[0-9a-f]+$"))
         expect(page.get_by_test_id("commit-detail")).to_contain_text("changed")
         expect(page.get_by_test_id("commit-detail")).to_contain_text("src/file3.txt")
 

@@ -6,6 +6,7 @@ issues page, pull requests page, and new issue/PR forms.
 
 from __future__ import annotations
 
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -601,3 +602,39 @@ class TestRepoStats:
 
         # Verify copy button
         expect(page.get_by_test_id("copy-clone-url")).to_be_visible()
+
+
+class TestPullRequestFiles:
+    """Test the changed-files list and view-file links on a pull request."""
+
+    def test_pr_lists_changed_files_with_view_link(self, app_url: str, page: Page) -> None:
+        """A pull request lists its changed files with a link to the file at the head commit.
+
+        Args:
+            app_url: Base URL of the GitEdge frontend.
+            page: Playwright page.
+        """
+        _push_multi_branch_repo(app_url, "uitest/prfilesrepo.git")
+
+        log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
+        page.goto(f"{app_url}/uitest/prfilesrepo/pulls/new")
+
+        page.wait_for_selector(
+            '[data-testid="pr-source-branch"] option[value="develop"]',
+            state="attached",
+        )
+        page.get_by_test_id("pr-source-branch").select_option("develop")
+        page.get_by_test_id("pr-target-branch").select_option("main")
+        page.get_by_test_id("pr-title-input").fill("Add develop content")
+        page.get_by_test_id("submit-pr-btn").click()
+        expect(page.get_by_test_id("pr-1")).to_be_visible(timeout=15000)
+
+        page.goto(f"{app_url}/uitest/prfilesrepo/pulls/1")
+        files = page.get_by_test_id("pr-files")
+        expect(files).to_be_visible(timeout=15000)
+        expect(files).to_contain_text("dev.txt")
+
+        page.get_by_test_id("view-file-dev.txt").click()
+        expect(page.get_by_test_id("file-viewer")).to_be_visible(timeout=15000)
+        expect(page.get_by_test_id("file-viewer")).to_contain_text("development file")
+        expect(page).to_have_url(re.compile(r"/uitest/prfilesrepo/src/commit/[0-9a-f]+/dev\.txt$"))

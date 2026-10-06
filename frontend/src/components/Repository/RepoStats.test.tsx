@@ -82,6 +82,11 @@ describe("RepoStats", () => {
     await user.click(screen.getByTestId("branch-selector"))
     await user.click(await screen.findByTestId("branch-option-develop"))
 
-    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ search: { ref: "develop" } }))
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "/$owner/$repo/src/branch/$branch",
+        params: { owner: "owner", repo: "repo", branch: "develop" },
+      }),
+    )
   })
 })

@@ -323,6 +323,34 @@ export type CommitsPublic = {
 };
 
 /**
+ * CompareResult
+ *
+ * The files changed between two refs, e.g. a pull request's base and head.
+ */
+export type CompareResult = {
+    /**
+     * Base Commit
+     */
+    base_commit?: string | null;
+    /**
+     * Head Commit
+     */
+    head_commit?: string | null;
+    /**
+     * Files
+     */
+    files: Array<CommitFileChange>;
+    /**
+     * Additions
+     */
+    additions: number;
+    /**
+     * Deletions
+     */
+    deletions: number;
+};
+
+/**
  * CreateRepositoryRequest
  *
  * Request to create a new repository.
@@ -1684,36 +1712,6 @@ export type usersDeleteUserResponses = {
 
 export type usersDeleteUserResponse = usersDeleteUserResponses[keyof usersDeleteUserResponses];
 
-export type usersReadUserByIdData = {
-    body?: never;
-    path: {
-        /**
-         * User Id
-         */
-        user_id: string;
-    };
-    query?: never;
-    url: '/api/v1/users/{user_id}';
-};
-
-export type usersReadUserByIdErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersReadUserByIdError = usersReadUserByIdErrors[keyof usersReadUserByIdErrors];
-
-export type usersReadUserByIdResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserPublic;
-};
-
-export type usersReadUserByIdResponse = usersReadUserByIdResponses[keyof usersReadUserByIdResponses];
-
 export type usersUpdateUserData = {
     body: UserUpdate;
     path: {
@@ -1951,96 +1949,6 @@ export type gitGitReceivePackResponses = {
      */
     200: unknown;
 };
-
-export type profilesReadUserByUsernameData = {
-    body?: never;
-    path: {
-        /**
-         * Username
-         */
-        username: string;
-    };
-    query?: never;
-    url: '/api/v1/users/by-username/{username}';
-};
-
-export type profilesReadUserByUsernameErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type profilesReadUserByUsernameError = profilesReadUserByUsernameErrors[keyof profilesReadUserByUsernameErrors];
-
-export type profilesReadUserByUsernameResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserPublic;
-};
-
-export type profilesReadUserByUsernameResponse = profilesReadUserByUsernameResponses[keyof profilesReadUserByUsernameResponses];
-
-export type profilesListUserRepositoriesData = {
-    body?: never;
-    path: {
-        /**
-         * Username
-         */
-        username: string;
-    };
-    query?: never;
-    url: '/api/v1/users/by-username/{username}/repositories';
-};
-
-export type profilesListUserRepositoriesErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type profilesListUserRepositoriesError = profilesListUserRepositoriesErrors[keyof profilesListUserRepositoriesErrors];
-
-export type profilesListUserRepositoriesResponses = {
-    /**
-     * Successful Response
-     */
-    200: RepositoriesPublic;
-};
-
-export type profilesListUserRepositoriesResponse = profilesListUserRepositoriesResponses[keyof profilesListUserRepositoriesResponses];
-
-export type profilesListUserStarredRepositoriesData = {
-    body?: never;
-    path: {
-        /**
-         * Username
-         */
-        username: string;
-    };
-    query?: never;
-    url: '/api/v1/users/by-username/{username}/starred';
-};
-
-export type profilesListUserStarredRepositoriesErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type profilesListUserStarredRepositoriesError = profilesListUserStarredRepositoriesErrors[keyof profilesListUserStarredRepositoriesErrors];
-
-export type profilesListUserStarredRepositoriesResponses = {
-    /**
-     * Successful Response
-     */
-    200: RepositoriesPublic;
-};
-
-export type profilesListUserStarredRepositoriesResponse = profilesListUserStarredRepositoriesResponses[keyof profilesListUserStarredRepositoriesResponses];
 
 export type starsUnstarRepositoryData = {
     body?: never;
@@ -2673,6 +2581,96 @@ export type activityGetFeedResponses = {
 
 export type activityGetFeedResponse = activityGetFeedResponses[keyof activityGetFeedResponses];
 
+export type profilesReadUserByUsernameData = {
+    body?: never;
+    path: {
+        /**
+         * Username
+         */
+        username: string;
+    };
+    query?: never;
+    url: '/api/v1/users/{username}';
+};
+
+export type profilesReadUserByUsernameErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type profilesReadUserByUsernameError = profilesReadUserByUsernameErrors[keyof profilesReadUserByUsernameErrors];
+
+export type profilesReadUserByUsernameResponses = {
+    /**
+     * Successful Response
+     */
+    200: UserPublic;
+};
+
+export type profilesReadUserByUsernameResponse = profilesReadUserByUsernameResponses[keyof profilesReadUserByUsernameResponses];
+
+export type profilesListUserRepositoriesData = {
+    body?: never;
+    path: {
+        /**
+         * Username
+         */
+        username: string;
+    };
+    query?: never;
+    url: '/api/v1/users/{username}/repositories';
+};
+
+export type profilesListUserRepositoriesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type profilesListUserRepositoriesError = profilesListUserRepositoriesErrors[keyof profilesListUserRepositoriesErrors];
+
+export type profilesListUserRepositoriesResponses = {
+    /**
+     * Successful Response
+     */
+    200: RepositoriesPublic;
+};
+
+export type profilesListUserRepositoriesResponse = profilesListUserRepositoriesResponses[keyof profilesListUserRepositoriesResponses];
+
+export type profilesListUserStarredRepositoriesData = {
+    body?: never;
+    path: {
+        /**
+         * Username
+         */
+        username: string;
+    };
+    query?: never;
+    url: '/api/v1/users/{username}/starred';
+};
+
+export type profilesListUserStarredRepositoriesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type profilesListUserStarredRepositoriesError = profilesListUserStarredRepositoriesErrors[keyof profilesListUserStarredRepositoriesErrors];
+
+export type profilesListUserStarredRepositoriesResponses = {
+    /**
+     * Successful Response
+     */
+    200: RepositoriesPublic;
+};
+
+export type profilesListUserStarredRepositoriesResponse = profilesListUserStarredRepositoriesResponses[keyof profilesListUserStarredRepositoriesResponses];
+
 export type repositoriesListRepositoriesData = {
     body?: never;
     path?: never;
@@ -3244,6 +3242,40 @@ export type repositoriesUpdatePullRequestResponses = {
 };
 
 export type repositoriesUpdatePullRequestResponse = repositoriesUpdatePullRequestResponses[keyof repositoriesUpdatePullRequestResponses];
+
+export type repositoriesGetPullRequestFilesData = {
+    body?: never;
+    path: {
+        /**
+         * Path
+         */
+        path: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{path}/pulls/{number}/files';
+};
+
+export type repositoriesGetPullRequestFilesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetPullRequestFilesError = repositoriesGetPullRequestFilesErrors[keyof repositoriesGetPullRequestFilesErrors];
+
+export type repositoriesGetPullRequestFilesResponses = {
+    /**
+     * Successful Response
+     */
+    200: CompareResult;
+};
+
+export type repositoriesGetPullRequestFilesResponse = repositoriesGetPullRequestFilesResponses[keyof repositoriesGetPullRequestFilesResponses];
 
 export type repositoriesGetRepositoryData = {
     body?: never;

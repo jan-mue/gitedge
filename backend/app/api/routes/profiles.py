@@ -11,7 +11,7 @@ from app.schemas.users import UserPublic
 router = APIRouter(prefix="/users", tags=["profiles"])
 
 
-@router.get("/by-username/{username}")
+@router.get("/{username}")
 async def read_user_by_username(username: str, user_store: UserStoreDep) -> UserPublic:
     """Get a user by username."""
     user = await user_store.get_by_username(username)
@@ -20,7 +20,7 @@ async def read_user_by_username(username: str, user_store: UserStoreDep) -> User
     return UserPublic.model_validate(user)
 
 
-@router.get("/by-username/{username}/repositories")
+@router.get("/{username}/repositories")
 async def list_user_repositories(
     username: str, user_store: UserStoreDep, repository_service: RepositoryServiceDep
 ) -> RepositoriesPublic:
@@ -31,7 +31,7 @@ async def list_user_repositories(
     return await repository_service.get_user_repositories(user)
 
 
-@router.get("/by-username/{username}/starred")
+@router.get("/{username}/starred")
 async def list_user_starred_repositories(
     username: str, user_store: UserStoreDep, star_service: StarServiceDep
 ) -> RepositoriesPublic:

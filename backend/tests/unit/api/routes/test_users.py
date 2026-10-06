@@ -57,52 +57,6 @@ async def test_create_user_new_email(
     assert user.email == created_user["email"]
 
 
-async def test_get_existing_user(
-    client: TestClient, superuser_token_headers: dict[str, str], crud: CrudService
-) -> None:
-    username = random_email()
-    password = random_lower_string()
-    user_in = UserCreate(email=username, password=password)
-    user = await crud.create_user(user_create=user_in)
-    user_id = user.id
-    r = client.get(
-        f"{settings.API_V1_STR}/users/{user_id}",
-        headers=superuser_token_headers,
-    )
-    assert 200 <= r.status_code < 300
-    api_user = r.json()
-    existing_user = await crud.get_user_by_email(email=username)
-    assert existing_user
-    assert existing_user.email == api_user["email"]
-
-
-async def test_get_existing_user_current_user(client: TestClient, crud: CrudService) -> None:
-    username = random_email()
-    password = random_lower_string()
-    user_in = UserCreate(email=username, password=password)
-    user = await crud.create_user(user_create=user_in)
-    user_id = user.id
-
-    login_data = {
-        "username": username,
-        "password": password,
-    }
-    r = client.post(f"{settings.API_V1_STR}/login/access-token", data=login_data)
-    tokens = r.json()
-    a_token = tokens["access_token"]
-    headers = {"Authorization": f"Bearer {a_token}"}
-
-    r = client.get(
-        f"{settings.API_V1_STR}/users/{user_id}",
-        headers=headers,
-    )
-    assert 200 <= r.status_code < 300
-    api_user = r.json()
-    existing_user = await crud.get_user_by_email(email=username)
-    assert existing_user
-    assert existing_user.email == api_user["email"]
-
-
 async def test_create_user_existing_username(
     client: TestClient, superuser_token_headers: dict[str, str], crud: CrudService
 ) -> None:

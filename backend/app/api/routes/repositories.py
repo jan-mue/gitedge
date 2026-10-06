@@ -16,6 +16,7 @@ from app.schemas.repositories import (
     BranchInfo,
     CommitDetail,
     CommitsPublic,
+    CompareResult,
     CreateRepositoryRequest,
     FileContent,
     IssueCreate,
@@ -185,6 +186,16 @@ async def get_pull_request(
 ) -> PullRequestPublic:
     """Get a single pull request by number."""
     return await pull_request_service.get_pull_request(path, number)
+
+
+@router.get("/{path:path}/pulls/{number}/files")
+async def get_pull_request_files(
+    path: str,
+    number: int,
+    pull_request_service: PullRequestServiceDep,
+) -> CompareResult:
+    """List the files changed by a pull request, diffed against its base branch."""
+    return await pull_request_service.get_pull_request_files(path, number)
 
 
 @router.patch("/{path:path}/pulls/{number}")

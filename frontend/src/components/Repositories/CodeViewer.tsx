@@ -1,7 +1,8 @@
-import { Link as RouterLink } from "@tanstack/react-router"
 import { ArrowLeft, File } from "lucide-react"
 
 import type { FileContent } from "@/client"
+import type { SourceMode } from "@/components/Repositories/SourceLink"
+import SourceLink from "@/components/Repositories/SourceLink"
 import { Button } from "@/components/ui/button"
 import { useSyntaxHighlightCSS } from "@/hooks/useSyntaxHighlightCSS"
 import { formatSize } from "@/utils"
@@ -11,8 +12,9 @@ interface CodeViewerProps {
   backLink: {
     owner: string
     repo: string
-    searchRef?: string
-    path?: string
+    mode: SourceMode
+    refName: string
+    path: string
   }
 }
 
@@ -40,19 +42,18 @@ const FileHeader = ({ file, backLink }: { file: FileContent; backLink: CodeViewe
         {file.language}
       </span>
     </div>
-    <RouterLink
-      to="/$owner/$repo"
-      params={{ owner: backLink.owner, repo: backLink.repo }}
-      search={{
-        ref: backLink.searchRef,
-        path: backLink.path || undefined,
-      }}
+    <SourceLink
+      owner={backLink.owner}
+      repo={backLink.repo}
+      mode={backLink.mode}
+      refName={backLink.refName}
+      path={backLink.path}
     >
       <Button variant="ghost" size="sm">
         <ArrowLeft className="h-4 w-4 mr-1" />
         Back
       </Button>
-    </RouterLink>
+    </SourceLink>
   </div>
 )
 

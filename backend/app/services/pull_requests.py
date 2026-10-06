@@ -11,6 +11,7 @@ from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.issues import IssueState
 from app.entities.pull_requests import PullRequest
 from app.schemas.repositories import (
+    CompareResult,
     PullRequestCreate,
     PullRequestPublic,
     PullRequestsListPublic,
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
     from app.clients.repositories import RepositoryStore
     from app.entities.users import User
     from app.services.activity import ActivityService
+    from app.services.repositories import RepositoryService
 
 
 class PullRequestService:
@@ -32,6 +34,7 @@ class PullRequestService:
         self,
         pull_request_store: PullRequestStore,
         repository_store: RepositoryStore,
+        repository_service: RepositoryService,
         activity_service: ActivityService | None = None,
     ) -> None:
         """Initialize the pull request service.
@@ -39,10 +42,12 @@ class PullRequestService:
         Args:
             pull_request_store: Pull request store.
             repository_store: Repository store.
+            repository_service: Repository service used to diff refs.
             activity_service: Optional service used to record activity.
         """
         self.pull_request_store = pull_request_store
         self.repository_store = repository_store
+        self.repository_service = repository_service
         self.activity_service = activity_service
 
     async def list_pull_requests(self, path: str, state: str) -> PullRequestsListPublic:
@@ -128,6 +133,23 @@ class PullRequestService:
         repo_path = normalize_repo_path(path)
         pull_request = await self._find_pull_request(repo_path, number)
         return self._to_public(pull_request, repo_path)
+
+    async def get_pull_request_files(self, path: str, number: int) -> CompareResult:
+        """List the files changed between a pull request's base and head branches.
+
+        Args:
+            path: Repository path.
+            number: Pull request number.
+
+        Returns:
+            CompareResult with the changed files and the resolved head commit.
+
+        Raises:
+            HTTPException: If the pull request is not found.
+        """
+        repo_path = normalize_repo_path(path)
+        pull_request = await self._find_pull_request(repo_path, number)
+        return await self.repository_service.compare(repo_path, pull_request.base_branch, pull_request.head_branch)
 
     async def update_pull_request(self, path: str, number: int, body: PullRequestUpdate) -> PullRequestPublic:
         """Update a pull request.

@@ -172,6 +172,16 @@ class CommitDetail(GitEdgeBaseModel):
     deletions: int
 
 
+class CompareResult(GitEdgeBaseModel):
+    """The files changed between two refs, e.g. a pull request's base and head."""
+
+    base_commit: str | None = None
+    head_commit: str | None = None
+    files: list[CommitFileChange]
+    additions: int
+    deletions: int
+
+
 class IssueCreate(GitEdgeBaseModel):
     """Request to create a new issue."""
 

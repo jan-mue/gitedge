@@ -8,14 +8,14 @@ import { RepositoriesService } from "@/client"
 interface CommitsListProps {
   owner: string
   repo: string
-  searchRef?: string
+  branch?: string
 }
 
 const formatDate = (timestamp: number) => new Date(timestamp * 1000).toLocaleString()
 
-const CommitsList = ({ owner, repo, searchRef }: CommitsListProps) => {
+const CommitsList = ({ owner, repo, branch }: CommitsListProps) => {
   const repoPath = `${owner}/${repo}.git`
-  const ref = searchRef ?? "main"
+  const ref = branch ?? "main"
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -49,7 +49,7 @@ const CommitsList = ({ owner, repo, searchRef }: CommitsListProps) => {
 
   const selectBranch = (branchName: string) => {
     setOpen(false)
-    navigate({ to: "/$owner/$repo/commits", params: { owner, repo }, search: { ref: branchName } })
+    navigate({ to: "/$owner/$repo/commits/branch/$branch", params: { owner, repo, branch: branchName } })
   }
 
   return (
@@ -109,7 +109,7 @@ const CommitsList = ({ owner, repo, searchRef }: CommitsListProps) => {
             </div>
             <div className="min-w-0 flex-1">
               <RouterLink
-                to="/$owner/$repo/commits/$hash"
+                to="/$owner/$repo/commit/$hash"
                 params={{ owner, repo, hash: commit.sha }}
                 className="text-sm font-medium text-foreground hover:text-primary"
               >
@@ -121,7 +121,7 @@ const CommitsList = ({ owner, repo, searchRef }: CommitsListProps) => {
               </p>
             </div>
             <RouterLink
-              to="/$owner/$repo/commits/$hash"
+              to="/$owner/$repo/commit/$hash"
               params={{ owner, repo, hash: commit.sha }}
               className="flex-shrink-0 font-mono text-xs text-primary hover:underline"
             >

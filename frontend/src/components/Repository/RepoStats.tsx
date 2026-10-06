@@ -10,10 +10,12 @@ interface RepoStatsProps {
   owner: string
   repo: string
   gitRef: string
-  searchRef?: string
+  /** Ref used for API calls (branch name or commit SHA). Defaults to gitRef. */
+  revision?: string
 }
 
-const RepoStats = ({ owner, repo, gitRef, searchRef }: RepoStatsProps) => {
+const RepoStats = ({ owner, repo, gitRef, revision }: RepoStatsProps) => {
+  const ref = revision ?? gitRef
   const [copiedText, copy] = useCopyToClipboard()
   const navigate = useNavigate()
   const cloneUrl = `${window.location.origin}/${owner}/${repo}.git`
@@ -24,12 +26,12 @@ const RepoStats = ({ owner, repo, gitRef, searchRef }: RepoStatsProps) => {
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const { data: repoInfo } = useQuery({
-    queryKey: ["repoInfo", repoPath, searchRef],
+    queryKey: ["repoInfo", repoPath, ref],
     queryFn: async () =>
       (
         await RepositoriesService.getRepositoryInfo({
           path: { path: repoPath },
-          query: { ref: searchRef },
+          query: { ref },
         })
       ).data,
   })
@@ -56,9 +58,8 @@ const RepoStats = ({ owner, repo, gitRef, searchRef }: RepoStatsProps) => {
   const handleBranchSelect = (branchName: string) => {
     setBranchDropdownOpen(false)
     navigate({
-      to: "/$owner/$repo",
-      params: { owner, repo },
-      search: { ref: branchName },
+      to: "/$owner/$repo/src/branch/$branch",
+      params: { owner, repo, branch: branchName },
     })
   }
 
@@ -70,8 +71,8 @@ const RepoStats = ({ owner, repo, gitRef, searchRef }: RepoStatsProps) => {
         <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
           {repoInfo.last_commit && (
             <RouterLink
-              to="/$owner/$repo/commits"
-              params={{ owner, repo }}
+              to="/$owner/$repo/commit/$hash"
+              params={{ owner, repo, hash: repoInfo.last_commit.sha }}
               className="flex items-center gap-1.5 transition-colors hover:text-foreground"
             >
               <GitCommitHorizontal className="h-4 w-4" />

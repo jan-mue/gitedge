@@ -41,10 +41,15 @@ describe("FileBrowser", () => {
 
     await user.click(screen.getByTestId("tree-entry-src"))
 
-    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ search: { ref: undefined, path: "src" } }))
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "/$owner/$repo/src/branch/$branch/$",
+        params: { owner: "owner", repo: "repo", branch: "main", _splat: "src" },
+      }),
+    )
   })
 
-  test("navigates to the blob route for a file", async () => {
+  test("navigates to the source route for a file", async () => {
     const user = userEvent.setup()
     render(<FileBrowser entries={entries} owner="owner" repo="repo" />)
 
@@ -52,7 +57,8 @@ describe("FileBrowser", () => {
 
     expect(navigate).toHaveBeenCalledWith(
       expect.objectContaining({
-        search: { ref: undefined, path: "README.md" },
+        to: "/$owner/$repo/src/branch/$branch/$",
+        params: { owner: "owner", repo: "repo", branch: "main", _splat: "README.md" },
       }),
     )
   })
@@ -69,7 +75,12 @@ describe("FileBrowser", () => {
 
     await user.click(screen.getByTestId("tree-entry-parent"))
 
-    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ search: { ref: undefined, path: "src" } }))
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "/$owner/$repo/src/branch/$branch/$",
+        params: { owner: "owner", repo: "repo", branch: "main", _splat: "src" },
+      }),
+    )
   })
 
   test("renders the last commit bar", () => {

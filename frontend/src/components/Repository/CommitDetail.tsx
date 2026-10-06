@@ -68,7 +68,7 @@ const FileDiff = ({ file }: { file: CommitFileChange }) => (
 )
 
 const CommitDetail = () => {
-  const { owner, repo, hash } = useParams({ from: "/_layout/$owner/$repo/commits/$hash" })
+  const { owner, repo, hash } = useParams({ from: "/_layout/$owner/$repo/commit/$hash" })
   const repoPath = `${owner}/${repo}.git`
 
   const { data: commit } = useQuery({
@@ -116,7 +116,7 @@ const CommitDetail = () => {
             {commit.parents.map((parent) => (
               <RouterLink
                 key={parent}
-                to="/$owner/$repo/commits/$hash"
+                to="/$owner/$repo/commit/$hash"
                 params={{ owner, repo, hash: parent }}
                 className="font-mono text-primary hover:underline"
               >

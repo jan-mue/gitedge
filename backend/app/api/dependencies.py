@@ -423,6 +423,7 @@ IssueServiceDep = Annotated[IssueService, Depends(get_issue_service)]
 def get_pull_request_service(
     pull_request_store: PullRequestStoreDep,
     repository_store: RepositoryStoreDep,
+    repository_service: RepositoryServiceDep,
     activity_service: ActivityServiceDep,
 ) -> PullRequestService:
     """Get the pull request service dependency.
@@ -430,12 +431,13 @@ def get_pull_request_service(
     Args:
         pull_request_store: Pull request store dependency.
         repository_store: Repository store dependency.
+        repository_service: Repository service dependency.
         activity_service: Activity service dependency.
 
     Returns:
         Pull request service instance.
     """
-    return PullRequestService(pull_request_store, repository_store, activity_service)
+    return PullRequestService(pull_request_store, repository_store, repository_service, activity_service)
 
 
 PullRequestServiceDep = Annotated[PullRequestService, Depends(get_pull_request_service)]

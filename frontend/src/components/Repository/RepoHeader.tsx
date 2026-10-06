@@ -27,7 +27,7 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
 
   const isActive = (tabPath: string) => {
     if (tabPath === "/$owner/$repo") {
-      return currentPath === "/$owner/$repo/" || currentPath === "/$owner/$repo/blob"
+      return currentPath === "/$owner/$repo/" || currentPath.startsWith("/$owner/$repo/src/")
     }
     return currentPath.startsWith(tabPath)
   }

@@ -10,7 +10,7 @@ import time
 from typing import TYPE_CHECKING, Protocol
 
 from dulwich.objects import Blob, Commit, ObjectID, Tag, Tree
-from dulwich.patch import write_commit_diff
+from dulwich.patch import write_commit_diff, write_tree_diff
 from dulwich.refs import SYMREF, Ref
 from fastapi import HTTPException
 from pygments import highlight
@@ -28,6 +28,7 @@ from app.schemas.repositories import (
     CommitInfo,
     CommitListItem,
     CommitsPublic,
+    CompareResult,
     FileContent,
     ReadmeContent,
     RepositoriesPublic,
@@ -729,6 +730,43 @@ class RepositoryService:
             deletions=sum(file.deletions for file in files),
         )
 
+    async def compare(self, path: str, base_ref: str, head_ref: str) -> CompareResult:
+        """List the files changed between two refs.
+
+        Args:
+            path: Repository path.
+            base_ref: Base ref (branch, tag, or commit SHA).
+            head_ref: Head ref (branch, tag, or commit SHA).
+
+        Returns:
+            CompareResult with the changed files and the resolved head commit.
+        """
+        repo = await self.load_repository(path)
+        base_sha = self._try_resolve_ref(repo, base_ref)
+        head_sha = self._try_resolve_ref(repo, head_ref)
+        if base_sha is None or head_sha is None:
+            return CompareResult(files=[], additions=0, deletions=0)
+
+        store = repo.object_store
+        base_commit = store[ObjectID(base_sha)]
+        head_commit = store[ObjectID(head_sha)]
+        if not isinstance(base_commit, Commit) or not isinstance(head_commit, Commit):
+            return CompareResult(files=[], additions=0, deletions=0)
+
+        buffer = io.BytesIO()
+        write_tree_diff(buffer, store, base_commit.tree, head_commit.tree)
+        files = self._parse_patch(buffer.getvalue().decode("utf-8", errors="replace"))
+
+        base_str = base_commit.id.decode() if isinstance(base_commit.id, bytes) else str(base_commit.id)
+        head_str = head_commit.id.decode() if isinstance(head_commit.id, bytes) else str(head_commit.id)
+        return CompareResult(
+            base_commit=base_str,
+            head_commit=head_str,
+            files=files,
+            additions=sum(file.additions for file in files),
+            deletions=sum(file.deletions for file in files),
+        )
+
     @staticmethod
     def _parse_patch(patch_text: str) -> list[CommitFileChange]:
         """Parse a unified diff into per-file changes.
@@ -808,6 +846,14 @@ class RepositoryService:
                 sha = refs.read_loose_ref(Ref(sha[len(SYMREF) :]))
             if sha is not None:
                 return sha
+
+        if re.fullmatch(r"[0-9a-f]{40}", ref_name):
+            oid = ObjectID(ref_name.encode())
+            try:
+                repo.object_store[oid]
+            except KeyError:
+                return None
+            return oid
 
         return None
 

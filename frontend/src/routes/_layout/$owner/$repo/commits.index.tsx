@@ -1,29 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router"
-
-import CommitsList from "@/components/Repository/CommitsList"
+import { createFileRoute, Navigate } from "@tanstack/react-router"
 
 interface SearchParams {
   ref?: string
 }
 
 export const Route = createFileRoute("/_layout/$owner/$repo/commits/")({
-  component: CommitsPage,
+  component: CommitsIndexRedirect,
   validateSearch: (search: Record<string, unknown>): SearchParams => ({
     ref: (search.ref as string) || undefined,
   }),
-  head: ({ params }) => ({
-    meta: [{ title: `Commits - ${params.owner}/${params.repo} - GitEdge` }],
-  }),
 })
 
-function CommitsPage() {
+function CommitsIndexRedirect() {
   const { owner, repo } = Route.useParams()
   const { ref } = Route.useSearch()
 
-  return (
-    <div className="space-y-4">
-      <h1 className="text-lg font-semibold text-foreground">Commit history</h1>
-      <CommitsList owner={owner} repo={repo} searchRef={ref} />
-    </div>
-  )
+  return <Navigate to="/$owner/$repo/commits/branch/$branch" params={{ owner, repo, branch: ref ?? "main" }} replace />
 }

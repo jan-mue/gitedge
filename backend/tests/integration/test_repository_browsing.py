@@ -172,7 +172,7 @@ class TestFileViewer:
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/browseuser/viewrepo?path=src")
+        page.goto(f"{app_url}/browseuser/viewrepo/src/branch/main/src")
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
         page.get_by_test_id("tree-entry-main.py").click()

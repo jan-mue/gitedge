@@ -13,7 +13,7 @@ REPO_PATH = "owner/repo.git"
 ISSUES_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/issues"
 FEED_URL = f"{settings.API_V1_STR}/users/me/feed"
 ACTIVITY_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/activity"
-PROFILE_URL = f"{settings.API_V1_STR}/users/by-username/admin"
+PROFILE_URL = f"{settings.API_V1_STR}/users/admin"
 PROFILE_REPOS_URL = f"{PROFILE_URL}/repositories"
 PROFILE_STARRED_URL = f"{PROFILE_URL}/starred"
 
@@ -65,5 +65,5 @@ def test_profile_by_username(
 
 
 def test_profile_unknown_username(client: TestClient) -> None:
-    r = client.get(f"{settings.API_V1_STR}/users/by-username/missing")
+    r = client.get(f"{settings.API_V1_STR}/users/missing")
     assert r.status_code == 404

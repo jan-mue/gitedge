@@ -22,8 +22,8 @@ import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutProfileUsernameRouteImport } from './routes/_layout/profile.$username'
 import { Route as LayoutOwnerRepoIndexRouteImport } from './routes/_layout/$owner/$repo/index'
 import { Route as LayoutOwnerRepoActivityRouteImport } from './routes/_layout/$owner/$repo/activity'
-import { Route as LayoutOwnerRepoBlobRouteImport } from './routes/_layout/$owner/$repo/blob'
 import { Route as LayoutOwnerRepoBranchesRouteImport } from './routes/_layout/$owner/$repo/branches'
+import { Route as LayoutOwnerRepoCommitRouteImport } from './routes/_layout/$owner/$repo/commit'
 import { Route as LayoutOwnerRepoCommitsRouteImport } from './routes/_layout/$owner/$repo/commits'
 import { Route as LayoutOwnerRepoForksRouteImport } from './routes/_layout/$owner/$repo/forks'
 import { Route as LayoutOwnerRepoIssuesRouteImport } from './routes/_layout/$owner/$repo/issues'
@@ -31,14 +31,21 @@ import { Route as LayoutOwnerRepoPullsRouteImport } from './routes/_layout/$owne
 import { Route as LayoutOwnerRepoReleasesRouteImport } from './routes/_layout/$owner/$repo/releases'
 import { Route as LayoutOwnerRepoStarsRouteImport } from './routes/_layout/$owner/$repo/stars'
 import { Route as LayoutOwnerRepoWatchersRouteImport } from './routes/_layout/$owner/$repo/watchers'
+import { Route as LayoutOwnerRepoCommitHashRouteImport } from './routes/_layout/$owner/$repo/commit.$hash'
 import { Route as LayoutOwnerRepoCommitsIndexRouteImport } from './routes/_layout/$owner/$repo/commits.index'
-import { Route as LayoutOwnerRepoCommitsHashRouteImport } from './routes/_layout/$owner/$repo/commits.$hash'
 import { Route as LayoutOwnerRepoIssuesIndexRouteImport } from './routes/_layout/$owner/$repo/issues.index'
 import { Route as LayoutOwnerRepoIssuesNumberRouteImport } from './routes/_layout/$owner/$repo/issues.$number'
 import { Route as LayoutOwnerRepoIssuesNewRouteImport } from './routes/_layout/$owner/$repo/issues.new'
 import { Route as LayoutOwnerRepoPullsIndexRouteImport } from './routes/_layout/$owner/$repo/pulls.index'
 import { Route as LayoutOwnerRepoPullsNumberRouteImport } from './routes/_layout/$owner/$repo/pulls.$number'
 import { Route as LayoutOwnerRepoPullsNewRouteImport } from './routes/_layout/$owner/$repo/pulls.new'
+import { Route as LayoutOwnerRepoCommitsBranchBranchRouteImport } from './routes/_layout/$owner/$repo/commits.branch.$branch'
+import { Route as LayoutOwnerRepoSrcBranchBranchRouteImport } from './routes/_layout/$owner/$repo/src.branch.$branch'
+import { Route as LayoutOwnerRepoSrcCommitShaRouteImport } from './routes/_layout/$owner/$repo/src.commit.$sha'
+import { Route as LayoutOwnerRepoSrcBranchBranchIndexRouteImport } from './routes/_layout/$owner/$repo/src.branch.$branch.index'
+import { Route as LayoutOwnerRepoSrcBranchBranchSplatRouteImport } from './routes/_layout/$owner/$repo/src.branch.$branch.$'
+import { Route as LayoutOwnerRepoSrcCommitShaIndexRouteImport } from './routes/_layout/$owner/$repo/src.commit.$sha.index'
+import { Route as LayoutOwnerRepoSrcCommitShaSplatRouteImport } from './routes/_layout/$owner/$repo/src.commit.$sha.$'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -104,14 +111,14 @@ const LayoutOwnerRepoActivityRoute = LayoutOwnerRepoActivityRouteImport.update({
   path: '/$owner/$repo/activity',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutOwnerRepoBlobRoute = LayoutOwnerRepoBlobRouteImport.update({
-  id: '/$owner/$repo/blob',
-  path: '/$owner/$repo/blob',
-  getParentRoute: () => LayoutRoute,
-} as any)
 const LayoutOwnerRepoBranchesRoute = LayoutOwnerRepoBranchesRouteImport.update({
   id: '/$owner/$repo/branches',
   path: '/$owner/$repo/branches',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutOwnerRepoCommitRoute = LayoutOwnerRepoCommitRouteImport.update({
+  id: '/$owner/$repo/commit',
+  path: '/$owner/$repo/commit',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutOwnerRepoCommitsRoute = LayoutOwnerRepoCommitsRouteImport.update({
@@ -149,16 +156,16 @@ const LayoutOwnerRepoWatchersRoute = LayoutOwnerRepoWatchersRouteImport.update({
   path: '/$owner/$repo/watchers',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutOwnerRepoCommitHashRoute =
+  LayoutOwnerRepoCommitHashRouteImport.update({
+    id: '/$hash',
+    path: '/$hash',
+    getParentRoute: () => LayoutOwnerRepoCommitRoute,
+  } as any)
 const LayoutOwnerRepoCommitsIndexRoute =
   LayoutOwnerRepoCommitsIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => LayoutOwnerRepoCommitsRoute,
-  } as any)
-const LayoutOwnerRepoCommitsHashRoute =
-  LayoutOwnerRepoCommitsHashRouteImport.update({
-    id: '/$hash',
-    path: '/$hash',
     getParentRoute: () => LayoutOwnerRepoCommitsRoute,
   } as any)
 const LayoutOwnerRepoIssuesIndexRoute =
@@ -196,6 +203,48 @@ const LayoutOwnerRepoPullsNewRoute = LayoutOwnerRepoPullsNewRouteImport.update({
   path: '/new',
   getParentRoute: () => LayoutOwnerRepoPullsRoute,
 } as any)
+const LayoutOwnerRepoCommitsBranchBranchRoute =
+  LayoutOwnerRepoCommitsBranchBranchRouteImport.update({
+    id: '/branch/$branch',
+    path: '/branch/$branch',
+    getParentRoute: () => LayoutOwnerRepoCommitsRoute,
+  } as any)
+const LayoutOwnerRepoSrcBranchBranchRoute =
+  LayoutOwnerRepoSrcBranchBranchRouteImport.update({
+    id: '/$owner/$repo/src/branch/$branch',
+    path: '/$owner/$repo/src/branch/$branch',
+    getParentRoute: () => LayoutRoute,
+  } as any)
+const LayoutOwnerRepoSrcCommitShaRoute =
+  LayoutOwnerRepoSrcCommitShaRouteImport.update({
+    id: '/$owner/$repo/src/commit/$sha',
+    path: '/$owner/$repo/src/commit/$sha',
+    getParentRoute: () => LayoutRoute,
+  } as any)
+const LayoutOwnerRepoSrcBranchBranchIndexRoute =
+  LayoutOwnerRepoSrcBranchBranchIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => LayoutOwnerRepoSrcBranchBranchRoute,
+  } as any)
+const LayoutOwnerRepoSrcBranchBranchSplatRoute =
+  LayoutOwnerRepoSrcBranchBranchSplatRouteImport.update({
+    id: '/$',
+    path: '/$',
+    getParentRoute: () => LayoutOwnerRepoSrcBranchBranchRoute,
+  } as any)
+const LayoutOwnerRepoSrcCommitShaIndexRoute =
+  LayoutOwnerRepoSrcCommitShaIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => LayoutOwnerRepoSrcCommitShaRoute,
+  } as any)
+const LayoutOwnerRepoSrcCommitShaSplatRoute =
+  LayoutOwnerRepoSrcCommitShaSplatRouteImport.update({
+    id: '/$',
+    path: '/$',
+    getParentRoute: () => LayoutOwnerRepoSrcCommitShaRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -209,8 +258,8 @@ export interface FileRoutesByFullPath {
   '/settings': typeof LayoutSettingsRoute
   '/profile/$username': typeof LayoutProfileUsernameRoute
   '/$owner/$repo/activity': typeof LayoutOwnerRepoActivityRoute
-  '/$owner/$repo/blob': typeof LayoutOwnerRepoBlobRoute
   '/$owner/$repo/branches': typeof LayoutOwnerRepoBranchesRoute
+  '/$owner/$repo/commit': typeof LayoutOwnerRepoCommitRouteWithChildren
   '/$owner/$repo/commits': typeof LayoutOwnerRepoCommitsRouteWithChildren
   '/$owner/$repo/forks': typeof LayoutOwnerRepoForksRoute
   '/$owner/$repo/issues': typeof LayoutOwnerRepoIssuesRouteWithChildren
@@ -219,7 +268,7 @@ export interface FileRoutesByFullPath {
   '/$owner/$repo/stars': typeof LayoutOwnerRepoStarsRoute
   '/$owner/$repo/watchers': typeof LayoutOwnerRepoWatchersRoute
   '/$owner/$repo/': typeof LayoutOwnerRepoIndexRoute
-  '/$owner/$repo/commits/$hash': typeof LayoutOwnerRepoCommitsHashRoute
+  '/$owner/$repo/commit/$hash': typeof LayoutOwnerRepoCommitHashRoute
   '/$owner/$repo/issues/$number': typeof LayoutOwnerRepoIssuesNumberRoute
   '/$owner/$repo/issues/new': typeof LayoutOwnerRepoIssuesNewRoute
   '/$owner/$repo/pulls/$number': typeof LayoutOwnerRepoPullsNumberRoute
@@ -227,6 +276,13 @@ export interface FileRoutesByFullPath {
   '/$owner/$repo/commits/': typeof LayoutOwnerRepoCommitsIndexRoute
   '/$owner/$repo/issues/': typeof LayoutOwnerRepoIssuesIndexRoute
   '/$owner/$repo/pulls/': typeof LayoutOwnerRepoPullsIndexRoute
+  '/$owner/$repo/commits/branch/$branch': typeof LayoutOwnerRepoCommitsBranchBranchRoute
+  '/$owner/$repo/src/branch/$branch': typeof LayoutOwnerRepoSrcBranchBranchRouteWithChildren
+  '/$owner/$repo/src/commit/$sha': typeof LayoutOwnerRepoSrcCommitShaRouteWithChildren
+  '/$owner/$repo/src/branch/$branch/$': typeof LayoutOwnerRepoSrcBranchBranchSplatRoute
+  '/$owner/$repo/src/commit/$sha/$': typeof LayoutOwnerRepoSrcCommitShaSplatRoute
+  '/$owner/$repo/src/branch/$branch/': typeof LayoutOwnerRepoSrcBranchBranchIndexRoute
+  '/$owner/$repo/src/commit/$sha/': typeof LayoutOwnerRepoSrcCommitShaIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -240,14 +296,14 @@ export interface FileRoutesByTo {
   '/': typeof LayoutIndexRoute
   '/profile/$username': typeof LayoutProfileUsernameRoute
   '/$owner/$repo/activity': typeof LayoutOwnerRepoActivityRoute
-  '/$owner/$repo/blob': typeof LayoutOwnerRepoBlobRoute
   '/$owner/$repo/branches': typeof LayoutOwnerRepoBranchesRoute
+  '/$owner/$repo/commit': typeof LayoutOwnerRepoCommitRouteWithChildren
   '/$owner/$repo/forks': typeof LayoutOwnerRepoForksRoute
   '/$owner/$repo/releases': typeof LayoutOwnerRepoReleasesRoute
   '/$owner/$repo/stars': typeof LayoutOwnerRepoStarsRoute
   '/$owner/$repo/watchers': typeof LayoutOwnerRepoWatchersRoute
   '/$owner/$repo': typeof LayoutOwnerRepoIndexRoute
-  '/$owner/$repo/commits/$hash': typeof LayoutOwnerRepoCommitsHashRoute
+  '/$owner/$repo/commit/$hash': typeof LayoutOwnerRepoCommitHashRoute
   '/$owner/$repo/issues/$number': typeof LayoutOwnerRepoIssuesNumberRoute
   '/$owner/$repo/issues/new': typeof LayoutOwnerRepoIssuesNewRoute
   '/$owner/$repo/pulls/$number': typeof LayoutOwnerRepoPullsNumberRoute
@@ -255,6 +311,11 @@ export interface FileRoutesByTo {
   '/$owner/$repo/commits': typeof LayoutOwnerRepoCommitsIndexRoute
   '/$owner/$repo/issues': typeof LayoutOwnerRepoIssuesIndexRoute
   '/$owner/$repo/pulls': typeof LayoutOwnerRepoPullsIndexRoute
+  '/$owner/$repo/commits/branch/$branch': typeof LayoutOwnerRepoCommitsBranchBranchRoute
+  '/$owner/$repo/src/branch/$branch/$': typeof LayoutOwnerRepoSrcBranchBranchSplatRoute
+  '/$owner/$repo/src/commit/$sha/$': typeof LayoutOwnerRepoSrcCommitShaSplatRoute
+  '/$owner/$repo/src/branch/$branch': typeof LayoutOwnerRepoSrcBranchBranchIndexRoute
+  '/$owner/$repo/src/commit/$sha': typeof LayoutOwnerRepoSrcCommitShaIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -270,8 +331,8 @@ export interface FileRoutesById {
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/profile/$username': typeof LayoutProfileUsernameRoute
   '/_layout/$owner/$repo/activity': typeof LayoutOwnerRepoActivityRoute
-  '/_layout/$owner/$repo/blob': typeof LayoutOwnerRepoBlobRoute
   '/_layout/$owner/$repo/branches': typeof LayoutOwnerRepoBranchesRoute
+  '/_layout/$owner/$repo/commit': typeof LayoutOwnerRepoCommitRouteWithChildren
   '/_layout/$owner/$repo/commits': typeof LayoutOwnerRepoCommitsRouteWithChildren
   '/_layout/$owner/$repo/forks': typeof LayoutOwnerRepoForksRoute
   '/_layout/$owner/$repo/issues': typeof LayoutOwnerRepoIssuesRouteWithChildren
@@ -280,7 +341,7 @@ export interface FileRoutesById {
   '/_layout/$owner/$repo/stars': typeof LayoutOwnerRepoStarsRoute
   '/_layout/$owner/$repo/watchers': typeof LayoutOwnerRepoWatchersRoute
   '/_layout/$owner/$repo/': typeof LayoutOwnerRepoIndexRoute
-  '/_layout/$owner/$repo/commits/$hash': typeof LayoutOwnerRepoCommitsHashRoute
+  '/_layout/$owner/$repo/commit/$hash': typeof LayoutOwnerRepoCommitHashRoute
   '/_layout/$owner/$repo/issues/$number': typeof LayoutOwnerRepoIssuesNumberRoute
   '/_layout/$owner/$repo/issues/new': typeof LayoutOwnerRepoIssuesNewRoute
   '/_layout/$owner/$repo/pulls/$number': typeof LayoutOwnerRepoPullsNumberRoute
@@ -288,6 +349,13 @@ export interface FileRoutesById {
   '/_layout/$owner/$repo/commits/': typeof LayoutOwnerRepoCommitsIndexRoute
   '/_layout/$owner/$repo/issues/': typeof LayoutOwnerRepoIssuesIndexRoute
   '/_layout/$owner/$repo/pulls/': typeof LayoutOwnerRepoPullsIndexRoute
+  '/_layout/$owner/$repo/commits/branch/$branch': typeof LayoutOwnerRepoCommitsBranchBranchRoute
+  '/_layout/$owner/$repo/src/branch/$branch': typeof LayoutOwnerRepoSrcBranchBranchRouteWithChildren
+  '/_layout/$owner/$repo/src/commit/$sha': typeof LayoutOwnerRepoSrcCommitShaRouteWithChildren
+  '/_layout/$owner/$repo/src/branch/$branch/$': typeof LayoutOwnerRepoSrcBranchBranchSplatRoute
+  '/_layout/$owner/$repo/src/commit/$sha/$': typeof LayoutOwnerRepoSrcCommitShaSplatRoute
+  '/_layout/$owner/$repo/src/branch/$branch/': typeof LayoutOwnerRepoSrcBranchBranchIndexRoute
+  '/_layout/$owner/$repo/src/commit/$sha/': typeof LayoutOwnerRepoSrcCommitShaIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -303,8 +371,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/profile/$username'
     | '/$owner/$repo/activity'
-    | '/$owner/$repo/blob'
     | '/$owner/$repo/branches'
+    | '/$owner/$repo/commit'
     | '/$owner/$repo/commits'
     | '/$owner/$repo/forks'
     | '/$owner/$repo/issues'
@@ -313,7 +381,7 @@ export interface FileRouteTypes {
     | '/$owner/$repo/stars'
     | '/$owner/$repo/watchers'
     | '/$owner/$repo/'
-    | '/$owner/$repo/commits/$hash'
+    | '/$owner/$repo/commit/$hash'
     | '/$owner/$repo/issues/$number'
     | '/$owner/$repo/issues/new'
     | '/$owner/$repo/pulls/$number'
@@ -321,6 +389,13 @@ export interface FileRouteTypes {
     | '/$owner/$repo/commits/'
     | '/$owner/$repo/issues/'
     | '/$owner/$repo/pulls/'
+    | '/$owner/$repo/commits/branch/$branch'
+    | '/$owner/$repo/src/branch/$branch'
+    | '/$owner/$repo/src/commit/$sha'
+    | '/$owner/$repo/src/branch/$branch/$'
+    | '/$owner/$repo/src/commit/$sha/$'
+    | '/$owner/$repo/src/branch/$branch/'
+    | '/$owner/$repo/src/commit/$sha/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -334,14 +409,14 @@ export interface FileRouteTypes {
     | '/'
     | '/profile/$username'
     | '/$owner/$repo/activity'
-    | '/$owner/$repo/blob'
     | '/$owner/$repo/branches'
+    | '/$owner/$repo/commit'
     | '/$owner/$repo/forks'
     | '/$owner/$repo/releases'
     | '/$owner/$repo/stars'
     | '/$owner/$repo/watchers'
     | '/$owner/$repo'
-    | '/$owner/$repo/commits/$hash'
+    | '/$owner/$repo/commit/$hash'
     | '/$owner/$repo/issues/$number'
     | '/$owner/$repo/issues/new'
     | '/$owner/$repo/pulls/$number'
@@ -349,6 +424,11 @@ export interface FileRouteTypes {
     | '/$owner/$repo/commits'
     | '/$owner/$repo/issues'
     | '/$owner/$repo/pulls'
+    | '/$owner/$repo/commits/branch/$branch'
+    | '/$owner/$repo/src/branch/$branch/$'
+    | '/$owner/$repo/src/commit/$sha/$'
+    | '/$owner/$repo/src/branch/$branch'
+    | '/$owner/$repo/src/commit/$sha'
   id:
     | '__root__'
     | '/_layout'
@@ -363,8 +443,8 @@ export interface FileRouteTypes {
     | '/_layout/'
     | '/_layout/profile/$username'
     | '/_layout/$owner/$repo/activity'
-    | '/_layout/$owner/$repo/blob'
     | '/_layout/$owner/$repo/branches'
+    | '/_layout/$owner/$repo/commit'
     | '/_layout/$owner/$repo/commits'
     | '/_layout/$owner/$repo/forks'
     | '/_layout/$owner/$repo/issues'
@@ -373,7 +453,7 @@ export interface FileRouteTypes {
     | '/_layout/$owner/$repo/stars'
     | '/_layout/$owner/$repo/watchers'
     | '/_layout/$owner/$repo/'
-    | '/_layout/$owner/$repo/commits/$hash'
+    | '/_layout/$owner/$repo/commit/$hash'
     | '/_layout/$owner/$repo/issues/$number'
     | '/_layout/$owner/$repo/issues/new'
     | '/_layout/$owner/$repo/pulls/$number'
@@ -381,6 +461,13 @@ export interface FileRouteTypes {
     | '/_layout/$owner/$repo/commits/'
     | '/_layout/$owner/$repo/issues/'
     | '/_layout/$owner/$repo/pulls/'
+    | '/_layout/$owner/$repo/commits/branch/$branch'
+    | '/_layout/$owner/$repo/src/branch/$branch'
+    | '/_layout/$owner/$repo/src/commit/$sha'
+    | '/_layout/$owner/$repo/src/branch/$branch/$'
+    | '/_layout/$owner/$repo/src/commit/$sha/$'
+    | '/_layout/$owner/$repo/src/branch/$branch/'
+    | '/_layout/$owner/$repo/src/commit/$sha/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -484,18 +571,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutOwnerRepoActivityRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/_layout/$owner/$repo/blob': {
-      id: '/_layout/$owner/$repo/blob'
-      path: '/$owner/$repo/blob'
-      fullPath: '/$owner/$repo/blob'
-      preLoaderRoute: typeof LayoutOwnerRepoBlobRouteImport
-      parentRoute: typeof LayoutRoute
-    }
     '/_layout/$owner/$repo/branches': {
       id: '/_layout/$owner/$repo/branches'
       path: '/$owner/$repo/branches'
       fullPath: '/$owner/$repo/branches'
       preLoaderRoute: typeof LayoutOwnerRepoBranchesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/$owner/$repo/commit': {
+      id: '/_layout/$owner/$repo/commit'
+      path: '/$owner/$repo/commit'
+      fullPath: '/$owner/$repo/commit'
+      preLoaderRoute: typeof LayoutOwnerRepoCommitRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/$owner/$repo/commits': {
@@ -547,18 +634,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutOwnerRepoWatchersRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/$owner/$repo/commit/$hash': {
+      id: '/_layout/$owner/$repo/commit/$hash'
+      path: '/$hash'
+      fullPath: '/$owner/$repo/commit/$hash'
+      preLoaderRoute: typeof LayoutOwnerRepoCommitHashRouteImport
+      parentRoute: typeof LayoutOwnerRepoCommitRoute
+    }
     '/_layout/$owner/$repo/commits/': {
       id: '/_layout/$owner/$repo/commits/'
       path: '/'
       fullPath: '/$owner/$repo/commits/'
       preLoaderRoute: typeof LayoutOwnerRepoCommitsIndexRouteImport
-      parentRoute: typeof LayoutOwnerRepoCommitsRoute
-    }
-    '/_layout/$owner/$repo/commits/$hash': {
-      id: '/_layout/$owner/$repo/commits/$hash'
-      path: '/$hash'
-      fullPath: '/$owner/$repo/commits/$hash'
-      preLoaderRoute: typeof LayoutOwnerRepoCommitsHashRouteImport
       parentRoute: typeof LayoutOwnerRepoCommitsRoute
     }
     '/_layout/$owner/$repo/issues/': {
@@ -603,18 +690,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutOwnerRepoPullsNewRouteImport
       parentRoute: typeof LayoutOwnerRepoPullsRoute
     }
+    '/_layout/$owner/$repo/commits/branch/$branch': {
+      id: '/_layout/$owner/$repo/commits/branch/$branch'
+      path: '/branch/$branch'
+      fullPath: '/$owner/$repo/commits/branch/$branch'
+      preLoaderRoute: typeof LayoutOwnerRepoCommitsBranchBranchRouteImport
+      parentRoute: typeof LayoutOwnerRepoCommitsRoute
+    }
+    '/_layout/$owner/$repo/src/branch/$branch': {
+      id: '/_layout/$owner/$repo/src/branch/$branch'
+      path: '/$owner/$repo/src/branch/$branch'
+      fullPath: '/$owner/$repo/src/branch/$branch'
+      preLoaderRoute: typeof LayoutOwnerRepoSrcBranchBranchRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/$owner/$repo/src/commit/$sha': {
+      id: '/_layout/$owner/$repo/src/commit/$sha'
+      path: '/$owner/$repo/src/commit/$sha'
+      fullPath: '/$owner/$repo/src/commit/$sha'
+      preLoaderRoute: typeof LayoutOwnerRepoSrcCommitShaRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/$owner/$repo/src/branch/$branch/': {
+      id: '/_layout/$owner/$repo/src/branch/$branch/'
+      path: '/'
+      fullPath: '/$owner/$repo/src/branch/$branch/'
+      preLoaderRoute: typeof LayoutOwnerRepoSrcBranchBranchIndexRouteImport
+      parentRoute: typeof LayoutOwnerRepoSrcBranchBranchRoute
+    }
+    '/_layout/$owner/$repo/src/branch/$branch/$': {
+      id: '/_layout/$owner/$repo/src/branch/$branch/$'
+      path: '/$'
+      fullPath: '/$owner/$repo/src/branch/$branch/$'
+      preLoaderRoute: typeof LayoutOwnerRepoSrcBranchBranchSplatRouteImport
+      parentRoute: typeof LayoutOwnerRepoSrcBranchBranchRoute
+    }
+    '/_layout/$owner/$repo/src/commit/$sha/': {
+      id: '/_layout/$owner/$repo/src/commit/$sha/'
+      path: '/'
+      fullPath: '/$owner/$repo/src/commit/$sha/'
+      preLoaderRoute: typeof LayoutOwnerRepoSrcCommitShaIndexRouteImport
+      parentRoute: typeof LayoutOwnerRepoSrcCommitShaRoute
+    }
+    '/_layout/$owner/$repo/src/commit/$sha/$': {
+      id: '/_layout/$owner/$repo/src/commit/$sha/$'
+      path: '/$'
+      fullPath: '/$owner/$repo/src/commit/$sha/$'
+      preLoaderRoute: typeof LayoutOwnerRepoSrcCommitShaSplatRouteImport
+      parentRoute: typeof LayoutOwnerRepoSrcCommitShaRoute
+    }
   }
 }
 
+interface LayoutOwnerRepoCommitRouteChildren {
+  LayoutOwnerRepoCommitHashRoute: typeof LayoutOwnerRepoCommitHashRoute
+}
+
+const LayoutOwnerRepoCommitRouteChildren: LayoutOwnerRepoCommitRouteChildren = {
+  LayoutOwnerRepoCommitHashRoute: LayoutOwnerRepoCommitHashRoute,
+}
+
+const LayoutOwnerRepoCommitRouteWithChildren =
+  LayoutOwnerRepoCommitRoute._addFileChildren(
+    LayoutOwnerRepoCommitRouteChildren,
+  )
+
 interface LayoutOwnerRepoCommitsRouteChildren {
-  LayoutOwnerRepoCommitsHashRoute: typeof LayoutOwnerRepoCommitsHashRoute
   LayoutOwnerRepoCommitsIndexRoute: typeof LayoutOwnerRepoCommitsIndexRoute
+  LayoutOwnerRepoCommitsBranchBranchRoute: typeof LayoutOwnerRepoCommitsBranchBranchRoute
 }
 
 const LayoutOwnerRepoCommitsRouteChildren: LayoutOwnerRepoCommitsRouteChildren =
   {
-    LayoutOwnerRepoCommitsHashRoute: LayoutOwnerRepoCommitsHashRoute,
     LayoutOwnerRepoCommitsIndexRoute: LayoutOwnerRepoCommitsIndexRoute,
+    LayoutOwnerRepoCommitsBranchBranchRoute:
+      LayoutOwnerRepoCommitsBranchBranchRoute,
   }
 
 const LayoutOwnerRepoCommitsRouteWithChildren =
@@ -654,6 +804,42 @@ const LayoutOwnerRepoPullsRouteChildren: LayoutOwnerRepoPullsRouteChildren = {
 const LayoutOwnerRepoPullsRouteWithChildren =
   LayoutOwnerRepoPullsRoute._addFileChildren(LayoutOwnerRepoPullsRouteChildren)
 
+interface LayoutOwnerRepoSrcBranchBranchRouteChildren {
+  LayoutOwnerRepoSrcBranchBranchSplatRoute: typeof LayoutOwnerRepoSrcBranchBranchSplatRoute
+  LayoutOwnerRepoSrcBranchBranchIndexRoute: typeof LayoutOwnerRepoSrcBranchBranchIndexRoute
+}
+
+const LayoutOwnerRepoSrcBranchBranchRouteChildren: LayoutOwnerRepoSrcBranchBranchRouteChildren =
+  {
+    LayoutOwnerRepoSrcBranchBranchSplatRoute:
+      LayoutOwnerRepoSrcBranchBranchSplatRoute,
+    LayoutOwnerRepoSrcBranchBranchIndexRoute:
+      LayoutOwnerRepoSrcBranchBranchIndexRoute,
+  }
+
+const LayoutOwnerRepoSrcBranchBranchRouteWithChildren =
+  LayoutOwnerRepoSrcBranchBranchRoute._addFileChildren(
+    LayoutOwnerRepoSrcBranchBranchRouteChildren,
+  )
+
+interface LayoutOwnerRepoSrcCommitShaRouteChildren {
+  LayoutOwnerRepoSrcCommitShaSplatRoute: typeof LayoutOwnerRepoSrcCommitShaSplatRoute
+  LayoutOwnerRepoSrcCommitShaIndexRoute: typeof LayoutOwnerRepoSrcCommitShaIndexRoute
+}
+
+const LayoutOwnerRepoSrcCommitShaRouteChildren: LayoutOwnerRepoSrcCommitShaRouteChildren =
+  {
+    LayoutOwnerRepoSrcCommitShaSplatRoute:
+      LayoutOwnerRepoSrcCommitShaSplatRoute,
+    LayoutOwnerRepoSrcCommitShaIndexRoute:
+      LayoutOwnerRepoSrcCommitShaIndexRoute,
+  }
+
+const LayoutOwnerRepoSrcCommitShaRouteWithChildren =
+  LayoutOwnerRepoSrcCommitShaRoute._addFileChildren(
+    LayoutOwnerRepoSrcCommitShaRouteChildren,
+  )
+
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
   LayoutExploreRoute: typeof LayoutExploreRoute
@@ -662,8 +848,8 @@ interface LayoutRouteChildren {
   LayoutIndexRoute: typeof LayoutIndexRoute
   LayoutProfileUsernameRoute: typeof LayoutProfileUsernameRoute
   LayoutOwnerRepoActivityRoute: typeof LayoutOwnerRepoActivityRoute
-  LayoutOwnerRepoBlobRoute: typeof LayoutOwnerRepoBlobRoute
   LayoutOwnerRepoBranchesRoute: typeof LayoutOwnerRepoBranchesRoute
+  LayoutOwnerRepoCommitRoute: typeof LayoutOwnerRepoCommitRouteWithChildren
   LayoutOwnerRepoCommitsRoute: typeof LayoutOwnerRepoCommitsRouteWithChildren
   LayoutOwnerRepoForksRoute: typeof LayoutOwnerRepoForksRoute
   LayoutOwnerRepoIssuesRoute: typeof LayoutOwnerRepoIssuesRouteWithChildren
@@ -672,6 +858,8 @@ interface LayoutRouteChildren {
   LayoutOwnerRepoStarsRoute: typeof LayoutOwnerRepoStarsRoute
   LayoutOwnerRepoWatchersRoute: typeof LayoutOwnerRepoWatchersRoute
   LayoutOwnerRepoIndexRoute: typeof LayoutOwnerRepoIndexRoute
+  LayoutOwnerRepoSrcBranchBranchRoute: typeof LayoutOwnerRepoSrcBranchBranchRouteWithChildren
+  LayoutOwnerRepoSrcCommitShaRoute: typeof LayoutOwnerRepoSrcCommitShaRouteWithChildren
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
@@ -682,8 +870,8 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutProfileUsernameRoute: LayoutProfileUsernameRoute,
   LayoutOwnerRepoActivityRoute: LayoutOwnerRepoActivityRoute,
-  LayoutOwnerRepoBlobRoute: LayoutOwnerRepoBlobRoute,
   LayoutOwnerRepoBranchesRoute: LayoutOwnerRepoBranchesRoute,
+  LayoutOwnerRepoCommitRoute: LayoutOwnerRepoCommitRouteWithChildren,
   LayoutOwnerRepoCommitsRoute: LayoutOwnerRepoCommitsRouteWithChildren,
   LayoutOwnerRepoForksRoute: LayoutOwnerRepoForksRoute,
   LayoutOwnerRepoIssuesRoute: LayoutOwnerRepoIssuesRouteWithChildren,
@@ -692,6 +880,10 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutOwnerRepoStarsRoute: LayoutOwnerRepoStarsRoute,
   LayoutOwnerRepoWatchersRoute: LayoutOwnerRepoWatchersRoute,
   LayoutOwnerRepoIndexRoute: LayoutOwnerRepoIndexRoute,
+  LayoutOwnerRepoSrcBranchBranchRoute:
+    LayoutOwnerRepoSrcBranchBranchRouteWithChildren,
+  LayoutOwnerRepoSrcCommitShaRoute:
+    LayoutOwnerRepoSrcCommitShaRouteWithChildren,
 }
 
 const LayoutRouteWithChildren =
