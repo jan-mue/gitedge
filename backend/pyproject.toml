@@ -24,7 +24,7 @@ dependencies = [
     "pydantic[email]==2.13.5",
     "pydantic-settings==2.15.0",
     "pygments==2.21.0",
-    "pyjwt==2.15.0",
+    "pyjwt==2.15.1",
     "python-multipart==0.0.32",
     "redis[hiredis]==8.1.0",
     "sentry-sdk==2.71.0",
