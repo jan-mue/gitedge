@@ -263,6 +263,37 @@ class TestIssueComments:
         expect(page.get_by_test_id("comment-input")).to_have_value("", timeout=15000)
         expect(page.get_by_test_id("comments-section")).to_contain_text("This is my comment.", timeout=15000)
 
+    def test_edit_comment(self, app_url: str, page: Page) -> None:
+        """A comment can be edited by its author.
+
+        Args:
+            app_url: Base URL of the GitEdge frontend.
+            page: Playwright page.
+        """
+        _push_repo(app_url, "admin/editcommentrepo.git")
+        log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
+
+        page.goto(f"{app_url}/admin/editcommentrepo/issues/new")
+        page.get_by_test_id("issue-title-input").fill("Editable issue")
+        page.get_by_test_id("submit-issue-btn").click()
+
+        page.get_by_test_id("issue-1").get_by_role("link").click()
+        expect(page.get_by_test_id("issue-detail")).to_be_visible(timeout=15000)
+
+        page.get_by_test_id("comment-input").fill("Original comment.")
+        page.get_by_test_id("comment-submit").click()
+        expect(page.get_by_test_id("comment-input")).to_have_value("", timeout=15000)
+        expect(page.get_by_test_id("comments-section")).to_contain_text("Original comment.", timeout=15000)
+
+        page.get_by_role("button", name="Edit").click()
+        page.locator('[data-testid^="edit-comment-input-"]').fill("Edited comment.")
+        page.get_by_role("button", name="Save").click()
+
+        # The editor closes only after the update is persisted.
+        expect(page.locator('[data-testid^="edit-comment-input-"]')).to_have_count(0, timeout=15000)
+        expect(page.get_by_test_id("comments-section")).to_contain_text("Edited comment.", timeout=15000)
+        expect(page.get_by_test_id("comments-section")).not_to_contain_text("Original comment.")
+
     def test_close_issue(self, app_url: str, page: Page) -> None:
         """An issue can be closed from the detail page.
 

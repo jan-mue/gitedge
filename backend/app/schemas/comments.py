@@ -14,13 +14,16 @@ class CommentCreate(GitEdgeBaseModel):
     body: str = Field(min_length=1)
 
 
+class CommentUpdate(GitEdgeBaseModel):
+    """Request to update a comment."""
+
+    body: str = Field(min_length=1)
+
+
 class CommentPublic(GitEdgeBaseModel):
     """Public comment representation."""
 
     id: uuid.UUID
-    repo_owner: str
-    repo_name: str
-    issue_number: int
     author_username: str
     body: str
     created_at: datetime

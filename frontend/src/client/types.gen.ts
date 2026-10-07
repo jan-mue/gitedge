@@ -125,18 +125,6 @@ export type CommentPublic = {
      */
     id: string;
     /**
-     * Repo Owner
-     */
-    repo_owner: string;
-    /**
-     * Repo Name
-     */
-    repo_name: string;
-    /**
-     * Issue Number
-     */
-    issue_number: number;
-    /**
      * Author Username
      */
     author_username: string;
@@ -152,6 +140,18 @@ export type CommentPublic = {
      * Updated At
      */
     updated_at: string;
+};
+
+/**
+ * CommentUpdate
+ *
+ * Request to update a comment.
+ */
+export type CommentUpdate = {
+    /**
+     * Body
+     */
+    body: string;
 };
 
 /**
@@ -2561,6 +2561,36 @@ export type commentsCreateCommentResponses = {
 };
 
 export type commentsCreateCommentResponse = commentsCreateCommentResponses[keyof commentsCreateCommentResponses];
+
+export type commentsUpdateCommentData = {
+    body: CommentUpdate;
+    path: {
+        /**
+         * Comment Id
+         */
+        comment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/comments/{comment_id}';
+};
+
+export type commentsUpdateCommentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type commentsUpdateCommentError = commentsUpdateCommentErrors[keyof commentsUpdateCommentErrors];
+
+export type commentsUpdateCommentResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommentPublic;
+};
+
+export type commentsUpdateCommentResponse = commentsUpdateCommentResponses[keyof commentsUpdateCommentResponses];
 
 export type releasesListReleasesData = {
     body?: never;

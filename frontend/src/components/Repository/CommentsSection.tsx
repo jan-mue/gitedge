@@ -4,6 +4,7 @@ import { useState } from "react"
 
 import { CommentsService } from "@/client"
 import { Button } from "@/components/ui/button"
+import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -17,12 +18,17 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
   const repoPath = `${owner}/${repo}.git`
   const queryClient = useQueryClient()
   const { showErrorToast } = useCustomToast()
+  const { user } = useAuth()
   const [body, setBody] = useState("")
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editBody, setEditBody] = useState("")
 
   const { data } = useQuery({
     queryKey: ["comments", repoPath, number],
     queryFn: async () => (await CommentsService.listComments({ path: { owner, repo, number } })).data,
   })
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["comments", repoPath, number] })
 
   const mutation = useMutation({
     mutationFn: (commentBody: string) =>
@@ -32,7 +38,21 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
       }),
     onSuccess: () => {
       setBody("")
-      queryClient.invalidateQueries({ queryKey: ["comments", repoPath, number] })
+      invalidate()
+    },
+    onError: handleError.bind(showErrorToast),
+  })
+
+  const editMutation = useMutation({
+    mutationFn: ({ id, commentBody }: { id: string; commentBody: string }) =>
+      CommentsService.updateComment({
+        path: { comment_id: id },
+        body: { body: commentBody },
+      }),
+    onSuccess: () => {
+      setEditingId(null)
+      setEditBody("")
+      invalidate()
     },
     onError: handleError.bind(showErrorToast),
   })
@@ -55,10 +75,55 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
               data-testid={`comment-${comment.id}`}
             >
               <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-secondary/50 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">{comment.author_username ?? "unknown"}</span>
-                {comment.created_at && <span>commented {new Date(comment.created_at).toLocaleString()}</span>}
+                <span className="font-medium text-foreground">{comment.author_username}</span>
+                <span>commented {new Date(comment.created_at).toLocaleString()}</span>
+                {comment.author_username === user?.name && editingId !== comment.id && (
+                  <button
+                    type="button"
+                    className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setEditingId(comment.id)
+                      setEditBody(comment.body)
+                    }}
+                    data-testid={`edit-comment-${comment.id}`}
+                  >
+                    Edit
+                  </button>
+                )}
               </div>
-              <p className="px-4 py-3 text-sm text-foreground whitespace-pre-wrap break-words">{comment.body}</p>
+              {editingId === comment.id ? (
+                <div className="space-y-2 px-4 py-3">
+                  <textarea
+                    value={editBody}
+                    onChange={(e) => setEditBody(e.target.value)}
+                    data-testid={`edit-comment-input-${comment.id}`}
+                    className="w-full rounded border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none resize-y"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingId(null)
+                        setEditBody("")
+                      }}
+                      data-testid={`edit-comment-cancel-${comment.id}`}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={!editBody.trim() || editMutation.isPending}
+                      onClick={() => editMutation.mutate({ id: comment.id, commentBody: editBody })}
+                      data-testid={`edit-comment-submit-${comment.id}`}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="px-4 py-3 text-sm text-foreground whitespace-pre-wrap break-words">{comment.body}</p>
+              )}
             </div>
           ))}
         </div>

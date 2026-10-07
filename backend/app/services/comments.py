@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
+
+from fastapi import HTTPException
 
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.comments import Comment
 from app.exceptions import IssueNotFoundError, PullRequestNotFoundError
-from app.schemas.comments import CommentCreate, CommentPublic, CommentsPublic
+from app.schemas.comments import CommentCreate, CommentPublic, CommentsPublic, CommentUpdate
 
 if TYPE_CHECKING:
+    import uuid
+
     from app.clients.comments import CommentStore
     from app.clients.issues import IssueStore
     from app.clients.pull_requests import PullRequestStore
@@ -61,10 +66,8 @@ class CommentService:
             HTTPException: If the issue or pull request is not found.
         """
         issue = await self._find_issue(owner, name, number)
-        comments = await self.comment_store.list_by_issue(issue.id)
-        return CommentsPublic(
-            data=[self._to_public(comment, issue, owner, name) for comment in comments], count=len(comments)
-        )
+        comments = issue.comments
+        return CommentsPublic(data=[self._to_public(comment) for comment in comments], count=len(comments))
 
     async def create_comment(
         self, owner: str, name: str, number: int, body: CommentCreate, current_user: User
@@ -100,7 +103,31 @@ class CommentService:
             target_number=issue.number,
         )
 
-        return self._to_public(comment, issue, owner, name)
+        return self._to_public(comment)
+
+    async def update_comment(self, comment_id: uuid.UUID, body: CommentUpdate, current_user: User) -> CommentPublic:
+        """Update a comment's body.
+
+        Args:
+            comment_id: The comment id.
+            body: Comment update data.
+            current_user: The authenticated user.
+
+        Returns:
+            The updated comment.
+
+        Raises:
+            NotFoundError: If the comment is not found.
+            HTTPException: If the user is not allowed to edit the comment.
+        """
+        comment = await self.comment_store.get(comment_id)
+        if comment.author_id != current_user.id and not current_user.is_superuser:
+            raise HTTPException(status_code=403, detail="You can only edit your own comments")
+
+        comment.body = body.body
+        comment.updated_at = datetime.now(UTC)
+        await self.comment_store.update(comment)
+        return self._to_public(comment)
 
     async def _find_issue(self, owner: str, name: str, number: int) -> Issue:
         """Find an issue or pull request by repository and number.
@@ -127,13 +154,10 @@ class CommentService:
             raise IssueNotFoundError from exc
 
     @staticmethod
-    def _to_public(comment: Comment, issue: Issue, owner: str, name: str) -> CommentPublic:
+    def _to_public(comment: Comment) -> CommentPublic:
         """Build a public comment representation from a comment entity."""
         return CommentPublic(
             id=comment.id,
-            repo_owner=owner,
-            repo_name=name,
-            issue_number=issue.number,
             author_username=comment.author.name,
             body=comment.body,
             created_at=comment.created_at,

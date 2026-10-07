@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
@@ -18,15 +18,7 @@ if TYPE_CHECKING:
 
 
 class CommentStore(CrudStore[Comment], ABC):
-    """Abstract comment store with comment-specific queries."""
-
-    @abstractmethod
-    async def list_by_issue(self, issue_id: uuid.UUID) -> list[Comment]:
-        """List comments for an issue, oldest first."""
-
-    @abstractmethod
-    async def count_by_issue(self, issue_id: uuid.UUID) -> int:
-        """Count comments for an issue."""
+    """Abstract comment store."""
 
 
 class SQLCommentStore(CommentStore, SQLStore[Comment]):
@@ -40,17 +32,8 @@ class SQLCommentStore(CommentStore, SQLStore[Comment]):
         """
         super().__init__(db, Comment)
 
-    async def list_by_issue(self, issue_id: uuid.UUID) -> list[Comment]:
-        """List comments for an issue, oldest first."""
-        result = await self.db.scalars(
-            select(Comment)
-            .options(selectinload(Comment.author))
-            .where(Comment.issue_id == issue_id)
-            .order_by(Comment.created_at.asc())
+    async def find(self, primary_key: uuid.UUID) -> Comment | None:
+        """Find a comment by id, loading its author."""
+        return await self.db.scalar(
+            select(Comment).options(selectinload(Comment.author)).where(Comment.id == primary_key)
         )
-        return list(result.all())
-
-    async def count_by_issue(self, issue_id: uuid.UUID) -> int:
-        """Count comments for an issue."""
-        result = await self.db.execute(select(func.count()).select_from(Comment).where(Comment.issue_id == issue_id))
-        return result.scalar_one()

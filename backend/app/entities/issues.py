@@ -49,4 +49,4 @@ class Issue(Base):
 
     repo: Mapped["Repository"] = relationship(back_populates="issues")
     author: Mapped["User"] = relationship(back_populates="issues")
-    comments: Mapped[list["Comment"]] = relationship(back_populates="issue")
+    comments: Mapped[list["Comment"]] = relationship(back_populates="issue", order_by="Comment.created_at")

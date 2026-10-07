@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter
 
 from app.api.dependencies import CommentServiceDep, CurrentUser
-from app.schemas.comments import CommentCreate, CommentPublic, CommentsPublic
+from app.schemas.comments import CommentCreate, CommentPublic, CommentsPublic, CommentUpdate
 
 router = APIRouter(prefix="/repositories", tags=["comments"])
+comment_router = APIRouter(prefix="/comments", tags=["comments"])
 
 
 @router.get("/{owner}/{repo}/issues/{number}/comments")
@@ -27,3 +30,11 @@ async def create_comment(
 ) -> CommentPublic:
     """Create a comment on an issue or pull request."""
     return await comment_service.create_comment(owner, repo, number, body, current_user)
+
+
+@comment_router.patch("/{comment_id}")
+async def update_comment(
+    comment_id: uuid.UUID, body: CommentUpdate, comment_service: CommentServiceDep, current_user: CurrentUser
+) -> CommentPublic:
+    """Update a comment."""
+    return await comment_service.update_comment(comment_id, body, current_user)

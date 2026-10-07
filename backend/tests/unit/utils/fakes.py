@@ -294,17 +294,20 @@ class FakeIssueStore(FakeCrudStore[Issue], IssueStore):
 
     entity_name = "Issue"
 
-    def __init__(self, users: FakeUserStore | None = None) -> None:
+    def __init__(self, users: FakeUserStore | None = None, comment_store: FakeCommentStore | None = None) -> None:
         """Initialize the store."""
         super().__init__()
         self.users = users
+        self.comment_store = comment_store
 
     def _hydrate(self, issue: Issue) -> Issue:
-        """Populate the issue's author from the fake user store."""
+        """Populate the issue's author and comments from the other fake stores."""
         if self.users is not None:
             author = self.users.items.get(issue.author_id)
             if author is not None:
                 issue.author = author
+        if self.comment_store is not None:
+            issue.comments = self.comment_store.comments_for(issue.id)
         return issue
 
     async def add(self, obj: Issue) -> None:
@@ -344,17 +347,20 @@ class FakePullRequestStore(FakeCrudStore[PullRequest], PullRequestStore):
 
     entity_name = "PullRequest"
 
-    def __init__(self, users: FakeUserStore | None = None) -> None:
+    def __init__(self, users: FakeUserStore | None = None, comment_store: FakeCommentStore | None = None) -> None:
         """Initialize the store."""
         super().__init__()
         self.users = users
+        self.comment_store = comment_store
 
     def _hydrate(self, pr: PullRequest) -> PullRequest:
-        """Populate the pull request's author from the fake user store."""
+        """Populate the pull request's author and comments from the other fake stores."""
         if self.users is not None:
             author = self.users.items.get(pr.author_id)
             if author is not None:
                 pr.author = author
+        if self.comment_store is not None:
+            pr.comments = self.comment_store.comments_for(pr.id)
         return pr
 
     async def add(self, obj: PullRequest) -> None:
@@ -504,20 +510,21 @@ class FakeCommentStore(FakeCrudStore[Comment], CommentStore):
             comment.issue = issue
         return comment
 
+    async def find(self, primary_key: uuid.UUID) -> Comment | None:
+        """Find a comment by id, hydrating its relationships."""
+        comment = self.items.get(primary_key)
+        return self._hydrate(comment) if comment is not None else None
+
     async def add(self, obj: Comment) -> None:
         """Add a comment and populate its relationships."""
         self.persist(obj)
         self._hydrate(obj)
 
-    async def list_by_issue(self, issue_id: uuid.UUID) -> list[Comment]:
-        """List comments for an issue, oldest first."""
+    def comments_for(self, issue_id: uuid.UUID) -> list[Comment]:
+        """Return hydrated comments for an issue, oldest first."""
         comments = [comment for comment in self.items.values() if comment.issue_id == issue_id]
         comments.sort(key=lambda comment: comment.created_at or datetime.min.replace(tzinfo=UTC))
         return [self._hydrate(comment) for comment in comments]
-
-    async def count_by_issue(self, issue_id: uuid.UUID) -> int:
-        """Count comments for an issue."""
-        return sum(1 for comment in self.items.values() if comment.issue_id == issue_id)
 
 
 class FakeReleaseStore(FakeCrudStore[Release], ReleaseStore):
@@ -654,6 +661,9 @@ def build_fake_stores() -> FakeStores:
     repository = FakeRepositoryStore(users, organizations)
     issues = FakeIssueStore(users)
     pull_requests = FakePullRequestStore(users)
+    comments = FakeCommentStore(users, issues, pull_requests)
+    issues.comment_store = comments
+    pull_requests.comment_store = comments
     users.persist(
         User(
             name=settings.FIRST_SUPERUSER.split("@")[0],
@@ -673,7 +683,7 @@ def build_fake_stores() -> FakeStores:
         organizations=organizations,
         stars=FakeStarStore(users),
         watchers=FakeWatcherStore(users),
-        comments=FakeCommentStore(users, issues, pull_requests),
+        comments=comments,
         releases=FakeReleaseStore(users),
         activity=FakeActivityStore(users, repository),
     )

@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
+from app.entities.comments import Comment
 from app.entities.issues import Issue, IssueKind, IssueState
 from app.exceptions import IssueNotFoundError
 
@@ -53,7 +54,7 @@ class SQLIssueStore(IssueStore, SQLStore[Issue]):
         """Get an issue by repository id and number, raising when absent."""
         issue = await self.db.scalar(
             select(Issue)
-            .options(selectinload(Issue.author))
+            .options(selectinload(Issue.author), selectinload(Issue.comments).selectinload(Comment.author))
             .where(Issue.repo_id == repo_id, Issue.number == number, Issue.kind == IssueKind.ISSUE)
         )
         if issue is None:
