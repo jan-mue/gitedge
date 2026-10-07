@@ -1,9 +1,9 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
 import { ChevronDown, GitFork, Inbox, LogOut, Plus, Settings, ShieldCheck, User } from "lucide-react"
 import { useState } from "react"
 
-import { RepositoriesService } from "@/client"
+import { OrganizationsService, RepositoriesService } from "@/client"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   DropdownMenu,
@@ -26,21 +26,40 @@ const GlobalNav = () => {
   const [showNewOrg, setShowNewOrg] = useState(false)
   const [repoName, setRepoName] = useState("")
   const [repoDesc, setRepoDesc] = useState("")
+  const [repoOwner, setRepoOwner] = useState("")
   const [orgName, setOrgName] = useState("")
 
-  const username = user?.username ?? user?.email?.split("@")[0] ?? ""
+  const username = user?.name ?? ""
+
+  const { data: organizations } = useQuery({
+    queryKey: ["organizations"],
+    queryFn: async () => (await OrganizationsService.listOrganizations()).data,
+  })
+
+  const ownerOptions = [username, ...(organizations?.data.map((org) => org.name) ?? [])].filter(Boolean)
+  const selectedOwner = repoOwner || username
 
   const createRepoMutation = useMutation({
     mutationFn: () =>
       RepositoriesService.createRepository({
-        body: { owner: username, name: repoName.trim() },
+        body: { owner: selectedOwner, name: repoName.trim() },
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["repositories"] })
       setShowNewRepo(false)
       setRepoName("")
       setRepoDesc("")
-      navigate({ to: "/$owner/$repo", params: { owner: username, repo: repoName.trim() } })
+      navigate({ to: "/$owner/$repo", params: { owner: selectedOwner, repo: repoName.trim() } })
+    },
+    onError: handleError.bind(showErrorToast),
+  })
+
+  const createOrgMutation = useMutation({
+    mutationFn: () => OrganizationsService.createOrganization({ body: { name: orgName.trim() } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organizations"] })
+      setShowNewOrg(false)
+      setOrgName("")
     },
     onError: handleError.bind(showErrorToast),
   })
@@ -61,6 +80,7 @@ const GlobalNav = () => {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
+                  data-testid="create-menu"
                   className="flex items-center gap-1 rounded border border-border bg-background px-2 py-1 text-sm text-foreground transition-colors hover:bg-accent"
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -91,12 +111,12 @@ const GlobalNav = () => {
                   data-testid="user-menu"
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
                 >
-                  {(user?.full_name || username || "U").slice(0, 1).toUpperCase()}
+                  {(user?.display_name || username || "U").slice(0, 1).toUpperCase()}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
                 <div className="px-3 py-2 text-sm">
-                  <p className="font-medium text-foreground">{user?.full_name || username}</p>
+                  <p className="font-medium text-foreground">{user?.display_name || username}</p>
                   <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
                 <DropdownMenuSeparator />
@@ -151,9 +171,19 @@ const GlobalNav = () => {
               <label htmlFor="new-repo-owner" className="mb-1 block text-sm font-medium text-foreground">
                 Owner
               </label>
-              <div className="rounded border border-border bg-secondary px-3 py-2 text-sm text-foreground">
-                {username}
-              </div>
+              <select
+                id="new-repo-owner"
+                data-testid="new-repo-owner"
+                value={selectedOwner}
+                onChange={(e) => setRepoOwner(e.target.value)}
+                className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {ownerOptions.map((owner) => (
+                  <option key={owner} value={owner}>
+                    {owner}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label htmlFor="new-repo-name" className="mb-1 block text-sm font-medium text-foreground">
@@ -161,6 +191,7 @@ const GlobalNav = () => {
               </label>
               <input
                 id="new-repo-name"
+                data-testid="new-repo-name"
                 value={repoName}
                 onChange={(e) => setRepoName(e.target.value)}
                 className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -198,6 +229,7 @@ const GlobalNav = () => {
             </button>
             <button
               type="button"
+              data-testid="new-repo-submit"
               disabled={!repoName.trim() || createRepoMutation.isPending}
               onClick={() => createRepoMutation.mutate()}
               className="rounded bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:opacity-90 disabled:opacity-50"
@@ -220,6 +252,7 @@ const GlobalNav = () => {
               </label>
               <input
                 id="new-org-name"
+                data-testid="new-org-name"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
                 className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -237,11 +270,10 @@ const GlobalNav = () => {
             </button>
             <button
               type="button"
-              onClick={() => {
-                setShowNewOrg(false)
-                setOrgName("")
-              }}
-              className="rounded bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:opacity-90"
+              data-testid="new-org-submit"
+              disabled={!orgName.trim() || createOrgMutation.isPending}
+              onClick={() => createOrgMutation.mutate()}
+              className="rounded bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:opacity-90 disabled:opacity-50"
             >
               Create Organization
             </button>

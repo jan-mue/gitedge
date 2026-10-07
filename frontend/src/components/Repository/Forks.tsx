@@ -13,7 +13,7 @@ const Forks = ({ owner, repo }: ForksProps) => {
 
   const { data } = useQuery({
     queryKey: ["forks", repoPath],
-    queryFn: async () => (await ForksService.listForks({ path: { path: repoPath } })).data,
+    queryFn: async () => (await ForksService.listForks({ path: { owner, repo } })).data,
   })
 
   return <ForksList forks={data?.data ?? []} />

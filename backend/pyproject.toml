@@ -91,6 +91,8 @@ lint.select = [
 lint.ignore = [
     "E501",    # Line too long, handled by formatter
     "PLR0913", # Too many arguments in function definition"
+    "PLR0915", # Too many statements
+    "PLR0917", # Too many positional arguments
     "PT013",   # Incorrect import of `pytest`
     "RUF012",  # Mutable class attributes should be annotated with `typing.ClassVar`
     "TC006",   # Add quotes to type expression in `typing.cast()`
@@ -104,6 +106,7 @@ lint.flake8-tidy-imports.banned-api."unittest.mock".msg = "Use `pytest-mock` ins
 lint.flake8-type-checking.runtime-evaluated-base-classes = [
     "app.entities.base.Base",
     "app.entities.issues.Issue",
+    "app.entities.principals.Principal",
     "app.schemas.base.GitEdgeBaseModel",
     "pydantic.BaseModel",
     "sqlalchemy.orm.DeclarativeBase",

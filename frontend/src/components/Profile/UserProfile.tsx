@@ -13,29 +13,23 @@ interface UserProfileProps {
   username: string
 }
 
-const RepoCard = ({ repo }: { repo: Repository }) => {
-  const cleaned = repo.path.replace(/\.git$/, "")
-  const slash = cleaned.indexOf("/")
-  const owner = slash === -1 ? "_" : cleaned.slice(0, slash)
-  const repoName = slash === -1 ? cleaned : cleaned.slice(slash + 1)
-  return (
-    <div className="border border-border rounded-lg bg-card px-4 py-3" data-testid={`profile-repo-${repo.name}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <RouterLink
-            to="/$owner/$repo"
-            params={{ owner, repo: repoName }}
-            className="text-sm font-medium text-primary hover:underline"
-          >
-            {owner === "_" ? repo.name : `${owner}/${repo.name}`}
-          </RouterLink>
-          {repo.description && <p className="text-xs text-muted-foreground mt-1">{repo.description}</p>}
-        </div>
-        <StarButton owner={owner} repo={repoName} />
+const RepoCard = ({ repo }: { repo: Repository }) => (
+  <div className="border border-border rounded-lg bg-card px-4 py-3" data-testid={`profile-repo-${repo.name}`}>
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <RouterLink
+          to="/$owner/$repo"
+          params={{ owner: repo.owner, repo: repo.name }}
+          className="text-sm font-medium text-primary hover:underline"
+        >
+          {repo.owner}/{repo.name}
+        </RouterLink>
+        {repo.description && <p className="text-xs text-muted-foreground mt-1">{repo.description}</p>}
       </div>
+      <StarButton owner={repo.owner} repo={repo.name} />
     </div>
-  )
-}
+  </div>
+)
 
 const UserProfile = ({ username }: UserProfileProps) => {
   const [tab, setTab] = useState<"repositories" | "starred">("repositories")
@@ -61,11 +55,13 @@ const UserProfile = ({ username }: UserProfileProps) => {
     <div className="container mx-auto max-w-7xl space-y-6 px-4 py-6" data-testid="user-profile">
       <div className="flex items-center gap-4">
         <Avatar className="size-16">
-          <AvatarFallback className="text-xl">{(user?.full_name || username).slice(0, 1).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="text-xl">
+            {(user?.display_name || username).slice(0, 1).toUpperCase()}
+          </AvatarFallback>
         </Avatar>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{user?.full_name || username}</h1>
-          <p className="text-muted-foreground">@{user?.username ?? username}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{user?.display_name || username}</h1>
+          <p className="text-muted-foreground">@{user?.name ?? username}</p>
         </div>
       </div>
 
@@ -96,7 +92,7 @@ const UserProfile = ({ username }: UserProfileProps) => {
       {list.length > 0 ? (
         <div className="space-y-3">
           {list.map((repo) => (
-            <RepoCard key={repo.path} repo={repo} />
+            <RepoCard key={`${repo.owner}/${repo.name}`} repo={repo} />
           ))}
         </div>
       ) : (

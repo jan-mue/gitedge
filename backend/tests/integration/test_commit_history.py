@@ -38,7 +38,7 @@ def _push_repo_with_commits(app_url: str, repo_name: str, count: int = 3) -> Non
 
     Args:
         app_url: Base URL of the GitEdge frontend.
-        repo_name: Repository path (e.g. "commits/repo.git").
+        repo_name: Repository path (e.g. "admin/repo.git").
         count: Total number of commits to create.
     """
     remote_url = f"{app_url}/api/v1/{repo_name}"
@@ -76,10 +76,10 @@ class TestCommitHistory:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo_with_commits(app_url, "commits/historyrepo.git", count=3)
+        _push_repo_with_commits(app_url, "admin/historyrepo.git", count=3)
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/commits/historyrepo/commits/branch/main")
+        page.goto(f"{app_url}/admin/historyrepo/commits/branch/main")
         commits = page.get_by_test_id("commits-list")
         expect(commits).to_be_visible(timeout=15000)
         expect(commits).to_contain_text("Initial commit")
@@ -87,7 +87,7 @@ class TestCommitHistory:
 
         commits.get_by_role("link", name="Commit number 3").click()
         expect(page.get_by_test_id("commit-detail")).to_be_visible(timeout=15000)
-        expect(page).to_have_url(re.compile(r"/commits/historyrepo/commit/[0-9a-f]+$"))
+        expect(page).to_have_url(re.compile(r"/admin/historyrepo/commit/[0-9a-f]+$"))
         expect(page.get_by_test_id("commit-detail")).to_contain_text("changed")
         expect(page.get_by_test_id("commit-detail")).to_contain_text("src/file3.txt")
 
@@ -98,10 +98,10 @@ class TestCommitHistory:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo_with_commits(app_url, "commits/shalinkrepo.git", count=2)
+        _push_repo_with_commits(app_url, "admin/shalinkrepo.git", count=2)
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/commits/shalinkrepo")
+        page.goto(f"{app_url}/admin/shalinkrepo")
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
         page.get_by_test_id("last-commit-sha").click()
@@ -119,9 +119,9 @@ class TestCommitHistory:
 
         page.goto(f"{app_url}/repositories")
         page.get_by_test_id("create-repository-button").click()
-        page.get_by_test_id("create-repo-owner").fill("commits")
+        page.get_by_test_id("create-repo-owner").fill("admin")
         page.get_by_test_id("create-repo-name").fill("emptycommits")
         page.get_by_test_id("create-repo-submit").click()
 
-        page.goto(f"{app_url}/commits/emptycommits/commits")
+        page.goto(f"{app_url}/admin/emptycommits/commits")
         expect(page.get_by_test_id("commits-list")).to_contain_text("No commits yet", timeout=15000)

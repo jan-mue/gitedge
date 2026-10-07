@@ -58,7 +58,7 @@ describe("NewPullRequestForm", () => {
     await user.click(screen.getByTestId("submit-pr-btn"))
 
     expect(createPullRequest).toHaveBeenCalledWith({
-      path: { path: "owner/repo.git" },
+      path: { owner: "owner", repo: "repo" },
       body: {
         title: "Title",
         body: null,

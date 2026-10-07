@@ -18,9 +18,9 @@ class CommentPublic(GitEdgeBaseModel):
     """Public comment representation."""
 
     id: uuid.UUID
-    repo_path: str
+    repo_owner: str
+    repo_name: str
     issue_number: int
-    author_email: str | None = None
     author_username: str | None = None
     body: str
     created_at: datetime | None = None

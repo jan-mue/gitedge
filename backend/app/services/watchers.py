@@ -8,11 +8,10 @@ from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.watchers import Watcher
 from app.schemas.social import WatchersPublic, WatcherState
 from app.schemas.users import UserPublic
-from app.services.repositories import ensure_repository, normalize_repo_path
+from app.services.repositories import ensure_repository
 
 if TYPE_CHECKING:
     from app.clients.repositories import RepositoryStore
-    from app.clients.users import UserStore
     from app.clients.watchers import WatcherStore
     from app.entities.users import User
     from app.services.activity import ActivityService
@@ -25,7 +24,6 @@ class WatcherService:
         self,
         watcher_store: WatcherStore,
         repository_store: RepositoryStore,
-        user_store: UserStore,
         activity_service: ActivityService,
     ) -> None:
         """Initialize the watcher service.
@@ -33,26 +31,24 @@ class WatcherService:
         Args:
             watcher_store: Watcher store.
             repository_store: Repository store.
-            user_store: User store.
             activity_service: Service used to record activity.
         """
         self.watcher_store = watcher_store
         self.repository_store = repository_store
-        self.user_store = user_store
         self.activity_service = activity_service
 
-    async def watch(self, path: str, user: User) -> WatcherState:
+    async def watch(self, owner: str, name: str, user: User) -> WatcherState:
         """Watch a repository.
 
         Args:
-            path: Repository path.
+            owner: Owner name.
+            name: Repository name.
             user: The current user.
 
         Returns:
             The updated watcher state.
         """
-        repo_path = normalize_repo_path(path)
-        repository = await ensure_repository(self.repository_store, repo_path, user)
+        repository = await ensure_repository(self.repository_store, owner, name)
         existing = await self.watcher_store.get_by_user_and_repo(user.id, repository.id)
         if existing is None:
             await self.watcher_store.add(Watcher(user_id=user.id, repo_id=repository.id))
@@ -65,18 +61,18 @@ class WatcherService:
             )
         return WatcherState(is_watching=True, watchers_count=await self.watcher_store.count_by_repo(repository.id))
 
-    async def unwatch(self, path: str, user: User) -> WatcherState:
+    async def unwatch(self, owner: str, name: str, user: User) -> WatcherState:
         """Stop watching a repository.
 
         Args:
-            path: Repository path.
+            owner: Owner name.
+            name: Repository name.
             user: The current user.
 
         Returns:
             The updated watcher state.
         """
-        repo_path = normalize_repo_path(path)
-        repository = await self.repository_store.get_by_path(repo_path)
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
         if repository is None:
             return WatcherState(is_watching=False, watchers_count=0)
         existing = await self.watcher_store.get_by_user_and_repo(user.id, repository.id)
@@ -84,18 +80,18 @@ class WatcherService:
             await self.watcher_store.delete(existing)
         return WatcherState(is_watching=False, watchers_count=await self.watcher_store.count_by_repo(repository.id))
 
-    async def state(self, path: str, user: User) -> WatcherState:
+    async def state(self, owner: str, name: str, user: User) -> WatcherState:
         """Get the current user's watcher state for a repository.
 
         Args:
-            path: Repository path.
+            owner: Owner name.
+            name: Repository name.
             user: The current user.
 
         Returns:
             The watcher state.
         """
-        repo_path = normalize_repo_path(path)
-        repository = await self.repository_store.get_by_path(repo_path)
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
         if repository is None:
             return WatcherState(is_watching=False, watchers_count=0)
         existing = await self.watcher_store.get_by_user_and_repo(user.id, repository.id)
@@ -104,25 +100,21 @@ class WatcherService:
             watchers_count=await self.watcher_store.count_by_repo(repository.id),
         )
 
-    async def watchers(self, path: str, offset: int = 0, limit: int = 100) -> WatchersPublic:
+    async def watchers(self, owner: str, name: str, offset: int = 0, limit: int = 100) -> WatchersPublic:
         """List users watching a repository.
 
         Args:
-            path: Repository path.
+            owner: Owner name.
+            name: Repository name.
             offset: Pagination offset.
             limit: Maximum number of users.
 
         Returns:
             WatchersPublic with the watchers.
         """
-        repo_path = normalize_repo_path(path)
-        repository = await self.repository_store.get_by_path(repo_path)
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
         if repository is None:
             return WatchersPublic(data=[], count=0)
         watchers = await self.watcher_store.list_by_repo(repository.id, offset, limit)
-        users: list[UserPublic] = []
-        for watcher in watchers:
-            user = await self.user_store.get(watcher.user_id)
-            if user is not None:
-                users.append(UserPublic.model_validate(user))
+        users = [UserPublic.model_validate(watcher.user) for watcher in watchers if watcher.user is not None]
         return WatchersPublic(data=users, count=len(users))

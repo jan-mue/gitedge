@@ -21,14 +21,14 @@ class ReleasePublic(GitEdgeBaseModel):
     """Public release representation."""
 
     id: uuid.UUID
-    repo_path: str
+    repo_owner: str
+    repo_name: str
     tag_name: str
     name: str | None = None
     body: str | None = None
     target_commitish: str = "main"
     is_draft: bool = False
     is_prerelease: bool = False
-    author_email: str | None = None
     author_username: str | None = None
     published_at: datetime | None = None
     created_at: datetime | None = None

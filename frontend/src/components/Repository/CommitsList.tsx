@@ -23,12 +23,12 @@ const CommitsList = ({ owner, repo, branch }: CommitsListProps) => {
   const { data: commitsData } = useQuery({
     queryKey: ["commits", repoPath, ref],
     queryFn: async () =>
-      (await RepositoriesService.listCommits({ path: { path: repoPath }, query: { ref, limit: 50 } })).data,
+      (await RepositoriesService.listCommits({ path: { owner, repo }, query: { ref, limit: 50 } })).data,
   })
 
   const { data: branches } = useQuery({
     queryKey: ["branches", repoPath],
-    queryFn: async () => (await RepositoriesService.listBranches({ path: { path: repoPath } })).data,
+    queryFn: async () => (await RepositoriesService.listBranches({ path: { owner, repo } })).data,
     enabled: open,
   })
 

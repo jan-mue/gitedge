@@ -15,14 +15,14 @@ const WatchButton = ({ owner, repo }: WatchButtonProps) => {
 
   const { data: state } = useQuery({
     queryKey: ["watch", repoPath],
-    queryFn: async () => (await WatchersService.getWatchState({ path: { path: repoPath } })).data,
+    queryFn: async () => (await WatchersService.getWatchState({ path: { owner, repo } })).data,
   })
 
   const mutation = useMutation({
     mutationFn: async () =>
       state?.is_watching
-        ? (await WatchersService.unwatchRepository({ path: { path: repoPath } })).data
-        : (await WatchersService.watchRepository({ path: { path: repoPath } })).data,
+        ? (await WatchersService.unwatchRepository({ path: { owner, repo } })).data
+        : (await WatchersService.watchRepository({ path: { owner, repo } })).data,
     onSuccess: (next) => queryClient.setQueryData(["watch", repoPath], next),
   })
 

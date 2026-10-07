@@ -30,7 +30,7 @@ const RepoStats = ({ owner, repo, gitRef, revision }: RepoStatsProps) => {
     queryFn: async () =>
       (
         await RepositoriesService.getRepositoryInfo({
-          path: { path: repoPath },
+          path: { owner, repo },
           query: { ref },
         })
       ).data,
@@ -38,7 +38,7 @@ const RepoStats = ({ owner, repo, gitRef, revision }: RepoStatsProps) => {
 
   const { data: branches } = useQuery({
     queryKey: ["branches", repoPath],
-    queryFn: async () => (await RepositoriesService.listBranches({ path: { path: repoPath } })).data,
+    queryFn: async () => (await RepositoriesService.listBranches({ path: { owner, repo } })).data,
     enabled: branchDropdownOpen,
   })
 

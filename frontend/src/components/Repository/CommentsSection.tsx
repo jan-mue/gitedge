@@ -21,13 +21,13 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
 
   const { data } = useQuery({
     queryKey: ["comments", repoPath, number],
-    queryFn: async () => (await CommentsService.listComments({ path: { path: repoPath, number } })).data,
+    queryFn: async () => (await CommentsService.listComments({ path: { owner, repo, number } })).data,
   })
 
   const mutation = useMutation({
     mutationFn: (commentBody: string) =>
       CommentsService.createComment({
-        path: { path: repoPath, number },
+        path: { owner, repo, number },
         body: { body: commentBody },
       }),
     onSuccess: () => {
@@ -55,9 +55,7 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
               data-testid={`comment-${comment.id}`}
             >
               <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-secondary/50 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  {comment.author_username ?? comment.author_email ?? "unknown"}
-                </span>
+                <span className="font-medium text-foreground">{comment.author_username ?? "unknown"}</span>
                 {comment.created_at && <span>commented {new Date(comment.created_at).toLocaleString()}</span>}
               </div>
               <p className="px-4 py-3 text-sm text-foreground whitespace-pre-wrap break-words">{comment.body}</p>

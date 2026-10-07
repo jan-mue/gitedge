@@ -45,32 +45,26 @@ const RepoExplorer = () => {
 
       {repositories.length > 0 ? (
         <div className="space-y-3">
-          {repositories.map((repo) => {
-            const cleaned = repo.path.replace(/\.git$/, "")
-            const slash = cleaned.indexOf("/")
-            const owner = slash === -1 ? "_" : cleaned.slice(0, slash)
-            const repoName = slash === -1 ? cleaned : cleaned.slice(slash + 1)
-            return (
-              <div
-                key={repo.path}
-                className="flex items-start gap-4 border border-border rounded-lg bg-card px-4 py-3"
-                data-testid={`explore-repo-${repo.name}`}
-              >
-                <GitBranch className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <RouterLink
-                    to="/$owner/$repo"
-                    params={{ owner, repo: repoName }}
-                    className="text-sm font-medium text-primary hover:underline"
-                  >
-                    {owner === "_" ? repo.name : `${owner}/${repo.name}`}
-                  </RouterLink>
-                  {repo.description && <p className="text-xs text-muted-foreground mt-1">{repo.description}</p>}
-                </div>
-                <StarButton owner={owner} repo={repoName} />
+          {repositories.map((repo) => (
+            <div
+              key={`${repo.owner}/${repo.name}`}
+              className="flex items-start gap-4 border border-border rounded-lg bg-card px-4 py-3"
+              data-testid={`explore-repo-${repo.name}`}
+            >
+              <GitBranch className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <RouterLink
+                  to="/$owner/$repo"
+                  params={{ owner: repo.owner, repo: repo.name }}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  {repo.owner}/{repo.name}
+                </RouterLink>
+                {repo.description && <p className="text-xs text-muted-foreground mt-1">{repo.description}</p>}
               </div>
-            )
-          })}
+              <StarButton owner={repo.owner} repo={repo.name} />
+            </div>
+          ))}
         </div>
       ) : (
         <div className="py-12 text-center text-sm text-muted-foreground">No repositories found.</div>

@@ -13,6 +13,7 @@ from app.schemas.users import UserCreate, UserPublic, UserUpdate, UserUpdateMe
 from app.utils.security import get_password_hash, verify_password
 
 if TYPE_CHECKING:
+    from app.clients.organizations import OrganizationStore
     from app.clients.users import UserStore
 
 # Dummy hash to use for timing attack prevention when user is not found
@@ -23,13 +24,30 @@ DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$MjQyZWE1MzBjYjJlZTI0Yw$YTU4NGM5ZTZm
 class CrudService:
     """Service for CRUD operations on users."""
 
-    def __init__(self, user_store: UserStore) -> None:
+    def __init__(self, user_store: UserStore, organization_store: OrganizationStore | None = None) -> None:
         """Initialize the CRUD service.
 
         Args:
             user_store: Store for user database operations.
+            organization_store: Optional organization store used to keep the owner namespace unique.
         """
         self.user_store = user_store
+        self.organization_store = organization_store
+
+    async def _owner_name_taken(self, name: str, *, exclude_user_id: uuid.UUID | None = None) -> bool:
+        """Check whether an owner name is already used by a user or organization.
+
+        Args:
+            name: The candidate owner name.
+            exclude_user_id: A user id to ignore (when updating that user).
+
+        Returns:
+            True if the name is taken by another user or an organization.
+        """
+        existing = await self.user_store.get_by_name(name)
+        if existing is not None and existing.id != exclude_user_id:
+            return True
+        return self.organization_store is not None and await self.organization_store.get_by_name(name) is not None
 
     async def create_user(self, user_create: UserCreate) -> UserPublic:
         """Create a new user.
@@ -40,14 +58,15 @@ class CrudService:
         Returns:
             The created user's public data.
         """
-        username = user_create.username or self._slug_from_email(user_create.email)
-        if await self.user_store.get_by_username(username) is not None:
-            username = f"{username}-{uuid.uuid4().hex[:6]}"
+        name = user_create.name or self._slug_from_email(user_create.email)
+        if await self._owner_name_taken(name):
+            name = f"{name}-{uuid.uuid4().hex[:6]}"
 
         user = User(
-            username=username,
+            name=name,
+            lower_name=name.lower(),
+            display_name=user_create.display_name,
             email=user_create.email,
-            full_name=user_create.full_name,
             is_superuser=user_create.is_superuser,
             is_active=user_create.is_active,
             hashed_password=get_password_hash(user_create.password),
@@ -57,7 +76,7 @@ class CrudService:
 
     @staticmethod
     def _slug_from_email(email: str) -> str:
-        """Derive a username slug from an email address.
+        """Derive a name slug from an email address.
 
         Args:
             email: The user's email address.
@@ -112,10 +131,10 @@ class CrudService:
             password = user_data.pop("password")
             hashed_password = get_password_hash(password)
             user_data["hashed_password"] = hashed_password
-        if user_data.get("username"):
-            existing = await self.user_store.get_by_username(user_data["username"])
-            if existing is not None and existing.id != db_user.id:
-                raise HTTPException(status_code=409, detail="User with this username already exists")
+        if user_data.get("name"):
+            if await self._owner_name_taken(user_data["name"], exclude_user_id=db_user.id):
+                raise HTTPException(status_code=409, detail="User with this name already exists")
+            user_data["lower_name"] = user_data["name"].lower()
         await self.user_store.update(db_user, user_data)
         return UserPublic.model_validate(db_user)
 

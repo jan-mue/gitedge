@@ -137,11 +137,19 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO "user" (id, username, email, is_active, is_superuser, full_name, hashed_password)
-                    VALUES (%s, %s, %s, True, True, 'Admin User', %s)
+                    INSERT INTO principal (id, name, lower_name, display_name, type)
+                    VALUES (%s, %s, %s, 'Admin User', 'user')
+                    ON CONFLICT (lower_name) DO NOTHING
+                """,
+                    (user_id, username, username.lower()),
+                )
+                cur.execute(
+                    """
+                    INSERT INTO "user" (id, email, is_active, is_superuser, hashed_password)
+                    VALUES (%s, %s, True, True, %s)
                     ON CONFLICT (email) DO NOTHING
                 """,
-                    (user_id, username, "admin@example.com", hashed_password),
+                    (user_id, "admin@example.com", hashed_password),
                 )
             conn.commit()
 
@@ -327,7 +335,7 @@ def create_user_via_api(api_base_url: str, email: str, password: str) -> dict[st
             "email": email,
             "password": password,
             "is_verified": True,
-            "full_name": "Test User",
+            "display_name": "Test User",
         }
     ).encode("utf-8")
 

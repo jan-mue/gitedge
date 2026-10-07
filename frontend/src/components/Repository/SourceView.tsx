@@ -28,7 +28,7 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
   } = useQuery({
     queryKey: ["tree", repoPath, refName, path],
     queryFn: async () =>
-      (await RepositoriesService.getTree({ path: { path: repoPath }, query: { ref: refName, tree_path: path } })).data,
+      (await RepositoriesService.getTree({ path: { owner, repo }, query: { ref: refName, tree_path: path } })).data,
     retry: false,
   })
 
@@ -37,7 +37,7 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
   const { data: blob } = useQuery({
     queryKey: ["blob", repoPath, refName, path],
     queryFn: async () =>
-      (await RepositoriesService.getBlob({ path: { path: repoPath }, query: { ref: refName, file_path: path } })).data,
+      (await RepositoriesService.getBlob({ path: { owner, repo }, query: { ref: refName, file_path: path } })).data,
     retry: false,
     enabled: isFile,
   })
@@ -45,14 +45,13 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
   const { data: repoInfo } = useQuery({
     queryKey: ["repoInfo", repoPath, refName],
     queryFn: async () =>
-      (await RepositoriesService.getRepositoryInfo({ path: { path: repoPath }, query: { ref: refName } })).data,
+      (await RepositoriesService.getRepositoryInfo({ path: { owner, repo }, query: { ref: refName } })).data,
   })
 
   const { data: readme } = useQuery({
     queryKey: ["readme", repoPath, refName, path],
     queryFn: async () =>
-      (await RepositoriesService.getReadme({ path: { path: repoPath }, query: { ref: refName, tree_path: path } }))
-        .data,
+      (await RepositoriesService.getReadme({ path: { owner, repo }, query: { ref: refName, tree_path: path } })).data,
     retry: false,
     enabled: Boolean(tree),
   })

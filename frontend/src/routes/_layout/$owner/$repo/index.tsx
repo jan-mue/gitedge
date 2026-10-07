@@ -14,7 +14,7 @@ function RepositoryIndexRedirect() {
 
   const { data } = useQuery({
     queryKey: ["repoInfo", repoPath],
-    queryFn: async () => (await RepositoriesService.getRepositoryInfo({ path: { path: repoPath } })).data,
+    queryFn: async () => (await RepositoriesService.getRepositoryInfo({ path: { owner, repo } })).data,
   })
 
   if (!data) {

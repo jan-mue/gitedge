@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.issues import Issue, IssueState
 from app.schemas.repositories import IssueCreate, IssuePublic, IssuesListPublic, IssueUpdate
-from app.services.repositories import ensure_repository, normalize_repo_path
+from app.services.repositories import ensure_repository
 
 if TYPE_CHECKING:
     from app.clients.issues import IssueStore
@@ -39,18 +39,18 @@ class IssueService:
         self.repository_store = repository_store
         self.activity_service = activity_service
 
-    async def list_issues(self, path: str, state: str) -> IssuesListPublic:
+    async def list_issues(self, owner: str, name: str, state: str) -> IssuesListPublic:
         """List issues for a repository.
 
         Args:
-            path: Repository path.
+            owner: Owner name.
+            name: Repository name.
             state: Filter by state (open, closed, all).
 
         Returns:
             IssuesListPublic with the issues and counts.
         """
-        repo_path = normalize_repo_path(path)
-        repository = await self.repository_store.get_by_path(repo_path)
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
         if repository is None:
             return IssuesListPublic(data=[], count=0, open_count=0, closed_count=0)
 
@@ -58,25 +58,25 @@ class IssueService:
         issues = await self.issue_store.list_by_repo(repository.id, filter_state)
 
         return IssuesListPublic(
-            data=[self._to_public(issue, repo_path) for issue in issues],
+            data=[self._to_public(issue, owner, name) for issue in issues],
             count=len(issues),
             open_count=await self.issue_store.count_by_state(repository.id, IssueState.OPEN),
             closed_count=await self.issue_store.count_by_state(repository.id, IssueState.CLOSED),
         )
 
-    async def create_issue(self, path: str, body: IssueCreate, current_user: User) -> IssuePublic:
+    async def create_issue(self, owner: str, name: str, body: IssueCreate, current_user: User) -> IssuePublic:
         """Create a new issue.
 
         Args:
-            path: Repository path.
+            owner: Owner name.
+            name: Repository name.
             body: Issue creation data.
             current_user: The authenticated user.
 
         Returns:
             The created issue.
         """
-        repo_path = normalize_repo_path(path)
-        repository = await ensure_repository(self.repository_store, repo_path, current_user)
+        repository = await ensure_repository(self.repository_store, owner, name)
 
         issue = Issue(
             repo_id=repository.id,
@@ -84,9 +84,10 @@ class IssueService:
             title=body.title,
             body=body.body,
             state=IssueState.OPEN,
-            author_email=current_user.email,
+            author_id=current_user.id,
         )
         await self.issue_store.add(issue)
+        issue.author = current_user
 
         if self.activity_service is not None:
             await self.activity_service.record(
@@ -98,13 +99,14 @@ class IssueService:
                 target_number=issue.number,
             )
 
-        return self._to_public(issue, repo_path)
+        return self._to_public(issue, owner, name)
 
-    async def get_issue(self, path: str, number: int) -> IssuePublic:
+    async def get_issue(self, owner: str, name: str, number: int) -> IssuePublic:
         """Get a single issue by number.
 
         Args:
-            path: Repository path.
+            owner: Owner name.
+            name: Repository name.
             number: Issue number.
 
         Returns:
@@ -113,17 +115,20 @@ class IssueService:
         Raises:
             HTTPException: If the issue is not found.
         """
-        repo_path = normalize_repo_path(path)
-        issue = await self._find_issue(repo_path, number)
-        return self._to_public(issue, repo_path)
+        issue = await self._find_issue(owner, name, number)
+        return self._to_public(issue, owner, name)
 
-    async def update_issue(self, path: str, number: int, body: IssueUpdate) -> IssuePublic:
+    async def update_issue(
+        self, owner: str, name: str, number: int, body: IssueUpdate, current_user: User
+    ) -> IssuePublic:
         """Update an issue.
 
         Args:
-            path: Repository path.
+            owner: Owner name.
+            name: Repository name.
             number: Issue number.
             body: Fields to update.
+            current_user: The authenticated user.
 
         Returns:
             The updated issue.
@@ -131,8 +136,7 @@ class IssueService:
         Raises:
             HTTPException: If the issue is not found or the state is invalid.
         """
-        repo_path = normalize_repo_path(path)
-        issue = await self._find_issue(repo_path, number)
+        issue = await self._find_issue(owner, name, number)
 
         if body.title is not None:
             issue.title = body.title
@@ -148,9 +152,9 @@ class IssueService:
 
         if self.activity_service is not None and body.state is not None:
             kind = ActivityKind.ISSUE_CLOSE if body.state == IssueState.CLOSED else ActivityKind.ISSUE_REOPEN
-            repository = await self.repository_store.get_by_path(repo_path)
+            repository = await self.repository_store.get_by_owner_and_name(owner, name)
             await self.activity_service.record(
-                actor=None,
+                actor=current_user,
                 repo=repository,
                 kind=kind,
                 title=issue.title,
@@ -158,13 +162,14 @@ class IssueService:
                 target_number=issue.number,
             )
 
-        return self._to_public(issue, repo_path)
+        return self._to_public(issue, owner, name)
 
-    async def _find_issue(self, repo_path: str, number: int) -> Issue:
-        """Find an issue by repository path and number.
+    async def _find_issue(self, owner: str, name: str, number: int) -> Issue:
+        """Find an issue by repository and number.
 
         Args:
-            repo_path: Normalized repository path.
+            owner: Owner name.
+            name: Repository name.
             number: Issue number.
 
         Returns:
@@ -173,7 +178,7 @@ class IssueService:
         Raises:
             HTTPException: If the repository or issue is not found.
         """
-        repository = await self.repository_store.get_by_path(repo_path)
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
         if repository is None:
             raise HTTPException(status_code=404, detail="Issue not found")
 
@@ -183,24 +188,26 @@ class IssueService:
         return issue
 
     @staticmethod
-    def _to_public(issue: Issue, repo_path: str) -> IssuePublic:
+    def _to_public(issue: Issue, owner: str, name: str) -> IssuePublic:
         """Convert an issue entity to its public representation.
 
         Args:
-            issue: The issue entity.
-            repo_path: The repository path.
+            issue: The issue entity (with its author loaded).
+            owner: Owner name.
+            name: Repository name.
 
         Returns:
             The public issue representation.
         """
         return IssuePublic(
             id=issue.id,
-            repo_path=repo_path,
+            repo_owner=owner,
+            repo_name=name,
             number=issue.number,
             title=issue.title,
             body=issue.body,
             state=issue.state,
-            author_email=issue.author_email,
+            author_username=issue.author.name if issue.author is not None else None,
             created_at=issue.created_at,
             updated_at=issue.updated_at,
         )

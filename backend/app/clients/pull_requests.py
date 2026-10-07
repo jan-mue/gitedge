@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.issues import Issue, IssueState
@@ -55,12 +56,14 @@ class SQLPullRequestStore(PullRequestStore, SQLStore[PullRequest]):
     async def get_by_number(self, repo_id: uuid.UUID, number: int) -> PullRequest | None:
         """Get a pull request by repository id and number."""
         return await self.db.scalar(
-            select(PullRequest).where(PullRequest.repo_id == repo_id, PullRequest.number == number)
+            select(PullRequest)
+            .options(selectinload(PullRequest.author))
+            .where(PullRequest.repo_id == repo_id, PullRequest.number == number)
         )
 
     async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[PullRequest]:
         """List pull requests for a repository, newest first."""
-        stmt = select(PullRequest).where(PullRequest.repo_id == repo_id)
+        stmt = select(PullRequest).options(selectinload(PullRequest.author)).where(PullRequest.repo_id == repo_id)
         if state is not None:
             stmt = stmt.where(PullRequest.state == state)
         stmt = stmt.order_by(PullRequest.number.desc())

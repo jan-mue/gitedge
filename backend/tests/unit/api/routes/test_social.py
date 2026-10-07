@@ -13,11 +13,13 @@ if TYPE_CHECKING:
 
     from tests.unit.utils.fakes import FakeStores
 
-REPO_PATH = "owner/repo.git"
-STAR_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/star"
-WATCH_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/watch"
-STARGAZERS_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/stargazers"
-WATCHERS_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/watchers"
+REPO_OWNER = settings.FIRST_SUPERUSER.split("@")[0]
+REPO_NAME = "repo"
+REPO_URL = f"{settings.API_V1_STR}/repositories/{REPO_OWNER}/{REPO_NAME}"
+STAR_URL = f"{REPO_URL}/star"
+WATCH_URL = f"{REPO_URL}/watch"
+STARGAZERS_URL = f"{REPO_URL}/stargazers"
+WATCHERS_URL = f"{REPO_URL}/watchers"
 STARRED_URL = f"{settings.API_V1_STR}/users/me/starred"
 
 
@@ -66,7 +68,7 @@ def test_list_starred_repositories(client: TestClient, superuser_token_headers: 
     assert r.status_code == 200
     payload = r.json()
     assert payload["count"] == 1
-    assert payload["data"][0]["path"] == REPO_PATH
+    assert payload["data"][0]["name"] == REPO_NAME
 
 
 def test_watch_and_unwatch_repository(

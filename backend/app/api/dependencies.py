@@ -19,6 +19,7 @@ from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClie
 from app.clients.comments import CommentStore, SQLCommentStore
 from app.clients.email import EmailClient, SMTPClient
 from app.clients.issues import IssueStore, SQLIssueStore
+from app.clients.organizations import OrganizationStore, SQLOrganizationStore
 from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
 from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClient
 from app.clients.releases import ReleaseStore, SQLReleaseStore
@@ -35,6 +36,7 @@ from app.services.comments import CommentService
 from app.services.crud import CrudService
 from app.services.forks import ForkService
 from app.services.issues import IssueService
+from app.services.organizations import OrganizationService
 from app.services.pull_requests import PullRequestService
 from app.services.releases import ReleaseService
 from app.services.repositories import RepositoryService
@@ -100,6 +102,21 @@ def get_repository_store(session: SessionDep) -> RepositoryStore:
 RepositoryStoreDep = Annotated[RepositoryStore, Depends(get_repository_store)]
 
 
+def get_organization_store(session: SessionDep) -> OrganizationStore:
+    """Get organization store dependency.
+
+    Args:
+        session: SQLAlchemy session.
+
+    Returns:
+        Organization store instance.
+    """
+    return SQLOrganizationStore(session)
+
+
+OrganizationStoreDep = Annotated[OrganizationStore, Depends(get_organization_store)]
+
+
 async def get_current_user(user_store: UserStoreDep, token: TokenDep) -> User:
     """Get the current authenticated user.
 
@@ -128,9 +145,12 @@ async def get_current_user(user_store: UserStoreDep, token: TokenDep) -> User:
     user = await user_store.get(token_data.sub)
     if not user:
         logger.error("User not found for id: %s", token_data.sub)
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
     if not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
     return user
 
 
@@ -154,16 +174,17 @@ def get_current_active_superuser(current_user: CurrentUser) -> User:
     return current_user
 
 
-def get_crud_service(user_store: UserStoreDep) -> CrudService:
+def get_crud_service(user_store: UserStoreDep, organization_store: OrganizationStoreDep) -> CrudService:
     """Get CRUD service dependency.
 
     Args:
         user_store: User store.
+        organization_store: Organization store.
 
     Returns:
         CRUD service instance.
     """
-    return CrudService(user_store)
+    return CrudService(user_store, organization_store)
 
 
 CrudServiceDep = Annotated[CrudService, Depends(get_crud_service)]
@@ -379,7 +400,6 @@ ActivityStoreDep = Annotated[ActivityStore, Depends(get_activity_store)]
 def get_activity_service(
     activity_store: ActivityStoreDep,
     repository_store: RepositoryStoreDep,
-    user_store: UserStoreDep,
     star_store: StarStoreDep,
 ) -> ActivityService:
     """Get the activity service dependency.
@@ -387,13 +407,12 @@ def get_activity_service(
     Args:
         activity_store: Activity store dependency.
         repository_store: Repository store dependency.
-        user_store: User store dependency.
         star_store: Star store dependency.
 
     Returns:
         Activity service instance.
     """
-    return ActivityService(activity_store, repository_store, user_store, star_store)
+    return ActivityService(activity_store, repository_store, star_store)
 
 
 ActivityServiceDep = Annotated[ActivityService, Depends(get_activity_service)]
@@ -446,7 +465,6 @@ PullRequestServiceDep = Annotated[PullRequestService, Depends(get_pull_request_s
 def get_star_service(
     star_store: StarStoreDep,
     repository_store: RepositoryStoreDep,
-    user_store: UserStoreDep,
     activity_service: ActivityServiceDep,
 ) -> StarService:
     """Get the star service dependency.
@@ -454,13 +472,12 @@ def get_star_service(
     Args:
         star_store: Star store dependency.
         repository_store: Repository store dependency.
-        user_store: User store dependency.
         activity_service: Activity service dependency.
 
     Returns:
         Star service instance.
     """
-    return StarService(star_store, repository_store, user_store, activity_service)
+    return StarService(star_store, repository_store, activity_service)
 
 
 StarServiceDep = Annotated[StarService, Depends(get_star_service)]
@@ -469,7 +486,6 @@ StarServiceDep = Annotated[StarService, Depends(get_star_service)]
 def get_watcher_service(
     watcher_store: WatcherStoreDep,
     repository_store: RepositoryStoreDep,
-    user_store: UserStoreDep,
     activity_service: ActivityServiceDep,
 ) -> WatcherService:
     """Get the watcher service dependency.
@@ -477,13 +493,12 @@ def get_watcher_service(
     Args:
         watcher_store: Watcher store dependency.
         repository_store: Repository store dependency.
-        user_store: User store dependency.
         activity_service: Activity service dependency.
 
     Returns:
         Watcher service instance.
     """
-    return WatcherService(watcher_store, repository_store, user_store, activity_service)
+    return WatcherService(watcher_store, repository_store, activity_service)
 
 
 WatcherServiceDep = Annotated[WatcherService, Depends(get_watcher_service)]
@@ -495,7 +510,6 @@ def get_comment_service(
     issue_store: IssueStoreDep,
     pull_request_store: PullRequestStoreDep,
     repository_store: RepositoryStoreDep,
-    user_store: UserStoreDep,
     activity_service: ActivityServiceDep,
 ) -> CommentService:
     """Get the comment service dependency.
@@ -505,7 +519,6 @@ def get_comment_service(
         issue_store: Issue store dependency.
         pull_request_store: Pull request store dependency.
         repository_store: Repository store dependency.
-        user_store: User store dependency.
         activity_service: Activity service dependency.
 
     Returns:
@@ -516,7 +529,6 @@ def get_comment_service(
         issue_store=issue_store,
         pull_request_store=pull_request_store,
         repository_store=repository_store,
-        user_store=user_store,
         activity_service=activity_service,
     )
 
@@ -527,7 +539,6 @@ CommentServiceDep = Annotated[CommentService, Depends(get_comment_service)]
 def get_release_service(
     release_store: ReleaseStoreDep,
     repository_store: RepositoryStoreDep,
-    user_store: UserStoreDep,
     activity_service: ActivityServiceDep,
 ) -> ReleaseService:
     """Get the release service dependency.
@@ -535,13 +546,12 @@ def get_release_service(
     Args:
         release_store: Release store dependency.
         repository_store: Repository store dependency.
-        user_store: User store dependency.
         activity_service: Activity service dependency.
 
     Returns:
         Release service instance.
     """
-    return ReleaseService(release_store, repository_store, user_store, activity_service)
+    return ReleaseService(release_store, repository_store, activity_service)
 
 
 ReleaseServiceDep = Annotated[ReleaseService, Depends(get_release_service)]
@@ -568,3 +578,22 @@ def get_fork_service(
 
 
 ForkServiceDep = Annotated[ForkService, Depends(get_fork_service)]
+
+
+def get_organization_service(
+    organization_store: OrganizationStoreDep,
+    user_store: UserStoreDep,
+) -> OrganizationService:
+    """Get the organization service dependency.
+
+    Args:
+        organization_store: Organization store dependency.
+        user_store: User store dependency.
+
+    Returns:
+        Organization service instance.
+    """
+    return OrganizationService(organization_store, user_store)
+
+
+OrganizationServiceDep = Annotated[OrganizationService, Depends(get_organization_service)]

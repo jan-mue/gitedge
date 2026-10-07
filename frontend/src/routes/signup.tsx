@@ -13,7 +13,7 @@ import { signupsEnabled } from "@/utils"
 const formSchema = z
   .object({
     email: z.email({ message: "Invalid email address" }),
-    full_name: z.string().min(1, { message: "Full Name is required" }),
+    display_name: z.string().min(1, { message: "Full Name is required" }),
     password: z
       .string()
       .min(1, { message: "Password is required" })
@@ -58,7 +58,7 @@ function SignUp() {
     criteriaMode: "all",
     defaultValues: {
       email: "",
-      full_name: "",
+      display_name: "",
       password: "",
       confirm_password: "",
     },
@@ -83,7 +83,7 @@ function SignUp() {
           <div className="grid gap-4">
             <FormField
               control={form.control}
-              name="full_name"
+              name="display_name"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>

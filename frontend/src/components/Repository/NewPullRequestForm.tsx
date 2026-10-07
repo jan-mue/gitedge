@@ -22,13 +22,13 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
 
   const { data: branches } = useQuery({
     queryKey: ["branches", repoPath],
-    queryFn: async () => (await RepositoriesService.listBranches({ path: { path: repoPath } })).data,
+    queryFn: async () => (await RepositoriesService.listBranches({ path: { owner, repo } })).data,
   })
 
   const createPRMutation = useMutation({
     mutationFn: () =>
       RepositoriesService.createPullRequest({
-        path: { path: repoPath },
+        path: { owner, repo },
         body: {
           title,
           body: body || null,

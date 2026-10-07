@@ -7,7 +7,7 @@ interface PeopleListProps {
 }
 
 const initials = (user: UserPublic) => {
-  const source = user.full_name || user.username || user.email
+  const source = user.display_name || user.name || user.email
   return source.slice(0, 1).toUpperCase()
 }
 
@@ -24,8 +24,8 @@ const PeopleList = ({ users, emptyText }: PeopleListProps) => {
             <AvatarFallback>{initials(user)}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{user.full_name || user.username}</p>
-            <p className="text-xs text-muted-foreground truncate">{user.username ?? user.email}</p>
+            <p className="text-sm font-medium text-foreground truncate">{user.display_name || user.name}</p>
+            <p className="text-xs text-muted-foreground truncate">{user.name ?? user.email}</p>
           </div>
         </div>
       ))}

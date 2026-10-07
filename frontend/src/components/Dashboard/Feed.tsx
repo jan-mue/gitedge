@@ -23,11 +23,9 @@ const kindAction: Record<string, string> = {
   release: "published release",
 }
 
-const toRepoPath = (repoPath: string | null | undefined) => repoPath?.replace(/\.git$/, "") ?? null
-
 const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
-  const repo = toRepoPath(activity.repo_path)
-  const [owner, repoName] = repo?.split("/") ?? []
+  const owner = activity.repo_owner
+  const repoName = activity.repo_name
   const isMerge = activity.kind === "pull_request_merge"
 
   return (
@@ -36,11 +34,11 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-foreground">
-              {(activity.actor_username ?? activity.actor_email ?? "?").slice(0, 1).toUpperCase()}
+              {(activity.actor_username ?? "?").slice(0, 1).toUpperCase()}
             </div>
             <div className="min-w-0">
               <p className="text-sm text-foreground">
-                <span className="font-semibold">{activity.actor_username ?? activity.actor_email ?? "Someone"}</span>{" "}
+                <span className="font-semibold">{activity.actor_username ?? "Someone"}</span>{" "}
                 <span className="text-muted-foreground">{kindAction[activity.kind] ?? activity.kind}</span>{" "}
                 {owner && repoName && (
                   <RouterLink
@@ -130,22 +128,19 @@ const Feed = () => {
               <h3 className="text-sm font-semibold text-foreground">Recently opened repositories</h3>
             </div>
             <div className="space-y-1 p-2">
-              {recentRepos.map((repo: Repository) => {
-                const [owner, repoName] = repo.path.replace(/\.git$/, "").split("/")
-                return (
-                  <RouterLink
-                    key={repo.path}
-                    to="/$owner/$repo"
-                    params={{ owner: owner === "_" ? "" : owner, repo: repoName ?? repo.name }}
-                    className="block rounded px-2 py-2 transition-colors hover:bg-accent/50"
-                  >
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {owner === "_" ? repo.name : `${owner}/${repo.name}`}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">{repo.description || "No description"}</p>
-                  </RouterLink>
-                )
-              })}
+              {recentRepos.map((repo: Repository) => (
+                <RouterLink
+                  key={`${repo.owner}/${repo.name}`}
+                  to="/$owner/$repo"
+                  params={{ owner: repo.owner, repo: repo.name }}
+                  className="block rounded px-2 py-2 transition-colors hover:bg-accent/50"
+                >
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {repo.owner}/{repo.name}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{repo.description || "No description"}</p>
+                </RouterLink>
+              ))}
               {recentRepos.length === 0 && (
                 <p className="px-2 py-3 text-xs text-muted-foreground">No repositories yet.</p>
               )}
@@ -157,27 +152,27 @@ const Feed = () => {
               <h3 className="text-sm font-semibold text-foreground">Recent pull requests</h3>
             </div>
             <div className="space-y-1.5 p-2">
-              {recentPulls.map((activity) => {
-                const repo = toRepoPath(activity.repo_path) ?? ""
-                const [owner, repoName] = repo.split("/")
-                return (
-                  <RouterLink
-                    key={activity.id}
-                    to="/$owner/$repo/pulls/$number"
-                    params={{ owner, repo: repoName, number: String(activity.target_number ?? 0) }}
-                    className="block rounded px-2 py-2 transition-colors hover:bg-accent/50"
-                  >
-                    <p className="text-xs text-muted-foreground">{kindAction[activity.kind] ?? activity.kind}</p>
-                    <p className="line-clamp-2 text-sm text-foreground">
-                      {activity.title} <span className="text-primary">#{activity.target_number}</span>
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {owner}/{repoName}
-                      {activity.created_at && ` · ${new Date(activity.created_at).toLocaleDateString()}`}
-                    </p>
-                  </RouterLink>
-                )
-              })}
+              {recentPulls.map((activity) => (
+                <RouterLink
+                  key={activity.id}
+                  to="/$owner/$repo/pulls/$number"
+                  params={{
+                    owner: activity.repo_owner ?? "",
+                    repo: activity.repo_name ?? "",
+                    number: String(activity.target_number ?? 0),
+                  }}
+                  className="block rounded px-2 py-2 transition-colors hover:bg-accent/50"
+                >
+                  <p className="text-xs text-muted-foreground">{kindAction[activity.kind] ?? activity.kind}</p>
+                  <p className="line-clamp-2 text-sm text-foreground">
+                    {activity.title} <span className="text-primary">#{activity.target_number}</span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {activity.repo_owner}/{activity.repo_name}
+                    {activity.created_at && ` · ${new Date(activity.created_at).toLocaleDateString()}`}
+                  </p>
+                </RouterLink>
+              ))}
               {recentPulls.length === 0 && (
                 <p className="px-2 py-3 text-xs text-muted-foreground">No pull requests yet.</p>
               )}
@@ -205,7 +200,7 @@ const Feed = () => {
                     </button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {user ? `Showing activity for ${user.username ?? user.email}` : "Showing activity"}
+                    {user ? `Showing activity for ${user.name}` : "Showing activity"}
                   </p>
                 </div>
               )}
@@ -232,37 +227,34 @@ const Feed = () => {
                 See more
               </RouterLink>
             </div>
-            {trending.map((repo: Repository, i: number) => {
-              const [owner, repoName] = repo.path.replace(/\.git$/, "").split("/")
-              return (
-                <div
-                  key={repo.path}
-                  className={`flex items-start justify-between gap-3 px-4 py-3 ${i < trending.length - 1 ? "border-b border-border" : ""}`}
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-accent text-[10px] font-bold text-accent-foreground">
-                        {repo.name.slice(0, 1).toUpperCase()}
-                      </div>
-                      <RouterLink
-                        to="/$owner/$repo"
-                        params={{ owner: owner === "_" ? "" : owner, repo: repoName ?? repo.name }}
-                        className="text-sm font-semibold text-primary hover:underline"
-                      >
-                        {owner === "_" ? repo.name : `${owner}/${repo.name}`}
-                      </RouterLink>
+            {trending.map((repo: Repository, i: number) => (
+              <div
+                key={`${repo.owner}/${repo.name}`}
+                className={`flex items-start justify-between gap-3 px-4 py-3 ${i < trending.length - 1 ? "border-b border-border" : ""}`}
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-accent text-[10px] font-bold text-accent-foreground">
+                      {repo.name.slice(0, 1).toUpperCase()}
                     </div>
-                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                      {repo.description || "No description"}
-                    </p>
-                    <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span>{repo.stars_count ?? 0} stars</span>
-                    </div>
+                    <RouterLink
+                      to="/$owner/$repo"
+                      params={{ owner: repo.owner, repo: repo.name }}
+                      className="text-sm font-semibold text-primary hover:underline"
+                    >
+                      {repo.owner}/{repo.name}
+                    </RouterLink>
                   </div>
-                  <StarButton owner={owner === "_" ? "" : owner} repo={repoName ?? repo.name} />
+                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                    {repo.description || "No description"}
+                  </p>
+                  <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>{repo.stars_count ?? 0} stars</span>
+                  </div>
                 </div>
-              )
-            })}
+                <StarButton owner={repo.owner} repo={repo.name} />
+              </div>
+            ))}
           </div>
         </main>
       </div>

@@ -9,11 +9,13 @@ from app.config import settings
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
-REPO_PATH = "owner/repo.git"
-ISSUES_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/issues"
+REPO_OWNER = settings.FIRST_SUPERUSER.split("@")[0]
+REPO_NAME = "repo"
+REPO_URL = f"{settings.API_V1_STR}/repositories/{REPO_OWNER}/{REPO_NAME}"
+ISSUES_URL = f"{REPO_URL}/issues"
 FEED_URL = f"{settings.API_V1_STR}/users/me/feed"
-ACTIVITY_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/activity"
-PROFILE_URL = f"{settings.API_V1_STR}/users/admin"
+ACTIVITY_URL = f"{REPO_URL}/activity"
+PROFILE_URL = f"{settings.API_V1_STR}/users/{REPO_OWNER}"
 PROFILE_REPOS_URL = f"{PROFILE_URL}/repositories"
 PROFILE_STARRED_URL = f"{PROFILE_URL}/starred"
 
@@ -30,7 +32,8 @@ def test_feed_contains_issue_activity(
     assert payload["count"] >= 1
     assert payload["data"][0]["kind"] == "issue_open"
     assert payload["data"][0]["title"] == "Feed issue"
-    assert payload["data"][0]["repo_path"] == REPO_PATH
+    assert payload["data"][0]["repo_owner"] == REPO_OWNER
+    assert payload["data"][0]["repo_name"] == REPO_NAME
 
 
 def test_repository_activity(
@@ -52,12 +55,12 @@ def test_profile_by_username(
 
     r = client.get(PROFILE_URL)
     assert r.status_code == 200
-    assert r.json()["username"] == "admin"
+    assert r.json()["name"] == REPO_OWNER
 
     repos = client.get(PROFILE_REPOS_URL)
     assert repos.status_code == 200
     assert repos.json()["count"] == 1
-    assert repos.json()["data"][0]["path"] == REPO_PATH
+    assert repos.json()["data"][0]["name"] == REPO_NAME
 
     starred = client.get(PROFILE_STARRED_URL)
     assert starred.status_code == 200

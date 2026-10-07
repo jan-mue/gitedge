@@ -20,7 +20,7 @@ def test_git_push_and_clone(app_url: str) -> None:
     Args:
         wrangler_dev_url: Base URL of the wrangler dev server.
     """
-    repo_name = "test/hello.git"
+    repo_name = "admin/hello.git"
     remote_url = f"{app_url}/api/v1/{repo_name}"
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -71,7 +71,7 @@ def test_git_push_to_new_branch(app_url: str) -> None:
     Args:
         wrangler_dev_url: Base URL of the wrangler dev server.
     """
-    repo_name = "test/branches.git"
+    repo_name = "admin/branches.git"
     remote_url = f"{app_url}/api/v1/{repo_name}"
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -114,7 +114,7 @@ def test_info_refs_endpoint(app_url: str) -> None:
     Args:
         wrangler_dev_url: Base URL of the wrangler dev server.
     """
-    repo_name = "test/info-refs.git"
+    repo_name = "admin/info-refs.git"
     remote_url = f"{app_url}/api/v1/{repo_name}"
 
     with tempfile.TemporaryDirectory() as tmpdir:

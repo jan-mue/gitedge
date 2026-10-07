@@ -9,11 +9,6 @@ from fastapi import HTTPException
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.repositories import Repository
 from app.schemas.social import ForkCreate, ForkPublic, ForksPublic
-from app.services.repositories import (
-    normalize_repo_path,
-    repository_name_from_path,
-    repository_owner_from_path,
-)
 
 if TYPE_CHECKING:
     from app.clients.repositories import RepositoryStore
@@ -46,11 +41,12 @@ class ForkService:
         self.activity_service = activity_service
         self.star_store = star_store
 
-    async def fork(self, path: str, body: ForkCreate, current_user: User) -> ForkPublic:
+    async def fork(self, owner: str, name: str, body: ForkCreate, current_user: User) -> ForkPublic:
         """Fork a repository.
 
         Args:
-            path: Source repository path.
+            owner: Source repository owner name.
+            name: Source repository name.
             body: Fork options.
             current_user: The authenticated user.
 
@@ -60,32 +56,31 @@ class ForkService:
         Raises:
             HTTPException: If the source is not found or the target already exists.
         """
-        source_path = normalize_repo_path(path)
-        source = await self.repository_store.get_by_path(source_path)
+        source = await self.repository_store.get_by_owner_and_name(owner, name)
         if source is None:
-            # Repositories pushed directly via Git have no metadata row yet.
-            # Ensure the Git repository exists before registering it.
-            await self.repository_service.get_repository(source_path)
-            source = Repository(name=repository_name_from_path(source_path), path=source_path)
-            await self.repository_store.add(source)
+            raise HTTPException(status_code=404, detail="Repository not found")
 
-        owner = body.owner or current_user.username or current_user.email.split("@")[0]
-        name = body.name or source.name
-        dest_path = normalize_repo_path(f"{owner}/{name}")
-        if await self.repository_store.get_by_path(dest_path) is not None:
+        dest_owner = body.owner or current_user.name
+        dest_name = body.name or source.name
+
+        resolved = await self.repository_store.resolve_owner(dest_owner)
+        if resolved is None:
+            raise HTTPException(status_code=404, detail="Owner not found")
+        owner_id = resolved[0]
+
+        if await self.repository_store.get_by_owner_and_name(dest_owner, dest_name) is not None:
             raise HTTPException(status_code=409, detail="A repository with that name already exists")
 
         fork = Repository(
-            name=name,
-            path=dest_path,
-            owner_id=current_user.id,
+            name=dest_name,
+            owner_id=owner_id,
             description=body.description or source.description,
             default_branch=source.default_branch,
             fork_of_id=source.id,
         )
         await self.repository_store.add(fork)
 
-        await self.repository_service.create_repository(owner, name)
+        await self.repository_service.create_repository(dest_owner, dest_name)
 
         await self.activity_service.record(
             actor=current_user,
@@ -97,19 +92,19 @@ class ForkService:
 
         return await self._to_public(fork)
 
-    async def list_forks(self, path: str, offset: int = 0, limit: int = 100) -> ForksPublic:
+    async def list_forks(self, owner: str, name: str, offset: int = 0, limit: int = 100) -> ForksPublic:
         """List forks of a repository.
 
         Args:
-            path: Repository path.
+            owner: Owner name.
+            name: Repository name.
             offset: Pagination offset.
             limit: Maximum number of forks.
 
         Returns:
             ForksPublic with the forks.
         """
-        source_path = normalize_repo_path(path)
-        source = await self.repository_store.get_by_path(source_path)
+        source = await self.repository_store.get_by_owner_and_name(owner, name)
         if source is None:
             return ForksPublic(data=[], count=0)
         forks = await self.repository_store.list_by_fork_of(source.id, offset, limit)
@@ -119,7 +114,7 @@ class ForkService:
         """Convert a fork entity to its public representation.
 
         Args:
-            fork: The fork repository entity.
+            fork: The fork repository entity (with its owner loaded).
 
         Returns:
             The public fork representation.
@@ -128,9 +123,8 @@ class ForkService:
         forks_count = await self.repository_store.count_by_fork_of(fork.id)
         return ForkPublic(
             id=fork.id,
-            path=fork.path,
             name=fork.name,
-            owner=repository_owner_from_path(fork.path),
+            owner=fork.owner.name if fork.owner is not None else None,
             description=fork.description,
             stars_count=stars_count,
             forks_count=forks_count,

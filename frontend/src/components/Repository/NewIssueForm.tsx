@@ -21,7 +21,7 @@ const NewIssueForm = ({ owner, repo }: NewIssueFormProps) => {
   const createIssueMutation = useMutation({
     mutationFn: () =>
       RepositoriesService.createIssue({
-        path: { path: repoPath },
+        path: { owner, repo },
         body: { title, body: body || null },
       }),
     onSuccess: () => {

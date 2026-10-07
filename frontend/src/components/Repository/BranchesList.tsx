@@ -13,12 +13,12 @@ const BranchesList = ({ owner, repo }: BranchesListProps) => {
 
   const { data: branches } = useQuery({
     queryKey: ["branches", repoPath],
-    queryFn: async () => (await RepositoriesService.listBranches({ path: { path: repoPath } })).data,
+    queryFn: async () => (await RepositoriesService.listBranches({ path: { owner, repo } })).data,
   })
 
   const { data: tagsData } = useQuery({
     queryKey: ["tags", repoPath],
-    queryFn: async () => (await ReleasesService.listTags({ path: { path: repoPath } })).data,
+    queryFn: async () => (await ReleasesService.listTags({ path: { owner, repo } })).data,
   })
 
   const tags = tagsData?.data ?? []

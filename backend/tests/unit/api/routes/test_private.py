@@ -17,7 +17,7 @@ async def test_create_user(client: TestClient, crud: CrudService) -> None:
         json={
             "email": "pollo@listo.com",
             "password": "password123",
-            "full_name": "Pollo Listo",
+            "display_name": "Pollo Listo",
         },
     )
 
@@ -29,4 +29,4 @@ async def test_create_user(client: TestClient, crud: CrudService) -> None:
 
     assert user
     assert user.email == "pollo@listo.com"
-    assert user.full_name == "Pollo Listo"
+    assert user.display_name == "Pollo Listo"

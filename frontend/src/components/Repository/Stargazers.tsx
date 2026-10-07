@@ -13,7 +13,7 @@ const Stargazers = ({ owner, repo }: StargazersProps) => {
 
   const { data } = useQuery({
     queryKey: ["stargazers", repoPath],
-    queryFn: async () => (await StarsService.listStargazers({ path: { path: repoPath } })).data,
+    queryFn: async () => (await StarsService.listStargazers({ path: { owner, repo } })).data,
   })
 
   return <PeopleList users={data?.data ?? []} emptyText="No stargazers yet." />

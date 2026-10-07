@@ -64,12 +64,12 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
 
   const { data: releasesData } = useQuery({
     queryKey: ["releases", repoPath],
-    queryFn: async () => (await ReleasesService.listReleases({ path: { path: repoPath } })).data,
+    queryFn: async () => (await ReleasesService.listReleases({ path: { owner, repo } })).data,
   })
 
   const { data: tagsData } = useQuery({
     queryKey: ["tags", repoPath],
-    queryFn: async () => (await ReleasesService.listTags({ path: { path: repoPath } })).data,
+    queryFn: async () => (await ReleasesService.listTags({ path: { owner, repo } })).data,
   })
 
   const form = useForm<FormData>({
@@ -82,7 +82,7 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
   const mutation = useMutation({
     mutationFn: (data: FormData) =>
       ReleasesService.createRelease({
-        path: { path: repoPath },
+        path: { owner, repo },
         body: {
           tag_name: data.tag_name,
           name: data.name || null,

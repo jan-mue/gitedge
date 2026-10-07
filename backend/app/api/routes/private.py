@@ -19,7 +19,7 @@ class PrivateUserCreate(GitEdgeBaseModel):
 
     email: str
     password: str
-    full_name: str
+    display_name: str
     is_verified: bool = False
 
 
@@ -36,9 +36,12 @@ async def create_user(user_in: PrivateUserCreate, user_store: UserStoreDep) -> U
     Returns:
         The created user public data.
     """
+    name = user_in.email.split("@", maxsplit=1)[0]
     user = User(
+        name=name,
+        lower_name=name.lower(),
+        display_name=user_in.display_name,
         email=user_in.email,
-        full_name=user_in.full_name,
         hashed_password=get_password_hash(user_in.password),
     )
 

@@ -2,11 +2,16 @@
 
 import uuid
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import UUID, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.entities.base import Base
+
+if TYPE_CHECKING:
+    from app.entities.repositories import Repository
+    from app.entities.users import User
 
 
 class ActivityKind(StrEnum):
@@ -40,10 +45,7 @@ class Activity(Base):
 
     __tablename__ = "activity"
 
-    actor_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("user.id"), nullable=True, index=True
-    )
-    actor_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    actor_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False, index=True)
     repo_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("repository.id"), nullable=True, index=True
     )
@@ -51,3 +53,6 @@ class Activity(Base):
     title: Mapped[str | None] = mapped_column(Text, nullable=True)
     target_type: Mapped[ActivityTargetType | None] = mapped_column(String(40), nullable=True)
     target_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    actor: Mapped["User"] = relationship(back_populates="activities")
+    repo: Mapped["Repository | None"] = relationship(back_populates="activities")

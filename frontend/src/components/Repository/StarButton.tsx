@@ -17,14 +17,14 @@ const StarButton = ({ owner, repo }: StarButtonProps) => {
 
   const { data: state } = useQuery({
     queryKey: ["star", repoPath],
-    queryFn: async () => (await StarsService.getStarState({ path: { path: repoPath } })).data,
+    queryFn: async () => (await StarsService.getStarState({ path: { owner, repo } })).data,
   })
 
   const mutation = useMutation({
     mutationFn: async () =>
       state?.is_starred
-        ? (await StarsService.unstarRepository({ path: { path: repoPath } })).data
-        : (await StarsService.starRepository({ path: { path: repoPath } })).data,
+        ? (await StarsService.unstarRepository({ path: { owner, repo } })).data
+        : (await StarsService.starRepository({ path: { owner, repo } })).data,
     onSuccess: (next) => queryClient.setQueryData(["star", repoPath], next),
   })
 

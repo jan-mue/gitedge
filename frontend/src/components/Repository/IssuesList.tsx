@@ -14,7 +14,7 @@ const IssuesList = ({ owner, repo }: IssuesListProps) => {
 
   const { data: issuesData } = useQuery({
     queryKey: ["issues", repoPath],
-    queryFn: async () => (await RepositoriesService.listIssues({ path: { path: repoPath } })).data,
+    queryFn: async () => (await RepositoriesService.listIssues({ path: { owner, repo } })).data,
   })
 
   const issues = issuesData?.data ?? []

@@ -11,8 +11,9 @@ if TYPE_CHECKING:
 
     from tests.unit.utils.fakes import FakeStores
 
-REPO_PATH = "owner/repo.git"
-RELEASES_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/releases"
+REPO_OWNER = settings.FIRST_SUPERUSER.split("@")[0]
+REPO_NAME = "repo"
+RELEASES_URL = f"{settings.API_V1_STR}/repositories/{REPO_OWNER}/{REPO_NAME}/releases"
 
 
 def test_create_and_list_releases(
@@ -29,7 +30,7 @@ def test_create_and_list_releases(
     release = r.json()
     assert release["tag_name"] == "v1.0.0"
     assert release["name"] == "First"
-    assert release["author_username"] == "admin"
+    assert release["author_username"] == REPO_OWNER
     assert len(fake_stores.releases.items) == 1
 
     r = client.get(RELEASES_URL)

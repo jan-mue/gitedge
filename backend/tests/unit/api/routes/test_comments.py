@@ -11,9 +11,11 @@ if TYPE_CHECKING:
 
     from tests.unit.utils.fakes import FakeStores
 
-REPO_PATH = "owner/repo.git"
-ISSUES_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/issues"
-PULLS_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/pulls"
+REPO_OWNER = settings.FIRST_SUPERUSER.split("@")[0]
+REPO_NAME = "repo"
+REPO_URL = f"{settings.API_V1_STR}/repositories/{REPO_OWNER}/{REPO_NAME}"
+ISSUES_URL = f"{REPO_URL}/issues"
+PULLS_URL = f"{REPO_URL}/pulls"
 COMMENTS_URL = f"{ISSUES_URL}/1/comments"
 
 
@@ -29,8 +31,7 @@ def test_create_and_list_issue_comment(
     comment = r.json()
     assert comment["body"] == "Hello there"
     assert comment["issue_number"] == 1
-    assert comment["author_email"] == settings.FIRST_SUPERUSER
-    assert comment["author_username"] == "admin"
+    assert comment["author_username"] == REPO_OWNER
     assert len(fake_stores.comments.items) == 1
 
     r = client.get(COMMENTS_URL)

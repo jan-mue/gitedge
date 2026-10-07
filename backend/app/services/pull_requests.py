@@ -17,7 +17,7 @@ from app.schemas.repositories import (
     PullRequestsListPublic,
     PullRequestUpdate,
 )
-from app.services.repositories import ensure_repository, normalize_repo_path
+from app.services.repositories import ensure_repository
 
 if TYPE_CHECKING:
     from app.clients.pull_requests import PullRequestStore
@@ -50,18 +50,18 @@ class PullRequestService:
         self.repository_service = repository_service
         self.activity_service = activity_service
 
-    async def list_pull_requests(self, path: str, state: str) -> PullRequestsListPublic:
+    async def list_pull_requests(self, owner: str, name: str, state: str) -> PullRequestsListPublic:
         """List pull requests for a repository.
 
         Args:
-            path: Repository path.
+            owner: Owner name.
+            name: Repository name.
             state: Filter by state (open, closed, merged, all).
 
         Returns:
             PullRequestsListPublic with the pull requests and counts.
         """
-        repo_path = normalize_repo_path(path)
-        repository = await self.repository_store.get_by_path(repo_path)
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
         if repository is None:
             return PullRequestsListPublic(data=[], count=0, open_count=0, closed_count=0)
 
@@ -69,7 +69,7 @@ class PullRequestService:
         pull_requests = await self.pull_request_store.list_by_repo(repository.id, filter_state)
 
         return PullRequestsListPublic(
-            data=[self._to_public(pr, repo_path) for pr in pull_requests],
+            data=[self._to_public(pr, owner, name) for pr in pull_requests],
             count=len(pull_requests),
             open_count=await self.pull_request_store.count_by_state(repository.id, IssueState.OPEN),
             closed_count=await self.pull_request_store.count_by_states(
@@ -77,19 +77,21 @@ class PullRequestService:
             ),
         )
 
-    async def create_pull_request(self, path: str, body: PullRequestCreate, current_user: User) -> PullRequestPublic:
+    async def create_pull_request(
+        self, owner: str, name: str, body: PullRequestCreate, current_user: User
+    ) -> PullRequestPublic:
         """Create a new pull request.
 
         Args:
-            path: Repository path.
+            owner: Owner name.
+            name: Repository name.
             body: Pull request creation data.
             current_user: The authenticated user.
 
         Returns:
             The created pull request.
         """
-        repo_path = normalize_repo_path(path)
-        repository = await ensure_repository(self.repository_store, repo_path, current_user)
+        repository = await ensure_repository(self.repository_store, owner, name)
 
         pull_request = PullRequest(
             repo_id=repository.id,
@@ -97,13 +99,14 @@ class PullRequestService:
             title=body.title,
             body=body.body,
             state=IssueState.OPEN,
-            author_email=current_user.email,
+            author_id=current_user.id,
             head_repo_id=repository.id,
             base_repo_id=repository.id,
             head_branch=body.head_branch,
             base_branch=body.base_branch,
         )
         await self.pull_request_store.add(pull_request)
+        pull_request.author = current_user
 
         if self.activity_service is not None:
             await self.activity_service.record(
@@ -115,13 +118,14 @@ class PullRequestService:
                 target_number=pull_request.number,
             )
 
-        return self._to_public(pull_request, repo_path)
+        return self._to_public(pull_request, owner, name)
 
-    async def get_pull_request(self, path: str, number: int) -> PullRequestPublic:
+    async def get_pull_request(self, owner: str, name: str, number: int) -> PullRequestPublic:
         """Get a single pull request by number.
 
         Args:
-            path: Repository path.
+            owner: Owner name.
+            name: Repository name.
             number: Pull request number.
 
         Returns:
@@ -130,15 +134,15 @@ class PullRequestService:
         Raises:
             HTTPException: If the pull request is not found.
         """
-        repo_path = normalize_repo_path(path)
-        pull_request = await self._find_pull_request(repo_path, number)
-        return self._to_public(pull_request, repo_path)
+        pull_request = await self._find_pull_request(owner, name, number)
+        return self._to_public(pull_request, owner, name)
 
-    async def get_pull_request_files(self, path: str, number: int) -> CompareResult:
+    async def get_pull_request_files(self, owner: str, name: str, number: int) -> CompareResult:
         """List the files changed between a pull request's base and head branches.
 
         Args:
-            path: Repository path.
+            owner: Owner name.
+            name: Repository name.
             number: Pull request number.
 
         Returns:
@@ -147,17 +151,20 @@ class PullRequestService:
         Raises:
             HTTPException: If the pull request is not found.
         """
-        repo_path = normalize_repo_path(path)
-        pull_request = await self._find_pull_request(repo_path, number)
-        return await self.repository_service.compare(repo_path, pull_request.base_branch, pull_request.head_branch)
+        pull_request = await self._find_pull_request(owner, name, number)
+        return await self.repository_service.compare(owner, name, pull_request.base_branch, pull_request.head_branch)
 
-    async def update_pull_request(self, path: str, number: int, body: PullRequestUpdate) -> PullRequestPublic:
+    async def update_pull_request(
+        self, owner: str, name: str, number: int, body: PullRequestUpdate, current_user: User
+    ) -> PullRequestPublic:
         """Update a pull request.
 
         Args:
-            path: Repository path.
+            owner: Owner name.
+            name: Repository name.
             number: Pull request number.
             body: Fields to update.
+            current_user: The authenticated user.
 
         Returns:
             The updated pull request.
@@ -165,8 +172,7 @@ class PullRequestService:
         Raises:
             HTTPException: If the pull request is not found or the state is invalid.
         """
-        repo_path = normalize_repo_path(path)
-        pull_request = await self._find_pull_request(repo_path, number)
+        pull_request = await self._find_pull_request(owner, name, number)
 
         if body.title is not None:
             pull_request.title = body.title
@@ -185,9 +191,9 @@ class PullRequestService:
                 IssueState.MERGED: ActivityKind.PULL_REQUEST_MERGE,
                 IssueState.CLOSED: ActivityKind.PULL_REQUEST_CLOSE,
             }.get(body.state, ActivityKind.PULL_REQUEST_REOPEN)
-            repository = await self.repository_store.get_by_path(repo_path)
+            repository = await self.repository_store.get_by_owner_and_name(owner, name)
             await self.activity_service.record(
-                actor=None,
+                actor=current_user,
                 repo=repository,
                 kind=kind,
                 title=pull_request.title,
@@ -195,13 +201,14 @@ class PullRequestService:
                 target_number=pull_request.number,
             )
 
-        return self._to_public(pull_request, repo_path)
+        return self._to_public(pull_request, owner, name)
 
-    async def _find_pull_request(self, repo_path: str, number: int) -> PullRequest:
-        """Find a pull request by repository path and number.
+    async def _find_pull_request(self, owner: str, name: str, number: int) -> PullRequest:
+        """Find a pull request by repository and number.
 
         Args:
-            repo_path: Normalized repository path.
+            owner: Owner name.
+            name: Repository name.
             number: Pull request number.
 
         Returns:
@@ -210,7 +217,7 @@ class PullRequestService:
         Raises:
             HTTPException: If the repository or pull request is not found.
         """
-        repository = await self.repository_store.get_by_path(repo_path)
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
         if repository is None:
             raise HTTPException(status_code=404, detail="Pull request not found")
 
@@ -220,26 +227,28 @@ class PullRequestService:
         return pull_request
 
     @staticmethod
-    def _to_public(pr: PullRequest, repo_path: str) -> PullRequestPublic:
+    def _to_public(pr: PullRequest, owner: str, name: str) -> PullRequestPublic:
         """Convert a pull request entity to its public representation.
 
         Args:
-            pr: The pull request entity.
-            repo_path: The repository path.
+            pr: The pull request entity (with its author loaded).
+            owner: Owner name.
+            name: Repository name.
 
         Returns:
             The public pull request representation.
         """
         return PullRequestPublic(
             id=pr.id,
-            repo_path=repo_path,
+            repo_owner=owner,
+            repo_name=name,
             number=pr.number,
             title=pr.title,
             body=pr.body,
             state=pr.state,
             head_branch=pr.head_branch,
             base_branch=pr.base_branch,
-            author_email=pr.author_email,
+            author_username=pr.author.name if pr.author is not None else None,
             merge_base=pr.merge_base,
             merged_commit_id=pr.merged_commit_id,
             has_merged=pr.has_merged,

@@ -73,7 +73,7 @@ const CommitDetail = () => {
 
   const { data: commit } = useQuery({
     queryKey: ["commit", repoPath, hash],
-    queryFn: async () => (await RepositoriesService.getCommit({ path: { path: repoPath, sha: hash } })).data,
+    queryFn: async () => (await RepositoriesService.getCommit({ path: { owner, repo, sha: hash } })).data,
   })
 
   if (!commit) {

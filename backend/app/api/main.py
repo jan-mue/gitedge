@@ -8,6 +8,7 @@ from app.api.routes import (
     forks,
     git,
     login,
+    organizations,
     private,
     profiles,
     releases,
@@ -23,6 +24,7 @@ api_router = APIRouter()
 api_router.include_router(login.router)
 api_router.include_router(users.router)
 api_router.include_router(git.router)
+api_router.include_router(organizations.router)
 api_router.include_router(stars.router)
 api_router.include_router(stars.user_router)
 api_router.include_router(watchers.router)

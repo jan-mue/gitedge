@@ -2,11 +2,16 @@
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import UUID, Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.entities.base import Base
+
+if TYPE_CHECKING:
+    from app.entities.repositories import Repository
+    from app.entities.users import User
 
 
 class Release(Base):
@@ -28,3 +33,6 @@ class Release(Base):
     is_draft: Mapped[bool] = mapped_column(Boolean, default=False)
     is_prerelease: Mapped[bool] = mapped_column(Boolean, default=False)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    repo: Mapped["Repository"] = relationship(back_populates="releases")
+    author: Mapped["User | None"] = relationship(back_populates="releases")

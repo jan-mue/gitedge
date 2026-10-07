@@ -6,14 +6,21 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.activity import Activity
+from app.entities.repositories import Repository
 
 if TYPE_CHECKING:
     import uuid
 
     from sqlalchemy.ext.asyncio import AsyncSession
+
+_ACTIVITY_OPTIONS = (
+    selectinload(Activity.actor),
+    selectinload(Activity.repo).selectinload(Repository.owner),
+)
 
 
 class ActivityStore(CrudStore[Activity], ABC):
@@ -46,7 +53,11 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
     async def list_recent(self, offset: int = 0, limit: int = 50) -> list[Activity]:
         """List recent activity across all repositories, newest first."""
         result = await self.db.scalars(
-            select(Activity).order_by(Activity.created_at.desc()).offset(offset).limit(limit)
+            select(Activity)
+            .options(*_ACTIVITY_OPTIONS)
+            .order_by(Activity.created_at.desc())
+            .offset(offset)
+            .limit(limit)
         )
         return list(result.all())
 
@@ -54,6 +65,7 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
         """List activity for a repository, newest first."""
         result = await self.db.scalars(
             select(Activity)
+            .options(*_ACTIVITY_OPTIONS)
             .where(Activity.repo_id == repo_id)
             .order_by(Activity.created_at.desc())
             .offset(offset)
@@ -67,6 +79,7 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
             return []
         result = await self.db.scalars(
             select(Activity)
+            .options(*_ACTIVITY_OPTIONS)
             .where(Activity.repo_id.in_(repo_ids))
             .order_by(Activity.created_at.desc())
             .offset(offset)

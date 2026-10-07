@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.comments import Comment
@@ -42,7 +43,10 @@ class SQLCommentStore(CommentStore, SQLStore[Comment]):
     async def list_by_issue(self, issue_id: uuid.UUID) -> list[Comment]:
         """List comments for an issue, oldest first."""
         result = await self.db.scalars(
-            select(Comment).where(Comment.issue_id == issue_id).order_by(Comment.created_at.asc())
+            select(Comment)
+            .options(selectinload(Comment.author))
+            .where(Comment.issue_id == issue_id)
+            .order_by(Comment.created_at.asc())
         )
         return list(result.all())
 

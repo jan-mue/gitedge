@@ -13,9 +13,9 @@ class ActivityPublic(GitEdgeBaseModel):
     id: uuid.UUID
     kind: ActivityKind
     title: str | None = None
-    actor_email: str | None = None
     actor_username: str | None = None
-    repo_path: str | None = None
+    repo_owner: str | None = None
+    repo_name: str | None = None
     target_type: ActivityTargetType | None = None
     target_number: int | None = None
     created_at: datetime | None = None

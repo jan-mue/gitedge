@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.releases import Release
@@ -41,7 +42,7 @@ class SQLReleaseStore(ReleaseStore, SQLStore[Release]):
 
     async def list_by_repo(self, repo_id: uuid.UUID, include_drafts: bool = False) -> list[Release]:
         """List releases for a repository, newest first."""
-        stmt = select(Release).where(Release.repo_id == repo_id)
+        stmt = select(Release).options(selectinload(Release.author)).where(Release.repo_id == repo_id)
         if not include_drafts:
             stmt = stmt.where(Release.is_draft.is_(False))
         stmt = stmt.order_by(Release.created_at.desc())
@@ -50,4 +51,8 @@ class SQLReleaseStore(ReleaseStore, SQLStore[Release]):
 
     async def get_by_tag(self, repo_id: uuid.UUID, tag_name: str) -> Release | None:
         """Get a release by repository id and tag name."""
-        return await self.db.scalar(select(Release).where(Release.repo_id == repo_id, Release.tag_name == tag_name))
+        return await self.db.scalar(
+            select(Release)
+            .options(selectinload(Release.author))
+            .where(Release.repo_id == repo_id, Release.tag_name == tag_name)
+        )

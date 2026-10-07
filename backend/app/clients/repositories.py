@@ -6,26 +6,33 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
+from app.entities.principals import Principal, PrincipalType
 from app.entities.repositories import Repository
 
 if TYPE_CHECKING:
     import uuid
 
     from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.sql.base import ExecutableOption
 
 
 class RepositoryStore(CrudStore[Repository], ABC):
     """Abstract repository store with additional repository-specific methods."""
 
     @abstractmethod
-    async def get_by_path(self, path: str) -> Repository | None:
-        """Get a repository by its path (e.g. 'owner/repo.git')."""
+    async def get_by_owner_and_name(self, owner: str, name: str) -> Repository | None:
+        """Get a repository by its owner name (user or organization) and name."""
+
+    @abstractmethod
+    async def resolve_owner(self, owner: str) -> tuple[uuid.UUID, PrincipalType] | None:
+        """Resolve an owner name to its principal id and type."""
 
     @abstractmethod
     async def get_by_owner(self, owner_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
-        """Get all repositories owned by a user."""
+        """Get all repositories owned by a principal."""
 
     @abstractmethod
     async def list_by_fork_of(self, fork_of_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
@@ -47,14 +54,50 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         """
         super().__init__(db, Repository)
 
-    async def get_by_path(self, path: str) -> Repository | None:
-        """Get a repository by its path."""
-        return await self.db.scalar(select(Repository).where(Repository.path == path))
+    @staticmethod
+    def _owner_options() -> tuple[ExecutableOption, ...]:
+        """Eager-load options for the repository owner (and fork parent)."""
+        return (
+            selectinload(Repository.owner),
+            selectinload(Repository.fork_of).selectinload(Repository.owner),
+        )
+
+    async def get(self, primary_key: uuid.UUID) -> Repository | None:
+        """Get a repository by primary key with its owner loaded."""
+        return await self.db.scalar(
+            select(Repository).options(*self._owner_options()).where(Repository.id == primary_key)
+        )
+
+    async def get_all(self, offset: int = 0, limit: int = 100) -> list[Repository]:
+        """Get all repositories with their owners loaded."""
+        result = await self.db.scalars(select(Repository).options(*self._owner_options()).offset(offset).limit(limit))
+        return list(result.all())
+
+    async def get_by_owner_and_name(self, owner: str, name: str) -> Repository | None:
+        """Get a repository by its owner name and name."""
+        stmt = (
+            select(Repository)
+            .options(*self._owner_options())
+            .join(Principal, Repository.owner_id == Principal.id)
+            .where(Principal.lower_name == owner.lower(), Repository.name == name)
+        )
+        return await self.db.scalar(stmt)
+
+    async def resolve_owner(self, owner: str) -> tuple[uuid.UUID, PrincipalType] | None:
+        """Resolve an owner name to its principal id and type."""
+        principal = await self.db.scalar(select(Principal).where(Principal.lower_name == owner.lower()))
+        if principal is None:
+            return None
+        return principal.id, principal.principal_type
 
     async def get_by_owner(self, owner_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
-        """Get all repositories owned by a user."""
+        """Get all repositories owned by a principal."""
         result = await self.db.scalars(
-            select(Repository).where(Repository.owner_id == owner_id).offset(offset).limit(limit)
+            select(Repository)
+            .options(*self._owner_options())
+            .where(Repository.owner_id == owner_id)
+            .offset(offset)
+            .limit(limit)
         )
         return list(result.all())
 
@@ -62,6 +105,7 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         """Get all repositories forked from a given repository."""
         result = await self.db.scalars(
             select(Repository)
+            .options(*self._owner_options())
             .where(Repository.fork_of_id == fork_of_id)
             .order_by(Repository.created_at.desc())
             .offset(offset)

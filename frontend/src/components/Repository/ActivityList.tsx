@@ -28,17 +28,15 @@ const ActivityList = ({ activities, emptyText = "No activity yet." }: ActivityLi
   return (
     <div className="space-y-2" data-testid="activity-list">
       {activities.map((activity) => {
-        const repo = activity.repo_path?.replace(/\.git$/, "")
-        const parts = repo?.split("/") ?? []
-        const owner = parts[0]
-        const repoName = parts.slice(1).join("/")
+        const owner = activity.repo_owner
+        const repoName = activity.repo_name
 
         return (
           <div key={activity.id} className="flex items-start gap-3 border border-border rounded-lg bg-card px-4 py-3">
             {kindIcon(activity.kind)}
             <div className="min-w-0 flex-1">
               <p className="text-sm text-foreground">
-                <span className="font-medium">{activity.actor_username ?? activity.actor_email ?? "Someone"}</span>{" "}
+                <span className="font-medium">{activity.actor_username ?? "Someone"}</span>{" "}
                 <span className="text-muted-foreground">{kindLabel(activity.kind).toLowerCase()}</span>
                 {activity.title && (
                   <>

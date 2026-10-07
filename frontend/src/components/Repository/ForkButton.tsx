@@ -56,11 +56,11 @@ const ForkButton = ({ owner, repo }: ForkButtonProps) => {
 
   const { data: forks } = useQuery({
     queryKey: ["forks", repoPath],
-    queryFn: async () => (await ForksService.listForks({ path: { path: repoPath } })).data,
+    queryFn: async () => (await ForksService.listForks({ path: { owner, repo } })).data,
   })
 
   const mutation = useMutation({
-    mutationFn: (data: FormData) => ForksService.forkRepository({ path: { path: repoPath }, body: data }),
+    mutationFn: (data: FormData) => ForksService.forkRepository({ path: { owner, repo }, body: data }),
     onSuccess: (response) => {
       const fork = response.data
       showSuccessToast("Repository forked successfully")

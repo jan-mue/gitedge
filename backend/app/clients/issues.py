@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.issues import Issue, IssueKind, IssueState
@@ -50,12 +51,18 @@ class SQLIssueStore(IssueStore, SQLStore[Issue]):
     async def get_by_number(self, repo_id: uuid.UUID, number: int) -> Issue | None:
         """Get an issue by repository id and number."""
         return await self.db.scalar(
-            select(Issue).where(Issue.repo_id == repo_id, Issue.number == number, Issue.kind == IssueKind.ISSUE)
+            select(Issue)
+            .options(selectinload(Issue.author))
+            .where(Issue.repo_id == repo_id, Issue.number == number, Issue.kind == IssueKind.ISSUE)
         )
 
     async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[Issue]:
         """List issues for a repository, newest first."""
-        stmt = select(Issue).where(Issue.repo_id == repo_id, Issue.kind == IssueKind.ISSUE)
+        stmt = (
+            select(Issue)
+            .options(selectinload(Issue.author))
+            .where(Issue.repo_id == repo_id, Issue.kind == IssueKind.ISSUE)
+        )
         if state is not None:
             stmt = stmt.where(Issue.state == state)
         stmt = stmt.order_by(Issue.number.desc())

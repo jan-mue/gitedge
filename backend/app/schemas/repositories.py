@@ -28,8 +28,7 @@ class Repository(GitEdgeBaseModel):
     """Repository schema."""
 
     name: str
-    path: str
-    owner: str | None = None
+    owner: str
     description: str | None = None
     default_branch: str = "main"
     is_private: bool = False
@@ -61,7 +60,6 @@ class TreeListing(GitEdgeBaseModel):
     """Directory listing for a repository path."""
 
     entries: list[TreeEntry]
-    repo_path: str
     tree_path: str
     ref: str
 
@@ -100,7 +98,6 @@ class RepositoryInfo(GitEdgeBaseModel):
     """Extended repository information with metadata."""
 
     name: str
-    path: str
     owner: str | None = None
     description: str | None = None
     is_private: bool = False
@@ -201,12 +198,13 @@ class IssuePublic(GitEdgeBaseModel):
     """Public issue representation."""
 
     id: uuid.UUID
-    repo_path: str
+    repo_owner: str
+    repo_name: str
     number: int
     title: str
     body: str | None = None
     state: IssueState
-    author_email: str | None = None
+    author_username: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -241,14 +239,15 @@ class PullRequestPublic(GitEdgeBaseModel):
     """Public pull request representation."""
 
     id: uuid.UUID
-    repo_path: str
+    repo_owner: str
+    repo_name: str
     number: int
     title: str
     body: str | None = None
     state: IssueState
     head_branch: str
     base_branch: str
-    author_email: str | None = None
+    author_username: str | None = None
     merge_base: str | None = None
     merged_commit_id: str | None = None
     has_merged: bool = False

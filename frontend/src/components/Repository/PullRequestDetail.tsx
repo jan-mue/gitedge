@@ -51,20 +51,19 @@ const PullRequestDetail = () => {
 
   const { data: pull } = useQuery({
     queryKey: ["pull", repoPath, prNumber],
-    queryFn: async () =>
-      (await RepositoriesService.getPullRequest({ path: { path: repoPath, number: prNumber } })).data,
+    queryFn: async () => (await RepositoriesService.getPullRequest({ path: { owner, repo, number: prNumber } })).data,
   })
 
   const { data: changes } = useQuery({
     queryKey: ["pull-files", repoPath, prNumber],
     queryFn: async () =>
-      (await RepositoriesService.getPullRequestFiles({ path: { path: repoPath, number: prNumber } })).data,
+      (await RepositoriesService.getPullRequestFiles({ path: { owner, repo, number: prNumber } })).data,
   })
 
   const mutation = useMutation({
     mutationFn: (state: IssueState) =>
       RepositoriesService.updatePullRequest({
-        path: { path: repoPath, number: prNumber },
+        path: { owner, repo, number: prNumber },
         body: { state },
       }),
     onSuccess: (response) => {
@@ -98,7 +97,7 @@ const PullRequestDetail = () => {
           {stateBadge(pull.state)}
         </div>
         <p className="text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">{pull.author_email ?? "unknown"}</span>
+          <span className="font-medium text-foreground">{pull.author_username ?? "unknown"}</span>
           {pull.created_at && ` opened ${new Date(pull.created_at).toLocaleString()}`}
           {" · "}
           <span className="font-mono text-foreground">{pull.head_branch}</span> &rarr;{" "}

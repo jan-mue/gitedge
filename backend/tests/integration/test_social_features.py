@@ -60,7 +60,7 @@ def _push_repo(
         extra_branches: Additional branches to create and push.
         tag: Optional tag to create and push.
     """
-    remote_url = f"{app_url}/api/v1/{repo_name}"
+    remote_url = f"{app_url}/{repo_name}"
 
     with tempfile.TemporaryDirectory() as tmpdir:
         source_dir = Path(tmpdir) / "source"
@@ -104,9 +104,9 @@ class TestStarAndWatch:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "social/starrepo.git")
+        _push_repo(app_url, "admin/starrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/social/starrepo")
+        page.goto(f"{app_url}/admin/starrepo")
 
         star_button = page.get_by_test_id("star-button").get_by_role("button")
         expect(star_button).to_have_text("Star")
@@ -127,9 +127,9 @@ class TestStarAndWatch:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "social/watchrepo.git")
+        _push_repo(app_url, "admin/watchrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/social/watchrepo")
+        page.goto(f"{app_url}/admin/watchrepo")
 
         watch_button = page.get_by_test_id("watch-button").get_by_role("button")
         expect(watch_button).to_have_text("Watch")
@@ -150,9 +150,9 @@ class TestFork:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "social/forkrepo.git")
+        _push_repo(app_url, "admin/forkrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/social/forkrepo")
+        page.goto(f"{app_url}/admin/forkrepo")
 
         page.get_by_test_id("fork-button").click()
         dialog = page.get_by_role("dialog", name="Fork repository")
@@ -176,10 +176,10 @@ class TestBranchesPage:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "social/branchesrepo.git", extra_branches=("develop",), tag="v1.0.0")
+        _push_repo(app_url, "admin/branchesrepo.git", extra_branches=("develop",), tag="v1.0.0")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/social/branchesrepo/branches")
+        page.goto(f"{app_url}/admin/branchesrepo/branches")
         branches = page.get_by_test_id("branches-list")
         expect(branches).to_be_visible(timeout=15000)
         expect(branches).to_contain_text("main")
@@ -197,10 +197,10 @@ class TestReleasesPage:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "social/releaserepo.git", tag="v1.0.0")
+        _push_repo(app_url, "admin/releaserepo.git", tag="v1.0.0")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/social/releaserepo/releases")
+        page.goto(f"{app_url}/admin/releaserepo/releases")
         expect(page.get_by_test_id("releases-list")).to_be_visible(timeout=15000)
 
         page.get_by_test_id("new-release-button").click()
@@ -224,10 +224,10 @@ class TestIssueComments:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "social/issuecommentrepo.git")
+        _push_repo(app_url, "admin/issuecommentrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/social/issuecommentrepo/issues/new")
+        page.goto(f"{app_url}/admin/issuecommentrepo/issues/new")
         page.get_by_test_id("issue-title-input").fill("Commentable issue")
         page.get_by_test_id("issue-body-input").fill("Issue body")
         page.get_by_test_id("submit-issue-btn").click()
@@ -239,6 +239,7 @@ class TestIssueComments:
         page.get_by_test_id("comment-input").fill("This is my comment.")
         page.get_by_test_id("comment-submit").click()
 
+        expect(page.get_by_test_id("comment-input")).to_have_value("", timeout=15000)
         expect(page.get_by_test_id("comments-section")).to_contain_text("This is my comment.", timeout=15000)
 
     def test_close_issue(self, app_url: str, page: Page) -> None:
@@ -248,10 +249,10 @@ class TestIssueComments:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "social/closeissuerepo.git")
+        _push_repo(app_url, "admin/closeissuerepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/social/closeissuerepo/issues/new")
+        page.goto(f"{app_url}/admin/closeissuerepo/issues/new")
         page.get_by_test_id("issue-title-input").fill("Close me")
         page.get_by_test_id("submit-issue-btn").click()
 
@@ -272,10 +273,10 @@ class TestPullRequestCommentsAndMerge:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "social/prmergerepo.git", extra_branches=("feature",))
+        _push_repo(app_url, "admin/prmergerepo.git", extra_branches=("feature",))
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/social/prmergerepo/pulls/new")
+        page.goto(f"{app_url}/admin/prmergerepo/pulls/new")
         page.wait_for_selector('[data-testid="pr-source-branch"] option[value="feature"]', state="attached")
         page.get_by_test_id("pr-source-branch").select_option("feature")
         page.get_by_test_id("pr-title-input").fill("Merge the feature")
@@ -288,6 +289,8 @@ class TestPullRequestCommentsAndMerge:
 
         page.get_by_test_id("comment-input").fill("Looks good to me.")
         page.get_by_test_id("comment-submit").click()
+
+        expect(page.get_by_test_id("comment-input")).to_have_value("", timeout=15000)
         expect(page.get_by_test_id("comments-section")).to_contain_text("Looks good to me.", timeout=15000)
 
         page.get_by_test_id("merge-pr").click()
@@ -304,18 +307,18 @@ class TestActivityAndFeed:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "social/activityrepo.git")
+        _push_repo(app_url, "admin/activityrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/social/activityrepo")
+        page.goto(f"{app_url}/admin/activityrepo")
         page.get_by_test_id("star-button").get_by_role("button").click()
         expect(page.get_by_test_id("star-count")).to_have_text("1", timeout=10000)
 
-        page.goto(f"{app_url}/social/activityrepo/activity")
+        page.goto(f"{app_url}/admin/activityrepo/activity")
         expect(page.get_by_test_id("activity-list")).to_contain_text("star", timeout=15000)
 
         page.goto(f"{app_url}/")
-        expect(page.get_by_test_id("dashboard-feed")).to_contain_text("social/activityrepo", timeout=15000)
+        expect(page.get_by_test_id("dashboard-feed")).to_contain_text("admin/activityrepo", timeout=15000)
 
 
 class TestSocialListings:
@@ -328,19 +331,19 @@ class TestSocialListings:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "social/peoplelistrepo.git")
+        _push_repo(app_url, "admin/peoplelistrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/social/peoplelistrepo")
+        page.goto(f"{app_url}/admin/peoplelistrepo")
         page.get_by_test_id("star-button").get_by_role("button").click()
         page.get_by_test_id("watch-button").get_by_role("button").click()
         expect(page.get_by_test_id("star-count")).to_have_text("1", timeout=10000)
         expect(page.get_by_test_id("watch-count")).to_have_text("1")
 
-        page.goto(f"{app_url}/social/peoplelistrepo/stars")
+        page.goto(f"{app_url}/admin/peoplelistrepo/stars")
         expect(page.get_by_test_id("people-list")).to_contain_text("Admin User", timeout=15000)
 
-        page.goto(f"{app_url}/social/peoplelistrepo/watchers")
+        page.goto(f"{app_url}/admin/peoplelistrepo/watchers")
         expect(page.get_by_test_id("people-list")).to_contain_text("Admin User", timeout=15000)
 
     def test_forks_listing(self, app_url: str, page: Page) -> None:
@@ -350,16 +353,16 @@ class TestSocialListings:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "social/forkslistrepo.git")
+        _push_repo(app_url, "admin/forkslistrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/social/forkslistrepo")
+        page.goto(f"{app_url}/admin/forkslistrepo")
         page.get_by_test_id("fork-button").click()
         page.get_by_test_id("fork-repo-name").fill("forkslistrepo-fork")
         page.get_by_test_id("fork-repo-submit").click()
         page.wait_for_url(f"{app_url}/{SUPERUSER_USERNAME}/forkslistrepo-fork")
 
-        page.goto(f"{app_url}/social/forkslistrepo/forks")
+        page.goto(f"{app_url}/admin/forkslistrepo/forks")
         expect(page.get_by_test_id("forks-list")).to_contain_text("forkslistrepo-fork", timeout=15000)
 
 
@@ -373,7 +376,7 @@ class TestExplore:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "social/explorerepo.git")
+        _push_repo(app_url, "admin/explorerepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/explore")
@@ -394,10 +397,10 @@ class TestProfile:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "social/profilerepo.git")
+        _push_repo(app_url, "admin/profilerepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/social/profilerepo")
+        page.goto(f"{app_url}/admin/profilerepo")
         page.get_by_test_id("star-button").get_by_role("button").click()
         expect(page.get_by_test_id("star-count")).to_have_text("1", timeout=10000)
 
@@ -425,9 +428,9 @@ class TestEmptyRepository:
         page.goto(f"{app_url}/repositories")
         page.get_by_test_id("create-repository-button").click()
         expect(page.get_by_role("dialog", name="Create Repository")).to_be_visible(timeout=10000)
-        page.get_by_test_id("create-repo-owner").fill("emptyuser")
+        page.get_by_test_id("create-repo-owner").fill("admin")
         page.get_by_test_id("create-repo-name").fill("emptyrepo")
         page.get_by_test_id("create-repo-submit").click()
 
-        page.goto(f"{app_url}/emptyuser/emptyrepo")
+        page.goto(f"{app_url}/admin/emptyrepo")
         expect(page.get_by_test_id("empty-repository")).to_be_visible(timeout=15000)

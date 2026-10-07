@@ -13,7 +13,7 @@ const Watchers = ({ owner, repo }: WatchersProps) => {
 
   const { data } = useQuery({
     queryKey: ["watchers", repoPath],
-    queryFn: async () => (await WatchersService.listWatchers({ path: { path: repoPath } })).data,
+    queryFn: async () => (await WatchersService.listWatchers({ path: { owner, repo } })).data,
   })
 
   return <PeopleList users={data?.data ?? []} emptyText="No watchers yet." />

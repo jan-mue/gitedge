@@ -13,7 +13,7 @@ const RepositoryActivity = ({ owner, repo }: RepositoryActivityProps) => {
 
   const { data } = useQuery({
     queryKey: ["activity", repoPath],
-    queryFn: async () => (await ActivityService.getRepositoryActivity({ path: { path: repoPath } })).data,
+    queryFn: async () => (await ActivityService.getRepositoryActivity({ path: { owner, repo } })).data,
   })
 
   return <ActivityList activities={data?.data ?? []} emptyText="No activity in this repository yet." />

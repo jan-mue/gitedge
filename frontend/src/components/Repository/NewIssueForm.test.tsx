@@ -46,7 +46,7 @@ describe("NewIssueForm", () => {
     await user.click(screen.getByTestId("submit-issue-btn"))
 
     expect(createIssue).toHaveBeenCalledWith({
-      path: { path: "owner/repo.git" },
+      path: { owner: "owner", repo: "repo" },
       body: { title: "Title", body: "Body" },
     })
     await vi.waitFor(() => expect(navigate).toHaveBeenCalled())

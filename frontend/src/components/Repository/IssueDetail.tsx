@@ -15,13 +15,13 @@ const IssueDetail = () => {
 
   const { data: issue } = useQuery({
     queryKey: ["issue", repoPath, issueNumber],
-    queryFn: async () => (await RepositoriesService.getIssue({ path: { path: repoPath, number: issueNumber } })).data,
+    queryFn: async () => (await RepositoriesService.getIssue({ path: { owner, repo, number: issueNumber } })).data,
   })
 
   const mutation = useMutation({
     mutationFn: (state: IssueState) =>
       RepositoriesService.updateIssue({
-        path: { path: repoPath, number: issueNumber },
+        path: { owner, repo, number: issueNumber },
         body: { state },
       }),
     onSuccess: (response) => {
@@ -65,7 +65,7 @@ const IssueDetail = () => {
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">{issue.author_email ?? "unknown"}</span>
+          <span className="font-medium text-foreground">{issue.author_username ?? "unknown"}</span>
           {issue.created_at && ` opened ${new Date(issue.created_at).toLocaleString()}`}
         </p>
       </div>

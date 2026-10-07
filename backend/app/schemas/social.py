@@ -47,7 +47,6 @@ class ForkPublic(GitEdgeBaseModel):
     """Public representation of a fork."""
 
     id: uuid.UUID
-    path: str
     name: str
     owner: str | None = None
     description: str | None = None

@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.watchers import Watcher
@@ -51,6 +52,7 @@ class SQLWatcherStore(WatcherStore, SQLStore[Watcher]):
         """List watchers for a repository, newest first."""
         result = await self.db.scalars(
             select(Watcher)
+            .options(selectinload(Watcher.user))
             .where(Watcher.repo_id == repo_id)
             .order_by(Watcher.created_at.desc())
             .offset(offset)

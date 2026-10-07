@@ -11,12 +11,12 @@ router = APIRouter(prefix="/repositories", tags=["activity"])
 user_router = APIRouter(prefix="/users", tags=["activity"])
 
 
-@router.get("/{path:path}/activity")
+@router.get("/{owner}/{repo}/activity")
 async def get_repository_activity(
-    path: str, activity_service: ActivityServiceDep, offset: int = 0, limit: int = 50
+    owner: str, repo: str, activity_service: ActivityServiceDep, offset: int = 0, limit: int = 50
 ) -> ActivitiesPublic:
     """List activity for a repository."""
-    return await activity_service.repo_activity(path, offset, limit)
+    return await activity_service.repo_activity(owner, repo, offset, limit)
 
 
 @user_router.get("/me/feed")
