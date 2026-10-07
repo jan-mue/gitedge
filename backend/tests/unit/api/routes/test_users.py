@@ -297,7 +297,7 @@ def test_update_user_not_exists(client: TestClient, superuser_token_headers: dic
         json=data,
     )
     assert r.status_code == 404
-    assert r.json()["detail"] == "The user with this id does not exist in the system"
+    assert r.json()["detail"] == "User not found"
 
 
 async def test_update_user_email_exists(
@@ -344,7 +344,7 @@ async def test_delete_user_me(client: TestClient, crud: CrudService) -> None:
         headers=headers,
     )
     assert r.status_code == 204
-    user_db = await crud.user_store.get(user_id)
+    user_db = await crud.user_store.find(user_id)
     assert user_db is None
 
 
@@ -371,7 +371,7 @@ async def test_delete_user_super_user(
         headers=superuser_token_headers,
     )
     assert r.status_code == 204
-    user_db = await crud.user_store.get(user_id)
+    user_db = await crud.user_store.find(user_id)
     assert user_db is None
 
 

@@ -72,7 +72,7 @@ class WatcherService:
         Returns:
             The updated watcher state.
         """
-        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        repository = await self.repository_store.find_by_owner_and_name(owner, name)
         if repository is None:
             return WatcherState(is_watching=False, watchers_count=0)
         existing = await self.watcher_store.get_by_user_and_repo(user.id, repository.id)
@@ -91,7 +91,7 @@ class WatcherService:
         Returns:
             The watcher state.
         """
-        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        repository = await self.repository_store.find_by_owner_and_name(owner, name)
         if repository is None:
             return WatcherState(is_watching=False, watchers_count=0)
         existing = await self.watcher_store.get_by_user_and_repo(user.id, repository.id)
@@ -112,7 +112,7 @@ class WatcherService:
         Returns:
             WatchersPublic with the watchers.
         """
-        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        repository = await self.repository_store.find_by_owner_and_name(owner, name)
         if repository is None:
             return WatchersPublic(data=[], count=0)
         watchers = await self.watcher_store.list_by_repo(repository.id, offset, limit)

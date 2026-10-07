@@ -98,7 +98,7 @@ class RepositoryInfo(GitEdgeBaseModel):
     """Extended repository information with metadata."""
 
     name: str
-    owner: str | None = None
+    owner: str
     description: str | None = None
     is_private: bool = False
     default_branch: str
@@ -204,7 +204,7 @@ class IssuePublic(GitEdgeBaseModel):
     title: str
     body: str | None = None
     state: IssueState
-    author_username: str | None = None
+    author_username: str
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -247,7 +247,7 @@ class PullRequestPublic(GitEdgeBaseModel):
     state: IssueState
     head_branch: str
     base_branch: str
-    author_username: str | None = None
+    author_username: str
     merge_base: str | None = None
     merged_commit_id: str | None = None
     has_merged: bool = False

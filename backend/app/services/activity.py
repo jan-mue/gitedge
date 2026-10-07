@@ -83,7 +83,7 @@ class ActivityService:
         Returns:
             ActivitiesPublic with the repository activity, newest first.
         """
-        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        repository = await self.repository_store.find_by_owner_and_name(owner, name)
         if repository is None:
             return ActivitiesPublic(data=[], count=0)
         activities = await self.activity_store.list_by_repo(repository.id, offset, limit)
@@ -136,7 +136,7 @@ class ActivityService:
             id=activity.id,
             kind=activity.kind,
             title=activity.title,
-            actor_username=activity.actor.name if activity.actor is not None else None,
+            actor_username=activity.actor.name,
             repo_owner=repo.owner.name if repo is not None else None,
             repo_name=repo.name if repo is not None else None,
             target_type=activity.target_type,

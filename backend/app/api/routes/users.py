@@ -117,11 +117,6 @@ async def update_user(
 ) -> UserPublic:
     """Update a user."""
     db_user = await user_store.get(user_id)
-    if not db_user:
-        raise HTTPException(
-            status_code=404,
-            detail="The user with this id does not exist in the system",
-        )
     if user_in.email:
         existing_user = await crud_service.get_user_by_email(email=user_in.email)
         if existing_user and existing_user.id != user_id:
@@ -136,8 +131,6 @@ async def update_user(
 async def delete_user(user_store: UserStoreDep, current_user: CurrentUser, user_id: uuid.UUID) -> None:
     """Delete a user."""
     user = await user_store.get(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
     if user == current_user:
         raise HTTPException(status_code=403, detail="Super users are not allowed to delete themselves")
     # TODO: delete repositories

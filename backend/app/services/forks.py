@@ -57,18 +57,13 @@ class ForkService:
             HTTPException: If the source is not found or the target already exists.
         """
         source = await self.repository_store.get_by_owner_and_name(owner, name)
-        if source is None:
-            raise HTTPException(status_code=404, detail="Repository not found")
 
         dest_owner = body.owner or current_user.name
         dest_name = body.name or source.name
 
-        resolved = await self.repository_store.resolve_owner(dest_owner)
-        if resolved is None:
-            raise HTTPException(status_code=404, detail="Owner not found")
-        owner_id = resolved[0]
+        owner_id, _ = await self.repository_store.resolve_owner(dest_owner)
 
-        if await self.repository_store.get_by_owner_and_name(dest_owner, dest_name) is not None:
+        if await self.repository_store.find_by_owner_and_name(dest_owner, dest_name) is not None:
             raise HTTPException(status_code=409, detail="A repository with that name already exists")
 
         fork = Repository(
@@ -104,7 +99,7 @@ class ForkService:
         Returns:
             ForksPublic with the forks.
         """
-        source = await self.repository_store.get_by_owner_and_name(owner, name)
+        source = await self.repository_store.find_by_owner_and_name(owner, name)
         if source is None:
             return ForksPublic(data=[], count=0)
         forks = await self.repository_store.list_by_fork_of(source.id, offset, limit)
@@ -124,7 +119,7 @@ class ForkService:
         return ForkPublic(
             id=fork.id,
             name=fork.name,
-            owner=fork.owner.name if fork.owner is not None else None,
+            owner=fork.owner.name,
             description=fork.description,
             stars_count=stars_count,
             forks_count=forks_count,

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.config import settings
 from app.entities.base import Base
+from app.exceptions import NotFoundError
 
 if TYPE_CHECKING:
     import uuid
@@ -52,8 +53,12 @@ class CrudStore[T: Base](ABC):
     """Abstract base class for CRUD store operations."""
 
     @abstractmethod
-    async def get(self, primary_key: uuid.UUID) -> T | None:
-        """Get an entity by its primary key."""
+    async def find(self, primary_key: uuid.UUID) -> T | None:
+        """Find an entity by its primary key, returning None when absent."""
+
+    @abstractmethod
+    async def get(self, primary_key: uuid.UUID) -> T:
+        """Get an entity by its primary key, raising when absent."""
 
     @abstractmethod
     async def get_all(self, offset: int = 0, limit: int = 100) -> list[T]:
@@ -93,13 +98,27 @@ class SQLStore[T: Base](CrudStore[T]):
         self.db = db
         self.entity_class = entity_class
 
-    async def get(self, primary_key: uuid.UUID) -> T | None:
-        """Get an entity by its primary key.
+    async def find(self, primary_key: uuid.UUID) -> T | None:
+        """Find an entity by its primary key, returning None when absent.
 
         Args:
             primary_key: Primary key of the entity.
         """
         return await self.db.scalar(select(self.entity_class).where(self.entity_class.id == primary_key))
+
+    async def get(self, primary_key: uuid.UUID) -> T:
+        """Get an entity by its primary key, raising when absent.
+
+        Args:
+            primary_key: Primary key of the entity.
+
+        Raises:
+            NotFoundError: If no entity with the given primary key exists.
+        """
+        entity = await self.find(primary_key)
+        if entity is None:
+            raise NotFoundError(f"{self.entity_class.__name__} not found")
+        return entity
 
     async def get_all(self, offset: int = 0, limit: int = 100) -> list[T]:
         """Get all entities with pagination."""

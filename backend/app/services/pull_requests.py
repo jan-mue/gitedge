@@ -61,7 +61,7 @@ class PullRequestService:
         Returns:
             PullRequestsListPublic with the pull requests and counts.
         """
-        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        repository = await self.repository_store.find_by_owner_and_name(owner, name)
         if repository is None:
             return PullRequestsListPublic(data=[], count=0, open_count=0, closed_count=0)
 
@@ -215,16 +215,10 @@ class PullRequestService:
             The pull request entity.
 
         Raises:
-            HTTPException: If the repository or pull request is not found.
+            PullRequestNotFoundError: If the repository or pull request is not found.
         """
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
-        if repository is None:
-            raise HTTPException(status_code=404, detail="Pull request not found")
-
-        pull_request = await self.pull_request_store.get_by_number(repository.id, number)
-        if pull_request is None:
-            raise HTTPException(status_code=404, detail="Pull request not found")
-        return pull_request
+        return await self.pull_request_store.get_by_number(repository.id, number)
 
     @staticmethod
     def _to_public(pr: PullRequest, owner: str, name: str) -> PullRequestPublic:
@@ -248,7 +242,7 @@ class PullRequestService:
             state=pr.state,
             head_branch=pr.head_branch,
             base_branch=pr.base_branch,
-            author_username=pr.author.name if pr.author is not None else None,
+            author_username=pr.author.name,
             merge_base=pr.merge_base,
             merged_commit_id=pr.merged_commit_id,
             has_merged=pr.has_merged,

@@ -21,7 +21,7 @@ class CommentPublic(GitEdgeBaseModel):
     repo_owner: str
     repo_name: str
     issue_number: int
-    author_username: str | None = None
+    author_username: str
     body: str
     created_at: datetime | None = None
     updated_at: datetime | None = None

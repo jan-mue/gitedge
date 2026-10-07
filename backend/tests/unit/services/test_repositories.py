@@ -15,6 +15,7 @@ from dulwich.refs import SYMREF, Ref
 from fastapi import HTTPException
 
 from app.entities.users import User
+from app.exceptions import RepositoryNotFoundError
 from app.services.blob_backend import BlobBackend
 from app.services.repositories import RepositoryService, ensure_repository
 from app.types import PackContents
@@ -157,7 +158,7 @@ async def test_get_repository(service: RepositoryService) -> None:
 
 
 async def test_get_repository_not_found(service: RepositoryService) -> None:
-    with pytest.raises(HTTPException):
+    with pytest.raises(RepositoryNotFoundError):
         await service.get_repository(OWNER, "missing")
 
 

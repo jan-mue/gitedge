@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.clients.database import CrudStore, SQLStore
 from app.entities.issues import Issue, IssueState
 from app.entities.pull_requests import PullRequest
+from app.exceptions import PullRequestNotFoundError
 
 if TYPE_CHECKING:
     import uuid
@@ -22,8 +23,8 @@ class PullRequestStore(CrudStore[PullRequest], ABC):
     """Abstract pull request store with pull request-specific queries."""
 
     @abstractmethod
-    async def get_by_number(self, repo_id: uuid.UUID, number: int) -> PullRequest | None:
-        """Get a pull request by repository id and number."""
+    async def get_by_number(self, repo_id: uuid.UUID, number: int) -> PullRequest:
+        """Get a pull request by repository id and number, raising when absent."""
 
     @abstractmethod
     async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[PullRequest]:
@@ -53,13 +54,16 @@ class SQLPullRequestStore(PullRequestStore, SQLStore[PullRequest]):
         """
         super().__init__(db, PullRequest)
 
-    async def get_by_number(self, repo_id: uuid.UUID, number: int) -> PullRequest | None:
-        """Get a pull request by repository id and number."""
-        return await self.db.scalar(
+    async def get_by_number(self, repo_id: uuid.UUID, number: int) -> PullRequest:
+        """Get a pull request by repository id and number, raising when absent."""
+        pull_request = await self.db.scalar(
             select(PullRequest)
             .options(selectinload(PullRequest.author))
             .where(PullRequest.repo_id == repo_id, PullRequest.number == number)
         )
+        if pull_request is None:
+            raise PullRequestNotFoundError
+        return pull_request
 
     async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[PullRequest]:
         """List pull requests for a repository, newest first."""

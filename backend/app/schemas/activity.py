@@ -13,7 +13,7 @@ class ActivityPublic(GitEdgeBaseModel):
     id: uuid.UUID
     kind: ActivityKind
     title: str | None = None
-    actor_username: str | None = None
+    actor_username: str
     repo_owner: str | None = None
     repo_name: str | None = None
     target_type: ActivityTargetType | None = None

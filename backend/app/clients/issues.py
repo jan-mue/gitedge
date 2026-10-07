@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.issues import Issue, IssueKind, IssueState
+from app.exceptions import IssueNotFoundError
 
 if TYPE_CHECKING:
     import uuid
@@ -21,8 +22,8 @@ class IssueStore(CrudStore[Issue], ABC):
     """Abstract issue store with issue-specific queries."""
 
     @abstractmethod
-    async def get_by_number(self, repo_id: uuid.UUID, number: int) -> Issue | None:
-        """Get an issue by repository id and number."""
+    async def get_by_number(self, repo_id: uuid.UUID, number: int) -> Issue:
+        """Get an issue by repository id and number, raising when absent."""
 
     @abstractmethod
     async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[Issue]:
@@ -48,13 +49,16 @@ class SQLIssueStore(IssueStore, SQLStore[Issue]):
         """
         super().__init__(db, Issue)
 
-    async def get_by_number(self, repo_id: uuid.UUID, number: int) -> Issue | None:
-        """Get an issue by repository id and number."""
-        return await self.db.scalar(
+    async def get_by_number(self, repo_id: uuid.UUID, number: int) -> Issue:
+        """Get an issue by repository id and number, raising when absent."""
+        issue = await self.db.scalar(
             select(Issue)
             .options(selectinload(Issue.author))
             .where(Issue.repo_id == repo_id, Issue.number == number, Issue.kind == IssueKind.ISSUE)
         )
+        if issue is None:
+            raise IssueNotFoundError
+        return issue
 
     async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[Issue]:
         """List issues for a repository, newest first."""

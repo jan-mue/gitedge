@@ -50,7 +50,7 @@ class ReleaseService:
         Returns:
             ReleasesPublic with the releases, newest first.
         """
-        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        repository = await self.repository_store.find_by_owner_and_name(owner, name)
         if repository is None:
             return ReleasesPublic(data=[], count=0)
         releases = await self.release_store.list_by_repo(repository.id, include_drafts)
@@ -68,14 +68,10 @@ class ReleaseService:
             The release.
 
         Raises:
-            HTTPException: If the release is not found.
+            ReleaseNotFoundError: If the release is not found.
         """
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
-        if repository is None:
-            raise HTTPException(status_code=404, detail="Release not found")
         release = await self.release_store.get_by_tag(repository.id, tag_name)
-        if release is None:
-            raise HTTPException(status_code=404, detail="Release not found")
         return self._to_public(release, owner, name)
 
     async def create_release(self, owner: str, name: str, body: ReleaseCreate, current_user: User) -> ReleasePublic:
@@ -94,7 +90,7 @@ class ReleaseService:
             HTTPException: If a release for the tag already exists.
         """
         repository = await ensure_repository(self.repository_store, owner, name)
-        if await self.release_store.get_by_tag(repository.id, body.tag_name) is not None:
+        if await self.release_store.find_by_tag(repository.id, body.tag_name) is not None:
             raise HTTPException(status_code=409, detail="A release for this tag already exists")
 
         release = Release(

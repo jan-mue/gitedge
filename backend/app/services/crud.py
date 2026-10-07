@@ -88,18 +88,19 @@ class CrudService:
         slug = re.sub(r"[^a-zA-Z0-9]+", "-", local_part).strip("-").lower()
         return slug or uuid.uuid4().hex[:12]
 
-    async def get_user_by_id(self, user_id: uuid.UUID) -> UserPublic | None:
+    async def get_user_by_id(self, user_id: uuid.UUID) -> UserPublic:
         """Get a user by their ID.
 
         Args:
             user_id: The user's UUID.
 
         Returns:
-            The user's public data or None if not found.
+            The user's public data.
+
+        Raises:
+            NotFoundError: If the user does not exist.
         """
         user = await self.user_store.get(user_id)
-        if not user:
-            return None
         return UserPublic.model_validate(user)
 
     async def get_user_by_email(self, email: str) -> UserPublic | None:

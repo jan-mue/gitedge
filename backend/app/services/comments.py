@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.comments import Comment
+from app.exceptions import IssueNotFoundError, PullRequestNotFoundError
 from app.schemas.comments import CommentCreate, CommentPublic, CommentsPublic
 
 if TYPE_CHECKING:
@@ -92,15 +91,14 @@ class CommentService:
         comment.author = current_user
 
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
-        if repository is not None:
-            await self.activity_service.record(
-                actor=current_user,
-                repo=repository,
-                kind=ActivityKind.COMMENT,
-                title=issue.title,
-                target_type=ActivityTargetType(issue.kind),
-                target_number=issue.number,
-            )
+        await self.activity_service.record(
+            actor=current_user,
+            repo=repository,
+            kind=ActivityKind.COMMENT,
+            title=issue.title,
+            target_type=ActivityTargetType(issue.kind),
+            target_number=issue.number,
+        )
 
         return self._to_public(comment, issue, owner, name)
 
@@ -116,18 +114,17 @@ class CommentService:
             The issue or pull request entity.
 
         Raises:
-            HTTPException: If the repository, issue or pull request is not found.
+            IssueNotFoundError: If the repository, issue or pull request is not found.
         """
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
-        if repository is None:
-            raise HTTPException(status_code=404, detail="Issue not found")
-
-        issue = await self.issue_store.get_by_number(repository.id, number)
-        if issue is None:
-            issue = await self.pull_request_store.get_by_number(repository.id, number)
-        if issue is None:
-            raise HTTPException(status_code=404, detail="Issue not found")
-        return issue
+        try:
+            return await self.issue_store.get_by_number(repository.id, number)
+        except IssueNotFoundError:
+            pass
+        try:
+            return await self.pull_request_store.get_by_number(repository.id, number)
+        except PullRequestNotFoundError as exc:
+            raise IssueNotFoundError from exc
 
     @staticmethod
     def _to_public(comment: Comment, issue: Issue, owner: str, name: str) -> CommentPublic:
@@ -137,7 +134,7 @@ class CommentService:
             repo_owner=owner,
             repo_name=name,
             issue_number=issue.number,
-            author_username=comment.author.name if comment.author is not None else None,
+            author_username=comment.author.name,
             body=comment.body,
             created_at=comment.created_at,
             updated_at=comment.updated_at,

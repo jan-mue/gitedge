@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.releases import Release
+from app.exceptions import ReleaseNotFoundError
 
 if TYPE_CHECKING:
     import uuid
@@ -25,8 +26,12 @@ class ReleaseStore(CrudStore[Release], ABC):
         """List releases for a repository, newest first."""
 
     @abstractmethod
-    async def get_by_tag(self, repo_id: uuid.UUID, tag_name: str) -> Release | None:
-        """Get a release by repository id and tag name."""
+    async def get_by_tag(self, repo_id: uuid.UUID, tag_name: str) -> Release:
+        """Get a release by repository id and tag name, raising when absent."""
+
+    @abstractmethod
+    async def find_by_tag(self, repo_id: uuid.UUID, tag_name: str) -> Release | None:
+        """Find a release by repository id and tag name, or None."""
 
 
 class SQLReleaseStore(ReleaseStore, SQLStore[Release]):
@@ -49,10 +54,17 @@ class SQLReleaseStore(ReleaseStore, SQLStore[Release]):
         result = await self.db.scalars(stmt)
         return list(result.all())
 
-    async def get_by_tag(self, repo_id: uuid.UUID, tag_name: str) -> Release | None:
-        """Get a release by repository id and tag name."""
+    async def find_by_tag(self, repo_id: uuid.UUID, tag_name: str) -> Release | None:
+        """Find a release by repository id and tag name, or None."""
         return await self.db.scalar(
             select(Release)
             .options(selectinload(Release.author))
             .where(Release.repo_id == repo_id, Release.tag_name == tag_name)
         )
+
+    async def get_by_tag(self, repo_id: uuid.UUID, tag_name: str) -> Release:
+        """Get a release by repository id and tag name, raising when absent."""
+        release = await self.find_by_tag(repo_id, tag_name)
+        if release is None:
+            raise ReleaseNotFoundError
+        return release

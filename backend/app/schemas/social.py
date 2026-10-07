@@ -48,7 +48,7 @@ class ForkPublic(GitEdgeBaseModel):
 
     id: uuid.UUID
     name: str
-    owner: str | None = None
+    owner: str
     description: str | None = None
     stars_count: int = 0
     forks_count: int = 0

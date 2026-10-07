@@ -75,7 +75,7 @@ class StarService:
         Returns:
             The updated star state.
         """
-        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        repository = await self.repository_store.find_by_owner_and_name(owner, name)
         if repository is None:
             return StarState(is_starred=False, stars_count=0)
         existing = await self.star_store.get_by_user_and_repo(user.id, repository.id)
@@ -94,7 +94,7 @@ class StarService:
         Returns:
             The star state.
         """
-        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        repository = await self.repository_store.find_by_owner_and_name(owner, name)
         if repository is None:
             return StarState(is_starred=False, stars_count=0)
         existing = await self.star_store.get_by_user_and_repo(user.id, repository.id)
@@ -115,7 +115,7 @@ class StarService:
         Returns:
             StargazersPublic with the stargazers.
         """
-        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        repository = await self.repository_store.find_by_owner_and_name(owner, name)
         if repository is None:
             return StargazersPublic(data=[], count=0)
         stars = await self.star_store.list_by_repo(repository.id, offset, limit)
@@ -136,7 +136,7 @@ class StarService:
         stars = await self.star_store.list_by_user(user_id, offset, limit)
         repositories: list[Repository] = []
         for star in stars:
-            repository = await self.repository_store.get(star.repo_id)
+            repository = await self.repository_store.find(star.repo_id)
             if repository is None:
                 continue
             schema = Repository(

@@ -128,16 +128,14 @@ async def ensure_repository(store: RepositoryStore, owner: str, name: str) -> Re
         The repository entity.
 
     Raises:
-        HTTPException: If the owner cannot be resolved.
+        OwnerNotFoundError: If the owner cannot be resolved.
     """
-    repository = await store.get_by_owner_and_name(owner, name)
+    repository = await store.find_by_owner_and_name(owner, name)
     if repository is not None:
         return repository
 
-    resolved = await store.resolve_owner(owner)
-    if resolved is None:
-        raise HTTPException(status_code=404, detail="Owner not found")
-    repository = RepositoryEntity(name=name, owner_id=resolved[0])
+    owner_id, _ = await store.resolve_owner(owner)
+    repository = RepositoryEntity(name=name, owner_id=owner_id)
     await store.add(repository)
     return repository
 
@@ -245,13 +243,11 @@ class RepositoryService:
             The repository.
 
         Raises:
-            HTTPException: If the repository does not exist.
+            RepositoryNotFoundError: If the repository does not exist.
         """
         if self.repository_store is None:
             raise HTTPException(status_code=503, detail="Repository store unavailable")
         entity = await self.repository_store.get_by_owner_and_name(owner, name)
-        if entity is None:
-            raise HTTPException(status_code=404, detail="Repository not found")
         return await self._to_schema(entity)
 
     async def create_repository(self, owner: str, name: str) -> Repository:
@@ -278,8 +274,7 @@ class RepositoryService:
         if self.repository_store is not None:
             await ensure_repository(self.repository_store, owner, name)
             entity = await self.repository_store.get_by_owner_and_name(owner, name)
-            if entity is not None:
-                return await self._to_schema(entity)
+            return await self._to_schema(entity)
 
         return Repository(name=name, owner=owner)
 
@@ -486,7 +481,7 @@ class RepositoryService:
         forks_count = 0
         fork_of = None
         if self.repository_store is not None:
-            entity = await self.repository_store.get_by_owner_and_name(owner, name)
+            entity = await self.repository_store.find_by_owner_and_name(owner, name)
             if entity is not None:
                 description = entity.description
                 is_private = entity.is_private

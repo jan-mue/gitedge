@@ -45,7 +45,7 @@ export type ActivityPublic = {
     /**
      * Actor Username
      */
-    actor_username?: string | null;
+    actor_username: string;
     /**
      * Repo Owner
      */
@@ -139,7 +139,7 @@ export type CommentPublic = {
     /**
      * Author Username
      */
-    author_username?: string | null;
+    author_username: string;
     /**
      * Body
      */
@@ -447,7 +447,7 @@ export type ForkPublic = {
     /**
      * Owner
      */
-    owner?: string | null;
+    owner: string;
     /**
      * Description
      */
@@ -542,7 +542,7 @@ export type IssuePublic = {
     /**
      * Author Username
      */
-    author_username?: string | null;
+    author_username: string;
     /**
      * Created At
      */
@@ -791,7 +791,7 @@ export type PullRequestPublic = {
     /**
      * Author Username
      */
-    author_username?: string | null;
+    author_username: string;
     /**
      * Merge Base
      */
@@ -1064,7 +1064,7 @@ export type RepositoryInfo = {
     /**
      * Owner
      */
-    owner?: string | null;
+    owner: string;
     /**
      * Description
      */

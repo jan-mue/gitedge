@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.clients.database import CrudStore, SQLStore
 from app.entities.principals import Principal, PrincipalType
 from app.entities.repositories import Repository
+from app.exceptions import OwnerNotFoundError, RepositoryNotFoundError
 
 if TYPE_CHECKING:
     import uuid
@@ -23,12 +24,16 @@ class RepositoryStore(CrudStore[Repository], ABC):
     """Abstract repository store with additional repository-specific methods."""
 
     @abstractmethod
-    async def get_by_owner_and_name(self, owner: str, name: str) -> Repository | None:
-        """Get a repository by its owner name (user or organization) and name."""
+    async def get_by_owner_and_name(self, owner: str, name: str) -> Repository:
+        """Get a repository by its owner name (user or organization) and name, raising when absent."""
 
     @abstractmethod
-    async def resolve_owner(self, owner: str) -> tuple[uuid.UUID, PrincipalType] | None:
-        """Resolve an owner name to its principal id and type."""
+    async def find_by_owner_and_name(self, owner: str, name: str) -> Repository | None:
+        """Find a repository by its owner name (user or organization) and name, or None."""
+
+    @abstractmethod
+    async def resolve_owner(self, owner: str) -> tuple[uuid.UUID, PrincipalType]:
+        """Resolve an owner name to its principal id and type, raising when absent."""
 
     @abstractmethod
     async def get_by_owner(self, owner_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
@@ -62,8 +67,12 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
             selectinload(Repository.fork_of).selectinload(Repository.owner),
         )
 
-    async def get(self, primary_key: uuid.UUID) -> Repository | None:
-        """Get a repository by primary key with its owner loaded."""
+    async def find(self, primary_key: uuid.UUID) -> Repository | None:
+        """Find a repository by primary key with its owner loaded.
+
+        Args:
+            primary_key: Primary key of the repository.
+        """
         return await self.db.scalar(
             select(Repository).options(*self._owner_options()).where(Repository.id == primary_key)
         )
@@ -73,8 +82,8 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         result = await self.db.scalars(select(Repository).options(*self._owner_options()).offset(offset).limit(limit))
         return list(result.all())
 
-    async def get_by_owner_and_name(self, owner: str, name: str) -> Repository | None:
-        """Get a repository by its owner name and name."""
+    async def find_by_owner_and_name(self, owner: str, name: str) -> Repository | None:
+        """Find a repository by its owner name and name, or None."""
         stmt = (
             select(Repository)
             .options(*self._owner_options())
@@ -83,11 +92,18 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         )
         return await self.db.scalar(stmt)
 
-    async def resolve_owner(self, owner: str) -> tuple[uuid.UUID, PrincipalType] | None:
-        """Resolve an owner name to its principal id and type."""
+    async def get_by_owner_and_name(self, owner: str, name: str) -> Repository:
+        """Get a repository by its owner name and name, raising when absent."""
+        repository = await self.find_by_owner_and_name(owner, name)
+        if repository is None:
+            raise RepositoryNotFoundError
+        return repository
+
+    async def resolve_owner(self, owner: str) -> tuple[uuid.UUID, PrincipalType]:
+        """Resolve an owner name to its principal id and type, raising when absent."""
         principal = await self.db.scalar(select(Principal).where(Principal.lower_name == owner.lower()))
         if principal is None:
-            return None
+            raise OwnerNotFoundError
         return principal.id, principal.principal_type
 
     async def get_by_owner(self, owner_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:

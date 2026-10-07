@@ -142,7 +142,7 @@ async def get_current_user(user_store: UserStoreDep, token: TokenDep) -> User:
     if not token_data.sub:
         logger.error("Token has no sub claim")
         raise HTTPException(status_code=403, detail="Could not validate credentials")
-    user = await user_store.get(token_data.sub)
+    user = await user_store.find(token_data.sub)
     if not user:
         logger.error("User not found for id: %s", token_data.sub)
         raise HTTPException(

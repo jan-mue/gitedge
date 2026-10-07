@@ -50,7 +50,7 @@ class IssueService:
         Returns:
             IssuesListPublic with the issues and counts.
         """
-        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        repository = await self.repository_store.find_by_owner_and_name(owner, name)
         if repository is None:
             return IssuesListPublic(data=[], count=0, open_count=0, closed_count=0)
 
@@ -176,16 +176,10 @@ class IssueService:
             The issue entity.
 
         Raises:
-            HTTPException: If the repository or issue is not found.
+            IssueNotFoundError: If the repository or issue is not found.
         """
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
-        if repository is None:
-            raise HTTPException(status_code=404, detail="Issue not found")
-
-        issue = await self.issue_store.get_by_number(repository.id, number)
-        if issue is None:
-            raise HTTPException(status_code=404, detail="Issue not found")
-        return issue
+        return await self.issue_store.get_by_number(repository.id, number)
 
     @staticmethod
     def _to_public(issue: Issue, owner: str, name: str) -> IssuePublic:
@@ -207,7 +201,7 @@ class IssueService:
             title=issue.title,
             body=issue.body,
             state=issue.state,
-            author_username=issue.author.name if issue.author is not None else None,
+            author_username=issue.author.name,
             created_at=issue.created_at,
             updated_at=issue.updated_at,
         )
