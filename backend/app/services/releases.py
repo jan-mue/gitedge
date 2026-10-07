@@ -137,7 +137,7 @@ class ReleaseService:
             target_commitish=release.target_commitish,
             is_draft=release.is_draft,
             is_prerelease=release.is_prerelease,
-            author_username=release.author.name if release.author is not None else None,
+            author_username=release.author.name,
             published_at=release.published_at,
             created_at=release.created_at,
             updated_at=release.updated_at,

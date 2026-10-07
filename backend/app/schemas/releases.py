@@ -29,10 +29,10 @@ class ReleasePublic(GitEdgeBaseModel):
     target_commitish: str = "main"
     is_draft: bool = False
     is_prerelease: bool = False
-    author_username: str | None = None
+    author_username: str
     published_at: datetime | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
 
 
 class ReleasesPublic(GitEdgeBaseModel):

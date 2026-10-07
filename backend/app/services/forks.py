@@ -61,6 +61,9 @@ class ForkService:
         dest_owner = body.owner or current_user.name
         dest_name = body.name or source.name
 
+        if dest_owner.lower() == source.owner.name.lower():
+            raise HTTPException(status_code=400, detail="Cannot fork a repository into the same owner")
+
         owner_id, _ = await self.repository_store.resolve_owner(dest_owner)
 
         if await self.repository_store.find_by_owner_and_name(dest_owner, dest_name) is not None:

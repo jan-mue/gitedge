@@ -23,8 +23,8 @@ class CommentPublic(GitEdgeBaseModel):
     issue_number: int
     author_username: str
     body: str
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
 
 
 class CommentsPublic(GitEdgeBaseModel):

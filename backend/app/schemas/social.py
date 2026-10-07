@@ -52,7 +52,7 @@ class ForkPublic(GitEdgeBaseModel):
     description: str | None = None
     stars_count: int = 0
     forks_count: int = 0
-    created_at: datetime | None = None
+    created_at: datetime
 
 
 class ForksPublic(GitEdgeBaseModel):

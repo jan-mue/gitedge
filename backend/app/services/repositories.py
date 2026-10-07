@@ -7,6 +7,7 @@ import logging
 import re
 import stat
 import time
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Protocol
 
 from dulwich.objects import Blob, Commit, ObjectID, Tag, Tree
@@ -68,19 +69,21 @@ _README_NAMES = frozenset(
 _DIFF_HEADER_RE = re.compile(r"^diff --git a/(?P<old>.+) b/(?P<new>.+)$")
 
 
-def _split_author(raw: str) -> tuple[str, str | None]:
+def _split_author(raw: str) -> tuple[str, str]:
     """Split a raw Git author/committer line into a name and email.
+
+    Git stores authors as ``"Name <email>"``; the email may be empty (``"<>"``).
 
     Args:
         raw: The raw "Name <email>" value.
 
     Returns:
-        Tuple of (name, email), with email None when not present.
+        Tuple of (name, email); email is empty when the line does not contain one.
     """
     match = re.match(r"^(?P<name>.*?)\s*<(?P<email>[^>]*)>\s*$", raw)
     if match:
-        return match.group("name").strip(), match.group("email").strip() or None
-    return raw.strip(), None
+        return match.group("name").strip(), match.group("email").strip()
+    return raw.strip(), ""
 
 
 class StyleDefsProvider(Protocol):
@@ -276,7 +279,8 @@ class RepositoryService:
             entity = await self.repository_store.get_by_owner_and_name(owner, name)
             return await self._to_schema(entity)
 
-        return Repository(name=name, owner=owner)
+        now = datetime.now(UTC)
+        return Repository(name=name, owner=owner, created_at=now, updated_at=now)
 
     async def ensure_loaded(self, owner: str, name: str) -> None:
         """Ensure a repository is loaded into the backend, creating it if absent.

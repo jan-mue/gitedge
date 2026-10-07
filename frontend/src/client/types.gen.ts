@@ -62,7 +62,7 @@ export type ActivityPublic = {
     /**
      * Created At
      */
-    created_at?: string | null;
+    created_at: string;
 };
 
 /**
@@ -147,11 +147,11 @@ export type CommentPublic = {
     /**
      * Created At
      */
-    created_at?: string | null;
+    created_at: string;
     /**
      * Updated At
      */
-    updated_at?: string | null;
+    updated_at: string;
 };
 
 /**
@@ -198,7 +198,7 @@ export type CommitDetail = {
     /**
      * Author Email
      */
-    author_email?: string | null;
+    author_email: string;
     /**
      * Timestamp
      */
@@ -295,7 +295,7 @@ export type CommitListItem = {
     /**
      * Author Email
      */
-    author_email?: string | null;
+    author_email: string;
     /**
      * Timestamp
      */
@@ -463,7 +463,7 @@ export type ForkPublic = {
     /**
      * Created At
      */
-    created_at?: string | null;
+    created_at: string;
 };
 
 /**
@@ -546,11 +546,11 @@ export type IssuePublic = {
     /**
      * Created At
      */
-    created_at?: string | null;
+    created_at: string;
     /**
      * Updated At
      */
-    updated_at?: string | null;
+    updated_at: string;
 };
 
 /**
@@ -662,7 +662,7 @@ export type OrganizationPublic = {
     /**
      * Created At
      */
-    created_at?: string | null;
+    created_at: string;
 };
 
 /**
@@ -807,11 +807,11 @@ export type PullRequestPublic = {
     /**
      * Created At
      */
-    created_at?: string | null;
+    created_at: string;
     /**
      * Updated At
      */
-    updated_at?: string | null;
+    updated_at: string;
 };
 
 /**
@@ -952,7 +952,7 @@ export type ReleasePublic = {
     /**
      * Author Username
      */
-    author_username?: string | null;
+    author_username: string;
     /**
      * Published At
      */
@@ -960,11 +960,11 @@ export type ReleasePublic = {
     /**
      * Created At
      */
-    created_at?: string | null;
+    created_at: string;
     /**
      * Updated At
      */
-    updated_at?: string | null;
+    updated_at: string;
 };
 
 /**
@@ -1044,11 +1044,11 @@ export type Repository = {
     /**
      * Created At
      */
-    created_at?: string | null;
+    created_at: string;
     /**
      * Updated At
      */
-    updated_at?: string | null;
+    updated_at: string;
 };
 
 /**

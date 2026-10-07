@@ -36,8 +36,8 @@ class Repository(GitEdgeBaseModel):
     forks_count: int = 0
     watchers_count: int = 0
     fork_of: str | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
 
 
 class RepositoriesPublic(GitEdgeBaseModel):
@@ -132,7 +132,7 @@ class CommitListItem(GitEdgeBaseModel):
     sha: str
     message: str
     author: str
-    author_email: str | None = None
+    author_email: str
     timestamp: int
 
 
@@ -161,7 +161,7 @@ class CommitDetail(GitEdgeBaseModel):
     sha: str
     message: str
     author: str
-    author_email: str | None = None
+    author_email: str
     timestamp: int
     parents: list[str]
     files: list[CommitFileChange]
@@ -205,8 +205,8 @@ class IssuePublic(GitEdgeBaseModel):
     body: str | None = None
     state: IssueState
     author_username: str
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
 
 
 class IssuesListPublic(GitEdgeBaseModel):
@@ -251,8 +251,8 @@ class PullRequestPublic(GitEdgeBaseModel):
     merge_base: str | None = None
     merged_commit_id: str | None = None
     has_merged: bool = False
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
 
 
 class PullRequestsListPublic(GitEdgeBaseModel):

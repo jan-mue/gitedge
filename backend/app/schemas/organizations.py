@@ -25,7 +25,7 @@ class OrganizationPublic(GitEdgeBaseModel):
     name: str
     display_name: str | None = None
     description: str | None = None
-    created_at: datetime | None = None
+    created_at: datetime
 
 
 class OrganizationsPublic(GitEdgeBaseModel):

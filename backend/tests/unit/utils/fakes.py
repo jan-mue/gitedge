@@ -127,6 +127,8 @@ class FakeCrudStore[T: Base](CrudStore[T]):
             obj.id = uuid.uuid4()
         if obj.created_at is None:
             obj.created_at = datetime.now(UTC)
+        if obj.updated_at is None:
+            obj.updated_at = datetime.now(UTC)
         self.items[obj.id] = obj
 
     async def find(self, primary_key: uuid.UUID) -> T | None:
@@ -157,6 +159,7 @@ class FakeCrudStore[T: Base](CrudStore[T]):
         if new_data:
             for key, value in new_data.items():
                 setattr(obj, key, value)
+        obj.updated_at = datetime.now(UTC)
         self.items[obj.id] = obj
 
     async def delete(self, obj: T) -> None:
@@ -529,8 +532,10 @@ class FakeReleaseStore(FakeCrudStore[Release], ReleaseStore):
 
     def _hydrate(self, release: Release) -> Release:
         """Populate the release's author from the fake user store."""
-        if self.users is not None and release.author_id is not None:
-            release.author = self.users.items.get(release.author_id)
+        if self.users is not None:
+            author = self.users.items.get(release.author_id)
+            if author is not None:
+                release.author = author
         return release
 
     async def add(self, obj: Release) -> None:

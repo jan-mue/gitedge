@@ -10,12 +10,18 @@ from __future__ import annotations
 
 import subprocess
 import tempfile
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from playwright.sync_api import expect
 
-from tests.integration.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD, log_in_user
+from tests.integration.conftest import (
+    FIRST_SUPERUSER,
+    FIRST_SUPERUSER_PASSWORD,
+    create_user_via_api,
+    log_in_user,
+)
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
@@ -94,6 +100,20 @@ def _push_repo(
             _run_git(source_dir, ["checkout", "main"])
 
 
+def _create_foreign_owner(app_url: str) -> str:
+    """Create a second user and return their name, to own a repository to fork.
+
+    Args:
+        app_url: Base URL of the GitEdge frontend.
+
+    Returns:
+        The new user's name.
+    """
+    suffix = uuid.uuid4().hex[:8]
+    user = create_user_via_api(app_url, f"forkowner-{suffix}@example.com", "password123")
+    return user["name"]
+
+
 class TestStarAndWatch:
     """Test the star and watch repository buttons."""
 
@@ -150,9 +170,10 @@ class TestFork:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/forkrepo.git")
+        foreign_owner = _create_foreign_owner(app_url)
+        _push_repo(app_url, f"{foreign_owner}/forkrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/admin/forkrepo")
+        page.goto(f"{app_url}/{foreign_owner}/forkrepo")
 
         page.get_by_test_id("fork-button").click()
         dialog = page.get_by_role("dialog", name="Fork repository")
@@ -353,16 +374,17 @@ class TestSocialListings:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/forkslistrepo.git")
+        foreign_owner = _create_foreign_owner(app_url)
+        _push_repo(app_url, f"{foreign_owner}/forkslistrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/admin/forkslistrepo")
+        page.goto(f"{app_url}/{foreign_owner}/forkslistrepo")
         page.get_by_test_id("fork-button").click()
         page.get_by_test_id("fork-repo-name").fill("forkslistrepo-fork")
         page.get_by_test_id("fork-repo-submit").click()
         page.wait_for_url(f"{app_url}/{SUPERUSER_USERNAME}/forkslistrepo-fork")
 
-        page.goto(f"{app_url}/admin/forkslistrepo/forks")
+        page.goto(f"{app_url}/{foreign_owner}/forkslistrepo/forks")
         expect(page.get_by_test_id("forks-list")).to_contain_text("forkslistrepo-fork", timeout=15000)
 
 

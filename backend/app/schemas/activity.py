@@ -18,7 +18,7 @@ class ActivityPublic(GitEdgeBaseModel):
     repo_name: str | None = None
     target_type: ActivityTargetType | None = None
     target_number: int | None = None
-    created_at: datetime | None = None
+    created_at: datetime
 
 
 class ActivitiesPublic(GitEdgeBaseModel):

@@ -78,3 +78,15 @@ async def test_fork_repository_with_name_collision() -> None:
         await fork_service.fork("owner", "repo", ForkCreate(), alice)
 
     assert exc_info.value.status_code == 409
+
+
+async def test_fork_repository_into_same_owner() -> None:
+    repository_store, _users, owner, _alice, fork_service, _repository_service = _setup()
+
+    source = Repository(name="repo", owner_id=owner.id)
+    await repository_store.add(source)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await fork_service.fork("owner", "repo", ForkCreate(name="repo-fork"), owner)
+
+    assert exc_info.value.status_code == 400
