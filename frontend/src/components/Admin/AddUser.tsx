@@ -27,7 +27,7 @@ import { handleError } from "@/utils"
 const formSchema = z
   .object({
     email: z.email({ message: "Invalid email address" }),
-    full_name: z.string().optional(),
+    display_name: z.string().optional(),
     password: z
       .string()
       .min(1, { message: "Password is required" })
@@ -54,7 +54,7 @@ const AddUser = () => {
     criteriaMode: "all",
     defaultValues: {
       email: "",
-      full_name: "",
+      display_name: "",
       password: "",
       confirm_password: "",
       is_superuser: false,
@@ -113,7 +113,7 @@ const AddUser = () => {
 
               <FormField
                 control={form.control}
-                name="full_name"
+                name="display_name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Full Name</FormLabel>

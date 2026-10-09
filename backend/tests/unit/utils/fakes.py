@@ -12,20 +12,40 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.schema import ColumnDefault
 
+from app.clients.activity import ActivityStore
 from app.clients.blob_storage import BlobStorageClient
+from app.clients.comments import CommentStore
 from app.clients.database import CrudStore
 from app.clients.email import EmailClient
 from app.clients.issues import IssueStore
+from app.clients.organizations import OrganizationStore
 from app.clients.pull_requests import PullRequestStore
 from app.clients.redis import AbstractRedisClient
+from app.clients.releases import ReleaseStore
 from app.clients.repositories import RepositoryStore
+from app.clients.stars import StarStore
 from app.clients.users import UserStore
+from app.clients.watchers import WatcherStore
 from app.config import settings
+from app.entities.activity import Activity
 from app.entities.base import Base
-from app.entities.issues import Issue
+from app.entities.comments import Comment
+from app.entities.issues import Issue, IssueState
+from app.entities.organizations import Organization
+from app.entities.principals import Principal, PrincipalType
 from app.entities.pull_requests import PullRequest
+from app.entities.releases import Release
 from app.entities.repositories import Repository
+from app.entities.stars import Star
 from app.entities.users import User
+from app.entities.watchers import Watcher
+from app.exceptions import (
+    IssueNotFoundError,
+    NotFoundError,
+    OwnerNotFoundError,
+    PullRequestNotFoundError,
+    RepositoryNotFoundError,
+)
 from app.utils.security import get_password_hash
 
 if TYPE_CHECKING:
@@ -90,6 +110,8 @@ class FakeRedisClient(AbstractRedisClient):
 class FakeCrudStore[T: Base](CrudStore[T]):
     """In-memory CRUD store."""
 
+    entity_name: str = "Resource"
+
     def __init__(self) -> None:
         """Initialize the store."""
         self.items: dict[uuid.UUID, T] = {}
@@ -104,11 +126,20 @@ class FakeCrudStore[T: Base](CrudStore[T]):
             obj.id = uuid.uuid4()
         if obj.created_at is None:
             obj.created_at = datetime.now(UTC)
+        if obj.updated_at is None:
+            obj.updated_at = datetime.now(UTC)
         self.items[obj.id] = obj
 
-    async def get(self, primary_key: uuid.UUID) -> T | None:
-        """Get an entity by its primary key."""
+    async def find(self, primary_key: uuid.UUID) -> T | None:
+        """Find an entity by its primary key."""
         return self.items.get(primary_key)
+
+    async def get(self, primary_key: uuid.UUID) -> T:
+        """Get an entity by its primary key, raising when absent."""
+        entity = self.items.get(primary_key)
+        if entity is None:
+            raise NotFoundError(f"{self.entity_name} not found")
+        return entity
 
     async def get_all(self, offset: int = 0, limit: int = 100) -> list[T]:
         """Get all entities with pagination."""
@@ -127,6 +158,7 @@ class FakeCrudStore[T: Base](CrudStore[T]):
         if new_data:
             for key, value in new_data.items():
                 setattr(obj, key, value)
+        obj.updated_at = datetime.now(UTC)
         self.items[obj.id] = obj
 
     async def delete(self, obj: T) -> None:
@@ -140,42 +172,171 @@ class FakeCrudStore[T: Base](CrudStore[T]):
 class FakeUserStore(FakeCrudStore[User], UserStore):
     """In-memory user store."""
 
+    entity_name = "User"
+
     async def get_by_email(self, email: str) -> User | None:
         """Get a user by their email address."""
         return next((user for user in self.items.values() if user.email == email), None)
+
+    async def get_by_name(self, name: str) -> User | None:
+        """Get a user by their name (case-insensitive)."""
+        return next((user for user in self.items.values() if user.lower_name == name.lower()), None)
+
+
+class FakeOrganizationStore(FakeCrudStore[Organization], OrganizationStore):
+    """In-memory organization store."""
+
+    entity_name = "Organization"
+
+    async def get_by_name(self, name: str) -> Organization | None:
+        """Get an organization by its name (case-insensitive)."""
+        return next(
+            (organization for organization in self.items.values() if organization.lower_name == name.lower()), None
+        )
 
 
 class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
     """In-memory repository store."""
 
-    async def get_by_path(self, path: str) -> Repository | None:
-        """Get a repository by its path."""
-        return next((repository for repository in self.items.values() if repository.path == path), None)
+    entity_name = "Repository"
+
+    def __init__(self, users: FakeUserStore | None = None, organizations: FakeOrganizationStore | None = None) -> None:
+        """Initialize the store.
+
+        Args:
+            users: Optional user store used to resolve owners.
+            organizations: Optional organization store used to resolve owners.
+        """
+        super().__init__()
+        self.users = users
+        self.organizations = organizations
+        self.release_store: FakeReleaseStore | None = None
+
+    def _owner(self, repository: Repository) -> Principal | None:
+        """Resolve a repository's owner principal."""
+        if self.organizations is not None:
+            organization = self.organizations.items.get(repository.owner_id)
+            if organization is not None:
+                return organization
+        if self.users is not None:
+            return self.users.items.get(repository.owner_id)
+        return None
+
+    def _hydrate(self, repository: Repository, *, include_releases: bool = False) -> Repository:
+        """Populate a repository's relationships from the other fake stores."""
+        owner = self._owner(repository)
+        if owner is not None:
+            repository.owner = owner
+        if repository.fork_of_id is not None:
+            fork_of = self.items.get(repository.fork_of_id)
+            if fork_of is not None:
+                repository.fork_of = fork_of
+        if include_releases and self.release_store is not None:
+            repository.releases = self.release_store.releases_for(repository.id)
+        return repository
+
+    async def find(self, primary_key: uuid.UUID) -> Repository | None:
+        """Find a repository by its primary key."""
+        repository = self.items.get(primary_key)
+        return self._hydrate(repository) if repository is not None else None
+
+    async def get_all(self, offset: int = 0, limit: int = 100) -> list[Repository]:
+        """Get all repositories with pagination."""
+        return [self._hydrate(repository) for repository in list(self.items.values())[offset : offset + limit]]
+
+    async def add(self, obj: Repository) -> None:
+        """Add a repository and populate its relationships."""
+        self.persist(obj)
+        self._hydrate(obj)
+
+    async def find_by_owner_and_name(
+        self, owner: str, name: str, *, include_releases: bool = False
+    ) -> Repository | None:
+        """Find a repository by its owner name and name, or None."""
+        for repository in self.items.values():
+            principal = self._owner(repository)
+            if repository.name == name and principal is not None and principal.name.lower() == owner.lower():
+                return self._hydrate(repository, include_releases=include_releases)
+        return None
+
+    async def get_by_owner_and_name(self, owner: str, name: str, *, include_releases: bool = False) -> Repository:
+        """Get a repository by its owner name and name, raising when absent."""
+        repository = await self.find_by_owner_and_name(owner, name, include_releases=include_releases)
+        if repository is None:
+            raise RepositoryNotFoundError
+        return repository
+
+    async def resolve_owner(self, owner: str) -> tuple[uuid.UUID, PrincipalType]:
+        """Resolve an owner name to its principal id and type, raising when absent."""
+        if self.users is not None:
+            for user in self.users.items.values():
+                if user.lower_name == owner.lower():
+                    return user.id, PrincipalType.USER
+        if self.organizations is not None:
+            for organization in self.organizations.items.values():
+                if organization.lower_name == owner.lower():
+                    return organization.id, PrincipalType.ORGANIZATION
+        raise OwnerNotFoundError
 
     async def get_by_owner(self, owner_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
-        """Get all repositories owned by a user."""
+        """Get all repositories owned by a principal."""
         repositories = [repository for repository in self.items.values() if repository.owner_id == owner_id]
-        return repositories[offset : offset + limit]
+        return [self._hydrate(repository) for repository in repositories[offset : offset + limit]]
+
+    async def list_by_fork_of(self, fork_of_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
+        """Get all repositories forked from a given repository."""
+        repositories = [repository for repository in self.items.values() if repository.fork_of_id == fork_of_id]
+        return [self._hydrate(repository) for repository in repositories[offset : offset + limit]]
+
+    async def count_by_fork_of(self, fork_of_id: uuid.UUID) -> int:
+        """Count repositories forked from a given repository."""
+        return sum(1 for repository in self.items.values() if repository.fork_of_id == fork_of_id)
 
 
 class FakeIssueStore(FakeCrudStore[Issue], IssueStore):
     """In-memory issue store."""
 
-    async def get_by_number(self, repo_id: uuid.UUID, number: int) -> Issue | None:
-        """Get an issue by repository id and number."""
-        return next(
+    entity_name = "Issue"
+
+    def __init__(self, users: FakeUserStore | None = None, comment_store: FakeCommentStore | None = None) -> None:
+        """Initialize the store."""
+        super().__init__()
+        self.users = users
+        self.comment_store = comment_store
+
+    def _hydrate(self, issue: Issue) -> Issue:
+        """Populate the issue's author and comments from the other fake stores."""
+        if self.users is not None:
+            author = self.users.items.get(issue.author_id)
+            if author is not None:
+                issue.author = author
+        if self.comment_store is not None:
+            issue.comments = self.comment_store.comments_for(issue.id)
+        return issue
+
+    async def add(self, obj: Issue) -> None:
+        """Add an issue and populate its relationships."""
+        self.persist(obj)
+        self._hydrate(obj)
+
+    async def get_by_number(self, repo_id: uuid.UUID, number: int) -> Issue:
+        """Get an issue by repository id and number, raising when absent."""
+        issue = next(
             (issue for issue in self.items.values() if issue.repo_id == repo_id and issue.number == number),
             None,
         )
+        if issue is None:
+            raise IssueNotFoundError
+        return self._hydrate(issue)
 
-    async def list_by_repo(self, repo_id: uuid.UUID, state: str | None = None) -> list[Issue]:
+    async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[Issue]:
         """List issues for a repository, newest first."""
         issues = [issue for issue in self.items.values() if issue.repo_id == repo_id]
         if state is not None:
             issues = [issue for issue in issues if issue.state == state]
-        return sorted(issues, key=lambda issue: issue.number, reverse=True)
+        return [self._hydrate(issue) for issue in sorted(issues, key=lambda issue: issue.number, reverse=True)]
 
-    async def count_by_state(self, repo_id: uuid.UUID, state: str) -> int:
+    async def count_by_state(self, repo_id: uuid.UUID, state: IssueState) -> int:
         """Count issues in a repository by state."""
         return sum(1 for issue in self.items.values() if issue.repo_id == repo_id and issue.state == state)
 
@@ -188,30 +349,52 @@ class FakeIssueStore(FakeCrudStore[Issue], IssueStore):
 class FakePullRequestStore(FakeCrudStore[PullRequest], PullRequestStore):
     """In-memory pull request store."""
 
+    entity_name = "PullRequest"
+
+    def __init__(self, users: FakeUserStore | None = None, comment_store: FakeCommentStore | None = None) -> None:
+        """Initialize the store."""
+        super().__init__()
+        self.users = users
+        self.comment_store = comment_store
+
+    def _hydrate(self, pr: PullRequest) -> PullRequest:
+        """Populate the pull request's author and comments from the other fake stores."""
+        if self.users is not None:
+            author = self.users.items.get(pr.author_id)
+            if author is not None:
+                pr.author = author
+        if self.comment_store is not None:
+            pr.comments = self.comment_store.comments_for(pr.id)
+        return pr
+
     async def add(self, obj: PullRequest) -> None:
         """Add a pull request, applying the has_merged default."""
         obj.has_merged = bool(obj.has_merged)
         self.persist(obj)
+        self._hydrate(obj)
 
-    async def get_by_number(self, repo_id: uuid.UUID, number: int) -> PullRequest | None:
-        """Get a pull request by repository id and number."""
-        return next(
+    async def get_by_number(self, repo_id: uuid.UUID, number: int) -> PullRequest:
+        """Get a pull request by repository id and number, raising when absent."""
+        pr = next(
             (pr for pr in self.items.values() if pr.repo_id == repo_id and pr.number == number),
             None,
         )
+        if pr is None:
+            raise PullRequestNotFoundError
+        return self._hydrate(pr)
 
-    async def list_by_repo(self, repo_id: uuid.UUID, state: str | None = None) -> list[PullRequest]:
+    async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[PullRequest]:
         """List pull requests for a repository, newest first."""
         pull_requests = [pr for pr in self.items.values() if pr.repo_id == repo_id]
         if state is not None:
             pull_requests = [pr for pr in pull_requests if pr.state == state]
-        return sorted(pull_requests, key=lambda pr: pr.number, reverse=True)
+        return [self._hydrate(pr) for pr in sorted(pull_requests, key=lambda pr: pr.number, reverse=True)]
 
-    async def count_by_state(self, repo_id: uuid.UUID, state: str) -> int:
+    async def count_by_state(self, repo_id: uuid.UUID, state: IssueState) -> int:
         """Count pull requests in a repository by state."""
         return sum(1 for pr in self.items.values() if pr.repo_id == repo_id and pr.state == state)
 
-    async def count_by_states(self, repo_id: uuid.UUID, states: list[str]) -> int:
+    async def count_by_states(self, repo_id: uuid.UUID, states: list[IssueState]) -> int:
         """Count pull requests in a repository matching any of the given states."""
         return sum(1 for pr in self.items.values() if pr.repo_id == repo_id and pr.state in states)
 
@@ -219,6 +402,215 @@ class FakePullRequestStore(FakeCrudStore[PullRequest], PullRequestStore):
         """Get the next pull request number for a repository."""
         numbers = [pr.number for pr in self.items.values() if pr.repo_id == repo_id]
         return (max(numbers) if numbers else 0) + 1
+
+
+class FakeStarStore(FakeCrudStore[Star], StarStore):
+    """In-memory star store."""
+
+    entity_name = "Star"
+
+    def __init__(self, users: FakeUserStore | None = None) -> None:
+        """Initialize the store."""
+        super().__init__()
+        self.users = users
+
+    def _hydrate(self, star: Star) -> Star:
+        """Populate the star's user from the fake user store."""
+        if self.users is not None:
+            user = self.users.items.get(star.user_id)
+            if user is not None:
+                star.user = user
+        return star
+
+    async def get_by_user_and_repo(self, user_id: uuid.UUID, repo_id: uuid.UUID) -> Star | None:
+        """Get a star for a user and repository, if it exists."""
+        return next(
+            (star for star in self.items.values() if star.user_id == user_id and star.repo_id == repo_id),
+            None,
+        )
+
+    async def list_by_repo(self, repo_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Star]:
+        """List stars for a repository, newest first."""
+        stars = [star for star in self.items.values() if star.repo_id == repo_id]
+        stars.sort(key=lambda star: star.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
+        return [self._hydrate(star) for star in stars[offset : offset + limit]]
+
+    async def list_by_user(self, user_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Star]:
+        """List repositories starred by a user, newest first."""
+        stars = [star for star in self.items.values() if star.user_id == user_id]
+        stars.sort(key=lambda star: star.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
+        return stars[offset : offset + limit]
+
+    async def count_by_repo(self, repo_id: uuid.UUID) -> int:
+        """Count stars for a repository."""
+        return sum(1 for star in self.items.values() if star.repo_id == repo_id)
+
+
+class FakeWatcherStore(FakeCrudStore[Watcher], WatcherStore):
+    """In-memory watcher store."""
+
+    entity_name = "Watcher"
+
+    def __init__(self, users: FakeUserStore | None = None) -> None:
+        """Initialize the store."""
+        super().__init__()
+        self.users = users
+
+    def _hydrate(self, watcher: Watcher) -> Watcher:
+        """Populate the watcher's user from the fake user store."""
+        if self.users is not None:
+            user = self.users.items.get(watcher.user_id)
+            if user is not None:
+                watcher.user = user
+        return watcher
+
+    async def get_by_user_and_repo(self, user_id: uuid.UUID, repo_id: uuid.UUID) -> Watcher | None:
+        """Get a watcher for a user and repository, if it exists."""
+        return next(
+            (watcher for watcher in self.items.values() if watcher.user_id == user_id and watcher.repo_id == repo_id),
+            None,
+        )
+
+    async def list_by_repo(self, repo_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Watcher]:
+        """List watchers for a repository, newest first."""
+        watchers = [watcher for watcher in self.items.values() if watcher.repo_id == repo_id]
+        watchers.sort(key=lambda watcher: watcher.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
+        return [self._hydrate(watcher) for watcher in watchers[offset : offset + limit]]
+
+    async def count_by_repo(self, repo_id: uuid.UUID) -> int:
+        """Count watchers for a repository."""
+        return sum(1 for watcher in self.items.values() if watcher.repo_id == repo_id)
+
+
+class FakeCommentStore(FakeCrudStore[Comment], CommentStore):
+    """In-memory comment store."""
+
+    entity_name = "Comment"
+
+    def __init__(
+        self,
+        users: FakeUserStore | None = None,
+        issues: FakeIssueStore | None = None,
+        pull_requests: FakePullRequestStore | None = None,
+    ) -> None:
+        """Initialize the store."""
+        super().__init__()
+        self.users = users
+        self.issues = issues
+        self.pull_requests = pull_requests
+
+    def _hydrate(self, comment: Comment) -> Comment:
+        """Populate the comment's author and issue from the other fake stores."""
+        if self.users is not None:
+            author = self.users.items.get(comment.author_id)
+            if author is not None:
+                comment.author = author
+        issue = None
+        if self.issues is not None:
+            issue = self.issues.items.get(comment.issue_id)
+        if issue is None and self.pull_requests is not None:
+            issue = self.pull_requests.items.get(comment.issue_id)
+        if issue is not None:
+            comment.issue = issue
+        return comment
+
+    async def find(self, primary_key: uuid.UUID) -> Comment | None:
+        """Find a comment by id, hydrating its relationships."""
+        comment = self.items.get(primary_key)
+        return self._hydrate(comment) if comment is not None else None
+
+    async def add(self, obj: Comment) -> None:
+        """Add a comment and populate its relationships."""
+        self.persist(obj)
+        self._hydrate(obj)
+
+    def comments_for(self, issue_id: uuid.UUID) -> list[Comment]:
+        """Return hydrated comments for an issue, oldest first."""
+        comments = [comment for comment in self.items.values() if comment.issue_id == issue_id]
+        comments.sort(key=lambda comment: comment.created_at or datetime.min.replace(tzinfo=UTC))
+        return [self._hydrate(comment) for comment in comments]
+
+
+class FakeReleaseStore(FakeCrudStore[Release], ReleaseStore):
+    """In-memory release store."""
+
+    entity_name = "Release"
+
+    def __init__(self, users: FakeUserStore | None = None) -> None:
+        """Initialize the store."""
+        super().__init__()
+        self.users = users
+
+    def _hydrate(self, release: Release) -> Release:
+        """Populate the release's author from the fake user store."""
+        if self.users is not None:
+            author = self.users.items.get(release.author_id)
+            if author is not None:
+                release.author = author
+        return release
+
+    async def add(self, obj: Release) -> None:
+        """Add a release and populate its relationships."""
+        self.persist(obj)
+        self._hydrate(obj)
+
+    def releases_for(self, repo_id: uuid.UUID) -> list[Release]:
+        """Return hydrated releases for a repository, newest first."""
+        releases = [release for release in self.items.values() if release.repo_id == repo_id]
+        releases.sort(key=lambda release: release.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
+        return [self._hydrate(release) for release in releases]
+
+
+class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
+    """In-memory activity store."""
+
+    entity_name = "Activity"
+
+    def __init__(self, users: FakeUserStore | None = None, repository: FakeRepositoryStore | None = None) -> None:
+        """Initialize the store."""
+        super().__init__()
+        self.users = users
+        self.repository = repository
+
+    def _hydrate(self, activity: Activity) -> Activity:
+        """Populate the activity's actor and repository from the other fake stores."""
+        if self.users is not None:
+            actor = self.users.items.get(activity.actor_id)
+            if actor is not None:
+                activity.actor = actor
+        if self.repository is not None and activity.repo_id is not None:
+            repo = self.repository.items.get(activity.repo_id)
+            if repo is not None:
+                activity.repo = repo
+        return activity
+
+    async def add(self, obj: Activity) -> None:
+        """Add an activity and populate its relationships."""
+        self.persist(obj)
+        self._hydrate(obj)
+
+    def _sorted(self) -> list[Activity]:
+        return sorted(
+            self.items.values(),
+            key=lambda activity: activity.created_at or datetime.min.replace(tzinfo=UTC),
+            reverse=True,
+        )
+
+    async def list_recent(self, offset: int = 0, limit: int = 50) -> list[Activity]:
+        """List recent activity across all repositories, newest first."""
+        return [self._hydrate(activity) for activity in self._sorted()[offset : offset + limit]]
+
+    async def list_by_repo(self, repo_id: uuid.UUID, offset: int = 0, limit: int = 50) -> list[Activity]:
+        """List activity for a repository, newest first."""
+        activities = [activity for activity in self._sorted() if activity.repo_id == repo_id]
+        return [self._hydrate(activity) for activity in activities[offset : offset + limit]]
+
+    async def list_by_repos(self, repo_ids: list[uuid.UUID], offset: int = 0, limit: int = 50) -> list[Activity]:
+        """List activity for a set of repositories, newest first."""
+        if not repo_ids:
+            return []
+        activities = [activity for activity in self._sorted() if activity.repo_id in repo_ids]
+        return [self._hydrate(activity) for activity in activities[offset : offset + limit]]
 
 
 @dataclass
@@ -229,6 +621,12 @@ class FakeStores:
     issues: FakeIssueStore
     pull_requests: FakePullRequestStore
     repository: FakeRepositoryStore
+    organizations: FakeOrganizationStore
+    stars: FakeStarStore
+    watchers: FakeWatcherStore
+    comments: FakeCommentStore
+    releases: FakeReleaseStore
+    activity: FakeActivityStore
 
 
 @lru_cache(maxsize=1)
@@ -244,18 +642,35 @@ def build_fake_stores() -> FakeStores:
         The populated fake stores.
     """
     users = FakeUserStore()
+    organizations = FakeOrganizationStore()
+    repository = FakeRepositoryStore(users, organizations)
+    issues = FakeIssueStore(users)
+    pull_requests = FakePullRequestStore(users)
+    comments = FakeCommentStore(users, issues, pull_requests)
+    releases = FakeReleaseStore(users)
+    issues.comment_store = comments
+    pull_requests.comment_store = comments
+    repository.release_store = releases
     users.persist(
         User(
+            name=settings.FIRST_SUPERUSER.split("@")[0],
+            lower_name=settings.FIRST_SUPERUSER.split("@")[0].lower(),
+            display_name="Admin User",
             email=settings.FIRST_SUPERUSER,
             hashed_password=_superuser_hashed_password(),
             is_active=True,
             is_superuser=True,
-            full_name="Admin User",
         )
     )
     return FakeStores(
         users=users,
-        issues=FakeIssueStore(),
-        pull_requests=FakePullRequestStore(),
-        repository=FakeRepositoryStore(),
+        issues=issues,
+        pull_requests=pull_requests,
+        repository=repository,
+        organizations=organizations,
+        stars=FakeStarStore(users),
+        watchers=FakeWatcherStore(users),
+        comments=comments,
+        releases=releases,
+        activity=FakeActivityStore(users, repository),
     )

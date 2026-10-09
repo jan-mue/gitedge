@@ -11,13 +11,11 @@ interface RepositoryLayoutProps {
 }
 
 const RepositoryLayout = ({ owner, repo, children }: RepositoryLayoutProps) => (
-  <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 flex flex-col">
+  <div className="flex flex-col">
     <RepoHeader owner={owner} repo={repo} />
-    <div className="px-6 md:px-8 py-6">
-      <div className="mx-auto max-w-7xl">
-        <Suspense fallback={<PendingItems />}>{children}</Suspense>
-      </div>
-    </div>
+    <main className="container mx-auto max-w-7xl px-4 py-6">
+      <Suspense fallback={<PendingItems />}>{children}</Suspense>
+    </main>
   </div>
 )
 

@@ -11,9 +11,11 @@ if TYPE_CHECKING:
 
     from tests.unit.utils.fakes import FakeStores
 
-REPO_PATH = "owner/repo.git"
-ISSUES_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/issues"
-PULLS_URL = f"{settings.API_V1_STR}/repositories/{REPO_PATH}/pulls"
+REPO_OWNER = settings.FIRST_SUPERUSER.split("@")[0]
+REPO_NAME = "repo"
+REPO_URL = f"{settings.API_V1_STR}/repositories/{REPO_OWNER}/{REPO_NAME}"
+ISSUES_URL = f"{REPO_URL}/issues"
+PULLS_URL = f"{REPO_URL}/pulls"
 
 
 async def test_create_issue(
@@ -29,10 +31,11 @@ async def test_create_issue(
     assert issue["title"] == "Title"
     assert issue["body"] == "Body"
     assert issue["state"] == "open"
-    assert issue["repo_path"] == REPO_PATH
-    assert issue["author_email"] == settings.FIRST_SUPERUSER
+    assert issue["repo_owner"] == REPO_OWNER
+    assert issue["repo_name"] == REPO_NAME
+    assert issue["author_username"] == REPO_OWNER
 
-    assert await fake_stores.repository.get_by_path(REPO_PATH) is not None
+    assert await fake_stores.repository.get_by_owner_and_name(REPO_OWNER, REPO_NAME) is not None
     assert len(fake_stores.issues.items) == 1
 
 
@@ -77,7 +80,7 @@ def test_get_missing_issue(client: TestClient) -> None:
 def test_update_issue(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
     client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Title"})
 
-    r = client.patch(f"{ISSUES_URL}/1", json={"state": "closed"})
+    r = client.patch(f"{ISSUES_URL}/1", headers=superuser_token_headers, json={"state": "closed"})
     assert r.status_code == 200
     assert r.json()["state"] == "closed"
 
@@ -86,8 +89,34 @@ def test_update_issue(client: TestClient, superuser_token_headers: dict[str, str
 def test_update_issue_invalid_state(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
     client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Title"})
 
-    r = client.patch(f"{ISSUES_URL}/1", json={"state": "merged"})
+    r = client.patch(f"{ISSUES_URL}/1", headers=superuser_token_headers, json={"state": "merged"})
     assert r.status_code == 400
+
+
+@pytest.mark.usefixtures("fake_stores")
+def test_update_issue_title_and_body(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
+    client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Title", "body": "Body"})
+
+    r = client.patch(
+        f"{ISSUES_URL}/1", headers=superuser_token_headers, json={"title": "New title", "body": "New body"}
+    )
+    assert r.status_code == 200
+    assert r.json()["title"] == "New title"
+    assert r.json()["body"] == "New body"
+
+
+def test_update_issue_requires_authorship(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+) -> None:
+    client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Title"})
+
+    r = client.patch(f"{ISSUES_URL}/1", headers=normal_user_token_headers, json={"title": "Hijacked"})
+    assert r.status_code == 403
+
+    r = client.patch(f"{ISSUES_URL}/1", headers=normal_user_token_headers, json={"state": "closed"})
+    assert r.status_code == 200
 
 
 def test_create_pull_request(
@@ -114,7 +143,7 @@ def test_create_pull_request(
 def test_list_pull_requests_counts(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
     client.post(PULLS_URL, headers=superuser_token_headers, json={"title": "First", "head_branch": "a"})
     client.post(PULLS_URL, headers=superuser_token_headers, json={"title": "Second", "head_branch": "b"})
-    client.patch(f"{PULLS_URL}/2", json={"state": "merged"})
+    client.patch(f"{PULLS_URL}/2", headers=superuser_token_headers, json={"state": "merged"})
 
     r = client.get(PULLS_URL)
     assert r.status_code == 200

@@ -1,11 +1,14 @@
-import { Link as RouterLink } from "@tanstack/react-router"
+import type { SourceMode } from "@/components/Repositories/SourceLink"
+import SourceLink from "@/components/Repositories/SourceLink"
 
 interface RepoBreadcrumbsProps {
   owner: string
   repo: string
   /** Full path segments (e.g. "src/lib/utils.ts"). Empty for repo root. */
   path: string
-  searchRef?: string
+  mode?: SourceMode
+  /** Branch name or commit SHA, depending on the mode. */
+  refName?: string
   /**
    * When true, the last segment is rendered as plain text (current file/dir).
    * When false, all segments are links (useful in tree view where the last
@@ -14,19 +17,28 @@ interface RepoBreadcrumbsProps {
   lastSegmentIsStatic?: boolean
 }
 
-const RepoBreadcrumbs = ({ owner, repo, path, searchRef, lastSegmentIsStatic = true }: RepoBreadcrumbsProps) => {
+const RepoBreadcrumbs = ({
+  owner,
+  repo,
+  path,
+  mode = "branch",
+  refName = "main",
+  lastSegmentIsStatic = true,
+}: RepoBreadcrumbsProps) => {
   const parts = path ? path.split("/").filter(Boolean) : []
 
   return (
     <div className="flex items-center gap-1 text-sm flex-wrap">
-      <RouterLink
-        to="/$owner/$repo"
-        params={{ owner, repo }}
-        search={{ ref: searchRef }}
+      <SourceLink
+        owner={owner}
+        repo={repo}
+        mode={mode}
+        refName={refName}
+        path=""
         className="font-semibold text-primary hover:underline"
       >
         {repo}
-      </RouterLink>
+      </SourceLink>
       {parts.map((part, i) => {
         const subPath = parts.slice(0, i + 1).join("/")
         const isLast = i === parts.length - 1
@@ -37,14 +49,16 @@ const RepoBreadcrumbs = ({ owner, repo, path, searchRef, lastSegmentIsStatic = t
             {isLast && lastSegmentIsStatic ? (
               <span className="font-medium">{part}</span>
             ) : (
-              <RouterLink
-                to="/$owner/$repo"
-                params={{ owner, repo }}
-                search={{ ref: searchRef, path: subPath }}
+              <SourceLink
+                owner={owner}
+                repo={repo}
+                mode={mode}
+                refName={refName}
+                path={subPath}
                 className="text-primary hover:underline"
               >
                 {part}
-              </RouterLink>
+              </SourceLink>
             )}
           </span>
         )

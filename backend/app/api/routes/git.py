@@ -86,7 +86,9 @@ async def _handle_git_request(
     Returns:
         FastAPI Response.
     """
-    await repository_service.ensure_loaded(repo_path)
+    repo_path = repo_path.strip("/")
+    owner, _, name = repo_path.removesuffix(".git").partition("/")
+    await repository_service.ensure_loaded(owner, name)
 
     body = await request.body()
 
@@ -117,7 +119,7 @@ async def _handle_git_request(
     result = wsgi_app_filtered(environ, start_response)
     response_body.extend(result)
 
-    await repository_service.save_changes(repo_path)
+    await repository_service.save_changes(owner, name)
 
     status_code = int(response_status.split(maxsplit=1)[0])
     headers_dict = dict(response_headers)

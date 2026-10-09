@@ -131,13 +131,22 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
 
         user_id = str(uuid.uuid4())
         hashed_password = get_password_hash(FIRST_SUPERUSER_PASSWORD)
+        username = FIRST_SUPERUSER.split("@")[0]
 
         with psycopg.connect(db_url.replace("postgresql+psycopg://", "postgresql://")) as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO "user" (id, email, is_active, is_superuser, full_name, hashed_password)
-                    VALUES (%s, %s, True, True, 'Admin User', %s)
+                    INSERT INTO principal (id, name, lower_name, display_name, type)
+                    VALUES (%s, %s, %s, 'Admin User', 'user')
+                    ON CONFLICT (lower_name) DO NOTHING
+                """,
+                    (user_id, username, username.lower()),
+                )
+                cur.execute(
+                    """
+                    INSERT INTO "user" (id, email, is_active, is_superuser, hashed_password)
+                    VALUES (%s, %s, True, True, %s)
                     ON CONFLICT (email) DO NOTHING
                 """,
                     (user_id, "admin@example.com", hashed_password),
@@ -151,9 +160,32 @@ def _delete_repository_rows() -> None:
     """Delete all repository-related rows from the database."""
     db_url = str(settings.DATABASE_URL).replace("postgresql+psycopg://", "postgresql://")
     with psycopg.connect(db_url) as conn:
+        conn.execute("DELETE FROM activity")
+        conn.execute("DELETE FROM comment")
+        conn.execute("DELETE FROM star")
+        conn.execute("DELETE FROM watcher")
+        conn.execute("DELETE FROM release")
         conn.execute("DELETE FROM pull_request")
         conn.execute("DELETE FROM issue")
         conn.execute("DELETE FROM repository")
+
+
+def create_repository_row(owner: str, name: str) -> None:
+    """Insert a repository row for an owner without any stored Git data.
+
+    Args:
+        owner: Owner (user or organization) name.
+        name: Repository name.
+    """
+    db_url = str(settings.DATABASE_URL).replace("postgresql+psycopg://", "postgresql://")
+    with psycopg.connect(db_url) as conn:
+        conn.execute(
+            """
+            INSERT INTO repository (id, owner_id, name, is_private, default_branch)
+            SELECT %s, id, %s, false, 'main' FROM principal WHERE lower_name = %s
+            """,
+            (str(uuid.uuid4()), name, owner.lower()),
+        )
 
 
 def _delete_redis_keys(redis_url: str) -> None:
@@ -321,7 +353,7 @@ def create_user_via_api(api_base_url: str, email: str, password: str) -> dict[st
             "email": email,
             "password": password,
             "is_verified": True,
-            "full_name": "Test User",
+            "display_name": "Test User",
         }
     ).encode("utf-8")
 
@@ -344,13 +376,13 @@ def log_in_user(page: Page, base_url: str, email: str, password: str) -> None:
     page.get_by_test_id("password-input").fill(password)
     page.get_by_role("button", name="Log In").click()
     page.wait_for_url(f"{base_url}/")
-    expect(page.get_by_text("Welcome back, nice to see you again!")).to_be_visible()
+    expect(page.get_by_test_id("dashboard-feed")).to_be_visible()
     expect(page.get_by_test_id("user-menu")).to_be_visible(timeout=30000)
 
 
 def log_out_user(page: Page, base_url: str) -> None:
     page.get_by_test_id("user-menu").click()
-    page.get_by_role("menuitem", name="Log out").click()
+    page.get_by_role("menuitem", name="Sign Out").click()
     page.goto(f"{base_url}/login")
 
 

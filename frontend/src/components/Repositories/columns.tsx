@@ -29,40 +29,26 @@ function CopyPath({ path }: { path: string }) {
   )
 }
 
-function parseRepoPath(path: string): { owner: string; repo: string } {
-  const cleaned = path.replace(/\.git$/, "")
-  const parts = cleaned.split("/")
-  if (parts.length === 1) {
-    return { owner: "_", repo: parts[0] }
-  }
-  return {
-    owner: parts[0] || "",
-    repo: parts.slice(1).join("/") || parts[0] || "",
-  }
-}
-
 export const columns: ColumnDef<Repository>[] = [
   {
     accessorKey: "name",
     header: "Name",
-    cell: ({ row }) => {
-      const { owner, repo } = parseRepoPath(row.original.path)
-      return (
-        <RouterLink
-          to="/$owner/$repo"
-          params={{ owner, repo }}
-          className="flex items-center gap-2 font-medium text-primary hover:underline"
-          data-testid={`repo-link-${row.original.name}`}
-        >
-          <GitBranch className="h-4 w-4 text-muted-foreground" />
-          {owner === "_" ? row.original.name : `${owner}/${row.original.name}`}
-        </RouterLink>
-      )
-    },
+    cell: ({ row }) => (
+      <RouterLink
+        to="/$owner/$repo"
+        params={{ owner: row.original.owner, repo: row.original.name }}
+        className="flex items-center gap-2 font-medium text-primary hover:underline"
+        data-testid={`repo-link-${row.original.name}`}
+      >
+        <GitBranch className="h-4 w-4 text-muted-foreground" />
+        {row.original.owner}/{row.original.name}
+      </RouterLink>
+    ),
   },
   {
-    accessorKey: "path",
+    accessorKey: "name",
+    id: "clonePath",
     header: "Clone Path",
-    cell: ({ row }) => <CopyPath path={row.original.path} />,
+    cell: ({ row }) => <CopyPath path={`${row.original.owner}/${row.original.name}.git`} />,
   },
 ]

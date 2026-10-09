@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app.api.main import api_router
 from app.api.routes import git
 from app.config import settings
+from app.exceptions import NotFoundError
 from app.lifespan import lifespan
 from app.utils.setup_logging import setup_logging
 
@@ -42,9 +43,15 @@ app = FastAPI(
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Handle all unhandled exceptions and log them with Loguru."""
-    logger.error("Unhandled exception: %s - Path: %s", exc, request.url.path)
+    """Handle all unhandled exceptions, logging them with a stack trace."""
+    logger.error("Unhandled exception - %s %s", request.method, request.url.path, exc_info=exc)
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+
+@app.exception_handler(NotFoundError)
+async def not_found_exception_handler(_request: Request, exc: NotFoundError) -> JSONResponse:
+    """Handle not-found errors raised by the store layer."""
+    return JSONResponse(status_code=404, content={"detail": exc.detail})
 
 
 app.add_middleware(

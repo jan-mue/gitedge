@@ -1,14 +1,17 @@
-import { useNavigate } from "@tanstack/react-router"
+import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
 import { Check, FileText, Folder, MoreHorizontal } from "lucide-react"
 
 import type { CommitInfo, TreeEntry } from "@/client"
+import type { SourceMode } from "@/components/Repositories/SourceLink"
 
 interface FileBrowserProps {
   entries: TreeEntry[]
   owner: string
   repo: string
+  mode?: SourceMode
+  /** Branch name or commit SHA, depending on the mode. */
+  refName?: string
   treePath?: string
-  searchRef?: string
   lastCommit?: CommitInfo | null
 }
 
@@ -23,32 +26,35 @@ const formatRelativeDate = (timestamp: number): string => {
   return `${Math.floor(diff / 31536000)} years ago`
 }
 
-const FileBrowser = ({ entries, owner, repo, treePath, searchRef, lastCommit }: FileBrowserProps) => {
+const FileBrowser = ({
+  entries,
+  owner,
+  repo,
+  mode = "branch",
+  refName = "main",
+  treePath,
+  lastCommit,
+}: FileBrowserProps) => {
   const navigate = useNavigate()
 
-  const handleEntryClick = (entry: TreeEntry) => {
-    if (entry.type === "tree") {
-      navigate({
-        to: "/$owner/$repo",
-        params: { owner, repo },
-        search: { ref: searchRef, path: entry.path },
-      })
+  const navigateToPath = (targetPath: string) => {
+    if (mode === "commit") {
+      navigate({ to: "/$owner/$repo/src/commit/$sha/$", params: { owner, repo, sha: refName, _splat: targetPath } })
     } else {
       navigate({
-        to: "/$owner/$repo/blob",
-        params: { owner, repo },
-        search: { ref: searchRef, path: entry.path },
+        to: "/$owner/$repo/src/branch/$branch/$",
+        params: { owner, repo, branch: refName, _splat: targetPath },
       })
     }
   }
 
+  const handleEntryClick = (entry: TreeEntry) => {
+    navigateToPath(entry.path)
+  }
+
   const handleParentClick = () => {
     const parentPath = treePath?.split("/").slice(0, -1).join("/")
-    navigate({
-      to: "/$owner/$repo",
-      params: { owner, repo },
-      search: { ref: searchRef, path: parentPath || undefined },
-    })
+    navigateToPath(parentPath ?? "")
   }
 
   return (
@@ -59,9 +65,14 @@ const FileBrowser = ({ entries, owner, repo, treePath, searchRef, lastCommit }: 
             {lastCommit.author.charAt(0).toUpperCase()}
           </div>
           <span className="text-sm font-medium text-foreground">{lastCommit.author}</span>
-          <code className="px-1.5 py-0.5 text-xs font-mono bg-accent rounded text-primary">
+          <RouterLink
+            to="/$owner/$repo/commit/$hash"
+            params={{ owner, repo, hash: lastCommit.sha }}
+            data-testid="last-commit-sha"
+            className="rounded bg-accent px-1.5 py-0.5 font-mono text-xs text-primary hover:underline"
+          >
             {lastCommit.sha.slice(0, 10)}
-          </code>
+          </RouterLink>
           <Check className="w-4 h-4 text-success" />
           <span className="text-sm text-foreground truncate flex-1">{lastCommit.message.split("\n")[0]}</span>
           <button type="button" className="p-1 rounded hover:bg-accent transition-colors">

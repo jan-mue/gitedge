@@ -6,6 +6,7 @@ issues page, pull requests page, and new issue/PR forms.
 
 from __future__ import annotations
 
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -58,7 +59,7 @@ def _push_test_repo(app_url: str, repo_name: str) -> None:
 
     Args:
         app_url: Base URL of the GitEdge frontend.
-        repo_name: Repository name (e.g., "testuser/test.git").
+        repo_name: Repository name (e.g., "admin/test.git").
     """
     remote_url = f"{app_url}/api/v1/{repo_name}"
 
@@ -96,7 +97,7 @@ def _push_multi_branch_repo(app_url: str, repo_name: str) -> None:
 
     Args:
         app_url: Base URL of the GitEdge frontend.
-        repo_name: Repository name (e.g., "testuser/multibranch.git").
+        repo_name: Repository name (e.g., "admin/multibranch.git").
     """
     remote_url = f"{app_url}/api/v1/{repo_name}"
 
@@ -148,10 +149,10 @@ class TestReadmeViewer:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/readmerepo.git")
+        _push_test_repo(app_url, "admin/readmerepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/readmerepo")
+        page.goto(f"{app_url}/admin/readmerepo")
 
         # Wait for file tree to load first
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
@@ -182,10 +183,10 @@ class TestRepoHeader:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/tabrepo.git")
+        _push_test_repo(app_url, "admin/tabrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/tabrepo")
+        page.goto(f"{app_url}/admin/tabrepo")
 
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
@@ -202,10 +203,10 @@ class TestRepoHeader:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/issuetabrepo.git")
+        _push_test_repo(app_url, "admin/issuetabrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/issuetabrepo")
+        page.goto(f"{app_url}/admin/issuetabrepo")
 
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
@@ -222,10 +223,10 @@ class TestRepoHeader:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/pulltabrepo.git")
+        _push_test_repo(app_url, "admin/pulltabrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/pulltabrepo")
+        page.goto(f"{app_url}/admin/pulltabrepo")
 
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
@@ -242,10 +243,10 @@ class TestRepoHeader:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/codetabrepo.git")
+        _push_test_repo(app_url, "admin/codetabrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/codetabrepo")
+        page.goto(f"{app_url}/admin/codetabrepo")
 
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
@@ -257,24 +258,23 @@ class TestRepoHeader:
         page.get_by_test_id("tab-code").click()
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=10000)
 
-    def test_theme_toggle(self, app_url: str, page: Page) -> None:
-        """Test that the theme toggle button is present and clickable.
+    def test_repo_actions_are_visible(self, app_url: str, page: Page) -> None:
+        """Test that the star, watch and fork actions are present.
 
         Args:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/themerepo.git")
+        _push_test_repo(app_url, "admin/themerepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/themerepo")
+        page.goto(f"{app_url}/admin/themerepo")
 
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
-        # Verify theme toggle is visible and clickable
-        theme_toggle = page.get_by_test_id("theme-toggle")
-        expect(theme_toggle).to_be_visible()
-        theme_toggle.click()
+        expect(page.get_by_test_id("star-button")).to_be_visible()
+        expect(page.get_by_test_id("watch-button")).to_be_visible()
+        expect(page.get_by_test_id("fork-button")).to_be_visible()
 
 
 class TestBranchSwitcher:
@@ -287,10 +287,10 @@ class TestBranchSwitcher:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_multi_branch_repo(app_url, "uitest/branchrepo.git")
+        _push_multi_branch_repo(app_url, "admin/branchrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/branchrepo")
+        page.goto(f"{app_url}/admin/branchrepo")
 
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
@@ -314,10 +314,10 @@ class TestBranchSwitcher:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_multi_branch_repo(app_url, "uitest/switchrepo.git")
+        _push_multi_branch_repo(app_url, "admin/switchrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/switchrepo")
+        page.goto(f"{app_url}/admin/switchrepo")
 
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
@@ -343,10 +343,10 @@ class TestIssuesPage:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/issuesrepo.git")
+        _push_test_repo(app_url, "admin/issuesrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/issuesrepo/issues")
+        page.goto(f"{app_url}/admin/issuesrepo/issues")
 
         expect(page.get_by_test_id("issues-empty-state")).to_be_visible(timeout=15000)
 
@@ -357,10 +357,10 @@ class TestIssuesPage:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/newissuerepo.git")
+        _push_test_repo(app_url, "admin/newissuerepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/newissuerepo/issues")
+        page.goto(f"{app_url}/admin/newissuerepo/issues")
 
         expect(page.get_by_test_id("issues-empty-state")).to_be_visible(timeout=15000)
 
@@ -385,10 +385,10 @@ class TestPullRequestsPage:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/pullsrepo.git")
+        _push_test_repo(app_url, "admin/pullsrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/pullsrepo/pulls")
+        page.goto(f"{app_url}/admin/pullsrepo/pulls")
 
         expect(page.get_by_test_id("pulls-empty-state")).to_be_visible(timeout=15000)
 
@@ -399,10 +399,10 @@ class TestPullRequestsPage:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/newprrepo.git")
+        _push_test_repo(app_url, "admin/newprrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/newprrepo/pulls")
+        page.goto(f"{app_url}/admin/newprrepo/pulls")
 
         expect(page.get_by_test_id("pulls-empty-state")).to_be_visible(timeout=15000)
 
@@ -427,10 +427,10 @@ class TestNewIssueForm:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/issueformrepo.git")
+        _push_test_repo(app_url, "admin/issueformrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/issueformrepo/issues/new")
+        page.goto(f"{app_url}/admin/issueformrepo/issues/new")
 
         # Verify form elements
         title_input = page.get_by_test_id("issue-title-input")
@@ -460,10 +460,10 @@ class TestNewPRForm:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/prformrepo.git")
+        _push_test_repo(app_url, "admin/prformrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/prformrepo/pulls/new")
+        page.goto(f"{app_url}/admin/prformrepo/pulls/new")
 
         # Verify form elements
         title_input = page.get_by_test_id("pr-title-input")
@@ -493,10 +493,10 @@ class TestCreateIssue:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/createissuerepo.git")
+        _push_test_repo(app_url, "admin/createissuerepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/createissuerepo/issues/new")
+        page.goto(f"{app_url}/admin/createissuerepo/issues/new")
 
         page.get_by_test_id("issue-title-input").fill("My first issue")
         page.get_by_test_id("issue-body-input").fill("This is the issue body.")
@@ -516,10 +516,10 @@ class TestCreatePullRequest:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/createprrepo.git")
+        _push_test_repo(app_url, "admin/createprrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/createprrepo/pulls/new")
+        page.goto(f"{app_url}/admin/createprrepo/pulls/new")
 
         page.wait_for_selector(
             '[data-testid="pr-source-branch"] option[value="main"]',
@@ -544,17 +544,17 @@ class TestIssuesAndPullRequests:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/mixedrepo.git")
+        _push_test_repo(app_url, "admin/mixedrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/uitest/mixedrepo/issues/new")
+        page.goto(f"{app_url}/admin/mixedrepo/issues/new")
         page.get_by_test_id("issue-title-input").fill("Issue one")
         page.get_by_test_id("issue-body-input").fill("Issue body")
         page.get_by_test_id("submit-issue-btn").click()
         expect(page.get_by_test_id("issue-1")).to_be_visible(timeout=15000)
 
-        page.goto(f"{app_url}/uitest/mixedrepo/pulls/new")
+        page.goto(f"{app_url}/admin/mixedrepo/pulls/new")
         page.wait_for_selector(
             '[data-testid="pr-source-branch"] option[value="main"]',
             state="attached",
@@ -566,12 +566,12 @@ class TestIssuesAndPullRequests:
         expect(page.get_by_test_id("pr-2")).to_be_visible(timeout=15000)
 
         # The issues list must not contain the pull request.
-        page.goto(f"{app_url}/uitest/mixedrepo/issues")
+        page.goto(f"{app_url}/admin/mixedrepo/issues")
         expect(page.get_by_test_id("issue-1")).to_be_visible(timeout=15000)
         expect(page.get_by_test_id("issue-2")).to_have_count(0)
 
         # The pull requests list shows the pull request.
-        page.goto(f"{app_url}/uitest/mixedrepo/pulls")
+        page.goto(f"{app_url}/admin/mixedrepo/pulls")
         expect(page.get_by_test_id("pr-2")).to_be_visible(timeout=15000)
 
 
@@ -585,10 +585,10 @@ class TestRepoStats:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "uitest/clonerepo.git")
+        _push_test_repo(app_url, "admin/clonerepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
-        page.goto(f"{app_url}/uitest/clonerepo")
+        page.goto(f"{app_url}/admin/clonerepo")
 
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
@@ -598,7 +598,43 @@ class TestRepoStats:
         # Verify clone URL input
         clone_url = page.get_by_test_id("clone-url")
         expect(clone_url).to_be_visible()
-        expect(clone_url).to_have_value(f"{app_url}/uitest/clonerepo.git")
+        expect(clone_url).to_have_value(f"{app_url}/admin/clonerepo.git")
 
         # Verify copy button
         expect(page.get_by_test_id("copy-clone-url")).to_be_visible()
+
+
+class TestPullRequestFiles:
+    """Test the changed-files list and view-file links on a pull request."""
+
+    def test_pr_lists_changed_files_with_view_link(self, app_url: str, page: Page) -> None:
+        """A pull request lists its changed files with a link to the file at the head commit.
+
+        Args:
+            app_url: Base URL of the GitEdge frontend.
+            page: Playwright page.
+        """
+        _push_multi_branch_repo(app_url, "admin/prfilesrepo.git")
+
+        log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
+        page.goto(f"{app_url}/admin/prfilesrepo/pulls/new")
+
+        page.wait_for_selector(
+            '[data-testid="pr-source-branch"] option[value="develop"]',
+            state="attached",
+        )
+        page.get_by_test_id("pr-source-branch").select_option("develop")
+        page.get_by_test_id("pr-target-branch").select_option("main")
+        page.get_by_test_id("pr-title-input").fill("Add develop content")
+        page.get_by_test_id("submit-pr-btn").click()
+        expect(page.get_by_test_id("pr-1")).to_be_visible(timeout=15000)
+
+        page.goto(f"{app_url}/admin/prfilesrepo/pulls/1")
+        files = page.get_by_test_id("pr-files")
+        expect(files).to_be_visible(timeout=15000)
+        expect(files).to_contain_text("dev.txt")
+
+        page.get_by_test_id("view-file-dev.txt").click()
+        expect(page.get_by_test_id("file-viewer")).to_be_visible(timeout=15000)
+        expect(page.get_by_test_id("file-viewer")).to_contain_text("development file")
+        expect(page).to_have_url(re.compile(r"/admin/prfilesrepo/src/commit/[0-9a-f]+/dev\.txt$"))

@@ -50,7 +50,7 @@ def _push_test_repo(wrangler_dev_url: str, repo_name: str) -> None:
 
     Args:
         wrangler_dev_url: Base URL of the wrangler dev server.
-        repo_name: Repository name (e.g., "testuser/browse-test.git").
+        repo_name: Repository name (e.g., "admin/browse-test.git").
     """
     remote_url = f"{wrangler_dev_url}/api/v1/{repo_name}"
 
@@ -90,7 +90,7 @@ class TestRepositoryBrowsing:
             wrangler_dev_url: Base URL of the wrangler dev server.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "browseuser/listrepo.git")
+        _push_test_repo(app_url, "admin/listrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         page.goto(f"{app_url}/repositories")
@@ -105,11 +105,11 @@ class TestRepositoryBrowsing:
             wrangler_dev_url: Base URL of the wrangler dev server.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "browseuser/rootrepo.git")
+        _push_test_repo(app_url, "admin/rootrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/browseuser/rootrepo")
+        page.goto(f"{app_url}/admin/rootrepo")
 
         file_tree = page.get_by_test_id("file-tree")
         expect(file_tree).to_be_visible(timeout=15000)
@@ -124,11 +124,11 @@ class TestRepositoryBrowsing:
             wrangler_dev_url: Base URL of the wrangler dev server.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "browseuser/subdirrepo.git")
+        _push_test_repo(app_url, "admin/subdirrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/browseuser/subdirrepo")
+        page.goto(f"{app_url}/admin/subdirrepo")
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
         page.get_by_test_id("tree-entry-src").click()
@@ -145,7 +145,7 @@ class TestRepositoryBrowsing:
             wrangler_dev_url: Base URL of the wrangler dev server.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "browseuser/navrepo.git")
+        _push_test_repo(app_url, "admin/navrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         page.goto(f"{app_url}/repositories")
@@ -168,11 +168,11 @@ class TestFileViewer:
             wrangler_dev_url: Base URL of the wrangler dev server.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "browseuser/viewrepo.git")
+        _push_test_repo(app_url, "admin/viewrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/browseuser/viewrepo?path=src")
+        page.goto(f"{app_url}/admin/viewrepo/src/branch/main/src")
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
         page.get_by_test_id("tree-entry-main.py").click()
@@ -194,11 +194,11 @@ class TestFileViewer:
             wrangler_dev_url: Base URL of the wrangler dev server.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "browseuser/mdrepo.git")
+        _push_test_repo(app_url, "admin/mdrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/browseuser/mdrepo")
+        page.goto(f"{app_url}/admin/mdrepo")
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
 
         page.get_by_test_id("tree-entry-README.md").click()
@@ -216,11 +216,11 @@ class TestFileViewer:
             wrangler_dev_url: Base URL of the wrangler dev server.
             page: Playwright page.
         """
-        _push_test_repo(app_url, "browseuser/backrepo.git")
+        _push_test_repo(app_url, "admin/backrepo.git")
 
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
-        page.goto(f"{app_url}/browseuser/backrepo")
+        page.goto(f"{app_url}/admin/backrepo")
         expect(page.get_by_test_id("file-tree")).to_be_visible(timeout=15000)
         page.get_by_test_id("tree-entry-README.md").click()
         expect(page.get_by_test_id("file-viewer")).to_be_visible(timeout=15000)

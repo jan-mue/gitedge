@@ -21,6 +21,10 @@ class UserStore(CrudStore[User], ABC):
     async def get_by_email(self, email: str) -> User | None:
         """Get a user by their email address."""
 
+    @abstractmethod
+    async def get_by_name(self, name: str) -> User | None:
+        """Get a user by their name (case-insensitive)."""
+
 
 class SQLUserStore(UserStore, SQLStore[User]):
     """SQLAlchemy implementation of the user store."""
@@ -36,3 +40,7 @@ class SQLUserStore(UserStore, SQLStore[User]):
     async def get_by_email(self, email: str) -> User | None:
         """Get a user by their email address."""
         return await self.db.scalar(select(User).where(User.email == email))
+
+    async def get_by_name(self, name: str) -> User | None:
+        """Get a user by their name (case-insensitive)."""
+        return await self.db.scalar(select(User).where(User.lower_name == name.lower()))

@@ -11,10 +11,10 @@ export type UserTableData = UserPublic & {
 
 export const columns: ColumnDef<UserTableData>[] = [
   {
-    accessorKey: "full_name",
+    accessorKey: "display_name",
     header: "Full Name",
     cell: ({ row }) => {
-      const fullName = row.original.full_name
+      const fullName = row.original.display_name
       return (
         <div className="flex items-center gap-2">
           <span className={cn("font-medium", !fullName && "text-muted-foreground")}>{fullName || "N/A"}</span>

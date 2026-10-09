@@ -14,7 +14,7 @@ const IssuesList = ({ owner, repo }: IssuesListProps) => {
 
   const { data: issuesData } = useQuery({
     queryKey: ["issues", repoPath],
-    queryFn: async () => (await RepositoriesService.listIssues({ path: { path: repoPath } })).data,
+    queryFn: async () => (await RepositoriesService.listIssues({ path: { owner, repo } })).data,
   })
 
   const issues = issuesData?.data ?? []
@@ -99,7 +99,13 @@ const IssuesList = ({ owner, repo }: IssuesListProps) => {
                   className={`w-4 h-4 flex-shrink-0 ${issue.state === "open" ? "text-success" : "text-muted-foreground"}`}
                 />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-foreground hover:text-primary">{issue.title}</span>
+                  <RouterLink
+                    to="/$owner/$repo/issues/$number"
+                    params={{ owner, repo, number: String(issue.number) }}
+                    className="text-sm font-medium text-foreground hover:text-primary"
+                  >
+                    {issue.title}
+                  </RouterLink>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     #{issue.number}
                     {issue.created_at && ` opened ${new Date(issue.created_at).toLocaleDateString()}`}

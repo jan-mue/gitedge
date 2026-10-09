@@ -65,7 +65,7 @@ class TestLoginAuthentication:
 
         page.wait_for_url(f"{app_url}/")
 
-        expect(page.get_by_text("Welcome back, nice to see you again!")).to_be_visible()
+        expect(page.get_by_test_id("dashboard-feed")).to_be_visible()
 
     def test_log_in_with_invalid_email(self, page: Page, app_url: str) -> None:
         """Invalid email should show an error message."""
@@ -100,13 +100,13 @@ class TestLogout:
 
         page.wait_for_url(f"{app_url}/")
 
-        expect(page.get_by_text("Welcome back, nice to see you again!")).to_be_visible()
+        expect(page.get_by_test_id("dashboard-feed")).to_be_visible()
 
         # Wait for user menu to be visible before clicking (longer timeout for sidebar to load)
         user_menu = page.get_by_test_id("user-menu")
         expect(user_menu).to_be_visible(timeout=30000)
         user_menu.click()
-        page.get_by_role("menuitem", name="Log out").click()
+        page.get_by_role("menuitem", name="Sign Out").click()
         page.wait_for_url(f"{app_url}/login")
 
     @pytest.mark.usefixtures("logged_in_superuser")
@@ -116,7 +116,7 @@ class TestLogout:
         user_menu = page.get_by_test_id("user-menu")
         expect(user_menu).to_be_visible(timeout=30000)
         user_menu.click()
-        page.get_by_role("menuitem", name="Log out").click()
+        page.get_by_role("menuitem", name="Sign Out").click()
         page.wait_for_url(f"{app_url}/login")
 
         page.goto(f"{app_url}/settings")

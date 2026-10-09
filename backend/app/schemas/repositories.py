@@ -2,15 +2,42 @@
 
 import uuid
 from datetime import datetime
+from enum import StrEnum
 
+from app.entities.issues import IssueState
 from app.schemas.base import GitEdgeBaseModel
+
+
+class TreeEntryType(StrEnum):
+    """Type of a Git tree entry."""
+
+    TREE = "tree"
+    BLOB = "blob"
+
+
+class CommitChangeType(StrEnum):
+    """How a file changed within a commit."""
+
+    ADD = "add"
+    MODIFY = "modify"
+    DELETE = "delete"
+    RENAME = "rename"
 
 
 class Repository(GitEdgeBaseModel):
     """Repository schema."""
 
     name: str
-    path: str
+    owner: str
+    description: str | None = None
+    default_branch: str = "main"
+    is_private: bool = False
+    stars_count: int = 0
+    forks_count: int = 0
+    watchers_count: int = 0
+    fork_of: str | None = None
+    created_at: datetime
+    updated_at: datetime
 
 
 class RepositoriesPublic(GitEdgeBaseModel):
@@ -25,7 +52,7 @@ class TreeEntry(GitEdgeBaseModel):
 
     name: str
     path: str
-    type: str  # "tree" or "blob"
+    type: TreeEntryType
     size: int | None = None
 
 
@@ -33,7 +60,6 @@ class TreeListing(GitEdgeBaseModel):
     """Directory listing for a repository path."""
 
     entries: list[TreeEntry]
-    repo_path: str
     tree_path: str
     ref: str
 
@@ -72,10 +98,16 @@ class RepositoryInfo(GitEdgeBaseModel):
     """Extended repository information with metadata."""
 
     name: str
-    path: str
+    owner: str
+    description: str | None = None
+    is_private: bool = False
     default_branch: str
     branch_count: int
     tag_count: int
+    stars_count: int = 0
+    forks_count: int = 0
+    watchers_count: int = 0
+    fork_of: str | None = None
     last_commit: CommitInfo | None = None
 
 
@@ -94,6 +126,59 @@ class BranchInfo(GitEdgeBaseModel):
     is_default: bool
 
 
+class CommitListItem(GitEdgeBaseModel):
+    """A single commit in a repository's history."""
+
+    sha: str
+    message: str
+    author: str
+    author_email: str
+    timestamp: int
+
+
+class CommitsPublic(GitEdgeBaseModel):
+    """A page of commit history."""
+
+    data: list[CommitListItem]
+    count: int
+    ref: str
+
+
+class CommitFileChange(GitEdgeBaseModel):
+    """A file changed by a commit, with its unified diff."""
+
+    path: str
+    old_path: str | None = None
+    change_type: CommitChangeType
+    additions: int
+    deletions: int
+    patch: str
+
+
+class CommitDetail(GitEdgeBaseModel):
+    """Detailed information about a single commit."""
+
+    sha: str
+    message: str
+    author: str
+    author_email: str
+    timestamp: int
+    parents: list[str]
+    files: list[CommitFileChange]
+    additions: int
+    deletions: int
+
+
+class CompareResult(GitEdgeBaseModel):
+    """The files changed between two refs, e.g. a pull request's base and head."""
+
+    base_commit: str | None = None
+    head_commit: str | None = None
+    files: list[CommitFileChange]
+    additions: int
+    deletions: int
+
+
 class IssueCreate(GitEdgeBaseModel):
     """Request to create a new issue."""
 
@@ -106,21 +191,22 @@ class IssueUpdate(GitEdgeBaseModel):
 
     title: str | None = None
     body: str | None = None
-    state: str | None = None
+    state: IssueState | None = None
 
 
 class IssuePublic(GitEdgeBaseModel):
     """Public issue representation."""
 
     id: uuid.UUID
-    repo_path: str
+    repo_owner: str
+    repo_name: str
     number: int
     title: str
     body: str | None = None
-    state: str
-    author_email: str | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    state: IssueState
+    author_username: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class IssuesListPublic(GitEdgeBaseModel):
@@ -146,26 +232,27 @@ class PullRequestUpdate(GitEdgeBaseModel):
 
     title: str | None = None
     body: str | None = None
-    state: str | None = None
+    state: IssueState | None = None
 
 
 class PullRequestPublic(GitEdgeBaseModel):
     """Public pull request representation."""
 
     id: uuid.UUID
-    repo_path: str
+    repo_owner: str
+    repo_name: str
     number: int
     title: str
     body: str | None = None
-    state: str
+    state: IssueState
     head_branch: str
     base_branch: str
-    author_email: str | None = None
+    author_username: str
     merge_base: str | None = None
     merged_commit_id: str | None = None
     has_merged: bool = False
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
 
 
 class PullRequestsListPublic(GitEdgeBaseModel):

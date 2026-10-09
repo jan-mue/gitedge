@@ -69,6 +69,10 @@ export default defineConfig({
         target: process.env.API_URL || DEV_API_URL,
         changeOrigin: true,
       },
+      "^(?:/[^/]+)+/[^/]+\\.git/": {
+        target: process.env.API_URL || DEV_API_URL,
+        changeOrigin: true,
+      },
     },
   },
 })

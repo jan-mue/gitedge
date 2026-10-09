@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import type { ReactNode } from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 
 import type { TreeEntry } from "@/client"
@@ -9,6 +10,11 @@ const navigate = vi.hoisted(() => vi.fn())
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => navigate,
+  Link: ({ children, "data-testid": testId }: { children: ReactNode; "data-testid"?: string }) => (
+    <a data-testid={testId} href="/">
+      {children}
+    </a>
+  ),
 }))
 
 const entries: TreeEntry[] = [
@@ -35,10 +41,15 @@ describe("FileBrowser", () => {
 
     await user.click(screen.getByTestId("tree-entry-src"))
 
-    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ search: { ref: undefined, path: "src" } }))
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "/$owner/$repo/src/branch/$branch/$",
+        params: { owner: "owner", repo: "repo", branch: "main", _splat: "src" },
+      }),
+    )
   })
 
-  test("navigates to the blob route for a file", async () => {
+  test("navigates to the source route for a file", async () => {
     const user = userEvent.setup()
     render(<FileBrowser entries={entries} owner="owner" repo="repo" />)
 
@@ -46,7 +57,8 @@ describe("FileBrowser", () => {
 
     expect(navigate).toHaveBeenCalledWith(
       expect.objectContaining({
-        search: { ref: undefined, path: "README.md" },
+        to: "/$owner/$repo/src/branch/$branch/$",
+        params: { owner: "owner", repo: "repo", branch: "main", _splat: "README.md" },
       }),
     )
   })
@@ -63,7 +75,12 @@ describe("FileBrowser", () => {
 
     await user.click(screen.getByTestId("tree-entry-parent"))
 
-    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ search: { ref: undefined, path: "src" } }))
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "/$owner/$repo/src/branch/$branch/$",
+        params: { owner: "owner", repo: "repo", branch: "main", _splat: "src" },
+      }),
+    )
   })
 
   test("renders the last commit bar", () => {

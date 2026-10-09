@@ -111,31 +111,12 @@ async def register_user(crud_service: CrudServiceDep, user_in: UserRegister) -> 
     return await crud_service.create_user(user_create=user_create)
 
 
-@router.get("/{user_id}")
-async def read_user_by_id(user_id: uuid.UUID, user_store: UserStoreDep, current_user: CurrentUser) -> UserPublic:
-    """Get a specific user by id."""
-    user = await user_store.get(user_id)
-    if user != current_user and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=403,
-            detail="The user doesn't have enough privileges",
-        )
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return UserPublic.model_validate(user)
-
-
 @router.patch("/{user_id}", dependencies=[Depends(get_current_active_superuser)])
 async def update_user(
     *, user_store: UserStoreDep, crud_service: CrudServiceDep, user_id: uuid.UUID, user_in: UserUpdate
 ) -> UserPublic:
     """Update a user."""
     db_user = await user_store.get(user_id)
-    if not db_user:
-        raise HTTPException(
-            status_code=404,
-            detail="The user with this id does not exist in the system",
-        )
     if user_in.email:
         existing_user = await crud_service.get_user_by_email(email=user_in.email)
         if existing_user and existing_user.id != user_id:
@@ -150,8 +131,6 @@ async def update_user(
 async def delete_user(user_store: UserStoreDep, current_user: CurrentUser, user_id: uuid.UUID) -> None:
     """Delete a user."""
     user = await user_store.get(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
     if user == current_user:
         raise HTTPException(status_code=403, detail="Super users are not allowed to delete themselves")
     # TODO: delete repositories

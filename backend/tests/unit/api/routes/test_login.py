@@ -86,7 +86,7 @@ async def test_reset_password(client: TestClient, crud: CrudService) -> None:
     await crud.create_user(
         UserCreate(
             email=email,
-            full_name="Test User",
+            display_name="Test User",
             password=password,
             is_active=True,
             is_superuser=False,

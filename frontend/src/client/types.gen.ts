@@ -5,6 +5,74 @@ export type ClientOptions = {
 };
 
 /**
+ * ActivitiesPublic
+ *
+ * List of activity events.
+ */
+export type ActivitiesPublic = {
+    /**
+     * Data
+     */
+    data: Array<ActivityPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * ActivityKind
+ *
+ * Kinds of activity recorded in the feed.
+ */
+export type ActivityKind = 'star' | 'watch' | 'fork' | 'issue_open' | 'issue_close' | 'issue_reopen' | 'comment' | 'pull_request_open' | 'pull_request_merge' | 'pull_request_close' | 'pull_request_reopen' | 'release';
+
+/**
+ * ActivityPublic
+ *
+ * Public activity representation.
+ */
+export type ActivityPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    kind: ActivityKind;
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Actor Username
+     */
+    actor_username: string;
+    /**
+     * Repo Owner
+     */
+    repo_owner?: string | null;
+    /**
+     * Repo Name
+     */
+    repo_name?: string | null;
+    target_type?: ActivityTargetType | null;
+    /**
+     * Target Number
+     */
+    target_number?: number | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * ActivityTargetType
+ *
+ * Types of targets an activity event can reference.
+ */
+export type ActivityTargetType = 'repository' | 'issue' | 'pull_request' | 'release';
+
+/**
  * Body_login-login_access_token
  */
 export type Body_login_login_access_token = {
@@ -35,6 +103,154 @@ export type BranchInfo = {
 };
 
 /**
+ * CommentCreate
+ *
+ * Request to create a comment.
+ */
+export type CommentCreate = {
+    /**
+     * Body
+     */
+    body: string;
+};
+
+/**
+ * CommentPublic
+ *
+ * Public comment representation.
+ */
+export type CommentPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Author Username
+     */
+    author_username: string;
+    /**
+     * Body
+     */
+    body: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * CommentUpdate
+ *
+ * Request to update a comment.
+ */
+export type CommentUpdate = {
+    /**
+     * Body
+     */
+    body: string;
+};
+
+/**
+ * CommentsPublic
+ *
+ * List of comments.
+ */
+export type CommentsPublic = {
+    /**
+     * Data
+     */
+    data: Array<CommentPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * CommitChangeType
+ *
+ * How a file changed within a commit.
+ */
+export type CommitChangeType = 'add' | 'modify' | 'delete' | 'rename';
+
+/**
+ * CommitDetail
+ *
+ * Detailed information about a single commit.
+ */
+export type CommitDetail = {
+    /**
+     * Sha
+     */
+    sha: string;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Author
+     */
+    author: string;
+    /**
+     * Author Email
+     */
+    author_email: string;
+    /**
+     * Timestamp
+     */
+    timestamp: number;
+    /**
+     * Parents
+     */
+    parents: Array<string>;
+    /**
+     * Files
+     */
+    files: Array<CommitFileChange>;
+    /**
+     * Additions
+     */
+    additions: number;
+    /**
+     * Deletions
+     */
+    deletions: number;
+};
+
+/**
+ * CommitFileChange
+ *
+ * A file changed by a commit, with its unified diff.
+ */
+export type CommitFileChange = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Old Path
+     */
+    old_path?: string | null;
+    change_type: CommitChangeType;
+    /**
+     * Additions
+     */
+    additions: number;
+    /**
+     * Deletions
+     */
+    deletions: number;
+    /**
+     * Patch
+     */
+    patch: string;
+};
+
+/**
  * CommitInfo
  *
  * Information about a commit.
@@ -56,6 +272,82 @@ export type CommitInfo = {
      * Timestamp
      */
     timestamp: number;
+};
+
+/**
+ * CommitListItem
+ *
+ * A single commit in a repository's history.
+ */
+export type CommitListItem = {
+    /**
+     * Sha
+     */
+    sha: string;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Author
+     */
+    author: string;
+    /**
+     * Author Email
+     */
+    author_email: string;
+    /**
+     * Timestamp
+     */
+    timestamp: number;
+};
+
+/**
+ * CommitsPublic
+ *
+ * A page of commit history.
+ */
+export type CommitsPublic = {
+    /**
+     * Data
+     */
+    data: Array<CommitListItem>;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Ref
+     */
+    ref: string;
+};
+
+/**
+ * CompareResult
+ *
+ * The files changed between two refs, e.g. a pull request's base and head.
+ */
+export type CompareResult = {
+    /**
+     * Base Commit
+     */
+    base_commit?: string | null;
+    /**
+     * Head Commit
+     */
+    head_commit?: string | null;
+    /**
+     * Files
+     */
+    files: Array<CommitFileChange>;
+    /**
+     * Additions
+     */
+    additions: number;
+    /**
+     * Deletions
+     */
+    deletions: number;
 };
 
 /**
@@ -119,6 +411,78 @@ export type FileContent = {
 };
 
 /**
+ * ForkCreate
+ *
+ * Request to fork a repository.
+ */
+export type ForkCreate = {
+    /**
+     * Owner
+     */
+    owner?: string | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Description
+     */
+    description?: string | null;
+};
+
+/**
+ * ForkPublic
+ *
+ * Public representation of a fork.
+ */
+export type ForkPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Owner
+     */
+    owner: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Stars Count
+     */
+    stars_count?: number;
+    /**
+     * Forks Count
+     */
+    forks_count?: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * ForksPublic
+ *
+ * List of forks for a repository.
+ */
+export type ForksPublic = {
+    /**
+     * Data
+     */
+    data: Array<ForkPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * HTTPValidationError
  */
 export type HTTPValidationError = {
@@ -155,9 +519,13 @@ export type IssuePublic = {
      */
     id: string;
     /**
-     * Repo Path
+     * Repo Owner
      */
-    repo_path: string;
+    repo_owner: string;
+    /**
+     * Repo Name
+     */
+    repo_name: string;
     /**
      * Number
      */
@@ -170,23 +538,27 @@ export type IssuePublic = {
      * Body
      */
     body?: string | null;
+    state: IssueState;
     /**
-     * State
+     * Author Username
      */
-    state: string;
-    /**
-     * Author Email
-     */
-    author_email?: string | null;
+    author_username: string;
     /**
      * Created At
      */
-    created_at?: string | null;
+    created_at: string;
     /**
      * Updated At
      */
-    updated_at?: string | null;
+    updated_at: string;
 };
+
+/**
+ * IssueState
+ *
+ * State of an issue or pull request.
+ */
+export type IssueState = 'open' | 'closed' | 'merged';
 
 /**
  * IssueUpdate
@@ -202,10 +574,7 @@ export type IssueUpdate = {
      * Body
      */
     body?: string | null;
-    /**
-     * State
-     */
-    state?: string | null;
+    state?: IssueState | null;
 };
 
 /**
@@ -249,6 +618,77 @@ export type NewPassword = {
 };
 
 /**
+ * OrganizationCreate
+ *
+ * Request to create a new organization.
+ */
+export type OrganizationCreate = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
+    /**
+     * Description
+     */
+    description?: string | null;
+};
+
+/**
+ * OrganizationPublic
+ *
+ * Public organization representation.
+ */
+export type OrganizationPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * OrganizationsPublic
+ *
+ * List of organizations.
+ */
+export type OrganizationsPublic = {
+    /**
+     * Data
+     */
+    data: Array<OrganizationPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * PrincipalType
+ *
+ * The kind of principal.
+ */
+export type PrincipalType = 'user' | 'organization';
+
+/**
  * PrivateUserCreate
  *
  * Schema for creating a user via private API.
@@ -263,13 +703,34 @@ export type PrivateUserCreate = {
      */
     password: string;
     /**
-     * Full Name
+     * Display Name
      */
-    full_name: string;
+    display_name: string;
     /**
      * Is Verified
      */
     is_verified?: boolean;
+};
+
+/**
+ * ProfilePublic
+ *
+ * Public profile for a principal (user or organization).
+ */
+export type ProfilePublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
+    principal_type: PrincipalType;
 };
 
 /**
@@ -307,9 +768,13 @@ export type PullRequestPublic = {
      */
     id: string;
     /**
-     * Repo Path
+     * Repo Owner
      */
-    repo_path: string;
+    repo_owner: string;
+    /**
+     * Repo Name
+     */
+    repo_name: string;
     /**
      * Number
      */
@@ -322,10 +787,7 @@ export type PullRequestPublic = {
      * Body
      */
     body?: string | null;
-    /**
-     * State
-     */
-    state: string;
+    state: IssueState;
     /**
      * Head Branch
      */
@@ -335,9 +797,9 @@ export type PullRequestPublic = {
      */
     base_branch: string;
     /**
-     * Author Email
+     * Author Username
      */
-    author_email?: string | null;
+    author_username: string;
     /**
      * Merge Base
      */
@@ -353,11 +815,11 @@ export type PullRequestPublic = {
     /**
      * Created At
      */
-    created_at?: string | null;
+    created_at: string;
     /**
      * Updated At
      */
-    updated_at?: string | null;
+    updated_at: string;
 };
 
 /**
@@ -374,10 +836,7 @@ export type PullRequestUpdate = {
      * Body
      */
     body?: string | null;
-    /**
-     * State
-     */
-    state?: string | null;
+    state?: IssueState | null;
 };
 
 /**
@@ -425,6 +884,138 @@ export type ReadmeContent = {
 };
 
 /**
+ * ReleaseCreate
+ *
+ * Request to create a release.
+ */
+export type ReleaseCreate = {
+    /**
+     * Tag Name
+     */
+    tag_name: string;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Body
+     */
+    body?: string | null;
+    /**
+     * Target Commitish
+     */
+    target_commitish?: string;
+    /**
+     * Is Draft
+     */
+    is_draft?: boolean;
+    /**
+     * Is Prerelease
+     */
+    is_prerelease?: boolean;
+};
+
+/**
+ * ReleasePublic
+ *
+ * Public release representation.
+ */
+export type ReleasePublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Repo Owner
+     */
+    repo_owner: string;
+    /**
+     * Repo Name
+     */
+    repo_name: string;
+    /**
+     * Tag Name
+     */
+    tag_name: string;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Body
+     */
+    body?: string | null;
+    /**
+     * Target Commitish
+     */
+    target_commitish?: string;
+    /**
+     * Is Draft
+     */
+    is_draft?: boolean;
+    /**
+     * Is Prerelease
+     */
+    is_prerelease?: boolean;
+    /**
+     * Author Username
+     */
+    author_username: string;
+    /**
+     * Published At
+     */
+    published_at?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * ReleaseUpdate
+ *
+ * Request to update a release.
+ */
+export type ReleaseUpdate = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Body
+     */
+    body?: string | null;
+    /**
+     * Is Draft
+     */
+    is_draft?: boolean | null;
+    /**
+     * Is Prerelease
+     */
+    is_prerelease?: boolean | null;
+};
+
+/**
+ * ReleasesPublic
+ *
+ * List of releases.
+ */
+export type ReleasesPublic = {
+    /**
+     * Data
+     */
+    data: Array<ReleasePublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * RepositoriesPublic
  *
  * List of repositories.
@@ -451,9 +1042,45 @@ export type Repository = {
      */
     name: string;
     /**
-     * Path
+     * Owner
      */
-    path: string;
+    owner: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Default Branch
+     */
+    default_branch?: string;
+    /**
+     * Is Private
+     */
+    is_private?: boolean;
+    /**
+     * Stars Count
+     */
+    stars_count?: number;
+    /**
+     * Forks Count
+     */
+    forks_count?: number;
+    /**
+     * Watchers Count
+     */
+    watchers_count?: number;
+    /**
+     * Fork Of
+     */
+    fork_of?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
 };
 
 /**
@@ -467,9 +1094,17 @@ export type RepositoryInfo = {
      */
     name: string;
     /**
-     * Path
+     * Owner
      */
-    path: string;
+    owner: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Is Private
+     */
+    is_private?: boolean;
     /**
      * Default Branch
      */
@@ -482,7 +1117,91 @@ export type RepositoryInfo = {
      * Tag Count
      */
     tag_count: number;
+    /**
+     * Stars Count
+     */
+    stars_count?: number;
+    /**
+     * Forks Count
+     */
+    forks_count?: number;
+    /**
+     * Watchers Count
+     */
+    watchers_count?: number;
+    /**
+     * Fork Of
+     */
+    fork_of?: string | null;
     last_commit?: CommitInfo | null;
+};
+
+/**
+ * StarState
+ *
+ * Whether the current user starred a repository, and the total count.
+ */
+export type StarState = {
+    /**
+     * Is Starred
+     */
+    is_starred: boolean;
+    /**
+     * Stars Count
+     */
+    stars_count: number;
+};
+
+/**
+ * StargazersPublic
+ *
+ * List of users who starred a repository.
+ */
+export type StargazersPublic = {
+    /**
+     * Data
+     */
+    data: Array<UserPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * TagInfo
+ *
+ * Information about a Git tag.
+ */
+export type TagInfo = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Commit Sha
+     */
+    commit_sha: string;
+    /**
+     * Timestamp
+     */
+    timestamp?: number | null;
+};
+
+/**
+ * TagsPublic
+ *
+ * List of Git tags.
+ */
+export type TagsPublic = {
+    /**
+     * Data
+     */
+    data: Array<TagInfo>;
+    /**
+     * Count
+     */
+    count: number;
 };
 
 /**
@@ -515,15 +1234,19 @@ export type TreeEntry = {
      * Path
      */
     path: string;
-    /**
-     * Type
-     */
-    type: string;
+    type: TreeEntryType;
     /**
      * Size
      */
     size?: number | null;
 };
+
+/**
+ * TreeEntryType
+ *
+ * Type of a Git tree entry.
+ */
+export type TreeEntryType = 'tree' | 'blob';
 
 /**
  * TreeListing
@@ -535,10 +1258,6 @@ export type TreeListing = {
      * Entries
      */
     entries: Array<TreeEntry>;
-    /**
-     * Repo Path
-     */
-    repo_path: string;
     /**
      * Tree Path
      */
@@ -584,9 +1303,13 @@ export type UserCreate = {
      */
     is_superuser?: boolean;
     /**
-     * Full Name
+     * Display Name
      */
-    full_name?: string | null;
+    display_name?: string | null;
+    /**
+     * Name
+     */
+    name?: string | null;
     /**
      * Password
      */
@@ -612,13 +1335,17 @@ export type UserPublic = {
      */
     is_superuser?: boolean;
     /**
-     * Full Name
+     * Display Name
      */
-    full_name?: string | null;
+    display_name?: string | null;
     /**
      * Id
      */
     id: string;
+    /**
+     * Name
+     */
+    name: string;
 };
 
 /**
@@ -628,6 +1355,14 @@ export type UserPublic = {
  */
 export type UserRegister = {
     /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
+    /**
      * Email
      */
     email: string;
@@ -635,10 +1370,6 @@ export type UserRegister = {
      * Password
      */
     password: string;
-    /**
-     * Full Name
-     */
-    full_name?: string | null;
 };
 
 /**
@@ -660,9 +1391,13 @@ export type UserUpdate = {
      */
     is_superuser?: boolean;
     /**
-     * Full Name
+     * Display Name
      */
-    full_name?: string | null;
+    display_name?: string | null;
+    /**
+     * Name
+     */
+    name?: string | null;
     /**
      * Password
      */
@@ -676,9 +1411,13 @@ export type UserUpdate = {
  */
 export type UserUpdateMe = {
     /**
-     * Full Name
+     * Name
      */
-    full_name?: string | null;
+    name?: string | null;
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
     /**
      * Email
      */
@@ -727,6 +1466,38 @@ export type ValidationError = {
     ctx?: {
         [key: string]: unknown;
     };
+};
+
+/**
+ * WatcherState
+ *
+ * Whether the current user watches a repository, and the total count.
+ */
+export type WatcherState = {
+    /**
+     * Is Watching
+     */
+    is_watching: boolean;
+    /**
+     * Watchers Count
+     */
+    watchers_count: number;
+};
+
+/**
+ * WatchersPublic
+ *
+ * List of users watching a repository.
+ */
+export type WatchersPublic = {
+    /**
+     * Data
+     */
+    data: Array<UserPublic>;
+    /**
+     * Count
+     */
+    count: number;
 };
 
 export type loginLoginAccessTokenData = {
@@ -1049,36 +1820,6 @@ export type usersDeleteUserResponses = {
 
 export type usersDeleteUserResponse = usersDeleteUserResponses[keyof usersDeleteUserResponses];
 
-export type usersReadUserByIdData = {
-    body?: never;
-    path: {
-        /**
-         * User Id
-         */
-        user_id: string;
-    };
-    query?: never;
-    url: '/api/v1/users/{user_id}';
-};
-
-export type usersReadUserByIdErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersReadUserByIdError = usersReadUserByIdErrors[keyof usersReadUserByIdErrors];
-
-export type usersReadUserByIdResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserPublic;
-};
-
-export type usersReadUserByIdResponse = usersReadUserByIdResponses[keyof usersReadUserByIdResponses];
-
 export type usersUpdateUserData = {
     body: UserUpdate;
     path: {
@@ -1317,6 +2058,952 @@ export type gitGitReceivePackResponses = {
     200: unknown;
 };
 
+export type organizationsListOrganizationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/organizations/';
+};
+
+export type organizationsListOrganizationsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type organizationsListOrganizationsError = organizationsListOrganizationsErrors[keyof organizationsListOrganizationsErrors];
+
+export type organizationsListOrganizationsResponses = {
+    /**
+     * Successful Response
+     */
+    200: OrganizationsPublic;
+};
+
+export type organizationsListOrganizationsResponse = organizationsListOrganizationsResponses[keyof organizationsListOrganizationsResponses];
+
+export type organizationsCreateOrganizationData = {
+    body: OrganizationCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/organizations/';
+};
+
+export type organizationsCreateOrganizationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type organizationsCreateOrganizationError = organizationsCreateOrganizationErrors[keyof organizationsCreateOrganizationErrors];
+
+export type organizationsCreateOrganizationResponses = {
+    /**
+     * Successful Response
+     */
+    201: OrganizationPublic;
+};
+
+export type organizationsCreateOrganizationResponse = organizationsCreateOrganizationResponses[keyof organizationsCreateOrganizationResponses];
+
+export type starsUnstarRepositoryData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/star';
+};
+
+export type starsUnstarRepositoryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type starsUnstarRepositoryError = starsUnstarRepositoryErrors[keyof starsUnstarRepositoryErrors];
+
+export type starsUnstarRepositoryResponses = {
+    /**
+     * Successful Response
+     */
+    200: StarState;
+};
+
+export type starsUnstarRepositoryResponse = starsUnstarRepositoryResponses[keyof starsUnstarRepositoryResponses];
+
+export type starsGetStarStateData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/star';
+};
+
+export type starsGetStarStateErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type starsGetStarStateError = starsGetStarStateErrors[keyof starsGetStarStateErrors];
+
+export type starsGetStarStateResponses = {
+    /**
+     * Successful Response
+     */
+    200: StarState;
+};
+
+export type starsGetStarStateResponse = starsGetStarStateResponses[keyof starsGetStarStateResponses];
+
+export type starsStarRepositoryData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/star';
+};
+
+export type starsStarRepositoryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type starsStarRepositoryError = starsStarRepositoryErrors[keyof starsStarRepositoryErrors];
+
+export type starsStarRepositoryResponses = {
+    /**
+     * Successful Response
+     */
+    200: StarState;
+};
+
+export type starsStarRepositoryResponse = starsStarRepositoryResponses[keyof starsStarRepositoryResponses];
+
+export type starsListStargazersData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/stargazers';
+};
+
+export type starsListStargazersErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type starsListStargazersError = starsListStargazersErrors[keyof starsListStargazersErrors];
+
+export type starsListStargazersResponses = {
+    /**
+     * Successful Response
+     */
+    200: StargazersPublic;
+};
+
+export type starsListStargazersResponse = starsListStargazersResponses[keyof starsListStargazersResponses];
+
+export type starsListStarredRepositoriesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/users/me/starred';
+};
+
+export type starsListStarredRepositoriesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type starsListStarredRepositoriesError = starsListStarredRepositoriesErrors[keyof starsListStarredRepositoriesErrors];
+
+export type starsListStarredRepositoriesResponses = {
+    /**
+     * Successful Response
+     */
+    200: RepositoriesPublic;
+};
+
+export type starsListStarredRepositoriesResponse = starsListStarredRepositoriesResponses[keyof starsListStarredRepositoriesResponses];
+
+export type watchersUnwatchRepositoryData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/watch';
+};
+
+export type watchersUnwatchRepositoryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type watchersUnwatchRepositoryError = watchersUnwatchRepositoryErrors[keyof watchersUnwatchRepositoryErrors];
+
+export type watchersUnwatchRepositoryResponses = {
+    /**
+     * Successful Response
+     */
+    200: WatcherState;
+};
+
+export type watchersUnwatchRepositoryResponse = watchersUnwatchRepositoryResponses[keyof watchersUnwatchRepositoryResponses];
+
+export type watchersGetWatchStateData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/watch';
+};
+
+export type watchersGetWatchStateErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type watchersGetWatchStateError = watchersGetWatchStateErrors[keyof watchersGetWatchStateErrors];
+
+export type watchersGetWatchStateResponses = {
+    /**
+     * Successful Response
+     */
+    200: WatcherState;
+};
+
+export type watchersGetWatchStateResponse = watchersGetWatchStateResponses[keyof watchersGetWatchStateResponses];
+
+export type watchersWatchRepositoryData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/watch';
+};
+
+export type watchersWatchRepositoryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type watchersWatchRepositoryError = watchersWatchRepositoryErrors[keyof watchersWatchRepositoryErrors];
+
+export type watchersWatchRepositoryResponses = {
+    /**
+     * Successful Response
+     */
+    200: WatcherState;
+};
+
+export type watchersWatchRepositoryResponse = watchersWatchRepositoryResponses[keyof watchersWatchRepositoryResponses];
+
+export type watchersListWatchersData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/watchers';
+};
+
+export type watchersListWatchersErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type watchersListWatchersError = watchersListWatchersErrors[keyof watchersListWatchersErrors];
+
+export type watchersListWatchersResponses = {
+    /**
+     * Successful Response
+     */
+    200: WatchersPublic;
+};
+
+export type watchersListWatchersResponse = watchersListWatchersResponses[keyof watchersListWatchersResponses];
+
+export type forksListForksData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/forks';
+};
+
+export type forksListForksErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type forksListForksError = forksListForksErrors[keyof forksListForksErrors];
+
+export type forksListForksResponses = {
+    /**
+     * Successful Response
+     */
+    200: ForksPublic;
+};
+
+export type forksListForksResponse = forksListForksResponses[keyof forksListForksResponses];
+
+export type forksForkRepositoryData = {
+    body: ForkCreate;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/forks';
+};
+
+export type forksForkRepositoryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type forksForkRepositoryError = forksForkRepositoryErrors[keyof forksForkRepositoryErrors];
+
+export type forksForkRepositoryResponses = {
+    /**
+     * Successful Response
+     */
+    201: ForkPublic;
+};
+
+export type forksForkRepositoryResponse = forksForkRepositoryResponses[keyof forksForkRepositoryResponses];
+
+export type commentsListCommentsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/issues/{number}/comments';
+};
+
+export type commentsListCommentsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type commentsListCommentsError = commentsListCommentsErrors[keyof commentsListCommentsErrors];
+
+export type commentsListCommentsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommentsPublic;
+};
+
+export type commentsListCommentsResponse = commentsListCommentsResponses[keyof commentsListCommentsResponses];
+
+export type commentsCreateCommentData = {
+    body: CommentCreate;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/issues/{number}/comments';
+};
+
+export type commentsCreateCommentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type commentsCreateCommentError = commentsCreateCommentErrors[keyof commentsCreateCommentErrors];
+
+export type commentsCreateCommentResponses = {
+    /**
+     * Successful Response
+     */
+    201: CommentPublic;
+};
+
+export type commentsCreateCommentResponse = commentsCreateCommentResponses[keyof commentsCreateCommentResponses];
+
+export type commentsDeleteCommentData = {
+    body?: never;
+    path: {
+        /**
+         * Comment Id
+         */
+        comment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/comments/{comment_id}';
+};
+
+export type commentsDeleteCommentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type commentsDeleteCommentError = commentsDeleteCommentErrors[keyof commentsDeleteCommentErrors];
+
+export type commentsDeleteCommentResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type commentsDeleteCommentResponse = commentsDeleteCommentResponses[keyof commentsDeleteCommentResponses];
+
+export type commentsUpdateCommentData = {
+    body: CommentUpdate;
+    path: {
+        /**
+         * Comment Id
+         */
+        comment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/comments/{comment_id}';
+};
+
+export type commentsUpdateCommentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type commentsUpdateCommentError = commentsUpdateCommentErrors[keyof commentsUpdateCommentErrors];
+
+export type commentsUpdateCommentResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommentPublic;
+};
+
+export type commentsUpdateCommentResponse = commentsUpdateCommentResponses[keyof commentsUpdateCommentResponses];
+
+export type releasesListReleasesData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Include Drafts
+         */
+        include_drafts?: boolean;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/releases';
+};
+
+export type releasesListReleasesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type releasesListReleasesError = releasesListReleasesErrors[keyof releasesListReleasesErrors];
+
+export type releasesListReleasesResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReleasesPublic;
+};
+
+export type releasesListReleasesResponse = releasesListReleasesResponses[keyof releasesListReleasesResponses];
+
+export type releasesCreateReleaseData = {
+    body: ReleaseCreate;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/releases';
+};
+
+export type releasesCreateReleaseErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type releasesCreateReleaseError = releasesCreateReleaseErrors[keyof releasesCreateReleaseErrors];
+
+export type releasesCreateReleaseResponses = {
+    /**
+     * Successful Response
+     */
+    201: ReleasePublic;
+};
+
+export type releasesCreateReleaseResponse = releasesCreateReleaseResponses[keyof releasesCreateReleaseResponses];
+
+export type releasesGetReleaseData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Tag Name
+         */
+        tag_name: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/releases/{tag_name}';
+};
+
+export type releasesGetReleaseErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type releasesGetReleaseError = releasesGetReleaseErrors[keyof releasesGetReleaseErrors];
+
+export type releasesGetReleaseResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReleasePublic;
+};
+
+export type releasesGetReleaseResponse = releasesGetReleaseResponses[keyof releasesGetReleaseResponses];
+
+export type releasesUpdateReleaseData = {
+    body: ReleaseUpdate;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Tag Name
+         */
+        tag_name: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/releases/{tag_name}';
+};
+
+export type releasesUpdateReleaseErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type releasesUpdateReleaseError = releasesUpdateReleaseErrors[keyof releasesUpdateReleaseErrors];
+
+export type releasesUpdateReleaseResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReleasePublic;
+};
+
+export type releasesUpdateReleaseResponse = releasesUpdateReleaseResponses[keyof releasesUpdateReleaseResponses];
+
+export type releasesListTagsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/tags';
+};
+
+export type releasesListTagsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type releasesListTagsError = releasesListTagsErrors[keyof releasesListTagsErrors];
+
+export type releasesListTagsResponses = {
+    /**
+     * Successful Response
+     */
+    200: TagsPublic;
+};
+
+export type releasesListTagsResponse = releasesListTagsResponses[keyof releasesListTagsResponses];
+
+export type activityGetRepositoryActivityData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/activity';
+};
+
+export type activityGetRepositoryActivityErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type activityGetRepositoryActivityError = activityGetRepositoryActivityErrors[keyof activityGetRepositoryActivityErrors];
+
+export type activityGetRepositoryActivityResponses = {
+    /**
+     * Successful Response
+     */
+    200: ActivitiesPublic;
+};
+
+export type activityGetRepositoryActivityResponse = activityGetRepositoryActivityResponses[keyof activityGetRepositoryActivityResponses];
+
+export type activityGetFeedData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/users/me/feed';
+};
+
+export type activityGetFeedErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type activityGetFeedError = activityGetFeedErrors[keyof activityGetFeedErrors];
+
+export type activityGetFeedResponses = {
+    /**
+     * Successful Response
+     */
+    200: ActivitiesPublic;
+};
+
+export type activityGetFeedResponse = activityGetFeedResponses[keyof activityGetFeedResponses];
+
+export type profilesReadUserByUsernameData = {
+    body?: never;
+    path: {
+        /**
+         * Username
+         */
+        username: string;
+    };
+    query?: never;
+    url: '/api/v1/users/{username}';
+};
+
+export type profilesReadUserByUsernameErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type profilesReadUserByUsernameError = profilesReadUserByUsernameErrors[keyof profilesReadUserByUsernameErrors];
+
+export type profilesReadUserByUsernameResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProfilePublic;
+};
+
+export type profilesReadUserByUsernameResponse = profilesReadUserByUsernameResponses[keyof profilesReadUserByUsernameResponses];
+
+export type profilesListUserRepositoriesData = {
+    body?: never;
+    path: {
+        /**
+         * Username
+         */
+        username: string;
+    };
+    query?: never;
+    url: '/api/v1/users/{username}/repositories';
+};
+
+export type profilesListUserRepositoriesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type profilesListUserRepositoriesError = profilesListUserRepositoriesErrors[keyof profilesListUserRepositoriesErrors];
+
+export type profilesListUserRepositoriesResponses = {
+    /**
+     * Successful Response
+     */
+    200: RepositoriesPublic;
+};
+
+export type profilesListUserRepositoriesResponse = profilesListUserRepositoriesResponses[keyof profilesListUserRepositoriesResponses];
+
+export type profilesListUserStarredRepositoriesData = {
+    body?: never;
+    path: {
+        /**
+         * Username
+         */
+        username: string;
+    };
+    query?: never;
+    url: '/api/v1/users/{username}/starred';
+};
+
+export type profilesListUserStarredRepositoriesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type profilesListUserStarredRepositoriesError = profilesListUserStarredRepositoriesErrors[keyof profilesListUserStarredRepositoriesErrors];
+
+export type profilesListUserStarredRepositoriesResponses = {
+    /**
+     * Successful Response
+     */
+    200: RepositoriesPublic;
+};
+
+export type profilesListUserStarredRepositoriesResponse = profilesListUserStarredRepositoriesResponses[keyof profilesListUserStarredRepositoriesResponses];
+
 export type repositoriesListRepositoriesData = {
     body?: never;
     path?: never;
@@ -1362,9 +3049,13 @@ export type repositoriesGetTreeData = {
     body?: never;
     path: {
         /**
-         * Path
+         * Owner
          */
-        path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: {
         /**
@@ -1376,7 +3067,7 @@ export type repositoriesGetTreeData = {
          */
         tree_path?: string;
     };
-    url: '/api/v1/repositories/{path}/tree';
+    url: '/api/v1/repositories/{owner}/{repo}/tree';
 };
 
 export type repositoriesGetTreeErrors = {
@@ -1401,9 +3092,13 @@ export type repositoriesGetBlobData = {
     body?: never;
     path: {
         /**
-         * Path
+         * Owner
          */
-        path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: {
         /**
@@ -1415,7 +3110,7 @@ export type repositoriesGetBlobData = {
          */
         file_path?: string;
     };
-    url: '/api/v1/repositories/{path}/blob';
+    url: '/api/v1/repositories/{owner}/{repo}/blob';
 };
 
 export type repositoriesGetBlobErrors = {
@@ -1440,9 +3135,13 @@ export type repositoriesGetRepositoryInfoData = {
     body?: never;
     path: {
         /**
-         * Path
+         * Owner
          */
-        path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: {
         /**
@@ -1450,7 +3149,7 @@ export type repositoriesGetRepositoryInfoData = {
          */
         ref?: string;
     };
-    url: '/api/v1/repositories/{path}/info';
+    url: '/api/v1/repositories/{owner}/{repo}/info';
 };
 
 export type repositoriesGetRepositoryInfoErrors = {
@@ -1475,9 +3174,13 @@ export type repositoriesGetReadmeData = {
     body?: never;
     path: {
         /**
-         * Path
+         * Owner
          */
-        path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: {
         /**
@@ -1489,7 +3192,7 @@ export type repositoriesGetReadmeData = {
          */
         tree_path?: string;
     };
-    url: '/api/v1/repositories/{path}/readme';
+    url: '/api/v1/repositories/{owner}/{repo}/readme';
 };
 
 export type repositoriesGetReadmeErrors = {
@@ -1514,12 +3217,16 @@ export type repositoriesListBranchesData = {
     body?: never;
     path: {
         /**
-         * Path
+         * Owner
          */
-        path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: never;
-    url: '/api/v1/repositories/{path}/branches';
+    url: '/api/v1/repositories/{owner}/{repo}/branches';
 };
 
 export type repositoriesListBranchesErrors = {
@@ -1542,13 +3249,102 @@ export type repositoriesListBranchesResponses = {
 
 export type repositoriesListBranchesResponse = repositoriesListBranchesResponses[keyof repositoriesListBranchesResponses];
 
+export type repositoriesListCommitsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Ref
+         */
+        ref?: string;
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/commits';
+};
+
+export type repositoriesListCommitsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesListCommitsError = repositoriesListCommitsErrors[keyof repositoriesListCommitsErrors];
+
+export type repositoriesListCommitsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommitsPublic;
+};
+
+export type repositoriesListCommitsResponse = repositoriesListCommitsResponses[keyof repositoriesListCommitsResponses];
+
+export type repositoriesGetCommitData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Sha
+         */
+        sha: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/commits/{sha}';
+};
+
+export type repositoriesGetCommitErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetCommitError = repositoriesGetCommitErrors[keyof repositoriesGetCommitErrors];
+
+export type repositoriesGetCommitResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommitDetail;
+};
+
+export type repositoriesGetCommitResponse = repositoriesGetCommitResponses[keyof repositoriesGetCommitResponses];
+
 export type repositoriesListIssuesData = {
     body?: never;
     path: {
         /**
-         * Path
+         * Owner
          */
-        path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: {
         /**
@@ -1558,7 +3354,7 @@ export type repositoriesListIssuesData = {
          */
         state?: string;
     };
-    url: '/api/v1/repositories/{path}/issues';
+    url: '/api/v1/repositories/{owner}/{repo}/issues';
 };
 
 export type repositoriesListIssuesErrors = {
@@ -1583,12 +3379,16 @@ export type repositoriesCreateIssueData = {
     body: IssueCreate;
     path: {
         /**
-         * Path
+         * Owner
          */
-        path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: never;
-    url: '/api/v1/repositories/{path}/issues';
+    url: '/api/v1/repositories/{owner}/{repo}/issues';
 };
 
 export type repositoriesCreateIssueErrors = {
@@ -1613,16 +3413,20 @@ export type repositoriesGetIssueData = {
     body?: never;
     path: {
         /**
-         * Path
+         * Owner
          */
-        path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
         /**
          * Number
          */
         number: number;
     };
     query?: never;
-    url: '/api/v1/repositories/{path}/issues/{number}';
+    url: '/api/v1/repositories/{owner}/{repo}/issues/{number}';
 };
 
 export type repositoriesGetIssueErrors = {
@@ -1647,16 +3451,20 @@ export type repositoriesUpdateIssueData = {
     body: IssueUpdate;
     path: {
         /**
-         * Path
+         * Owner
          */
-        path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
         /**
          * Number
          */
         number: number;
     };
     query?: never;
-    url: '/api/v1/repositories/{path}/issues/{number}';
+    url: '/api/v1/repositories/{owner}/{repo}/issues/{number}';
 };
 
 export type repositoriesUpdateIssueErrors = {
@@ -1681,9 +3489,13 @@ export type repositoriesListPullRequestsData = {
     body?: never;
     path: {
         /**
-         * Path
+         * Owner
          */
-        path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: {
         /**
@@ -1693,7 +3505,7 @@ export type repositoriesListPullRequestsData = {
          */
         state?: string;
     };
-    url: '/api/v1/repositories/{path}/pulls';
+    url: '/api/v1/repositories/{owner}/{repo}/pulls';
 };
 
 export type repositoriesListPullRequestsErrors = {
@@ -1718,12 +3530,16 @@ export type repositoriesCreatePullRequestData = {
     body: PullRequestCreate;
     path: {
         /**
-         * Path
+         * Owner
          */
-        path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: never;
-    url: '/api/v1/repositories/{path}/pulls';
+    url: '/api/v1/repositories/{owner}/{repo}/pulls';
 };
 
 export type repositoriesCreatePullRequestErrors = {
@@ -1748,16 +3564,20 @@ export type repositoriesGetPullRequestData = {
     body?: never;
     path: {
         /**
-         * Path
+         * Owner
          */
-        path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
         /**
          * Number
          */
         number: number;
     };
     query?: never;
-    url: '/api/v1/repositories/{path}/pulls/{number}';
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}';
 };
 
 export type repositoriesGetPullRequestErrors = {
@@ -1782,16 +3602,20 @@ export type repositoriesUpdatePullRequestData = {
     body: PullRequestUpdate;
     path: {
         /**
-         * Path
+         * Owner
          */
-        path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
         /**
          * Number
          */
         number: number;
     };
     query?: never;
-    url: '/api/v1/repositories/{path}/pulls/{number}';
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}';
 };
 
 export type repositoriesUpdatePullRequestErrors = {
@@ -1812,16 +3636,58 @@ export type repositoriesUpdatePullRequestResponses = {
 
 export type repositoriesUpdatePullRequestResponse = repositoriesUpdatePullRequestResponses[keyof repositoriesUpdatePullRequestResponses];
 
+export type repositoriesGetPullRequestFilesData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/files';
+};
+
+export type repositoriesGetPullRequestFilesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetPullRequestFilesError = repositoriesGetPullRequestFilesErrors[keyof repositoriesGetPullRequestFilesErrors];
+
+export type repositoriesGetPullRequestFilesResponses = {
+    /**
+     * Successful Response
+     */
+    200: CompareResult;
+};
+
+export type repositoriesGetPullRequestFilesResponse = repositoriesGetPullRequestFilesResponses[keyof repositoriesGetPullRequestFilesResponses];
+
 export type repositoriesGetRepositoryData = {
     body?: never;
     path: {
         /**
-         * Path
+         * Owner
          */
-        path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: never;
-    url: '/api/v1/repositories/{path}';
+    url: '/api/v1/repositories/{owner}/{repo}';
 };
 
 export type repositoriesGetRepositoryErrors = {
