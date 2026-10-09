@@ -129,6 +129,23 @@ class CommentService:
         await self.comment_store.update(comment)
         return self._to_public(comment)
 
+    async def delete_comment(self, comment_id: uuid.UUID, current_user: User) -> None:
+        """Delete a comment.
+
+        Args:
+            comment_id: The comment id.
+            current_user: The authenticated user.
+
+        Raises:
+            NotFoundError: If the comment is not found.
+            HTTPException: If the user is not allowed to delete the comment.
+        """
+        comment = await self.comment_store.get(comment_id)
+        if comment.author_id != current_user.id and not current_user.is_superuser:
+            raise HTTPException(status_code=403, detail="You can only delete your own comments")
+
+        await self.comment_store.delete(comment)
+
     async def _find_issue(self, owner: str, name: str, number: int) -> Issue:
         """Find an issue or pull request by repository and number.
 

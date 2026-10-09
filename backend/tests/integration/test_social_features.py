@@ -234,6 +234,32 @@ class TestReleasesPage:
         expect(page.get_by_test_id("release-v2.0.0")).to_be_visible(timeout=15000)
         expect(page.get_by_test_id("release-v2.0.0")).to_contain_text("Second release")
 
+    def test_edit_release(self, app_url: str, page: Page) -> None:
+        """A release can be edited by its author.
+
+        Args:
+            app_url: Base URL of the GitEdge frontend.
+            page: Playwright page.
+        """
+        _push_repo(app_url, "admin/editreleaserepo.git", tag="v1.0.0")
+        log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
+
+        page.goto(f"{app_url}/admin/editreleaserepo/releases")
+        expect(page.get_by_test_id("releases-list")).to_be_visible(timeout=15000)
+
+        page.get_by_test_id("new-release-button").click()
+        page.get_by_test_id("release-tag-input").fill("v1.0.0")
+        page.get_by_test_id("release-name-input").fill("First release")
+        page.get_by_test_id("release-submit").click()
+        expect(page.get_by_test_id("release-v1.0.0")).to_be_visible(timeout=15000)
+
+        page.get_by_test_id("edit-release-v1.0.0").click()
+        expect(page.get_by_role("dialog", name="Edit release")).to_be_visible(timeout=10000)
+        page.get_by_test_id("edit-release-name-input").fill("Renamed release")
+        page.get_by_test_id("edit-release-submit").click()
+
+        expect(page.get_by_test_id("release-v1.0.0")).to_contain_text("Renamed release", timeout=15000)
+
 
 class TestIssueComments:
     """Test issue detail and commenting."""
@@ -285,7 +311,7 @@ class TestIssueComments:
         expect(page.get_by_test_id("comment-input")).to_have_value("", timeout=15000)
         expect(page.get_by_test_id("comments-section")).to_contain_text("Original comment.", timeout=15000)
 
-        page.get_by_role("button", name="Edit").click()
+        page.get_by_test_id("comments-section").get_by_role("button", name="Edit").click()
         page.locator('[data-testid^="edit-comment-input-"]').fill("Edited comment.")
         page.get_by_role("button", name="Save").click()
 
@@ -313,6 +339,60 @@ class TestIssueComments:
 
         page.get_by_test_id("toggle-issue-state").click()
         expect(page.get_by_test_id("issue-state")).to_contain_text("Closed", timeout=15000)
+
+    def test_edit_issue(self, app_url: str, page: Page) -> None:
+        """An issue's title and body can be edited by its author.
+
+        Args:
+            app_url: Base URL of the GitEdge frontend.
+            page: Playwright page.
+        """
+        _push_repo(app_url, "admin/editissuerepo.git")
+        log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
+
+        page.goto(f"{app_url}/admin/editissuerepo/issues/new")
+        page.get_by_test_id("issue-title-input").fill("Original title")
+        page.get_by_test_id("issue-body-input").fill("Original body")
+        page.get_by_test_id("submit-issue-btn").click()
+
+        page.get_by_test_id("issue-1").get_by_role("link").click()
+        expect(page.get_by_test_id("issue-detail")).to_be_visible(timeout=15000)
+
+        page.get_by_test_id("edit-issue").click()
+        page.get_by_test_id("edit-issue-title").fill("Updated title")
+        page.get_by_test_id("edit-issue-body").fill("Updated body")
+        page.get_by_test_id("edit-issue-submit").click()
+
+        expect(page.get_by_test_id("issue-detail")).to_contain_text("Updated title", timeout=15000)
+        expect(page.get_by_test_id("issue-detail")).to_contain_text("Updated body", timeout=15000)
+        expect(page.get_by_test_id("issue-detail")).not_to_contain_text("Original title")
+
+    def test_delete_comment(self, app_url: str, page: Page) -> None:
+        """A comment can be deleted by its author.
+
+        Args:
+            app_url: Base URL of the GitEdge frontend.
+            page: Playwright page.
+        """
+        _push_repo(app_url, "admin/deletecommentrepo.git")
+        log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
+
+        page.goto(f"{app_url}/admin/deletecommentrepo/issues/new")
+        page.get_by_test_id("issue-title-input").fill("Delete comment issue")
+        page.get_by_test_id("submit-issue-btn").click()
+
+        page.get_by_test_id("issue-1").get_by_role("link").click()
+        expect(page.get_by_test_id("issue-detail")).to_be_visible(timeout=15000)
+
+        page.get_by_test_id("comment-input").fill("Delete me.")
+        page.get_by_test_id("comment-submit").click()
+        expect(page.get_by_test_id("comment-input")).to_have_value("", timeout=15000)
+        expect(page.get_by_test_id("comments-section")).to_contain_text("Delete me.", timeout=15000)
+
+        page.once("dialog", lambda dialog: dialog.accept())
+        page.locator('[data-testid^="delete-comment-"]').click()
+
+        expect(page.get_by_test_id("comments-section")).not_to_contain_text("Delete me.", timeout=15000)
 
 
 class TestPullRequestCommentsAndMerge:
@@ -347,6 +427,33 @@ class TestPullRequestCommentsAndMerge:
 
         page.get_by_test_id("merge-pr").click()
         expect(page.get_by_test_id("pr-state")).to_contain_text("Merged", timeout=15000)
+
+    def test_edit_pull_request(self, app_url: str, page: Page) -> None:
+        """A pull request's title and body can be edited by its author.
+
+        Args:
+            app_url: Base URL of the GitEdge frontend.
+            page: Playwright page.
+        """
+        _push_repo(app_url, "admin/editprrepo.git", extra_branches=("feature",))
+        log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
+
+        page.goto(f"{app_url}/admin/editprrepo/pulls/new")
+        page.wait_for_selector('[data-testid="pr-source-branch"] option[value="feature"]', state="attached")
+        page.get_by_test_id("pr-source-branch").select_option("feature")
+        page.get_by_test_id("pr-title-input").fill("Original PR")
+        page.get_by_test_id("submit-pr-btn").click()
+
+        page.get_by_test_id("pr-1").get_by_role("link").click()
+        expect(page.get_by_test_id("pull-detail")).to_be_visible(timeout=15000)
+
+        page.get_by_test_id("edit-pr").click()
+        page.get_by_test_id("edit-pr-title").fill("Updated PR")
+        page.get_by_test_id("edit-pr-body").fill("Updated PR body")
+        page.get_by_test_id("edit-pr-submit").click()
+
+        expect(page.get_by_test_id("pull-detail")).to_contain_text("Updated PR", timeout=15000)
+        expect(page.get_by_test_id("pull-detail")).to_contain_text("Updated PR body", timeout=15000)
 
 
 class TestActivityAndFeed:

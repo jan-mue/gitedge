@@ -8,6 +8,7 @@ import { z } from "zod"
 import { type ReleasePublic, ReleasesService } from "@/client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogClose,
@@ -21,6 +22,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
+import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -38,17 +40,43 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>
 
-const ReleaseCard = ({ release }: { release: ReleasePublic }) => (
+const editFormSchema = z.object({
+  name: z.string().optional(),
+  body: z.string().optional(),
+  is_prerelease: z.boolean().optional(),
+})
+
+type EditFormData = z.infer<typeof editFormSchema>
+
+const ReleaseCard = ({
+  release,
+  canEdit,
+  onEdit,
+}: {
+  release: ReleasePublic
+  canEdit: boolean
+  onEdit: (release: ReleasePublic) => void
+}) => (
   <div className="border border-border rounded-lg bg-card px-4 py-3" data-testid={`release-${release.tag_name}`}>
     <div className="flex items-center gap-2">
       <Tag className="w-4 h-4 text-muted-foreground" />
       <span className="font-mono text-sm font-medium text-foreground">{release.tag_name}</span>
       {release.is_prerelease && <Badge variant="secondary">Pre-release</Badge>}
-      {release.published_at && (
-        <span className="ml-auto text-xs text-muted-foreground">
-          {new Date(release.published_at).toLocaleDateString()}
-        </span>
-      )}
+      <div className="ml-auto flex items-center gap-2">
+        {release.published_at && (
+          <span className="text-xs text-muted-foreground">{new Date(release.published_at).toLocaleDateString()}</span>
+        )}
+        {canEdit && (
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => onEdit(release)}
+            data-testid={`edit-release-${release.tag_name}`}
+          >
+            Edit
+          </button>
+        )}
+      </div>
     </div>
     {release.name && <p className="mt-2 text-sm font-medium text-foreground">{release.name}</p>}
     {release.body && <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">{release.body}</p>}
@@ -56,11 +84,129 @@ const ReleaseCard = ({ release }: { release: ReleasePublic }) => (
   </div>
 )
 
-const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
+const EditReleaseDialog = ({
+  owner,
+  repo,
+  release,
+  onOpenChange,
+}: {
+  owner: string
+  repo: string
+  release: ReleasePublic
+  onOpenChange: (open: boolean) => void
+}) => {
   const repoPath = `${owner}/${repo}.git`
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
+
+  const form = useForm<EditFormData>({
+    resolver: zodResolver(editFormSchema),
+    defaultValues: {
+      name: release.name ?? "",
+      body: release.body ?? "",
+      is_prerelease: release.is_prerelease ?? false,
+    },
+  })
+
+  const mutation = useMutation({
+    mutationFn: (data: EditFormData) =>
+      ReleasesService.updateRelease({
+        path: { owner, repo, tag_name: release.tag_name },
+        body: {
+          name: data.name || null,
+          body: data.body || null,
+          is_prerelease: data.is_prerelease ?? false,
+        },
+      }),
+    onSuccess: () => {
+      showSuccessToast("Release updated successfully")
+      queryClient.invalidateQueries({ queryKey: ["releases", repoPath] })
+      onOpenChange(false)
+    },
+    onError: handleError.bind(showErrorToast),
+  })
+
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit release</DialogTitle>
+          <DialogDescription>Update the details for {release.tag_name}.</DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))}>
+            <div className="grid gap-4 py-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Release title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Release title" data-testid="edit-release-name-input" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="body"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <textarea
+                        rows={5}
+                        placeholder="Release notes"
+                        data-testid="edit-release-body-input"
+                        className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-y"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="is_prerelease"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center gap-2">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="edit-release-prerelease-input"
+                      />
+                    </FormControl>
+                    <FormLabel>Mark as pre-release</FormLabel>
+                  </FormItem>
+                )}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
+                Cancel
+              </Button>
+              <LoadingButton type="submit" loading={mutation.isPending} data-testid="edit-release-submit">
+                Save
+              </LoadingButton>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
+  const repoPath = `${owner}/${repo}.git`
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const { showSuccessToast, showErrorToast } = useCustomToast()
   const [isOpen, setIsOpen] = useState(false)
+  const [editingRelease, setEditingRelease] = useState<ReleasePublic | null>(null)
 
   const { data: releasesData } = useQuery({
     queryKey: ["releases", repoPath],
@@ -191,7 +337,12 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
       {releases.length > 0 ? (
         <div className="space-y-3">
           {releases.map((release) => (
-            <ReleaseCard key={release.id} release={release} />
+            <ReleaseCard
+              key={release.id}
+              release={release}
+              canEdit={release.author_username === user?.name}
+              onEdit={setEditingRelease}
+            />
           ))}
         </div>
       ) : (
@@ -214,6 +365,17 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
             </div>
           ))}
         </section>
+      )}
+
+      {editingRelease && (
+        <EditReleaseDialog
+          owner={owner}
+          repo={repo}
+          release={editingRelease}
+          onOpenChange={(open) => {
+            if (!open) setEditingRelease(null)
+          }}
+        />
       )}
     </div>
   )

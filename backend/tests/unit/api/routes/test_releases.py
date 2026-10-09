@@ -58,3 +58,46 @@ def test_get_release_by_tag(
     r = client.get(f"{RELEASES_URL}/v2.0.0")
     assert r.status_code == 200
     assert r.json()["tag_name"] == "v2.0.0"
+
+
+def test_update_release(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+) -> None:
+    client.post(RELEASES_URL, headers=superuser_token_headers, json={"tag_name": "v1.0.0", "name": "First"})
+
+    r = client.patch(
+        f"{RELEASES_URL}/v1.0.0",
+        headers=superuser_token_headers,
+        json={"name": "Renamed", "body": "New notes"},
+    )
+    assert r.status_code == 200
+    assert r.json()["name"] == "Renamed"
+    assert r.json()["body"] == "New notes"
+
+
+def test_update_release_requires_authorship(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+) -> None:
+    client.post(RELEASES_URL, headers=superuser_token_headers, json={"tag_name": "v1.0.0"})
+
+    r = client.patch(
+        f"{RELEASES_URL}/v1.0.0",
+        headers=normal_user_token_headers,
+        json={"name": "Hijacked"},
+    )
+    assert r.status_code == 403
+
+
+def test_update_missing_release(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+) -> None:
+    r = client.patch(
+        f"{RELEASES_URL}/v9.9.9",
+        headers=superuser_token_headers,
+        json={"name": "Nope"},
+    )
+    assert r.status_code == 404

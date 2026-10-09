@@ -169,9 +169,16 @@ class PullRequestService:
             The updated pull request.
 
         Raises:
-            HTTPException: If the pull request is not found or the state is invalid.
+            HTTPException: If the pull request is not found, the state is invalid, or the user is not allowed to edit.
         """
         pull_request = await self._find_pull_request(owner, name, number)
+
+        if (
+            (body.title is not None or body.body is not None)
+            and pull_request.author_id != current_user.id
+            and not current_user.is_superuser
+        ):
+            raise HTTPException(status_code=403, detail="You can only edit your own pull requests")
 
         if body.title is not None:
             pull_request.title = body.title

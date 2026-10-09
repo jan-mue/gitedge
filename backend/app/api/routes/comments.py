@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, status
 
 from app.api.dependencies import CommentServiceDep, CurrentUser
 from app.schemas.comments import CommentCreate, CommentPublic, CommentsPublic, CommentUpdate
@@ -38,3 +38,9 @@ async def update_comment(
 ) -> CommentPublic:
     """Update a comment."""
     return await comment_service.update_comment(comment_id, body, current_user)
+
+
+@comment_router.delete("/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_comment(comment_id: uuid.UUID, comment_service: CommentServiceDep, current_user: CurrentUser) -> None:
+    """Delete a comment."""
+    await comment_service.delete_comment(comment_id, current_user)

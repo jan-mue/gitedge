@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.releases import Release
 from app.exceptions import ReleaseNotFoundError
-from app.schemas.releases import ReleaseCreate, ReleasePublic, ReleasesPublic
+from app.schemas.releases import ReleaseCreate, ReleasePublic, ReleasesPublic, ReleaseUpdate
 from app.services.repositories import ensure_repository
 
 if TYPE_CHECKING:
@@ -71,10 +71,7 @@ class ReleaseService:
         Raises:
             ReleaseNotFoundError: If the release is not found.
         """
-        repository = await self.repository_store.get_by_owner_and_name(owner, name, include_releases=True)
-        release = next((release for release in repository.releases if release.tag_name == tag_name), None)
-        if release is None:
-            raise ReleaseNotFoundError
+        release = await self._find_release(owner, name, tag_name)
         return self._to_public(release, owner, name)
 
     async def create_release(self, owner: str, name: str, body: ReleaseCreate, current_user: User) -> ReleasePublic:
@@ -117,6 +114,64 @@ class ReleaseService:
             target_type=ActivityTargetType.RELEASE,
         )
         return self._to_public(release, owner, name)
+
+    async def update_release(
+        self, owner: str, name: str, tag_name: str, body: ReleaseUpdate, current_user: User
+    ) -> ReleasePublic:
+        """Update a release.
+
+        Args:
+            owner: Owner name.
+            name: Repository name.
+            tag_name: The release tag name.
+            body: Fields to update.
+            current_user: The authenticated user.
+
+        Returns:
+            The updated release.
+
+        Raises:
+            ReleaseNotFoundError: If the release is not found.
+            HTTPException: If the user is not allowed to edit the release.
+        """
+        release = await self._find_release(owner, name, tag_name)
+        if release.author_id != current_user.id and not current_user.is_superuser:
+            raise HTTPException(status_code=403, detail="You can only edit your own releases")
+
+        if body.name is not None:
+            release.name = body.name
+        if body.body is not None:
+            release.body = body.body
+        if body.is_prerelease is not None:
+            release.is_prerelease = body.is_prerelease
+        if body.is_draft is not None:
+            release.is_draft = body.is_draft
+            if not body.is_draft and release.published_at is None:
+                release.published_at = datetime.now(UTC)
+
+        release.updated_at = datetime.now(UTC)
+        await self.release_store.update(release)
+        return self._to_public(release, owner, name)
+
+    async def _find_release(self, owner: str, name: str, tag_name: str) -> Release:
+        """Find a release by repository and tag name.
+
+        Args:
+            owner: Owner name.
+            name: Repository name.
+            tag_name: The release tag name.
+
+        Returns:
+            The release entity (with its author loaded).
+
+        Raises:
+            ReleaseNotFoundError: If the repository or release is not found.
+        """
+        repository = await self.repository_store.get_by_owner_and_name(owner, name, include_releases=True)
+        release = next((release for release in repository.releases if release.tag_name == tag_name), None)
+        if release is None:
+            raise ReleaseNotFoundError
+        return release
 
     @staticmethod
     def _to_public(release: Release, owner: str, name: str) -> ReleasePublic:

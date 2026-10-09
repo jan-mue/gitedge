@@ -17,6 +17,15 @@ class ReleaseCreate(GitEdgeBaseModel):
     is_prerelease: bool = False
 
 
+class ReleaseUpdate(GitEdgeBaseModel):
+    """Request to update a release."""
+
+    name: str | None = None
+    body: str | None = None
+    is_draft: bool | None = None
+    is_prerelease: bool | None = None
+
+
 class ReleasePublic(GitEdgeBaseModel):
     """Public release representation."""
 

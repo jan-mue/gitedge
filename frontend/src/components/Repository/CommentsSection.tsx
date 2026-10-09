@@ -57,6 +57,12 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
     onError: handleError.bind(showErrorToast),
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => CommentsService.deleteComment({ path: { comment_id: id } }),
+    onSuccess: () => invalidate(),
+    onError: handleError.bind(showErrorToast),
+  })
+
   const comments = data?.data ?? []
 
   return (
@@ -78,17 +84,30 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                 <span className="font-medium text-foreground">{comment.author_username}</span>
                 <span>commented {new Date(comment.created_at).toLocaleString()}</span>
                 {comment.author_username === user?.name && editingId !== comment.id && (
-                  <button
-                    type="button"
-                    className="ml-auto text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() => {
-                      setEditingId(comment.id)
-                      setEditBody(comment.body)
-                    }}
-                    data-testid={`edit-comment-${comment.id}`}
-                  >
-                    Edit
-                  </button>
+                  <div className="ml-auto flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setEditingId(comment.id)
+                        setEditBody(comment.body)
+                      }}
+                      data-testid={`edit-comment-${comment.id}`}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-destructive"
+                      disabled={deleteMutation.isPending}
+                      onClick={() => {
+                        if (window.confirm("Delete this comment?")) deleteMutation.mutate(comment.id)
+                      }}
+                      data-testid={`delete-comment-${comment.id}`}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 )}
               </div>
               {editingId === comment.id ? (

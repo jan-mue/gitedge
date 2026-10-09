@@ -968,6 +968,30 @@ export type ReleasePublic = {
 };
 
 /**
+ * ReleaseUpdate
+ *
+ * Request to update a release.
+ */
+export type ReleaseUpdate = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Body
+     */
+    body?: string | null;
+    /**
+     * Is Draft
+     */
+    is_draft?: boolean | null;
+    /**
+     * Is Prerelease
+     */
+    is_prerelease?: boolean | null;
+};
+
+/**
  * ReleasesPublic
  *
  * List of releases.
@@ -2562,6 +2586,36 @@ export type commentsCreateCommentResponses = {
 
 export type commentsCreateCommentResponse = commentsCreateCommentResponses[keyof commentsCreateCommentResponses];
 
+export type commentsDeleteCommentData = {
+    body?: never;
+    path: {
+        /**
+         * Comment Id
+         */
+        comment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/comments/{comment_id}';
+};
+
+export type commentsDeleteCommentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type commentsDeleteCommentError = commentsDeleteCommentErrors[keyof commentsDeleteCommentErrors];
+
+export type commentsDeleteCommentResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type commentsDeleteCommentResponse = commentsDeleteCommentResponses[keyof commentsDeleteCommentResponses];
+
 export type commentsUpdateCommentData = {
     body: CommentUpdate;
     path: {
@@ -2702,6 +2756,44 @@ export type releasesGetReleaseResponses = {
 };
 
 export type releasesGetReleaseResponse = releasesGetReleaseResponses[keyof releasesGetReleaseResponses];
+
+export type releasesUpdateReleaseData = {
+    body: ReleaseUpdate;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Tag Name
+         */
+        tag_name: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/releases/{tag_name}';
+};
+
+export type releasesUpdateReleaseErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type releasesUpdateReleaseError = releasesUpdateReleaseErrors[keyof releasesUpdateReleaseErrors];
+
+export type releasesUpdateReleaseResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReleasePublic;
+};
+
+export type releasesUpdateReleaseResponse = releasesUpdateReleaseResponses[keyof releasesUpdateReleaseResponses];
 
 export type releasesListTagsData = {
     body?: never;

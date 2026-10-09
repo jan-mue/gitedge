@@ -93,6 +93,32 @@ def test_update_issue_invalid_state(client: TestClient, superuser_token_headers:
     assert r.status_code == 400
 
 
+@pytest.mark.usefixtures("fake_stores")
+def test_update_issue_title_and_body(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
+    client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Title", "body": "Body"})
+
+    r = client.patch(
+        f"{ISSUES_URL}/1", headers=superuser_token_headers, json={"title": "New title", "body": "New body"}
+    )
+    assert r.status_code == 200
+    assert r.json()["title"] == "New title"
+    assert r.json()["body"] == "New body"
+
+
+def test_update_issue_requires_authorship(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+) -> None:
+    client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Title"})
+
+    r = client.patch(f"{ISSUES_URL}/1", headers=normal_user_token_headers, json={"title": "Hijacked"})
+    assert r.status_code == 403
+
+    r = client.patch(f"{ISSUES_URL}/1", headers=normal_user_token_headers, json={"state": "closed"})
+    assert r.status_code == 200
+
+
 def test_create_pull_request(
     client: TestClient,
     fake_stores: FakeStores,

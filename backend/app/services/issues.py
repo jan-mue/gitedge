@@ -133,9 +133,16 @@ class IssueService:
             The updated issue.
 
         Raises:
-            HTTPException: If the issue is not found or the state is invalid.
+            HTTPException: If the issue is not found, the state is invalid, or the user is not allowed to edit.
         """
         issue = await self._find_issue(owner, name, number)
+
+        if (
+            (body.title is not None or body.body is not None)
+            and issue.author_id != current_user.id
+            and not current_user.is_superuser
+        ):
+            raise HTTPException(status_code=403, detail="You can only edit your own issues")
 
         if body.title is not None:
             issue.title = body.title

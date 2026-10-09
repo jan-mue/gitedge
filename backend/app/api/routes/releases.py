@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.dependencies import CurrentUser, ReleaseServiceDep, RepositoryServiceDep
-from app.schemas.releases import ReleaseCreate, ReleasePublic, ReleasesPublic, TagsPublic
+from app.schemas.releases import ReleaseCreate, ReleasePublic, ReleasesPublic, ReleaseUpdate, TagsPublic
 
 router = APIRouter(prefix="/repositories", tags=["releases"])
 
@@ -30,6 +30,19 @@ async def create_release(
 async def get_release(owner: str, repo: str, tag_name: str, release_service: ReleaseServiceDep) -> ReleasePublic:
     """Get a single release by tag name."""
     return await release_service.get_release(owner, repo, tag_name)
+
+
+@router.patch("/{owner}/{repo}/releases/{tag_name}")
+async def update_release(
+    owner: str,
+    repo: str,
+    tag_name: str,
+    body: ReleaseUpdate,
+    release_service: ReleaseServiceDep,
+    current_user: CurrentUser,
+) -> ReleasePublic:
+    """Update a release."""
+    return await release_service.update_release(owner, repo, tag_name, body, current_user)
 
 
 @router.get("/{owner}/{repo}/tags")

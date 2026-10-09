@@ -102,3 +102,36 @@ def test_update_missing_comment(client: TestClient, superuser_token_headers: dic
         json={"body": "Nope"},
     )
     assert r.status_code == 404
+
+
+def test_delete_comment(
+    client: TestClient,
+    fake_stores: FakeStores,
+    superuser_token_headers: dict[str, str],
+) -> None:
+    client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Title"})
+    created = client.post(COMMENTS_URL, headers=superuser_token_headers, json={"body": "Delete me"}).json()
+
+    r = client.delete(f"{COMMENT_URL}/{created['id']}", headers=superuser_token_headers)
+    assert r.status_code == 204
+    assert len(fake_stores.comments.items) == 0
+
+    listed = client.get(COMMENTS_URL).json()
+    assert listed["count"] == 0
+
+
+def test_delete_comment_requires_authorship(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+) -> None:
+    client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Title"})
+    created = client.post(COMMENTS_URL, headers=superuser_token_headers, json={"body": "Mine"}).json()
+
+    r = client.delete(f"{COMMENT_URL}/{created['id']}", headers=normal_user_token_headers)
+    assert r.status_code == 403
+
+
+def test_delete_missing_comment(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
+    r = client.delete(f"{COMMENT_URL}/{uuid.uuid4()}", headers=superuser_token_headers)
+    assert r.status_code == 404
