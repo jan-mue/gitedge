@@ -14,6 +14,7 @@ from sqlalchemy.schema import ColumnDefault
 
 from app.clients.activity import ActivityStore
 from app.clients.blob_storage import BlobStorageClient
+from app.clients.cache import AbstractCacheClient
 from app.clients.comments import CommentStore
 from app.clients.database import CrudStore
 from app.clients.email import EmailClient
@@ -105,6 +106,27 @@ class FakeRedisClient(AbstractRedisClient):
     async def scan_keys(self, pattern: str) -> list[str]:
         """Scan for keys matching a pattern."""
         return fnmatch.filter(self.values, pattern)
+
+
+class FakeCacheClient(AbstractCacheClient):
+    """In-memory cache client keyed by group."""
+
+    def __init__(self) -> None:
+        """Initialize the client."""
+        self.values: dict[tuple[str, str], str] = {}
+
+    async def get(self, key: str, *, group: str) -> str | None:
+        """Get a value from the cache."""
+        return self.values.get((group, key))
+
+    async def set(self, key: str, value: str, *, ttl: int, group: str) -> None:  # noqa: ARG002
+        """Set a value in the cache."""
+        self.values[(group, key)] = value
+
+    async def invalidate(self, group: str) -> None:
+        """Drop every entry in a group."""
+        for entry in [entry for entry in self.values if entry[0] == group]:
+            del self.values[entry]
 
 
 class FakeCrudStore[T: Base](CrudStore[T]):
@@ -627,6 +649,7 @@ class FakeStores:
     comments: FakeCommentStore
     releases: FakeReleaseStore
     activity: FakeActivityStore
+    cache: FakeCacheClient
 
 
 @lru_cache(maxsize=1)
@@ -673,4 +696,5 @@ def build_fake_stores() -> FakeStores:
         comments=comments,
         releases=releases,
         activity=FakeActivityStore(users, repository),
+        cache=FakeCacheClient(),
     )

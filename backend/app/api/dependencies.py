@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.activity import ActivityStore, SQLActivityStore
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
+from app.clients.cache import AbstractCacheClient, build_cache_client
 from app.clients.comments import CommentStore, SQLCommentStore
 from app.clients.email import EmailClient, SMTPClient
 from app.clients.issues import IssueStore, SQLIssueStore
@@ -255,11 +256,27 @@ RedisClientDep = Annotated[AbstractRedisClient, Depends(get_redis_client)]
 
 
 @cache
-def get_backend() -> BlobBackend:
-    """Get the shared Git backend instance.
+def get_cache_client() -> AbstractCacheClient:
+    """Get the shared cache client dependency.
 
     Returns:
-        The shared BlobBackend instance.
+        Cache client for the configured backend.
+    """
+    return build_cache_client()
+
+
+CacheClientDep = Annotated[AbstractCacheClient, Depends(get_cache_client)]
+
+
+def get_backend() -> BlobBackend:
+    """Create a request-scoped Git backend instance.
+
+    The backend holds loaded repositories in memory, so it is created per
+    request: on serverless platforms a process-wide cache would not be shared
+    and could serve stale data. Persistent caching happens in the cache client.
+
+    Returns:
+        A new BlobBackend instance.
     """
     return BlobBackend()
 
@@ -286,6 +303,7 @@ def get_repository_service(
     backend: BackendDep,
     blob_client: BlobStorageClientDep,
     redis_client: RedisClientDep,
+    cache_client: CacheClientDep,
     repository_store: RepositoryStoreDep,
     star_store: StarStoreDep,
 ) -> RepositoryService:
@@ -295,13 +313,14 @@ def get_repository_service(
         backend: Git backend dependency.
         blob_client: Blob storage client dependency.
         redis_client: Redis client dependency.
+        cache_client: Cache client dependency.
         repository_store: Repository store dependency.
         star_store: Star store dependency.
 
     Returns:
         Repository service instance.
     """
-    return RepositoryService(backend, blob_client, redis_client, repository_store, star_store)
+    return RepositoryService(backend, blob_client, redis_client, cache_client, repository_store, star_store)
 
 
 RepositoryServiceDep = Annotated[RepositoryService, Depends(get_repository_service)]

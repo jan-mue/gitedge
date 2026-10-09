@@ -5,7 +5,7 @@ import stat
 import tempfile
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from dulwich.object_format import DEFAULT_OBJECT_FORMAT
@@ -19,8 +19,15 @@ from app.exceptions import RepositoryNotFoundError
 from app.services.blob_backend import BlobBackend
 from app.services.repositories import RepositoryService, ensure_repository
 from app.types import PackContents
+from app.utils.cache_headers import (
+    CACHE_CONTROL_IMMUTABLE,
+    CACHE_CONTROL_PRIVATE,
+    CACHE_CONTROL_REVALIDATE,
+    is_commit_sha,
+)
 from tests.unit.utils.fakes import (
     FakeBlobStorageClient,
+    FakeCacheClient,
     FakeOrganizationStore,
     FakeRedisClient,
     FakeRepositoryStore,
@@ -29,6 +36,8 @@ from tests.unit.utils.fakes import (
 )
 
 if TYPE_CHECKING:
+    from pytest_mock import MockerFixture
+
     from app.services.blob_repository import BlobRepository
 
 OWNER_ID = uuid.uuid4()
@@ -113,7 +122,7 @@ def _stores() -> tuple[FakeUserStore, FakeOrganizationStore, FakeRepositoryStore
 def service() -> RepositoryService:
     _, _, repository_store = _stores()
     return RepositoryService(
-        BlobBackend(), FakeBlobStorageClient(), FakeRedisClient(), repository_store, FakeStarStore()
+        BlobBackend(), FakeBlobStorageClient(), FakeRedisClient(), FakeCacheClient(), repository_store, FakeStarStore()
     )
 
 
@@ -346,3 +355,57 @@ async def test_get_commit_not_found(service: RepositoryService) -> None:
 
     with pytest.raises(HTTPException):
         await service.get_commit(OWNER, REPO, "0" * 40)
+
+
+def test_is_commit_sha() -> None:
+    assert is_commit_sha("a" * 40)
+    assert not is_commit_sha("main")
+
+
+async def test_get_tree_is_cached(service: RepositoryService, mocker: MockerFixture) -> None:
+    _populate_repo(service.backend)
+    load = mocker.spy(service, "load_repository")
+
+    first = await service.get_tree(OWNER, REPO, "main", "")
+    second = await service.get_tree(OWNER, REPO, "main", "")
+
+    assert second == first
+    assert load.await_count == 1
+
+
+async def test_save_changes_invalidates_cache(service: RepositoryService) -> None:
+    cache = cast(FakeCacheClient, service.cache_client)
+    _populate_repo(service.backend)
+    await service.get_tree(OWNER, REPO, "main", "")
+    group = f"repo:{OWNER}/{REPO}"
+    assert any(entry[0] == group for entry in cache.values)
+
+    _populate_repo(service.backend)
+    await service.save_changes(OWNER, REPO)
+
+    assert not any(entry[0] == group for entry in cache.values)
+
+
+async def test_cache_headers_public_revalidate(service: RepositoryService) -> None:
+    await ensure_repository(service.repository_store, OWNER, REPO)
+
+    headers = await service.cache_headers(OWNER, REPO, immutable=False)
+
+    assert headers["Cache-Control"] == CACHE_CONTROL_REVALIDATE
+
+
+async def test_cache_headers_immutable(service: RepositoryService) -> None:
+    await ensure_repository(service.repository_store, OWNER, REPO)
+
+    headers = await service.cache_headers(OWNER, REPO, immutable=True)
+
+    assert headers["Cache-Control"] == CACHE_CONTROL_IMMUTABLE
+
+
+async def test_cache_headers_private(service: RepositoryService) -> None:
+    repository = await ensure_repository(service.repository_store, OWNER, REPO)
+    repository.is_private = True
+
+    headers = await service.cache_headers(OWNER, REPO, immutable=True)
+
+    assert headers["Cache-Control"] == CACHE_CONTROL_PRIVATE

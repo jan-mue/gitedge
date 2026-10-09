@@ -15,6 +15,7 @@ from app.services.repositories import RepositoryService
 from tests.unit.utils.fakes import (
     FakeActivityStore,
     FakeBlobStorageClient,
+    FakeCacheClient,
     FakeOrganizationStore,
     FakeRedisClient,
     FakeRepositoryStore,
@@ -40,7 +41,7 @@ def _setup() -> tuple[FakeRepositoryStore, FakeUserStore, User, User, ForkServic
 
     activity_service = ActivityService(activity_store, repository_store, star_store)
     repository_service = RepositoryService(
-        BlobBackend(), FakeBlobStorageClient(), FakeRedisClient(), repository_store, star_store
+        BlobBackend(), FakeBlobStorageClient(), FakeRedisClient(), FakeCacheClient(), repository_store, star_store
     )
     fork_service = ForkService(repository_store, repository_service, activity_service, star_store)
     return repository_store, users, owner, alice, fork_service, repository_service

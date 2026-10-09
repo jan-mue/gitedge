@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 
 from app.api.dependencies import (
     CurrentUser,
@@ -33,8 +33,34 @@ from app.schemas.repositories import (
     RepositoryInfo,
     TreeListing,
 )
+from app.utils.cache_headers import is_commit_sha
 
 router = APIRouter(prefix="/repositories", tags=["repositories"])
+
+if TYPE_CHECKING:
+    from app.services.repositories import RepositoryService
+
+
+async def _apply_cache_headers(
+    response: Response,
+    service: RepositoryService,
+    owner: str,
+    repo: str,
+    *,
+    immutable: bool,
+) -> None:
+    """Apply CDN cache headers for repository content.
+
+    Args:
+        response: FastAPI response to annotate.
+        service: Repository service that resolves repository privacy.
+        owner: Repository owner.
+        repo: Repository name.
+        immutable: Whether the content is addressed by an immutable commit SHA.
+    """
+    headers = await service.cache_headers(owner, repo, immutable=immutable)
+    for name, value in headers.items():
+        response.headers[name] = value
 
 
 @router.get("/")
@@ -51,54 +77,97 @@ async def create_repository(body: CreateRepositoryRequest, repository_service: R
 
 @router.get("/{owner}/{repo}/tree")
 async def get_tree(
-    owner: str, repo: str, repository_service: RepositoryServiceDep, ref: str = "main", tree_path: str = ""
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    ref: str = "main",
+    tree_path: str = "",
 ) -> TreeListing:
     """Get directory listing for a repository path."""
-    return await repository_service.get_tree(owner, repo, ref, tree_path)
+    result = await repository_service.get_tree(owner, repo, ref, tree_path)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
+    return result
 
 
 @router.get("/{owner}/{repo}/blob")
 async def get_blob(
-    owner: str, repo: str, repository_service: RepositoryServiceDep, ref: str = "main", file_path: str = ""
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    ref: str = "main",
+    file_path: str = "",
 ) -> FileContent:
     """Get file content with syntax highlighting."""
-    return await repository_service.get_blob(owner, repo, ref, file_path)
+    result = await repository_service.get_blob(owner, repo, ref, file_path)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
+    return result
 
 
 @router.get("/{owner}/{repo}/info")
 async def get_repository_info(
-    owner: str, repo: str, repository_service: RepositoryServiceDep, ref: str = "main"
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    ref: str = "main",
 ) -> RepositoryInfo:
     """Get extended repository information."""
-    return await repository_service.get_info(owner, repo, ref)
+    result = await repository_service.get_info(owner, repo, ref)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=False)
+    return result
 
 
 @router.get("/{owner}/{repo}/readme")
 async def get_readme(
-    owner: str, repo: str, repository_service: RepositoryServiceDep, ref: str = "main", tree_path: str = ""
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    ref: str = "main",
+    tree_path: str = "",
 ) -> ReadmeContent:
     """Get README content from a repository directory."""
-    return await repository_service.get_readme(owner, repo, ref, tree_path)
+    result = await repository_service.get_readme(owner, repo, ref, tree_path)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
+    return result
 
 
 @router.get("/{owner}/{repo}/branches")
-async def list_branches(owner: str, repo: str, repository_service: RepositoryServiceDep) -> list[BranchInfo]:
+async def list_branches(
+    owner: str, repo: str, response: Response, repository_service: RepositoryServiceDep
+) -> list[BranchInfo]:
     """List all branches in a repository."""
-    return await repository_service.list_branches(owner, repo)
+    result = await repository_service.list_branches(owner, repo)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=False)
+    return result
 
 
 @router.get("/{owner}/{repo}/commits")
 async def list_commits(
-    owner: str, repo: str, repository_service: RepositoryServiceDep, ref: str = "main", offset: int = 0, limit: int = 50
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    ref: str = "main",
+    offset: int = 0,
+    limit: int = 50,
 ) -> CommitsPublic:
     """List commit history for a repository ref."""
-    return await repository_service.list_commits(owner, repo, ref, offset, limit)
+    result = await repository_service.list_commits(owner, repo, ref, offset, limit)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
+    return result
 
 
 @router.get("/{owner}/{repo}/commits/{sha}")
-async def get_commit(owner: str, repo: str, sha: str, repository_service: RepositoryServiceDep) -> CommitDetail:
+async def get_commit(
+    owner: str, repo: str, sha: str, response: Response, repository_service: RepositoryServiceDep
+) -> CommitDetail:
     """Get a single commit with its diff."""
-    return await repository_service.get_commit(owner, repo, sha)
+    result = await repository_service.get_commit(owner, repo, sha)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=True)
+    return result
 
 
 @router.get("/{owner}/{repo}/issues")
@@ -167,10 +236,17 @@ async def get_pull_request(
 
 @router.get("/{owner}/{repo}/pulls/{number}/files")
 async def get_pull_request_files(
-    owner: str, repo: str, number: int, pull_request_service: PullRequestServiceDep
+    owner: str,
+    repo: str,
+    number: int,
+    response: Response,
+    pull_request_service: PullRequestServiceDep,
+    repository_service: RepositoryServiceDep,
 ) -> CompareResult:
     """List the files changed by a pull request, diffed against its base branch."""
-    return await pull_request_service.get_pull_request_files(owner, repo, number)
+    result = await pull_request_service.get_pull_request_files(owner, repo, number)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=False)
+    return result
 
 
 @router.patch("/{owner}/{repo}/pulls/{number}")
@@ -187,6 +263,10 @@ async def update_pull_request(
 
 
 @router.get("/{owner}/{repo}")
-async def get_repository(owner: str, repo: str, repository_service: RepositoryServiceDep) -> Repository:
+async def get_repository(
+    owner: str, repo: str, response: Response, repository_service: RepositoryServiceDep
+) -> Repository:
     """Get a specific repository."""
-    return await repository_service.get_repository(owner, repo)
+    result = await repository_service.get_repository(owner, repo)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=False)
+    return result

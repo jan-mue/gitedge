@@ -113,6 +113,15 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_PASSWORD: str | None = None
 
+    # Cache settings. "auto" selects the Vercel Runtime Cache when deployed and
+    # Redis for local development and tests.
+    CACHE_KIND: Literal["auto", "none", "redis", "vercel"] = "auto"
+    CACHE_NAMESPACE: str = "gitedge"
+    # TTL (seconds) for ref-addressed responses that change when a branch moves.
+    CACHE_TTL: int = 60
+    # TTL (seconds) for content addressed by commit SHA, which never changes.
+    CACHE_IMMUTABLE_TTL: int = 31536000
+
     # Blob storage settings
     BLOB_STORAGE_KIND: Literal["vercel", "s3"] = "s3"
     VERCEL_BLOB_TOKEN: str | None = None
