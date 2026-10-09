@@ -65,7 +65,7 @@ def fake_stores() -> Generator[FakeStores]:
 @pytest.fixture
 def crud(fake_stores: FakeStores) -> CrudService:
     """Provide a CRUD service backed by the fake user store."""
-    return CrudService(fake_stores.users)
+    return CrudService(fake_stores.users, fake_stores.organizations)
 
 
 @pytest.fixture(scope="module")

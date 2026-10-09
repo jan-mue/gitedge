@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from app.clients.organizations import SQLOrganizationStore
 from app.clients.users import SQLUserStore
 from app.config import settings
 from app.schemas.users import UserCreate
@@ -19,7 +20,7 @@ async def init_db(session: AsyncSession) -> None:
     Args:
         session: SQLAlchemy async session to use.
     """
-    crud_service = CrudService(SQLUserStore(session))
+    crud_service = CrudService(SQLUserStore(session), SQLOrganizationStore(session))
     user = await crud_service.get_user_by_email(email=settings.FIRST_SUPERUSER)
     if not user:
         user_in = UserCreate(

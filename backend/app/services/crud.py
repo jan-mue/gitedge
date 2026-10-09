@@ -24,12 +24,12 @@ DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$MjQyZWE1MzBjYjJlZTI0Yw$YTU4NGM5ZTZm
 class CrudService:
     """Service for CRUD operations on users."""
 
-    def __init__(self, user_store: UserStore, organization_store: OrganizationStore | None = None) -> None:
+    def __init__(self, user_store: UserStore, organization_store: OrganizationStore) -> None:
         """Initialize the CRUD service.
 
         Args:
             user_store: Store for user database operations.
-            organization_store: Optional organization store used to keep the owner namespace unique.
+            organization_store: Organization store used to keep the owner namespace unique.
         """
         self.user_store = user_store
         self.organization_store = organization_store
@@ -47,7 +47,7 @@ class CrudService:
         existing = await self.user_store.get_by_name(name)
         if existing is not None and existing.id != exclude_user_id:
             return True
-        return self.organization_store is not None and await self.organization_store.get_by_name(name) is not None
+        return await self.organization_store.get_by_name(name) is not None
 
     async def create_user(self, user_create: UserCreate) -> UserPublic:
         """Create a new user.

@@ -26,7 +26,7 @@ class ForkService:
         repository_store: RepositoryStore,
         repository_service: RepositoryService,
         activity_service: ActivityService,
-        star_store: StarStore | None = None,
+        star_store: StarStore,
     ) -> None:
         """Initialize the fork service.
 
@@ -34,7 +34,7 @@ class ForkService:
             repository_store: Repository store.
             repository_service: Repository service used to create the Git repo.
             activity_service: Service used to record activity.
-            star_store: Optional star store used to compute star counts.
+            star_store: Star store used to compute star counts.
         """
         self.repository_store = repository_store
         self.repository_service = repository_service
@@ -117,7 +117,7 @@ class ForkService:
         Returns:
             The public fork representation.
         """
-        stars_count = await self.star_store.count_by_repo(fork.id) if self.star_store is not None else 0
+        stars_count = await self.star_store.count_by_repo(fork.id)
         forks_count = await self.repository_store.count_by_fork_of(fork.id)
         return ForkPublic(
             id=fork.id,

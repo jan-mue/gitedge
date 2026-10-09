@@ -35,7 +35,7 @@ class PullRequestService:
         pull_request_store: PullRequestStore,
         repository_store: RepositoryStore,
         repository_service: RepositoryService,
-        activity_service: ActivityService | None = None,
+        activity_service: ActivityService,
     ) -> None:
         """Initialize the pull request service.
 
@@ -43,7 +43,7 @@ class PullRequestService:
             pull_request_store: Pull request store.
             repository_store: Repository store.
             repository_service: Repository service used to diff refs.
-            activity_service: Optional service used to record activity.
+            activity_service: Service used to record activity.
         """
         self.pull_request_store = pull_request_store
         self.repository_store = repository_store
@@ -108,15 +108,14 @@ class PullRequestService:
         await self.pull_request_store.add(pull_request)
         pull_request.author = current_user
 
-        if self.activity_service is not None:
-            await self.activity_service.record(
-                actor=current_user,
-                repo=repository,
-                kind=ActivityKind.PULL_REQUEST_OPEN,
-                title=pull_request.title,
-                target_type=ActivityTargetType.PULL_REQUEST,
-                target_number=pull_request.number,
-            )
+        await self.activity_service.record(
+            actor=current_user,
+            repo=repository,
+            kind=ActivityKind.PULL_REQUEST_OPEN,
+            title=pull_request.title,
+            target_type=ActivityTargetType.PULL_REQUEST,
+            target_number=pull_request.number,
+        )
 
         return self._to_public(pull_request, owner, name)
 
@@ -186,7 +185,7 @@ class PullRequestService:
         pull_request.updated_at = datetime.now(UTC)
         await self.pull_request_store.update(pull_request)
 
-        if self.activity_service is not None and body.state is not None:
+        if body.state is not None:
             kind = {
                 IssueState.MERGED: ActivityKind.PULL_REQUEST_MERGE,
                 IssueState.CLOSED: ActivityKind.PULL_REQUEST_CLOSE,

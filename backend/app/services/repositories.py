@@ -7,7 +7,6 @@ import logging
 import re
 import stat
 import time
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Protocol
 
 from dulwich.objects import Blob, Commit, ObjectID, Tag, Tree
@@ -151,8 +150,8 @@ class RepositoryService:
         backend: BlobBackend,
         blob_client: BlobStorageClient,
         redis_client: AbstractRedisClient,
-        repository_store: RepositoryStore | None = None,
-        star_store: StarStore | None = None,
+        repository_store: RepositoryStore,
+        star_store: StarStore,
     ) -> None:
         """Initialize the repository service.
 
@@ -160,9 +159,8 @@ class RepositoryService:
             backend: Git backend.
             blob_client: Blob storage client.
             redis_client: Redis client.
-            repository_store: Optional repository store used to enrich
-                repository metadata with database records.
-            star_store: Optional star store used to compute star counts.
+            repository_store: Repository store used to enrich repository metadata with database records.
+            star_store: Star store used to compute star counts.
         """
         self.backend = backend
         self.blob_client = blob_client
@@ -177,10 +175,8 @@ class RepositoryService:
             repository: The repository schema to update in place.
             repo_id: The repository entity id.
         """
-        if self.star_store is not None:
-            repository.stars_count = await self.star_store.count_by_repo(repo_id)
-        if self.repository_store is not None:
-            repository.forks_count = await self.repository_store.count_by_fork_of(repo_id)
+        repository.stars_count = await self.star_store.count_by_repo(repo_id)
+        repository.forks_count = await self.repository_store.count_by_fork_of(repo_id)
 
     async def _to_schema(self, entity: RepositoryEntity) -> Repository:
         """Convert a repository entity to its public schema.
@@ -209,8 +205,6 @@ class RepositoryService:
         Returns:
             RepositoriesPublic with the discovered repositories.
         """
-        if self.repository_store is None:
-            return RepositoriesPublic(data=[], count=0)
         entities = await self.repository_store.get_all(offset=0, limit=10000)
         data = [await self._to_schema(entity) for entity in entities]
         return RepositoriesPublic(data=data, count=len(data))
@@ -225,12 +219,7 @@ class RepositoryService:
 
         Returns:
             RepositoriesPublic with the owner's repositories.
-
-        Raises:
-            HTTPException: If the repository store is unavailable.
         """
-        if self.repository_store is None:
-            raise HTTPException(status_code=503, detail="Repository store unavailable")
         entities = await self.repository_store.get_by_owner(owner_id, offset, limit)
         data = [await self._to_schema(entity) for entity in entities]
         return RepositoriesPublic(data=data, count=len(data))
@@ -248,8 +237,6 @@ class RepositoryService:
         Raises:
             RepositoryNotFoundError: If the repository does not exist.
         """
-        if self.repository_store is None:
-            raise HTTPException(status_code=503, detail="Repository store unavailable")
         entity = await self.repository_store.get_by_owner_and_name(owner, name)
         return await self._to_schema(entity)
 
@@ -274,13 +261,9 @@ class RepositoryService:
             await save_repository_changes_to_storage(self.blob_client, self.redis_client, key, changes)
             self.backend.clear_repository_changes(key)
 
-        if self.repository_store is not None:
-            await ensure_repository(self.repository_store, owner, name)
-            entity = await self.repository_store.get_by_owner_and_name(owner, name)
-            return await self._to_schema(entity)
-
-        now = datetime.now(UTC)
-        return Repository(name=name, owner=owner, created_at=now, updated_at=now)
+        await ensure_repository(self.repository_store, owner, name)
+        entity = await self.repository_store.get_by_owner_and_name(owner, name)
+        return await self._to_schema(entity)
 
     async def ensure_loaded(self, owner: str, name: str) -> None:
         """Ensure a repository is loaded into the backend, creating it if absent.
@@ -292,8 +275,7 @@ class RepositoryService:
         Raises:
             HTTPException: If the owner cannot be resolved.
         """
-        if self.repository_store is not None:
-            await ensure_repository(self.repository_store, owner, name)
+        await ensure_repository(self.repository_store, owner, name)
 
         key = repo_key(owner, name)
         if self.backend.repository_exists(key):
@@ -484,15 +466,14 @@ class RepositoryService:
         stars_count = 0
         forks_count = 0
         fork_of = None
-        if self.repository_store is not None:
-            entity = await self.repository_store.find_by_owner_and_name(owner, name)
-            if entity is not None:
-                description = entity.description
-                is_private = entity.is_private
-                stars_count = await self.star_store.count_by_repo(entity.id) if self.star_store is not None else 0
-                forks_count = await self.repository_store.count_by_fork_of(entity.id)
-                if entity.fork_of is not None:
-                    fork_of = f"{entity.fork_of.owner.name}/{entity.fork_of.name}"
+        entity = await self.repository_store.find_by_owner_and_name(owner, name)
+        if entity is not None:
+            description = entity.description
+            is_private = entity.is_private
+            stars_count = await self.star_store.count_by_repo(entity.id)
+            forks_count = await self.repository_store.count_by_fork_of(entity.id)
+            if entity.fork_of is not None:
+                fork_of = f"{entity.fork_of.owner.name}/{entity.fork_of.name}"
 
         return RepositoryInfo(
             name=name,

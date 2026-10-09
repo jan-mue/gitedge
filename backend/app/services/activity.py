@@ -24,14 +24,14 @@ class ActivityService:
         self,
         activity_store: ActivityStore,
         repository_store: RepositoryStore,
-        star_store: StarStore | None = None,
+        star_store: StarStore,
     ) -> None:
         """Initialize the activity service.
 
         Args:
             activity_store: Activity store.
             repository_store: Repository store.
-            star_store: Optional star store used to build a personalized feed.
+            star_store: Star store used to build a personalized feed.
         """
         self.activity_store = activity_store
         self.repository_store = repository_store
@@ -107,9 +107,8 @@ class ActivityService:
         repo_ids: set[uuid.UUID] = set()
         owned = await self.repository_store.get_by_owner(user.id, 0, 1000)
         repo_ids.update(repository.id for repository in owned)
-        if self.star_store is not None:
-            stars = await self.star_store.list_by_user(user.id, 0, 1000)
-            repo_ids.update(star.repo_id for star in stars)
+        stars = await self.star_store.list_by_user(user.id, 0, 1000)
+        repo_ids.update(star.repo_id for star in stars)
 
         activities = await self.activity_store.list_by_repos(list(repo_ids), offset, limit) if repo_ids else []
         if not activities:

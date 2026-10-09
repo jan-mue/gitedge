@@ -26,14 +26,14 @@ class IssueService:
         self,
         issue_store: IssueStore,
         repository_store: RepositoryStore,
-        activity_service: ActivityService | None = None,
+        activity_service: ActivityService,
     ) -> None:
         """Initialize the issue service.
 
         Args:
             issue_store: Issue store.
             repository_store: Repository store.
-            activity_service: Optional service used to record activity.
+            activity_service: Service used to record activity.
         """
         self.issue_store = issue_store
         self.repository_store = repository_store
@@ -89,15 +89,14 @@ class IssueService:
         await self.issue_store.add(issue)
         issue.author = current_user
 
-        if self.activity_service is not None:
-            await self.activity_service.record(
-                actor=current_user,
-                repo=repository,
-                kind=ActivityKind.ISSUE_OPEN,
-                title=issue.title,
-                target_type=ActivityTargetType.ISSUE,
-                target_number=issue.number,
-            )
+        await self.activity_service.record(
+            actor=current_user,
+            repo=repository,
+            kind=ActivityKind.ISSUE_OPEN,
+            title=issue.title,
+            target_type=ActivityTargetType.ISSUE,
+            target_number=issue.number,
+        )
 
         return self._to_public(issue, owner, name)
 
@@ -150,7 +149,7 @@ class IssueService:
         issue.updated_at = datetime.now(UTC)
         await self.issue_store.update(issue)
 
-        if self.activity_service is not None and body.state is not None:
+        if body.state is not None:
             kind = ActivityKind.ISSUE_CLOSE if body.state == IssueState.CLOSED else ActivityKind.ISSUE_REOPEN
             repository = await self.repository_store.get_by_owner_and_name(owner, name)
             await self.activity_service.record(

@@ -24,6 +24,7 @@ from tests.unit.utils.fakes import (
     FakeOrganizationStore,
     FakeRedisClient,
     FakeRepositoryStore,
+    FakeStarStore,
     FakeUserStore,
 )
 
@@ -111,7 +112,9 @@ def _stores() -> tuple[FakeUserStore, FakeOrganizationStore, FakeRepositoryStore
 @pytest.fixture
 def service() -> RepositoryService:
     _, _, repository_store = _stores()
-    return RepositoryService(BlobBackend(), FakeBlobStorageClient(), FakeRedisClient(), repository_store)
+    return RepositoryService(
+        BlobBackend(), FakeBlobStorageClient(), FakeRedisClient(), repository_store, FakeStarStore()
+    )
 
 
 async def test_ensure_repository() -> None:
