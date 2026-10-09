@@ -12,10 +12,21 @@ function RepositoryIndexRedirect() {
   const { owner, repo } = Route.useParams()
   const repoPath = owner === "_" ? `${repo}.git` : `${owner}/${repo}.git`
 
-  const { data } = useQuery({
+  const { data, isError } = useQuery({
     queryKey: ["repoInfo", repoPath],
     queryFn: async () => (await RepositoriesService.getRepositoryInfo({ path: { owner, repo } })).data,
   })
+
+  if (isError) {
+    return (
+      <div
+        className="flex items-center justify-center py-16 text-sm text-muted-foreground"
+        data-testid="repository-not-found"
+      >
+        Repository not found.
+      </div>
+    )
+  }
 
   if (!data) {
     return <PendingItems />

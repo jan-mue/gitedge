@@ -170,6 +170,24 @@ def _delete_repository_rows() -> None:
         conn.execute("DELETE FROM repository")
 
 
+def create_repository_row(owner: str, name: str) -> None:
+    """Insert a repository row for an owner without any stored Git data.
+
+    Args:
+        owner: Owner (user or organization) name.
+        name: Repository name.
+    """
+    db_url = str(settings.DATABASE_URL).replace("postgresql+psycopg://", "postgresql://")
+    with psycopg.connect(db_url) as conn:
+        conn.execute(
+            """
+            INSERT INTO repository (id, owner_id, name, is_private, default_branch)
+            SELECT %s, id, %s, false, 'main' FROM principal WHERE lower_name = %s
+            """,
+            (str(uuid.uuid4()), name, owner.lower()),
+        )
+
+
 def _delete_redis_keys(redis_url: str) -> None:
     """Delete all keys from Redis.
 

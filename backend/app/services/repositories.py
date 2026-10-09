@@ -327,9 +327,13 @@ class RepositoryService:
 
         packs, refs = await load_repository_from_storage(self.blob_client, self.redis_client, key)
         logger.debug("Loaded from storage: %s (packs=%d, refs=%d)", key, len(packs), len(refs))
-        if not packs and not refs:
-            raise HTTPException(status_code=404, detail="Repository not found")
-        return self.backend.load_repository_from_data(key, packs, refs)
+        if packs or refs:
+            return self.backend.load_repository_from_data(key, packs, refs)
+
+        # A row without stored Git data is an empty repository, not a missing one.
+        if await self.repository_store.find_by_owner_and_name(owner, name) is not None:
+            return self.backend.create_repository(key)
+        raise HTTPException(status_code=404, detail="Repository not found")
 
     async def get_tree(self, owner: str, name: str, ref: str, tree_path: str) -> TreeListing:
         """Get the directory listing for a repository path.

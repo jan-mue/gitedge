@@ -170,6 +170,17 @@ async def test_load_repository_not_found(service: RepositoryService) -> None:
         await service.load_repository(OWNER, "missing")
 
 
+async def test_load_repository_empty_when_row_exists(service: RepositoryService) -> None:
+    assert service.repository_store is not None
+    await ensure_repository(service.repository_store, OWNER, "empty")
+
+    info = await service.get_info(OWNER, "empty", "main")
+    assert info.branch_count == 0
+    assert info.tag_count == 0
+    assert info.default_branch == "main"
+    assert info.last_commit is None
+
+
 async def test_ensure_loaded_creates_repository(service: RepositoryService) -> None:
     await service.ensure_loaded(OWNER, "new")
     assert service.backend.repository_exists("owner/new.git")

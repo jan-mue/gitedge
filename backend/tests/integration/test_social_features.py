@@ -19,6 +19,7 @@ from playwright.sync_api import expect
 from tests.integration.conftest import (
     FIRST_SUPERUSER,
     FIRST_SUPERUSER_PASSWORD,
+    create_repository_row,
     create_user_via_api,
     log_in_user,
 )
@@ -593,4 +594,17 @@ class TestEmptyRepository:
         page.get_by_test_id("create-repo-submit").click()
 
         page.goto(f"{app_url}/admin/emptyrepo")
+        expect(page.get_by_test_id("empty-repository")).to_be_visible(timeout=15000)
+
+    def test_repository_without_stored_data_shows_empty_state(self, app_url: str, page: Page) -> None:
+        """A repository row without stored Git data still loads as empty.
+
+        Args:
+            app_url: Base URL of the GitEdge frontend.
+            page: Playwright page.
+        """
+        create_repository_row("admin", "orphanrepo")
+        log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
+
+        page.goto(f"{app_url}/admin/orphanrepo")
         expect(page.get_by_test_id("empty-repository")).to_be_visible(timeout=15000)
