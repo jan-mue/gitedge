@@ -118,13 +118,16 @@ def repo_key(owner: str, name: str) -> str:
     return f"{owner}/{name}.git"
 
 
-async def ensure_repository(store: RepositoryStore, owner: str, name: str) -> RepositoryEntity:
+async def ensure_repository(
+    store: RepositoryStore, owner: str, name: str, *, include_releases: bool = False
+) -> RepositoryEntity:
     """Get an existing repository row or create one for the given owner and name.
 
     Args:
         store: Repository store.
         owner: Owner name (user or organization).
         name: Repository name.
+        include_releases: Whether to eager-load the repository's releases.
 
     Returns:
         The repository entity.
@@ -132,7 +135,7 @@ async def ensure_repository(store: RepositoryStore, owner: str, name: str) -> Re
     Raises:
         OwnerNotFoundError: If the owner cannot be resolved.
     """
-    repository = await store.find_by_owner_and_name(owner, name)
+    repository = await store.find_by_owner_and_name(owner, name, include_releases=include_releases)
     if repository is not None:
         return repository
 

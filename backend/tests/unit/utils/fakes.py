@@ -44,7 +44,6 @@ from app.exceptions import (
     NotFoundError,
     OwnerNotFoundError,
     PullRequestNotFoundError,
-    ReleaseNotFoundError,
     RepositoryNotFoundError,
 )
 from app.utils.security import get_password_hash
@@ -211,6 +210,7 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
         super().__init__()
         self.users = users
         self.organizations = organizations
+        self.release_store: FakeReleaseStore | None = None
 
     def _owner(self, repository: Repository) -> Principal | None:
         """Resolve a repository's owner principal."""
@@ -222,7 +222,7 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
             return self.users.items.get(repository.owner_id)
         return None
 
-    def _hydrate(self, repository: Repository) -> Repository:
+    def _hydrate(self, repository: Repository, *, include_releases: bool = False) -> Repository:
         """Populate a repository's relationships from the other fake stores."""
         owner = self._owner(repository)
         if owner is not None:
@@ -231,6 +231,8 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
             fork_of = self.items.get(repository.fork_of_id)
             if fork_of is not None:
                 repository.fork_of = fork_of
+        if include_releases and self.release_store is not None:
+            repository.releases = self.release_store.releases_for(repository.id)
         return repository
 
     async def find(self, primary_key: uuid.UUID) -> Repository | None:
@@ -247,17 +249,19 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
         self.persist(obj)
         self._hydrate(obj)
 
-    async def find_by_owner_and_name(self, owner: str, name: str) -> Repository | None:
+    async def find_by_owner_and_name(
+        self, owner: str, name: str, *, include_releases: bool = False
+    ) -> Repository | None:
         """Find a repository by its owner name and name, or None."""
         for repository in self.items.values():
             principal = self._owner(repository)
             if repository.name == name and principal is not None and principal.name.lower() == owner.lower():
-                return self._hydrate(repository)
+                return self._hydrate(repository, include_releases=include_releases)
         return None
 
-    async def get_by_owner_and_name(self, owner: str, name: str) -> Repository:
+    async def get_by_owner_and_name(self, owner: str, name: str, *, include_releases: bool = False) -> Repository:
         """Get a repository by its owner name and name, raising when absent."""
-        repository = await self.find_by_owner_and_name(owner, name)
+        repository = await self.find_by_owner_and_name(owner, name, include_releases=include_releases)
         if repository is None:
             raise RepositoryNotFoundError
         return repository
@@ -550,30 +554,11 @@ class FakeReleaseStore(FakeCrudStore[Release], ReleaseStore):
         self.persist(obj)
         self._hydrate(obj)
 
-    async def list_by_repo(self, repo_id: uuid.UUID, include_drafts: bool = False) -> list[Release]:
-        """List releases for a repository, newest first."""
-        releases = [
-            release
-            for release in self.items.values()
-            if release.repo_id == repo_id and (include_drafts or not release.is_draft)
-        ]
+    def releases_for(self, repo_id: uuid.UUID) -> list[Release]:
+        """Return hydrated releases for a repository, newest first."""
+        releases = [release for release in self.items.values() if release.repo_id == repo_id]
         releases.sort(key=lambda release: release.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
         return [self._hydrate(release) for release in releases]
-
-    async def find_by_tag(self, repo_id: uuid.UUID, tag_name: str) -> Release | None:
-        """Find a release by repository id and tag name, or None."""
-        release = next(
-            (release for release in self.items.values() if release.repo_id == repo_id and release.tag_name == tag_name),
-            None,
-        )
-        return self._hydrate(release) if release is not None else None
-
-    async def get_by_tag(self, repo_id: uuid.UUID, tag_name: str) -> Release:
-        """Get a release by repository id and tag name, raising when absent."""
-        release = await self.find_by_tag(repo_id, tag_name)
-        if release is None:
-            raise ReleaseNotFoundError
-        return release
 
 
 class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
@@ -662,8 +647,10 @@ def build_fake_stores() -> FakeStores:
     issues = FakeIssueStore(users)
     pull_requests = FakePullRequestStore(users)
     comments = FakeCommentStore(users, issues, pull_requests)
+    releases = FakeReleaseStore(users)
     issues.comment_store = comments
     pull_requests.comment_store = comments
+    repository.release_store = releases
     users.persist(
         User(
             name=settings.FIRST_SUPERUSER.split("@")[0],
@@ -684,6 +671,6 @@ def build_fake_stores() -> FakeStores:
         stars=FakeStarStore(users),
         watchers=FakeWatcherStore(users),
         comments=comments,
-        releases=FakeReleaseStore(users),
+        releases=releases,
         activity=FakeActivityStore(users, repository),
     )

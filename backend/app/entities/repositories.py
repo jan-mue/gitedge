@@ -41,4 +41,4 @@ class Repository(Base):
     stars: Mapped[list["Star"]] = relationship(back_populates="repo")
     watchers: Mapped[list["Watcher"]] = relationship(back_populates="repo")
     activities: Mapped[list["Activity"]] = relationship(back_populates="repo")
-    releases: Mapped[list["Release"]] = relationship(back_populates="repo")
+    releases: Mapped[list["Release"]] = relationship(back_populates="repo", order_by="Release.created_at.desc()")

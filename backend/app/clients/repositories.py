@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.principals import Principal, PrincipalType
+from app.entities.releases import Release
 from app.entities.repositories import Repository
 from app.exceptions import OwnerNotFoundError, RepositoryNotFoundError
 
@@ -24,11 +25,13 @@ class RepositoryStore(CrudStore[Repository], ABC):
     """Abstract repository store with additional repository-specific methods."""
 
     @abstractmethod
-    async def get_by_owner_and_name(self, owner: str, name: str) -> Repository:
+    async def get_by_owner_and_name(self, owner: str, name: str, *, include_releases: bool = False) -> Repository:
         """Get a repository by its owner name (user or organization) and name, raising when absent."""
 
     @abstractmethod
-    async def find_by_owner_and_name(self, owner: str, name: str) -> Repository | None:
+    async def find_by_owner_and_name(
+        self, owner: str, name: str, *, include_releases: bool = False
+    ) -> Repository | None:
         """Find a repository by its owner name (user or organization) and name, or None."""
 
     @abstractmethod
@@ -60,12 +63,15 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         super().__init__(db, Repository)
 
     @staticmethod
-    def _owner_options() -> tuple[ExecutableOption, ...]:
+    def _owner_options(include_releases: bool = False) -> tuple[ExecutableOption, ...]:
         """Eager-load options for the repository owner (and fork parent)."""
-        return (
+        options: list[ExecutableOption] = [
             selectinload(Repository.owner),
             selectinload(Repository.fork_of).selectinload(Repository.owner),
-        )
+        ]
+        if include_releases:
+            options.append(selectinload(Repository.releases).selectinload(Release.author))
+        return tuple(options)
 
     async def find(self, primary_key: uuid.UUID) -> Repository | None:
         """Find a repository by primary key with its owner loaded.
@@ -82,19 +88,21 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         result = await self.db.scalars(select(Repository).options(*self._owner_options()).offset(offset).limit(limit))
         return list(result.all())
 
-    async def find_by_owner_and_name(self, owner: str, name: str) -> Repository | None:
+    async def find_by_owner_and_name(
+        self, owner: str, name: str, *, include_releases: bool = False
+    ) -> Repository | None:
         """Find a repository by its owner name and name, or None."""
         stmt = (
             select(Repository)
-            .options(*self._owner_options())
+            .options(*self._owner_options(include_releases))
             .join(Principal, Repository.owner_id == Principal.id)
             .where(Principal.lower_name == owner.lower(), Repository.name == name)
         )
         return await self.db.scalar(stmt)
 
-    async def get_by_owner_and_name(self, owner: str, name: str) -> Repository:
+    async def get_by_owner_and_name(self, owner: str, name: str, *, include_releases: bool = False) -> Repository:
         """Get a repository by its owner name and name, raising when absent."""
-        repository = await self.find_by_owner_and_name(owner, name)
+        repository = await self.find_by_owner_and_name(owner, name, include_releases=include_releases)
         if repository is None:
             raise RepositoryNotFoundError
         return repository

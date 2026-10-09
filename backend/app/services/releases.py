@@ -9,6 +9,7 @@ from fastapi import HTTPException
 
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.releases import Release
+from app.exceptions import ReleaseNotFoundError
 from app.schemas.releases import ReleaseCreate, ReleasePublic, ReleasesPublic
 from app.services.repositories import ensure_repository
 
@@ -50,10 +51,10 @@ class ReleaseService:
         Returns:
             ReleasesPublic with the releases, newest first.
         """
-        repository = await self.repository_store.find_by_owner_and_name(owner, name)
+        repository = await self.repository_store.find_by_owner_and_name(owner, name, include_releases=True)
         if repository is None:
             return ReleasesPublic(data=[], count=0)
-        releases = await self.release_store.list_by_repo(repository.id, include_drafts)
+        releases = [release for release in repository.releases if include_drafts or not release.is_draft]
         return ReleasesPublic(data=[self._to_public(release, owner, name) for release in releases], count=len(releases))
 
     async def get_release(self, owner: str, name: str, tag_name: str) -> ReleasePublic:
@@ -70,8 +71,10 @@ class ReleaseService:
         Raises:
             ReleaseNotFoundError: If the release is not found.
         """
-        repository = await self.repository_store.get_by_owner_and_name(owner, name)
-        release = await self.release_store.get_by_tag(repository.id, tag_name)
+        repository = await self.repository_store.get_by_owner_and_name(owner, name, include_releases=True)
+        release = next((release for release in repository.releases if release.tag_name == tag_name), None)
+        if release is None:
+            raise ReleaseNotFoundError
         return self._to_public(release, owner, name)
 
     async def create_release(self, owner: str, name: str, body: ReleaseCreate, current_user: User) -> ReleasePublic:
@@ -89,8 +92,8 @@ class ReleaseService:
         Raises:
             HTTPException: If a release for the tag already exists.
         """
-        repository = await ensure_repository(self.repository_store, owner, name)
-        if await self.release_store.find_by_tag(repository.id, body.tag_name) is not None:
+        repository = await ensure_repository(self.repository_store, owner, name, include_releases=True)
+        if any(release.tag_name == body.tag_name for release in repository.releases):
             raise HTTPException(status_code=409, detail="A release for this tag already exists")
 
         release = Release(
