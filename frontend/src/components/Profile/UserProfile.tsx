@@ -39,6 +39,8 @@ const UserProfile = ({ username }: UserProfileProps) => {
     queryFn: async () => (await ProfilesService.readUserByUsername({ path: { username } })).data,
   })
 
+  const isUser = user?.principal_type === "user"
+
   const { data: repos } = useQuery({
     queryKey: ["profile", username, "repositories"],
     queryFn: async () => (await ProfilesService.listUserRepositories({ path: { username } })).data,
@@ -47,6 +49,7 @@ const UserProfile = ({ username }: UserProfileProps) => {
   const { data: starred } = useQuery({
     queryKey: ["profile", username, "starred"],
     queryFn: async () => (await ProfilesService.listUserStarredRepositories({ path: { username } })).data,
+    enabled: isUser,
   })
 
   const list = tab === "repositories" ? (repos?.data ?? []) : (starred?.data ?? [])
@@ -77,16 +80,18 @@ const UserProfile = ({ username }: UserProfileProps) => {
           <GitBranch className="w-4 h-4" />
           Repositories ({repos?.count ?? 0})
         </Button>
-        <Button
-          variant="ghost"
-          className={`rounded-none border-b-2 ${
-            tab === "starred" ? "border-primary text-foreground" : "border-transparent text-muted-foreground"
-          }`}
-          onClick={() => setTab("starred")}
-          data-testid="profile-tab-starred"
-        >
-          Starred ({starred?.count ?? 0})
-        </Button>
+        {isUser && (
+          <Button
+            variant="ghost"
+            className={`rounded-none border-b-2 ${
+              tab === "starred" ? "border-primary text-foreground" : "border-transparent text-muted-foreground"
+            }`}
+            onClick={() => setTab("starred")}
+            data-testid="profile-tab-starred"
+          >
+            Starred ({starred?.count ?? 0})
+          </Button>
+        )}
       </div>
 
       {list.length > 0 ? (

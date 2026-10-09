@@ -56,6 +56,7 @@ def test_profile_by_username(
     r = client.get(PROFILE_URL)
     assert r.status_code == 200
     assert r.json()["name"] == REPO_OWNER
+    assert r.json()["principal_type"] == "user"
 
     repos = client.get(PROFILE_REPOS_URL)
     assert repos.status_code == 200
@@ -65,6 +66,23 @@ def test_profile_by_username(
     starred = client.get(PROFILE_STARRED_URL)
     assert starred.status_code == 200
     assert starred.json()["count"] == 0
+
+
+def test_organization_profile_has_no_starred(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+) -> None:
+    created = client.post(
+        f"{settings.API_V1_STR}/organizations/", headers=superuser_token_headers, json={"name": "acme"}
+    )
+    assert created.status_code == 201
+
+    profile = client.get(f"{settings.API_V1_STR}/users/acme")
+    assert profile.status_code == 200
+    assert profile.json()["principal_type"] == "organization"
+
+    starred = client.get(f"{settings.API_V1_STR}/users/acme/starred")
+    assert starred.status_code == 404
 
 
 def test_profile_unknown_username(client: TestClient) -> None:

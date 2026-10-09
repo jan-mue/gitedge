@@ -4,6 +4,7 @@ import uuid
 
 from pydantic import ConfigDict, EmailStr, Field
 
+from app.entities.principals import PrincipalType
 from app.schemas.base import GitEdgeBaseModel
 
 
@@ -74,6 +75,7 @@ class ProfilePublic(GitEdgeBaseModel):
     id: uuid.UUID
     name: str = Field(max_length=255)
     display_name: str | None = Field(default=None, max_length=255)
+    principal_type: PrincipalType
 
 
 class UsersPublic(GitEdgeBaseModel):

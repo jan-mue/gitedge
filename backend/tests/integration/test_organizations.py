@@ -48,3 +48,4 @@ class TestOrganizations:
         expect(page.get_by_test_id("user-profile")).to_be_visible(timeout=15000)
         expect(page.get_by_test_id("profile-tab-repositories")).to_contain_text("Repositories (1)")
         expect(page.get_by_test_id("profile-repo-org-repo")).to_be_visible()
+        expect(page.get_by_test_id("profile-tab-starred")).to_have_count(0)

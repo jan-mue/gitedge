@@ -65,9 +65,14 @@ async def list_user_repositories(
 async def list_user_starred_repositories(
     username: str,
     user_store: UserStoreDep,
-    organization_store: OrganizationStoreDep,
     star_service: StarServiceDep,
 ) -> RepositoriesPublic:
-    """List repositories starred by a user (organizations cannot star)."""
-    principal = await _resolve_principal(username, user_store, organization_store)
-    return await star_service.starred_repositories(principal.id)
+    """List repositories starred by a user.
+
+    Raises:
+        HTTPException: If no user matches the name (organizations cannot star).
+    """
+    user = await user_store.get_by_name(username)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return await star_service.starred_repositories(user.id)

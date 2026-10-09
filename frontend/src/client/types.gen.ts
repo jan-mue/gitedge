@@ -682,6 +682,13 @@ export type OrganizationsPublic = {
 };
 
 /**
+ * PrincipalType
+ *
+ * The kind of principal.
+ */
+export type PrincipalType = 'user' | 'organization';
+
+/**
  * PrivateUserCreate
  *
  * Schema for creating a user via private API.
@@ -723,6 +730,7 @@ export type ProfilePublic = {
      * Display Name
      */
     display_name?: string | null;
+    principal_type: PrincipalType;
 };
 
 /**
