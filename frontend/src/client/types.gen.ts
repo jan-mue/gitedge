@@ -133,6 +133,10 @@ export type CommentPublic = {
      */
     body: string;
     /**
+     * Body Html
+     */
+    body_html: string;
+    /**
      * Created At
      */
     created_at: string;
@@ -538,6 +542,10 @@ export type IssuePublic = {
      * Body
      */
     body?: string | null;
+    /**
+     * Body Html
+     */
+    body_html: string;
     state: IssueState;
     /**
      * Author Username
@@ -787,6 +795,10 @@ export type PullRequestPublic = {
      * Body
      */
     body?: string | null;
+    /**
+     * Body Html
+     */
+    body_html: string;
     state: IssueState;
     /**
      * Head Branch

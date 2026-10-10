@@ -20,6 +20,47 @@ PULLS_URL = f"{REPO_URL}/pulls"
 REPOSITORIES_URL = f"{settings.API_V1_STR}/repositories/"
 
 
+@pytest.mark.parametrize("url", [ISSUES_URL, PULLS_URL])
+def test_description_markdown_is_rendered(
+    client: TestClient, superuser_token_headers: dict[str, str], url: str
+) -> None:
+    body = "# Description\n\n**bold** and ~~removed~~"
+    payload = {"title": "Title", "body": body}
+    if url == PULLS_URL:
+        payload["head_branch"] = "feature"
+
+    created = client.post(url, headers=superuser_token_headers, json=payload)
+    assert created.status_code == 201
+    expected_html = "<h1>Description</h1>\n<p><strong>bold</strong> and <s>removed</s></p>\n"
+    assert created.json()["body"] == body
+    assert created.json()["body_html"] == expected_html
+
+    retrieved = client.get(f"{url}/1")
+    assert retrieved.status_code == 200
+    assert retrieved.json()["body_html"] == expected_html
+    listed = client.get(url)
+    assert listed.status_code == 200
+    assert listed.json()["data"][0]["body_html"] == expected_html
+
+    updated = client.patch(f"{url}/1", headers=superuser_token_headers, json={"body": "*Updated*"})
+    assert updated.status_code == 200
+    assert updated.json()["body"] == "*Updated*"
+    assert updated.json()["body_html"] == "<p><em>Updated</em></p>\n"
+    assert client.get(f"{url}/1").json()["body_html"] == "<p><em>Updated</em></p>\n"
+
+
+@pytest.mark.parametrize("url", [ISSUES_URL, PULLS_URL])
+@pytest.mark.parametrize("body", [None, ""])
+def test_empty_description_has_empty_html(
+    client: TestClient, superuser_token_headers: dict[str, str], url: str, body: str | None
+) -> None:
+    payload = {"title": "Title", "body": body, "head_branch": "feature"}
+    response = client.post(url, headers=superuser_token_headers, json=payload)
+    assert response.status_code == 201
+    assert response.json()["body"] == body
+    assert response.json()["body_html"] == ""
+
+
 def test_repository_metadata_sets_cache_headers(client: TestClient) -> None:
     client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME})
 

@@ -26,6 +26,7 @@ class CommentPublic(GitEdgeBaseModel):
     id: uuid.UUID
     author_username: str
     body: str
+    body_html: str
     created_at: datetime
     updated_at: datetime
 

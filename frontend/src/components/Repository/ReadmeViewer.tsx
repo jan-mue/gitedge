@@ -1,15 +1,12 @@
 import { BookOpen } from "lucide-react"
 
+import MarkdownContent from "@/components/Common/MarkdownContent"
+
 interface ReadmeViewerProps {
   html: string
   content: string
   filename?: string
 }
-
-const MarkdownContent = ({ html }: { html: string }) => (
-  // biome-ignore lint/security/noDangerouslySetInnerHtml: server-rendered markdown HTML
-  <div className="markdown-body" dangerouslySetInnerHTML={{ __html: html }} />
-)
 
 const ReadmeViewer = ({ html, content, filename = "README.md" }: ReadmeViewerProps) => {
   return (

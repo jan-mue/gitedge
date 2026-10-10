@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.issues import Issue, IssueState
 from app.schemas.repositories import IssueCreate, IssuePublic, IssuesListPublic, IssueUpdate
+from app.services.markdown import render_markdown
 from app.services.repositories import ensure_repository
 
 if TYPE_CHECKING:
@@ -206,6 +207,7 @@ class IssueService:
             number=issue.number,
             title=issue.title,
             body=issue.body,
+            body_html=render_markdown(issue.body or ""),
             state=issue.state,
             author_username=issue.author.name,
             created_at=issue.created_at,

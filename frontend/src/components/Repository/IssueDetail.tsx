@@ -4,6 +4,7 @@ import { ArrowLeft, CircleCheck, CircleDot } from "lucide-react"
 import { useState } from "react"
 
 import { type IssueState, RepositoriesService } from "@/client"
+import MarkdownContent from "@/components/Common/MarkdownContent"
 import CommentsSection from "@/components/Repository/CommentsSection"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -143,7 +144,7 @@ const IssueDetail = () => {
 
           {issue.body && (
             <div className="border border-border rounded-lg bg-card px-4 py-3">
-              <p className="text-sm text-foreground whitespace-pre-wrap break-words">{issue.body}</p>
+              <MarkdownContent html={issue.body_html} />
             </div>
           )}
         </>

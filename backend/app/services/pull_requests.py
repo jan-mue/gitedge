@@ -17,6 +17,7 @@ from app.schemas.repositories import (
     PullRequestsListPublic,
     PullRequestUpdate,
 )
+from app.services.markdown import render_markdown
 from app.services.repositories import ensure_repository
 
 if TYPE_CHECKING:
@@ -245,6 +246,7 @@ class PullRequestService:
             number=pr.number,
             title=pr.title,
             body=pr.body,
+            body_html=render_markdown(pr.body or ""),
             state=pr.state,
             head_branch=pr.head_branch,
             base_branch=pr.base_branch,

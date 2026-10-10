@@ -203,6 +203,7 @@ class IssuePublic(GitEdgeBaseModel):
     number: int
     title: str
     body: str | None = None
+    body_html: str
     state: IssueState
     author_username: str
     created_at: datetime
@@ -244,6 +245,7 @@ class PullRequestPublic(GitEdgeBaseModel):
     number: int
     title: str
     body: str | None = None
+    body_html: str
     state: IssueState
     head_branch: str
     base_branch: str

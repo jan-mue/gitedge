@@ -5,6 +5,8 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
+import pytest
+
 from app.config import settings
 
 if TYPE_CHECKING:
@@ -19,6 +21,27 @@ ISSUES_URL = f"{REPO_URL}/issues"
 PULLS_URL = f"{REPO_URL}/pulls"
 COMMENTS_URL = f"{ISSUES_URL}/1/comments"
 COMMENT_URL = f"{settings.API_V1_STR}/comments"
+
+
+@pytest.mark.parametrize("url", [ISSUES_URL, PULLS_URL])
+def test_comment_markdown_is_rendered(client: TestClient, superuser_token_headers: dict[str, str], url: str) -> None:
+    client.post(url, headers=superuser_token_headers, json={"title": "Title", "head_branch": "feature"})
+    body = "**Review**\n\n- [x] Checked"
+    created = client.post(COMMENTS_URL, headers=superuser_token_headers, json={"body": body})
+    assert created.status_code == 201
+    comment = created.json()
+    assert comment["body"] == body
+    assert "<strong>Review</strong>" in comment["body_html"]
+    assert 'type="checkbox"' in comment["body_html"]
+    assert client.get(COMMENTS_URL).json()["data"][0]["body_html"] == comment["body_html"]
+
+    updated = client.patch(
+        f"{COMMENT_URL}/{comment['id']}", headers=superuser_token_headers, json={"body": "*Updated*"}
+    )
+    assert updated.status_code == 200
+    assert updated.json()["body"] == "*Updated*"
+    assert updated.json()["body_html"] == "<p><em>Updated</em></p>\n"
+    assert client.get(COMMENTS_URL).json()["data"][0]["body_html"] == "<p><em>Updated</em></p>\n"
 
 
 def test_create_and_list_issue_comment(
