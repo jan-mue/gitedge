@@ -4,6 +4,8 @@ import uuid
 from datetime import datetime
 from enum import StrEnum
 
+from pydantic import Field
+
 from app.entities.issues import IssueState
 from app.schemas.base import GitEdgeBaseModel
 
@@ -83,6 +85,52 @@ class CreateRepositoryRequest(GitEdgeBaseModel):
 
     name: str
     owner: str
+
+
+class RepositoryUpdate(GitEdgeBaseModel):
+    """Editable repository settings."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=255, pattern=r"^[A-Za-z0-9_.-]+$")
+    description: str | None = Field(default=None, max_length=10000)
+    default_branch: str | None = Field(default=None, min_length=1, max_length=255)
+
+
+class LanguageStatistic(GitEdgeBaseModel):
+    """A language's share of source bytes in the selected revision."""
+
+    name: str
+    size: int
+    percentage: float
+
+
+class RepositoryStatistics(GitEdgeBaseModel):
+    """Revision size and commit count, with language shares for text files."""
+
+    commit_count: int = 0
+    size: int = 0
+    languages: list[LanguageStatistic] = Field(default_factory=list)
+
+
+class FileIndex(GitEdgeBaseModel):
+    """Searchable file paths at a revision."""
+
+    paths: list[str]
+
+
+class BlameLine(GitEdgeBaseModel):
+    """A line attributed to its original commit."""
+
+    number: int
+    content: str
+    commit: "CommitInfo"
+
+
+class BlameContent(GitEdgeBaseModel):
+    """File attribution at an immutable revision."""
+
+    path: str
+    revision: str
+    lines: list[BlameLine]
 
 
 class CommitInfo(GitEdgeBaseModel):

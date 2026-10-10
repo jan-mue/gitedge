@@ -157,6 +157,43 @@ export type ActivitySeriesPoint = {
 export type ActivityTargetType = 'repository' | 'issue' | 'pull_request' | 'release';
 
 /**
+ * BlameContent
+ *
+ * File attribution at an immutable revision.
+ */
+export type BlameContent = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Revision
+     */
+    revision: string;
+    /**
+     * Lines
+     */
+    lines: Array<BlameLine>;
+};
+
+/**
+ * BlameLine
+ *
+ * A line attributed to its original commit.
+ */
+export type BlameLine = {
+    /**
+     * Number
+     */
+    number: number;
+    /**
+     * Content
+     */
+    content: string;
+    commit: CommitInfo;
+};
+
+/**
  * Body_login-login_access_token
  */
 export type Body_login_login_access_token = {
@@ -527,6 +564,18 @@ export type FileContent = {
 };
 
 /**
+ * FileIndex
+ *
+ * Searchable file paths at a revision.
+ */
+export type FileIndex = {
+    /**
+     * Paths
+     */
+    paths: Array<string>;
+};
+
+/**
  * ForkCreate
  *
  * Request to fork a repository.
@@ -719,6 +768,26 @@ export type IssuesListPublic = {
      * Closed Count
      */
     closed_count: number;
+};
+
+/**
+ * LanguageStatistic
+ *
+ * A language's share of source bytes in the selected revision.
+ */
+export type LanguageStatistic = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Size
+     */
+    size: number;
+    /**
+     * Percentage
+     */
+    percentage: number;
 };
 
 /**
@@ -1299,6 +1368,46 @@ export type RepositoryInfo = {
      */
     fork_of?: string | null;
     last_commit?: CommitInfo | null;
+};
+
+/**
+ * RepositoryStatistics
+ *
+ * Revision size and commit count, with language shares for text files.
+ */
+export type RepositoryStatistics = {
+    /**
+     * Commit Count
+     */
+    commit_count?: number;
+    /**
+     * Size
+     */
+    size?: number;
+    /**
+     * Languages
+     */
+    languages?: Array<LanguageStatistic>;
+};
+
+/**
+ * RepositoryUpdate
+ *
+ * Editable repository settings.
+ */
+export type RepositoryUpdate = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Default Branch
+     */
+    default_branch?: string | null;
 };
 
 /**
@@ -3249,6 +3358,51 @@ export type repositoriesCreateRepositoryResponses = {
 
 export type repositoriesCreateRepositoryResponse = repositoriesCreateRepositoryResponses[keyof repositoriesCreateRepositoryResponses];
 
+export type repositoriesGetSourceData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Ref
+         */
+        ref?: string;
+        /**
+         * Source Path
+         */
+        source_path?: string;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/source';
+};
+
+export type repositoriesGetSourceErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetSourceError = repositoriesGetSourceErrors[keyof repositoriesGetSourceErrors];
+
+export type repositoriesGetSourceResponses = {
+    /**
+     * Response Repositories-Get Source
+     *
+     * Successful Response
+     */
+    200: TreeListing | FileContent;
+};
+
+export type repositoriesGetSourceResponse = repositoriesGetSourceResponses[keyof repositoriesGetSourceResponses];
+
 export type repositoriesGetTreeData = {
     body?: never;
     path: {
@@ -3334,6 +3488,168 @@ export type repositoriesGetBlobResponses = {
 };
 
 export type repositoriesGetBlobResponse = repositoriesGetBlobResponses[keyof repositoriesGetBlobResponses];
+
+export type repositoriesGetBlameData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Ref
+         */
+        ref?: string;
+        /**
+         * File Path
+         */
+        file_path?: string;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/blame';
+};
+
+export type repositoriesGetBlameErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetBlameError = repositoriesGetBlameErrors[keyof repositoriesGetBlameErrors];
+
+export type repositoriesGetBlameResponses = {
+    /**
+     * Successful Response
+     */
+    200: BlameContent;
+};
+
+export type repositoriesGetBlameResponse = repositoriesGetBlameResponses[keyof repositoriesGetBlameResponses];
+
+export type repositoriesGetStatisticsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Ref
+         */
+        ref?: string;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/statistics';
+};
+
+export type repositoriesGetStatisticsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetStatisticsError = repositoriesGetStatisticsErrors[keyof repositoriesGetStatisticsErrors];
+
+export type repositoriesGetStatisticsResponses = {
+    /**
+     * Successful Response
+     */
+    200: RepositoryStatistics;
+};
+
+export type repositoriesGetStatisticsResponse = repositoriesGetStatisticsResponses[keyof repositoriesGetStatisticsResponses];
+
+export type repositoriesGetFileIndexData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Ref
+         */
+        ref?: string;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/files';
+};
+
+export type repositoriesGetFileIndexErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetFileIndexError = repositoriesGetFileIndexErrors[keyof repositoriesGetFileIndexErrors];
+
+export type repositoriesGetFileIndexResponses = {
+    /**
+     * Successful Response
+     */
+    200: FileIndex;
+};
+
+export type repositoriesGetFileIndexResponse = repositoriesGetFileIndexResponses[keyof repositoriesGetFileIndexResponses];
+
+export type repositoriesGetRawData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Ref
+         */
+        ref?: string;
+        /**
+         * File Path
+         */
+        file_path?: string;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/raw';
+};
+
+export type repositoriesGetRawErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetRawError = repositoriesGetRawErrors[keyof repositoriesGetRawErrors];
+
+export type repositoriesGetRawResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type repositoriesGetRepositoryInfoData = {
     body?: never;
@@ -3478,6 +3794,10 @@ export type repositoriesListCommitsData = {
          * Limit
          */
         limit?: number;
+        /**
+         * File Path
+         */
+        file_path?: string;
     };
     url: '/api/v1/repositories/{owner}/{repo}/commits';
 };
@@ -3878,6 +4198,40 @@ export type repositoriesGetPullRequestFilesResponses = {
 
 export type repositoriesGetPullRequestFilesResponse = repositoriesGetPullRequestFilesResponses[keyof repositoriesGetPullRequestFilesResponses];
 
+export type repositoriesDeleteRepositoryData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}';
+};
+
+export type repositoriesDeleteRepositoryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesDeleteRepositoryError = repositoriesDeleteRepositoryErrors[keyof repositoriesDeleteRepositoryErrors];
+
+export type repositoriesDeleteRepositoryResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type repositoriesDeleteRepositoryResponse = repositoriesDeleteRepositoryResponses[keyof repositoriesDeleteRepositoryResponses];
+
 export type repositoriesGetRepositoryData = {
     body?: never;
     path: {
@@ -3911,6 +4265,40 @@ export type repositoriesGetRepositoryResponses = {
 };
 
 export type repositoriesGetRepositoryResponse = repositoriesGetRepositoryResponses[keyof repositoriesGetRepositoryResponses];
+
+export type repositoriesUpdateRepositoryData = {
+    body: RepositoryUpdate;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}';
+};
+
+export type repositoriesUpdateRepositoryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesUpdateRepositoryError = repositoriesUpdateRepositoryErrors[keyof repositoriesUpdateRepositoryErrors];
+
+export type repositoriesUpdateRepositoryResponses = {
+    /**
+     * Successful Response
+     */
+    200: Repository;
+};
+
+export type repositoriesUpdateRepositoryResponse = repositoriesUpdateRepositoryResponses[keyof repositoriesUpdateRepositoryResponses];
 
 export type utilsTestEmailData = {
     body?: never;

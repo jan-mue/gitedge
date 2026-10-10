@@ -2,25 +2,31 @@ import { useQuery } from "@tanstack/react-query"
 import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
 import { Check, GitBranch } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-
 import { repositoriesListBranchesOptions, repositoriesListCommitsOptions } from "@/client/@tanstack/react-query.gen"
+import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 
 interface CommitsListProps {
   owner: string
   repo: string
   branch?: string
+  filePath?: string
 }
 
 const formatDate = (timestamp: number) => new Date(timestamp * 1000).toLocaleString()
 
-const CommitsList = ({ owner, repo, branch }: CommitsListProps) => {
+const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
   const ref = branch ?? "main"
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  const { data: commitsData } = useQuery({
-    ...repositoriesListCommitsOptions({ path: { owner, repo }, query: { ref, limit: 50 } }),
+  const {
+    data: commitsData,
+    isPending,
+    isError,
+    refetch,
+  } = useQuery({
+    ...repositoriesListCommitsOptions({ path: { owner, repo }, query: { ref, limit: 50, file_path: filePath } }),
   })
 
   const { data: branches } = useQuery({
@@ -48,8 +54,16 @@ const CommitsList = ({ owner, repo, branch }: CommitsListProps) => {
     navigate({ to: "/$owner/$repo/commits/branch/$branch", params: { owner, repo, branch: branchName } })
   }
 
+  if (isPending) return <RepositoryLoading label="Loading commits" />
+  if (isError) return <RepositoryError message="Unable to load commits." retry={() => refetch()} />
+
   return (
     <div className="space-y-3">
+      {filePath && (
+        <h2 className="text-sm font-medium">
+          History of <span className="font-mono">{filePath}</span>
+        </h2>
+      )}
       <div className="flex items-center gap-2">
         <div className="relative" ref={dropdownRef}>
           <button

@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link as RouterLink, useParams } from "@tanstack/react-router"
 import { ArrowLeft, CircleCheck, CircleDot } from "lucide-react"
 import { useState } from "react"
-
 import {
   repositoriesGetIssueOptions,
   repositoriesGetIssueQueryKey,
@@ -11,6 +10,7 @@ import {
 } from "@/client/@tanstack/react-query.gen"
 import MarkdownContent from "@/components/Common/MarkdownContent"
 import CommentsSection from "@/components/Repository/CommentsSection"
+import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import useAuth from "@/hooks/useAuth"
@@ -27,7 +27,12 @@ const IssueDetail = () => {
   const [editTitle, setEditTitle] = useState("")
   const [editBody, setEditBody] = useState("")
 
-  const { data: issue } = useQuery({
+  const {
+    data: issue,
+    isPending,
+    isError,
+    refetch,
+  } = useQuery({
     ...repositoriesGetIssueOptions({ path: { owner, repo, number: issueNumber } }),
   })
 
@@ -49,9 +54,8 @@ const IssueDetail = () => {
     onError: handleError.bind(showErrorToast),
   })
 
-  if (!issue) {
-    return <div className="text-sm text-muted-foreground">Loading issue...</div>
-  }
+  if (isPending) return <RepositoryLoading label="Loading issue" />
+  if (isError || !issue) return <RepositoryError message="Unable to load issue." retry={() => refetch()} />
 
   const isOpen = issue.state === "open"
   const canEdit = issue.author_username === user?.name

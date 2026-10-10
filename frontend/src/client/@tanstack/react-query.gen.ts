@@ -4,7 +4,7 @@ import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOption
 
 import { client } from '../client.gen';
 import { ActivityService, CommentsService, ForksService, GitService, LoginService, type Options, OrganizationsService, PrivateService, ProfilesService, ReleasesService, RepositoriesService, StarsService, UsersService, UtilsService, WatchersService } from '../sdk.gen';
-import type { activityGetFeedData, activityGetFeedError, activityGetFeedResponse, activityGetRepositoryActivityData, activityGetRepositoryActivityError, activityGetRepositoryActivityResponse, activityGetRepositoryActivityStatisticsData, activityGetRepositoryActivityStatisticsError, activityGetRepositoryActivityStatisticsResponse, commentsCreateCommentData, commentsCreateCommentError, commentsCreateCommentResponse, commentsDeleteCommentData, commentsDeleteCommentError, commentsDeleteCommentResponse, commentsListCommentsData, commentsListCommentsError, commentsListCommentsResponse, commentsUpdateCommentData, commentsUpdateCommentError, commentsUpdateCommentResponse, forksForkRepositoryData, forksForkRepositoryError, forksForkRepositoryResponse, forksListForksData, forksListForksError, forksListForksResponse, gitGetHeadData, gitGetHeadError, gitGetInfoPacksData, gitGetInfoPacksError, gitGetInfoRefsData, gitGetInfoRefsError, gitGetLooseObjectData, gitGetLooseObjectError, gitGetPackFileData, gitGetPackFileError, gitGitReceivePackData, gitGitReceivePackError, gitGitUploadPackData, gitGitUploadPackError, loginLoginAccessTokenData, loginLoginAccessTokenError, loginLoginAccessTokenResponse, loginRecoverPasswordData, loginRecoverPasswordError, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentError, loginRecoverPasswordResponse, loginResetPasswordData, loginResetPasswordError, loginResetPasswordResponse, loginTestTokenData, loginTestTokenResponse, organizationsCreateOrganizationData, organizationsCreateOrganizationError, organizationsCreateOrganizationResponse, organizationsListOrganizationsData, organizationsListOrganizationsError, organizationsListOrganizationsResponse, privateCreateUserData, privateCreateUserError, privateCreateUserResponse, profilesListUserRepositoriesData, profilesListUserRepositoriesError, profilesListUserRepositoriesResponse, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesError, profilesListUserStarredRepositoriesResponse, profilesReadUserByUsernameData, profilesReadUserByUsernameError, profilesReadUserByUsernameResponse, releasesCreateReleaseData, releasesCreateReleaseError, releasesCreateReleaseResponse, releasesGetReleaseData, releasesGetReleaseError, releasesGetReleaseResponse, releasesListReleasesData, releasesListReleasesError, releasesListReleasesResponse, releasesListTagsData, releasesListTagsError, releasesListTagsResponse, releasesUpdateReleaseData, releasesUpdateReleaseError, releasesUpdateReleaseResponse, repositoriesCreateIssueData, repositoriesCreateIssueError, repositoriesCreateIssueResponse, repositoriesCreatePullRequestData, repositoriesCreatePullRequestError, repositoriesCreatePullRequestResponse, repositoriesCreateRepositoryData, repositoriesCreateRepositoryError, repositoriesCreateRepositoryResponse, repositoriesGetBlobData, repositoriesGetBlobError, repositoriesGetBlobResponse, repositoriesGetCommitData, repositoriesGetCommitError, repositoriesGetCommitResponse, repositoriesGetIssueData, repositoriesGetIssueError, repositoriesGetIssueResponse, repositoriesGetPullRequestData, repositoriesGetPullRequestError, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesError, repositoriesGetPullRequestFilesResponse, repositoriesGetPullRequestResponse, repositoriesGetReadmeData, repositoriesGetReadmeError, repositoriesGetReadmeResponse, repositoriesGetRepositoryData, repositoriesGetRepositoryError, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoError, repositoriesGetRepositoryInfoResponse, repositoriesGetRepositoryResponse, repositoriesGetTreeData, repositoriesGetTreeError, repositoriesGetTreeResponse, repositoriesListBranchesData, repositoriesListBranchesError, repositoriesListBranchesResponse, repositoriesListCommitsData, repositoriesListCommitsError, repositoriesListCommitsResponse, repositoriesListIssuesData, repositoriesListIssuesError, repositoriesListIssuesResponse, repositoriesListPullRequestsData, repositoriesListPullRequestsError, repositoriesListPullRequestsResponse, repositoriesListRepositoriesData, repositoriesListRepositoriesResponse, repositoriesUpdateIssueData, repositoriesUpdateIssueError, repositoriesUpdateIssueResponse, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestError, repositoriesUpdatePullRequestResponse, starsGetStarStateData, starsGetStarStateError, starsGetStarStateResponse, starsListStargazersData, starsListStargazersError, starsListStargazersResponse, starsListStarredRepositoriesData, starsListStarredRepositoriesError, starsListStarredRepositoriesResponse, starsStarRepositoryData, starsStarRepositoryError, starsStarRepositoryResponse, starsUnstarRepositoryData, starsUnstarRepositoryError, starsUnstarRepositoryResponse, usersCreateUserData, usersCreateUserError, usersCreateUserResponse, usersDeleteUserData, usersDeleteUserError, usersDeleteUserMeData, usersDeleteUserMeResponse, usersDeleteUserResponse, usersReadUserMeData, usersReadUserMeResponse, usersReadUsersData, usersReadUsersError, usersReadUsersResponse, usersRegisterUserData, usersRegisterUserError, usersRegisterUserResponse, usersUpdatePasswordMeData, usersUpdatePasswordMeError, usersUpdatePasswordMeResponse, usersUpdateUserData, usersUpdateUserError, usersUpdateUserMeData, usersUpdateUserMeError, usersUpdateUserMeResponse, usersUpdateUserResponse, utilsHealthCheckData, utilsHealthCheckResponse, utilsTestEmailData, utilsTestEmailError, utilsTestEmailResponse, watchersGetWatchStateData, watchersGetWatchStateError, watchersGetWatchStateResponse, watchersListWatchersData, watchersListWatchersError, watchersListWatchersResponse, watchersUnwatchRepositoryData, watchersUnwatchRepositoryError, watchersUnwatchRepositoryResponse, watchersWatchRepositoryData, watchersWatchRepositoryError, watchersWatchRepositoryResponse } from '../types.gen';
+import type { activityGetFeedData, activityGetFeedError, activityGetFeedResponse, activityGetRepositoryActivityData, activityGetRepositoryActivityError, activityGetRepositoryActivityResponse, activityGetRepositoryActivityStatisticsData, activityGetRepositoryActivityStatisticsError, activityGetRepositoryActivityStatisticsResponse, commentsCreateCommentData, commentsCreateCommentError, commentsCreateCommentResponse, commentsDeleteCommentData, commentsDeleteCommentError, commentsDeleteCommentResponse, commentsListCommentsData, commentsListCommentsError, commentsListCommentsResponse, commentsUpdateCommentData, commentsUpdateCommentError, commentsUpdateCommentResponse, forksForkRepositoryData, forksForkRepositoryError, forksForkRepositoryResponse, forksListForksData, forksListForksError, forksListForksResponse, gitGetHeadData, gitGetHeadError, gitGetInfoPacksData, gitGetInfoPacksError, gitGetInfoRefsData, gitGetInfoRefsError, gitGetLooseObjectData, gitGetLooseObjectError, gitGetPackFileData, gitGetPackFileError, gitGitReceivePackData, gitGitReceivePackError, gitGitUploadPackData, gitGitUploadPackError, loginLoginAccessTokenData, loginLoginAccessTokenError, loginLoginAccessTokenResponse, loginRecoverPasswordData, loginRecoverPasswordError, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentError, loginRecoverPasswordResponse, loginResetPasswordData, loginResetPasswordError, loginResetPasswordResponse, loginTestTokenData, loginTestTokenResponse, organizationsCreateOrganizationData, organizationsCreateOrganizationError, organizationsCreateOrganizationResponse, organizationsListOrganizationsData, organizationsListOrganizationsError, organizationsListOrganizationsResponse, privateCreateUserData, privateCreateUserError, privateCreateUserResponse, profilesListUserRepositoriesData, profilesListUserRepositoriesError, profilesListUserRepositoriesResponse, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesError, profilesListUserStarredRepositoriesResponse, profilesReadUserByUsernameData, profilesReadUserByUsernameError, profilesReadUserByUsernameResponse, releasesCreateReleaseData, releasesCreateReleaseError, releasesCreateReleaseResponse, releasesGetReleaseData, releasesGetReleaseError, releasesGetReleaseResponse, releasesListReleasesData, releasesListReleasesError, releasesListReleasesResponse, releasesListTagsData, releasesListTagsError, releasesListTagsResponse, releasesUpdateReleaseData, releasesUpdateReleaseError, releasesUpdateReleaseResponse, repositoriesCreateIssueData, repositoriesCreateIssueError, repositoriesCreateIssueResponse, repositoriesCreatePullRequestData, repositoriesCreatePullRequestError, repositoriesCreatePullRequestResponse, repositoriesCreateRepositoryData, repositoriesCreateRepositoryError, repositoriesCreateRepositoryResponse, repositoriesDeleteRepositoryData, repositoriesDeleteRepositoryError, repositoriesDeleteRepositoryResponse, repositoriesGetBlameData, repositoriesGetBlameError, repositoriesGetBlameResponse, repositoriesGetBlobData, repositoriesGetBlobError, repositoriesGetBlobResponse, repositoriesGetCommitData, repositoriesGetCommitError, repositoriesGetCommitResponse, repositoriesGetFileIndexData, repositoriesGetFileIndexError, repositoriesGetFileIndexResponse, repositoriesGetIssueData, repositoriesGetIssueError, repositoriesGetIssueResponse, repositoriesGetPullRequestData, repositoriesGetPullRequestError, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesError, repositoriesGetPullRequestFilesResponse, repositoriesGetPullRequestResponse, repositoriesGetRawData, repositoriesGetRawError, repositoriesGetReadmeData, repositoriesGetReadmeError, repositoriesGetReadmeResponse, repositoriesGetRepositoryData, repositoriesGetRepositoryError, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoError, repositoriesGetRepositoryInfoResponse, repositoriesGetRepositoryResponse, repositoriesGetSourceData, repositoriesGetSourceError, repositoriesGetSourceResponse, repositoriesGetStatisticsData, repositoriesGetStatisticsError, repositoriesGetStatisticsResponse, repositoriesGetTreeData, repositoriesGetTreeError, repositoriesGetTreeResponse, repositoriesListBranchesData, repositoriesListBranchesError, repositoriesListBranchesResponse, repositoriesListCommitsData, repositoriesListCommitsError, repositoriesListCommitsResponse, repositoriesListIssuesData, repositoriesListIssuesError, repositoriesListIssuesResponse, repositoriesListPullRequestsData, repositoriesListPullRequestsError, repositoriesListPullRequestsResponse, repositoriesListRepositoriesData, repositoriesListRepositoriesResponse, repositoriesUpdateIssueData, repositoriesUpdateIssueError, repositoriesUpdateIssueResponse, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestError, repositoriesUpdatePullRequestResponse, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryError, repositoriesUpdateRepositoryResponse, starsGetStarStateData, starsGetStarStateError, starsGetStarStateResponse, starsListStargazersData, starsListStargazersError, starsListStargazersResponse, starsListStarredRepositoriesData, starsListStarredRepositoriesError, starsListStarredRepositoriesResponse, starsStarRepositoryData, starsStarRepositoryError, starsStarRepositoryResponse, starsUnstarRepositoryData, starsUnstarRepositoryError, starsUnstarRepositoryResponse, usersCreateUserData, usersCreateUserError, usersCreateUserResponse, usersDeleteUserData, usersDeleteUserError, usersDeleteUserMeData, usersDeleteUserMeResponse, usersDeleteUserResponse, usersReadUserMeData, usersReadUserMeResponse, usersReadUsersData, usersReadUsersError, usersReadUsersResponse, usersRegisterUserData, usersRegisterUserError, usersRegisterUserResponse, usersUpdatePasswordMeData, usersUpdatePasswordMeError, usersUpdatePasswordMeResponse, usersUpdateUserData, usersUpdateUserError, usersUpdateUserMeData, usersUpdateUserMeError, usersUpdateUserMeResponse, usersUpdateUserResponse, utilsHealthCheckData, utilsHealthCheckResponse, utilsTestEmailData, utilsTestEmailError, utilsTestEmailResponse, watchersGetWatchStateData, watchersGetWatchStateError, watchersGetWatchStateResponse, watchersListWatchersData, watchersListWatchersError, watchersListWatchersResponse, watchersUnwatchRepositoryData, watchersUnwatchRepositoryError, watchersUnwatchRepositoryResponse, watchersWatchRepositoryData, watchersWatchRepositoryError, watchersWatchRepositoryResponse } from '../types.gen';
 
 /**
  * Login Access Token
@@ -1351,6 +1351,26 @@ export const repositoriesCreateRepositoryMutation = (options?: Partial<Options<r
     return mutationOptions;
 };
 
+export const repositoriesGetSourceQueryKey = (options: Options<repositoriesGetSourceData>) => createQueryKey('repositoriesGetSource', options);
+
+/**
+ * Get Source
+ *
+ * Resolve a directory or file in one source request.
+ */
+export const repositoriesGetSourceOptions = (options: Options<repositoriesGetSourceData>) => queryOptions<repositoriesGetSourceResponse, repositoriesGetSourceError, repositoriesGetSourceResponse, ReturnType<typeof repositoriesGetSourceQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await RepositoriesService.getSource({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: repositoriesGetSourceQueryKey(options)
+});
+
 export const repositoriesGetTreeQueryKey = (options: Options<repositoriesGetTreeData>) => createQueryKey('repositoriesGetTree', options);
 
 /**
@@ -1389,6 +1409,86 @@ export const repositoriesGetBlobOptions = (options: Options<repositoriesGetBlobD
         return data;
     },
     queryKey: repositoriesGetBlobQueryKey(options)
+});
+
+export const repositoriesGetBlameQueryKey = (options: Options<repositoriesGetBlameData>) => createQueryKey('repositoriesGetBlame', options);
+
+/**
+ * Get Blame
+ *
+ * Get line attribution for a file at a revision.
+ */
+export const repositoriesGetBlameOptions = (options: Options<repositoriesGetBlameData>) => queryOptions<repositoriesGetBlameResponse, repositoriesGetBlameError, repositoriesGetBlameResponse, ReturnType<typeof repositoriesGetBlameQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await RepositoriesService.getBlame({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: repositoriesGetBlameQueryKey(options)
+});
+
+export const repositoriesGetStatisticsQueryKey = (options: Options<repositoriesGetStatisticsData>) => createQueryKey('repositoriesGetStatistics', options);
+
+/**
+ * Get Statistics
+ *
+ * Get byte-weighted language, size, and commit statistics.
+ */
+export const repositoriesGetStatisticsOptions = (options: Options<repositoriesGetStatisticsData>) => queryOptions<repositoriesGetStatisticsResponse, repositoriesGetStatisticsError, repositoriesGetStatisticsResponse, ReturnType<typeof repositoriesGetStatisticsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await RepositoriesService.getStatistics({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: repositoriesGetStatisticsQueryKey(options)
+});
+
+export const repositoriesGetFileIndexQueryKey = (options: Options<repositoriesGetFileIndexData>) => createQueryKey('repositoriesGetFileIndex', options);
+
+/**
+ * Get File Index
+ *
+ * Get searchable file paths at a revision.
+ */
+export const repositoriesGetFileIndexOptions = (options: Options<repositoriesGetFileIndexData>) => queryOptions<repositoriesGetFileIndexResponse, repositoriesGetFileIndexError, repositoriesGetFileIndexResponse, ReturnType<typeof repositoriesGetFileIndexQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await RepositoriesService.getFileIndex({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: repositoriesGetFileIndexQueryKey(options)
+});
+
+export const repositoriesGetRawQueryKey = (options: Options<repositoriesGetRawData>) => createQueryKey('repositoriesGetRaw', options);
+
+/**
+ * Get Raw
+ *
+ * Serve original file bytes without interpreting repository content as HTML.
+ */
+export const repositoriesGetRawOptions = (options: Options<repositoriesGetRawData>) => queryOptions<unknown, repositoriesGetRawError, unknown, ReturnType<typeof repositoriesGetRawQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await RepositoriesService.getRaw({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: repositoriesGetRawQueryKey(options)
 });
 
 export const repositoriesGetRepositoryInfoQueryKey = (options: Options<repositoriesGetRepositoryInfoData>) => createQueryKey('repositoriesGetRepositoryInfo', options);
@@ -1699,6 +1799,25 @@ export const repositoriesGetPullRequestFilesOptions = (options: Options<reposito
     queryKey: repositoriesGetPullRequestFilesQueryKey(options)
 });
 
+/**
+ * Delete Repository
+ *
+ * Permanently delete a repository as the owner or administrator.
+ */
+export const repositoriesDeleteRepositoryMutation = (options?: Partial<Options<repositoriesDeleteRepositoryData>>): UseMutationOptions<repositoriesDeleteRepositoryResponse, repositoriesDeleteRepositoryError, Options<repositoriesDeleteRepositoryData>> => {
+    const mutationOptions: UseMutationOptions<repositoriesDeleteRepositoryResponse, repositoriesDeleteRepositoryError, Options<repositoriesDeleteRepositoryData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await RepositoriesService.deleteRepository({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
 export const repositoriesGetRepositoryQueryKey = (options: Options<repositoriesGetRepositoryData>) => createQueryKey('repositoriesGetRepository', options);
 
 /**
@@ -1718,6 +1837,25 @@ export const repositoriesGetRepositoryOptions = (options: Options<repositoriesGe
     },
     queryKey: repositoriesGetRepositoryQueryKey(options)
 });
+
+/**
+ * Update Repository
+ *
+ * Update repository settings as the owner or administrator.
+ */
+export const repositoriesUpdateRepositoryMutation = (options?: Partial<Options<repositoriesUpdateRepositoryData>>): UseMutationOptions<repositoriesUpdateRepositoryResponse, repositoriesUpdateRepositoryError, Options<repositoriesUpdateRepositoryData>> => {
+    const mutationOptions: UseMutationOptions<repositoriesUpdateRepositoryResponse, repositoriesUpdateRepositoryError, Options<repositoriesUpdateRepositoryData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await RepositoriesService.updateRepository({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
 
 /**
  * Test Email

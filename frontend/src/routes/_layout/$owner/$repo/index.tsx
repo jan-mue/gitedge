@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Navigate } from "@tanstack/react-router"
 
 import { repositoriesGetRepositoryInfoOptions } from "@/client/@tanstack/react-query.gen"
-import PendingItems from "@/components/Pending/PendingItems"
+import RepositoryLoading from "@/components/Repository/RepositoryLoading"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/")({
   component: RepositoryIndexRedirect,
@@ -27,7 +27,7 @@ function RepositoryIndexRedirect() {
   }
 
   if (!data) {
-    return <PendingItems />
+    return <RepositoryLoading label="Opening repository" />
   }
 
   return (

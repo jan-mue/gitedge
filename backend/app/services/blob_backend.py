@@ -155,6 +155,14 @@ class BlobBackend(Backend):
         """
         return self._normalize_path(path) in self._repos
 
+    def remove_repository(self, path: str) -> None:
+        """Evict a repository after deletion or rename.
+
+        Args:
+            path: Repository path.
+        """
+        self._repos.pop(self._normalize_path(path), None)
+
 
 async def load_repository_from_storage(
     blob_client: BlobStorageClient,

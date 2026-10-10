@@ -11,6 +11,7 @@ interface SourceLinkProps {
   refName: string
   /** Path within the repository, relative to the repo root. */
   path: string
+  onClick?: () => void
   className?: string
   "data-testid"?: string
   children: ReactNode
@@ -23,14 +24,16 @@ const SourceLink = ({
   refName,
   path,
   className,
+  onClick,
   "data-testid": testId,
   children,
 }: SourceLinkProps) => {
   if (mode === "commit") {
     return (
       <RouterLink
-        to="/$owner/$repo/src/commit/$sha/$"
+        to={path ? "/$owner/$repo/src/commit/$sha/$" : "/$owner/$repo/src/commit/$sha"}
         params={{ owner, repo, sha: refName, _splat: path }}
+        onClick={onClick}
         className={className}
         data-testid={testId}
       >
@@ -41,8 +44,9 @@ const SourceLink = ({
 
   return (
     <RouterLink
-      to="/$owner/$repo/src/branch/$branch/$"
+      to={path ? "/$owner/$repo/src/branch/$branch/$" : "/$owner/$repo/src/branch/$branch"}
       params={{ owner, repo, branch: refName, _splat: path }}
+      onClick={onClick}
       className={className}
       data-testid={testId}
     >

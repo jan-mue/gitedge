@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query"
+import { Link } from "@tanstack/react-router"
 import { GitBranch, Tag } from "lucide-react"
-
 import { releasesListTagsOptions, repositoriesListBranchesOptions } from "@/client/@tanstack/react-query.gen"
+import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 
 interface BranchesListProps {
   owner: string
@@ -9,15 +10,37 @@ interface BranchesListProps {
 }
 
 const BranchesList = ({ owner, repo }: BranchesListProps) => {
-  const { data: branches } = useQuery({
+  const {
+    data: branches,
+    isPending,
+    isError,
+    refetch,
+  } = useQuery({
     ...repositoriesListBranchesOptions({ path: { owner, repo } }),
   })
 
-  const { data: tagsData } = useQuery({
+  const {
+    data: tagsData,
+    isPending: tagsPending,
+    isError: tagsError,
+    refetch: refetchTags,
+  } = useQuery({
     ...releasesListTagsOptions({ path: { owner, repo } }),
   })
 
   const tags = tagsData?.data ?? []
+
+  if (isPending || tagsPending) return <RepositoryLoading label="Loading branches and tags" />
+  if (isError || tagsError)
+    return (
+      <RepositoryError
+        message="Unable to load branches or tags."
+        retry={() => {
+          refetch()
+          refetchTags()
+        }}
+      />
+    )
 
   return (
     <div className="space-y-6" data-testid="branches-list">
@@ -34,7 +57,13 @@ const BranchesList = ({ owner, repo }: BranchesListProps) => {
               key={branch.name}
               className="flex items-center justify-between px-4 py-3 border-b border-border last:border-b-0"
             >
-              <span className="font-mono text-sm text-foreground">{branch.name}</span>
+              <Link
+                to="/$owner/$repo/src/branch/$branch"
+                params={{ owner, repo, branch: branch.name }}
+                className="font-mono text-sm text-primary hover:underline"
+              >
+                {branch.name}
+              </Link>
               {branch.is_default && (
                 <span className="text-xs px-2 py-0.5 rounded bg-secondary text-muted-foreground">default</span>
               )}
@@ -58,7 +87,13 @@ const BranchesList = ({ owner, repo }: BranchesListProps) => {
               key={tag.name}
               className="flex items-center justify-between px-4 py-3 border-b border-border last:border-b-0"
             >
-              <span className="font-mono text-sm text-foreground">{tag.name}</span>
+              <Link
+                to="/$owner/$repo/src/commit/$sha"
+                params={{ owner, repo, sha: tag.commit_sha }}
+                className="font-mono text-sm text-primary hover:underline"
+              >
+                {tag.name}
+              </Link>
               <span className="font-mono text-xs text-muted-foreground">{tag.commit_sha.slice(0, 10)}</span>
             </div>
           ))
