@@ -16,6 +16,7 @@ from app.exceptions import OwnerNotFoundError, RepositoryNotFoundError
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import Sequence
 
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.sql.base import ExecutableOption
@@ -49,6 +50,10 @@ class RepositoryStore(CrudStore[Repository], ABC):
     @abstractmethod
     async def count_by_fork_of(self, fork_of_id: uuid.UUID) -> int:
         """Count repositories forked from a given repository."""
+
+    @abstractmethod
+    async def count_forks_by_repos(self, repo_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
+        """Count forks for multiple repositories, keyed by repository id."""
 
 
 class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
@@ -143,3 +148,14 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
             select(func.count()).select_from(Repository).where(Repository.fork_of_id == fork_of_id)
         )
         return result.scalar_one()
+
+    async def count_forks_by_repos(self, repo_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
+        """Count forks for multiple repositories, keyed by repository id."""
+        if not repo_ids:
+            return {}
+        result = await self.db.execute(
+            select(Repository.fork_of_id, func.count())
+            .where(Repository.fork_of_id.in_(repo_ids))
+            .group_by(Repository.fork_of_id)
+        )
+        return dict(result.all())

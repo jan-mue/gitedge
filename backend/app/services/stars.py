@@ -134,21 +134,28 @@ class StarService:
             RepositoriesPublic with the starred repositories.
         """
         stars = await self.star_store.list_by_user(user_id, offset, limit)
-        repositories: list[Repository] = []
+        entities = []
         for star in stars:
             repository = await self.repository_store.find(star.repo_id)
-            if repository is None:
-                continue
+            if repository is not None:
+                entities.append(repository)
+
+        ids = [entity.id for entity in entities]
+        star_counts = await self.star_store.count_by_repos(ids)
+        fork_counts = await self.repository_store.count_forks_by_repos(ids)
+
+        repositories: list[Repository] = []
+        for entity in entities:
             schema = Repository(
-                name=repository.name,
-                owner=repository.owner.name,
-                description=repository.description,
-                default_branch=repository.default_branch,
-                is_private=repository.is_private,
-                created_at=repository.created_at,
-                updated_at=repository.updated_at,
+                name=entity.name,
+                owner=entity.owner.name,
+                description=entity.description,
+                default_branch=entity.default_branch,
+                is_private=entity.is_private,
+                created_at=entity.created_at,
+                updated_at=entity.updated_at,
             )
-            schema.stars_count = await self.star_store.count_by_repo(repository.id)
-            schema.forks_count = await self.repository_store.count_by_fork_of(repository.id)
+            schema.stars_count = star_counts.get(entity.id, 0)
+            schema.forks_count = fork_counts.get(entity.id, 0)
             repositories.append(schema)
         return RepositoriesPublic(data=repositories, count=len(repositories))
