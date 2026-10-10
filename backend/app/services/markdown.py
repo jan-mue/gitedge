@@ -5,7 +5,7 @@ from mdit_py_plugins.tasklists import tasklists_plugin
 
 # Module-level singleton: GFM-like preset with task lists plugin.
 # The "gfm-like" preset enables: tables, strikethrough, linkify, and autolink.
-_md = MarkdownIt("gfm-like").use(tasklists_plugin)
+_md = MarkdownIt("gfm-like", {"html": False}).use(tasklists_plugin)
 
 
 def render_markdown(content: str) -> str:

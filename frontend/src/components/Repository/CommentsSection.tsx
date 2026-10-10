@@ -9,6 +9,7 @@ import {
   commentsListCommentsQueryKey,
   commentsUpdateCommentMutation,
 } from "@/client/@tanstack/react-query.gen"
+import MarkdownContent from "@/components/Common/MarkdownContent"
 import { Button } from "@/components/ui/button"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
@@ -141,7 +142,9 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                   </div>
                 </div>
               ) : (
-                <p className="px-4 py-3 text-sm text-foreground whitespace-pre-wrap break-words">{comment.body}</p>
+                <div className="px-4 py-3">
+                  <MarkdownContent html={comment.body_html} />
+                </div>
               )}
             </div>
           ))}

@@ -266,7 +266,7 @@ class TestIssueComments:
     """Test issue detail and commenting."""
 
     def test_create_issue_and_comment(self, app_url: str, page: Page) -> None:
-        """A comment can be added to an issue and is shown in the timeline.
+        """Issue descriptions and comments display rendered Markdown after reloading.
 
         Args:
             app_url: Base URL of the GitEdge frontend.
@@ -277,18 +277,31 @@ class TestIssueComments:
 
         page.goto(f"{app_url}/admin/issuecommentrepo/issues/new")
         page.get_by_test_id("issue-title-input").fill("Commentable issue")
-        page.get_by_test_id("issue-body-input").fill("Issue body")
+        page.get_by_test_id("issue-body-input").fill("## Issue details\n\nIssue **body**")
         page.get_by_test_id("submit-issue-btn").click()
 
         page.get_by_test_id("issue-1").get_by_role("link").click()
         expect(page.get_by_test_id("issue-detail")).to_be_visible(timeout=15000)
         expect(page.get_by_test_id("issue-state")).to_contain_text("Open")
 
-        page.get_by_test_id("comment-input").fill("This is my comment.")
+        page.get_by_test_id("comment-input").fill("This is my **comment** with [a link](https://example.com).")
         page.get_by_test_id("comment-submit").click()
 
         expect(page.get_by_test_id("comment-input")).to_have_value("", timeout=15000)
-        expect(page.get_by_test_id("comments-section")).to_contain_text("This is my comment.", timeout=15000)
+        page.reload()
+
+        description = page.get_by_test_id("issue-detail").locator(".markdown-body").first
+        expect(description.get_by_role("heading", name="Issue details", level=2)).to_be_visible(timeout=15000)
+        expect(description.locator("strong")).to_have_text("body")
+        expect(description).not_to_contain_text("## Issue details")
+        expect(description).not_to_contain_text("**body**")
+
+        comment = page.get_by_test_id("comments-section").locator(".markdown-body")
+        expect(comment).to_have_text("This is my comment with a link.", timeout=15000)
+        expect(comment.locator("strong")).to_have_text("comment")
+        expect(comment.get_by_role("link", name="a link")).to_have_attribute("href", "https://example.com")
+        expect(comment).not_to_contain_text("**comment**")
+        expect(comment).not_to_contain_text("[a link]")
 
     def test_edit_comment(self, app_url: str, page: Page) -> None:
         """A comment can be edited by its author.
@@ -400,7 +413,7 @@ class TestPullRequestCommentsAndMerge:
     """Test pull request detail, commenting and merging."""
 
     def test_comment_and_merge_pull_request(self, app_url: str, page: Page) -> None:
-        """A pull request can be commented on and merged.
+        """PR descriptions and comments render Markdown, and the PR can be merged.
 
         Args:
             app_url: Base URL of the GitEdge frontend.
@@ -413,18 +426,29 @@ class TestPullRequestCommentsAndMerge:
         page.wait_for_selector('[data-testid="pr-source-branch"] option[value="feature"]', state="attached")
         page.get_by_test_id("pr-source-branch").select_option("feature")
         page.get_by_test_id("pr-title-input").fill("Merge the feature")
-        page.get_by_test_id("pr-body-input").fill("PR body")
+        page.get_by_test_id("pr-body-input").fill("## PR details\n\nPR **body**")
         page.get_by_test_id("submit-pr-btn").click()
 
         page.get_by_test_id("pr-1").get_by_role("link").click()
         expect(page.get_by_test_id("pull-detail")).to_be_visible(timeout=15000)
         expect(page.get_by_test_id("pr-state")).to_contain_text("Open")
 
-        page.get_by_test_id("comment-input").fill("Looks good to me.")
+        page.get_by_test_id("comment-input").fill("Looks **good** to me.")
         page.get_by_test_id("comment-submit").click()
 
         expect(page.get_by_test_id("comment-input")).to_have_value("", timeout=15000)
-        expect(page.get_by_test_id("comments-section")).to_contain_text("Looks good to me.", timeout=15000)
+        page.reload()
+
+        description = page.get_by_test_id("pull-detail").locator(".markdown-body").first
+        expect(description.get_by_role("heading", name="PR details", level=2)).to_be_visible(timeout=15000)
+        expect(description.locator("strong")).to_have_text("body")
+        expect(description).not_to_contain_text("## PR details")
+        expect(description).not_to_contain_text("**body**")
+
+        comment = page.get_by_test_id("comments-section").locator(".markdown-body")
+        expect(comment).to_have_text("Looks good to me.", timeout=15000)
+        expect(comment.locator("strong")).to_have_text("good")
+        expect(comment).not_to_contain_text("**good**")
 
         page.get_by_test_id("merge-pr").click()
         expect(page.get_by_test_id("pr-state")).to_contain_text("Merged", timeout=15000)
