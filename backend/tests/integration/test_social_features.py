@@ -484,8 +484,8 @@ class TestPullRequestCommentsAndMerge:
 class TestActivityAndFeed:
     """Test the repository activity page and the dashboard feed."""
 
-    def test_activity_and_feed_show_star_event(self, app_url: str, page: Page) -> None:
-        """Starring a repository records activity visible in both feeds.
+    def test_activity_statistics_and_dashboard_star_feed(self, app_url: str, page: Page) -> None:
+        """Show pushed Git data in analytics and star events in the dashboard.
 
         Args:
             app_url: Base URL of the GitEdge frontend.
@@ -499,10 +499,28 @@ class TestActivityAndFeed:
         expect(page.get_by_test_id("star-count")).to_have_text("1", timeout=10000)
 
         page.goto(f"{app_url}/admin/activityrepo/activity")
-        expect(page.get_by_test_id("activity-list")).to_contain_text("star", timeout=15000)
+        expect(page.get_by_role("combobox", name="Activity period")).to_be_visible(timeout=15000)
+        expect(page.get_by_role("main")).to_contain_text("4 additions and 0 deletions")
+        page.get_by_role("combobox", name="Activity period").select_option("1")
+        expect(page.get_by_role("main")).to_contain_text("4 additions and 0 deletions")
+
+        page.get_by_role("button", name="Contributors", exact=True).click()
+        contributor = page.get_by_test_id("activity-contributor")
+        expect(contributor).to_contain_text("Test User")
+        expect(contributor).to_contain_text("1 Commits 4++ 0--")
+        page.get_by_role("combobox", name="Contribution metric").select_option("additions")
+        expect(page.get_by_role("group", name="Overall additions", exact=True)).to_be_visible()
+
+        page.get_by_role("button", name="Code frequency", exact=True).click()
+        expect(page.get_by_role("group", name="Weekly additions and deletions", exact=True)).to_be_visible()
+
+        page.get_by_role("button", name="Recent commits", exact=True).click()
+        page.get_by_role("link", name="Initial commit", exact=True).click()
+        expect(page.get_by_test_id("commit-detail")).to_be_visible(timeout=15000)
 
         page.goto(f"{app_url}/")
         expect(page.get_by_test_id("dashboard-feed")).to_contain_text("admin/activityrepo", timeout=15000)
+        expect(page.get_by_test_id("dashboard-feed")).to_contain_text("star")
 
 
 class TestSocialListings:
