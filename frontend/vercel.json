@@ -3,6 +3,10 @@
   "relatedProjects": ["prj_Mo9JYgDx7MXkiPmHscPQgLpH3JN6"],
   "rewrites": [
     {
+      "source": "/:owner/:repo.git/:path*",
+      "destination": "https://gitedge-backend.vercel.app/:owner/:repo.git/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
