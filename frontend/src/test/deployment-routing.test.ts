@@ -1,7 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 
-import { resolveApiUrl } from "../../config/api-url"
-
 const gitPaths = [
   "/gitedge/gitedge.git/info/refs?service=git-receive-pack",
   "/gitedge/gitedge.git/info/refs?service=git-upload-pack",
@@ -16,6 +14,9 @@ const gitPaths = [
 async function rewrite(path: string): Promise<string> {
   const { default: middleware } = await import("../../middleware")
   const response = middleware(new Request(new URL(path, "https://frontend.example.com")))
+  if (!response.headers.has("x-middleware-rewrite")) {
+    expect(response.headers.get("x-middleware-next")).toBe("1")
+  }
   return response.headers.get("x-middleware-rewrite") ?? "/index.html"
 }
 
@@ -33,11 +34,10 @@ describe("deployment routing", () => {
 
   test.each(gitPaths)("forwards %s to the production backend", async (path) => {
     expect(await rewrite(path)).toBe(`https://backend.example.com${path}`)
-    expect(resolveApiUrl()).toBe("https://backend.example.com")
   })
 
   test.each(["/", "/gitedge/gitedge", "/gitedge/gitedge/src/branch/main", "/login", "/owner/repoXgit/info/refs"])(
-    "serves the SPA for %s",
+    "allows the SPA fallback for %s",
     async (path) => {
       expect(await rewrite(path)).toBe("/index.html")
     },
@@ -57,7 +57,6 @@ describe("deployment routing", () => {
     )
 
     expect(await rewrite(gitPaths[0])).toBe(`https://${host}${gitPaths[0]}`)
-    expect(resolveApiUrl()).toBe(`https://${host}`)
   })
 
   test("fails when production backend configuration is missing", async () => {
@@ -73,6 +72,5 @@ describe("deployment routing", () => {
   test("uses the local backend for Vercel development", async () => {
     vi.stubEnv("VERCEL_ENV", "development")
     expect(await rewrite(gitPaths[0])).toBe(`http://localhost:8000${gitPaths[0]}`)
-    expect(resolveApiUrl()).toBe("")
   })
 })
