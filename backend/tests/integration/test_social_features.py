@@ -58,6 +58,7 @@ def _push_repo(
     *,
     extra_branches: tuple[str, ...] = (),
     tag: str | None = None,
+    with_deletions: bool = False,
 ) -> None:
     """Push a test repository with a README, a source file, optional branches and a tag.
 
@@ -66,6 +67,7 @@ def _push_repo(
         repo_name: Repository path (e.g. "testuser/repo.git").
         extra_branches: Additional branches to create and push.
         tag: Optional tag to create and push.
+        with_deletions: Add a default-branch commit that replaces existing lines.
     """
     remote_url = f"{app_url}/{repo_name}"
 
@@ -84,6 +86,10 @@ def _push_repo(
 
         _run_git(source_dir, ["add", "."])
         _run_git(source_dir, ["commit", "-m", "Initial commit"])
+        if with_deletions:
+            (source_dir / "README.md").write_text("# Updated repository\nUpdated description.\n")
+            _run_git(source_dir, ["add", "."])
+            _run_git(source_dir, ["commit", "-m", "Replace README lines"])
         if tag:
             _run_git(source_dir, ["tag", tag])
 
@@ -484,8 +490,8 @@ class TestPullRequestCommentsAndMerge:
 class TestActivityAndFeed:
     """Test the repository activity page and the dashboard feed."""
 
-    def test_activity_and_feed_show_star_event(self, app_url: str, page: Page) -> None:
-        """Starring a repository records activity visible in both feeds.
+    def test_activity_statistics_and_dashboard_star_feed(self, app_url: str, page: Page) -> None:
+        """Show pushed Git data in analytics and star events in the dashboard.
 
         Args:
             app_url: Base URL of the GitEdge frontend.
@@ -499,10 +505,66 @@ class TestActivityAndFeed:
         expect(page.get_by_test_id("star-count")).to_have_text("1", timeout=10000)
 
         page.goto(f"{app_url}/admin/activityrepo/activity")
-        expect(page.get_by_test_id("activity-list")).to_contain_text("star", timeout=15000)
+        expect(page.get_by_role("combobox", name="Activity period")).to_be_visible(timeout=15000)
+        expect(page.get_by_role("main")).to_contain_text("4 additions and 0 deletions")
+        period = page.get_by_role("combobox", name="Activity period")
+        expect(period.locator("option")).to_have_text(
+            ["1 day", "3 days", "1 week", "1 month", "3 months", "6 months", "1 year"]
+        )
+        for days in [1, 3, 30, 90, 180, 365]:
+            with page.expect_response(
+                lambda response, days=days: response.url.endswith(f"/activity/statistics?days={days}")
+            ) as statistics:
+                period.select_option(str(days))
+            assert statistics.value.status == 200
+            assert len(statistics.value.json()["daily_commits"]) == days + 1
+            expect(page.get_by_role("main")).to_contain_text("4 additions and 0 deletions")
+
+        page.get_by_role("button", name="Contributors", exact=True).click()
+        contributor = page.get_by_test_id("activity-contributor")
+        expect(contributor).to_contain_text("Test User")
+        expect(contributor).to_contain_text("1 Commits 4++ 0--")
+        page.get_by_role("combobox", name="Contribution metric").select_option("additions")
+        expect(page.get_by_role("group", name="Overall additions", exact=True)).to_be_visible()
+
+        page.get_by_role("button", name="Code frequency", exact=True).click()
+        expect(page.get_by_role("group", name="Weekly additions and deletions", exact=True)).to_be_visible()
+
+        page.get_by_role("button", name="Recent commits", exact=True).click()
+        expect(page.get_by_role("heading", name="Number of commits in the past year")).to_be_visible()
+        yearly_commits = page.get_by_role("group", name="Weekly commits in the past year", exact=True)
+        expect(yearly_commits).to_be_visible()
+        expect(yearly_commits.locator(".recharts-bar-rectangle")).to_have_count(
+            sum(point["commits"] > 0 for point in statistics.value.json()["recent_commits"])
+        )
 
         page.goto(f"{app_url}/")
         expect(page.get_by_test_id("dashboard-feed")).to_contain_text("admin/activityrepo", timeout=15000)
+        expect(page.get_by_test_id("dashboard-feed")).to_contain_text("star")
+
+    def test_code_frequency_deletions_are_below_zero(self, app_url: str, page: Page) -> None:
+        """Render additions above zero and deletions below it for the same week."""
+        _push_repo(app_url, "admin/frequencyrepo.git", with_deletions=True)
+        log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
+        page.goto(f"{app_url}/admin/frequencyrepo/activity")
+        page.get_by_role("button", name="Code frequency", exact=True).click()
+        chart = page.get_by_role("group", name="Weekly additions and deletions", exact=True)
+        baseline = chart.locator(".recharts-reference-line-line")
+        additions = chart.locator(".recharts-bar-rectangle path[fill='var(--success)']")
+        deletions = chart.locator(".recharts-bar-rectangle path[fill='var(--destructive)']")
+        expect(baseline).to_have_count(1, timeout=15000)
+        expect(additions).to_be_visible()
+        expect(deletions).to_be_visible()
+        page.wait_for_function(
+            """() => {
+                const chart = document.querySelector('[aria-label="Weekly additions and deletions"]');
+                const zero = chart.querySelector('.recharts-reference-line-line').getBoundingClientRect().y;
+                const added = chart.querySelector('[fill="var(--success)"].recharts-rectangle').getBoundingClientRect();
+                const removed = chart.querySelector('[fill="var(--destructive)"].recharts-rectangle').getBoundingClientRect();
+                return added.height > 0 && added.y < zero && added.bottom <= zero + 1
+                    && removed.height > 0 && removed.y >= zero - 1 && removed.bottom > zero;
+            }"""
+        )
 
 
 class TestSocialListings:

@@ -14,6 +14,7 @@ from app.entities.repositories import Repository
 
 if TYPE_CHECKING:
     import uuid
+    from datetime import datetime
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +26,10 @@ _ACTIVITY_OPTIONS = (
 
 class ActivityStore(CrudStore[Activity], ABC):
     """Abstract activity store with activity-specific queries."""
+
+    @abstractmethod
+    async def list_in_period(self, repo_id: uuid.UUID, start: datetime, end: datetime) -> list[Activity]:
+        """List all repository events within a period, without feed pagination."""
 
     @abstractmethod
     async def list_recent(self, offset: int = 0, limit: int = 50) -> list[Activity]:
@@ -49,6 +54,16 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
             db: SQLAlchemy async session.
         """
         super().__init__(db, Activity)
+
+    async def list_in_period(self, repo_id: uuid.UUID, start: datetime, end: datetime) -> list[Activity]:
+        """List repository events in the inclusive period, newest first."""
+        result = await self.db.scalars(
+            select(Activity)
+            .options(*_ACTIVITY_OPTIONS)
+            .where(Activity.repo_id == repo_id, Activity.created_at >= start, Activity.created_at <= end)
+            .order_by(Activity.created_at.desc())
+        )
+        return list(result.all())
 
     async def list_recent(self, offset: int = 0, limit: int = 50) -> list[Activity]:
         """List recent activity across all repositories, newest first."""

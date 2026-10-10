@@ -14,10 +14,7 @@ function ActivityPage() {
   const { owner, repo } = Route.useParams()
   return (
     <RepositoryLayout owner={owner} repo={repo}>
-      <div className="space-y-4">
-        <h1 className="text-lg font-semibold text-foreground">Activity</h1>
-        <RepositoryActivity owner={owner} repo={repo} />
-      </div>
+      <RepositoryActivity key={`${owner}/${repo}`} owner={owner} repo={repo} />
     </RepositoryLayout>
   )
 }

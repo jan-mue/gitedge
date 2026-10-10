@@ -600,6 +600,14 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
 
     entity_name = "Activity"
 
+    async def list_in_period(self, repo_id: uuid.UUID, start: datetime, end: datetime) -> list[Activity]:
+        """List all events in the inclusive period for a repository."""
+        return [
+            self._hydrate(activity)
+            for activity in self._sorted()
+            if activity.repo_id == repo_id and start <= activity.created_at <= end
+        ]
+
     def __init__(self, users: FakeUserStore | None = None, repository: FakeRepositoryStore | None = None) -> None:
         """Initialize the store."""
         super().__init__()
