@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
+from pytest_socket import disable_socket
 
 from app.api.dependencies import (
     check_database_connection,
@@ -34,6 +35,11 @@ if TYPE_CHECKING:
 
 
 app.dependency_overrides[check_database_connection] = lambda: True
+
+
+def pytest_runtest_setup() -> None:
+    """Block network access so unit tests cannot reach real services."""
+    disable_socket(allow_unix_socket=True)
 
 
 @pytest.fixture(autouse=True)
