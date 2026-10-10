@@ -26,7 +26,7 @@ export function resolveApiUrl(): string {
     if (!resolved || resolved === DEV_API_URL) {
       throw new Error(
         `Could not resolve the preview URL for related project "${BACKEND_PROJECT_NAME}". ` +
-          "Ensure the backend project is listed in frontend/vercel.ts's relatedProjects and redeploy.",
+          "Ensure the backend project is listed in frontend/vercel.json's relatedProjects and redeploy.",
       )
     }
     return normalizeApiUrl(resolved)

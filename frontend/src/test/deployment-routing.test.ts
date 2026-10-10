@@ -14,15 +14,9 @@ const gitPaths = [
 ]
 
 async function rewrite(path: string): Promise<string> {
-  const { config } = await import("../../vercel")
-  const url = new URL(path, "https://frontend.example.com")
-  for (const rule of config.rewrites) {
-    const pattern = new RegExp(`^${rule.source}$`)
-    if (pattern.test(url.pathname)) {
-      return url.pathname.replace(pattern, rule.destination) + url.search
-    }
-  }
-  return path
+  const { default: middleware } = await import("../../middleware")
+  const response = middleware(new Request(new URL(path, "https://frontend.example.com")))
+  return response.headers.get("x-middleware-rewrite") ?? "/index.html"
 }
 
 describe("deployment routing", () => {
