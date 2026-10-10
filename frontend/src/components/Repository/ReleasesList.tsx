@@ -4,7 +4,6 @@ import { Check, Plus, Tag } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-
 import type { ReleasePublic } from "@/client"
 import {
   releasesCreateReleaseMutation,
@@ -13,6 +12,7 @@ import {
   releasesListTagsOptions,
   releasesUpdateReleaseMutation,
 } from "@/client/@tanstack/react-query.gen"
+import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -212,11 +212,21 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const [editingRelease, setEditingRelease] = useState<ReleasePublic | null>(null)
 
-  const { data: releasesData } = useQuery({
+  const {
+    data: releasesData,
+    isPending,
+    isError,
+    refetch,
+  } = useQuery({
     ...releasesListReleasesOptions({ path: { owner, repo } }),
   })
 
-  const { data: tagsData } = useQuery({
+  const {
+    data: tagsData,
+    isPending: tagsPending,
+    isError: tagsError,
+    refetch: refetchTags,
+  } = useQuery({
     ...releasesListTagsOptions({ path: { owner, repo } }),
   })
 
@@ -240,6 +250,18 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
 
   const releases = releasesData?.data ?? []
   const tags = tagsData?.data ?? []
+
+  if (isPending || tagsPending) return <RepositoryLoading label="Loading releases and tags" />
+  if (isError || tagsError)
+    return (
+      <RepositoryError
+        message="Unable to load releases or tags."
+        retry={() => {
+          refetch()
+          refetchTags()
+        }}
+      />
+    )
 
   return (
     <div className="space-y-6" data-testid="releases-list">

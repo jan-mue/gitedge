@@ -6,6 +6,7 @@ import ActivityChart from "@/components/Repository/ActivityChart"
 import ActivityContributors from "@/components/Repository/ActivityContributors"
 import ActivityPulse from "@/components/Repository/ActivityPulse"
 import ActivityRecentCommits from "@/components/Repository/ActivityRecentCommits"
+import RepositoryLoading from "@/components/Repository/RepositoryLoading"
 
 interface RepositoryActivityProps {
   owner: string
@@ -50,11 +51,7 @@ const RepositoryActivity = ({ owner, repo }: RepositoryActivityProps) => {
         </div>
       </nav>
       <div id="activity-content" className="min-w-0 flex-1" aria-busy={isPending}>
-        {isPending && (
-          <p role="status" className="py-12 text-center text-sm text-muted-foreground">
-            Loading activity…
-          </p>
-        )}
+        {isPending && <RepositoryLoading label="Loading activity" />}
         {isError && (
           <div role="alert" className="space-y-3 rounded-lg border border-border p-6 text-center">
             <p className="text-sm text-muted-foreground">Could not load repository activity.</p>

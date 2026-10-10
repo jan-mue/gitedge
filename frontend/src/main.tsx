@@ -16,16 +16,16 @@ client.setConfig({
 })
 
 client.interceptors.error.use((error, response) => {
-  if (response && [401, 403].includes(response.status)) {
+  if (response && response.status === 401) {
     localStorage.removeItem("access_token")
     window.location.href = "/login"
   }
   return error
 })
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1 } } })
 
-const router = createRouter({ routeTree })
+const router = createRouter({ routeTree, defaultPendingMs: 150, defaultPendingMinMs: 200 })
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router

@@ -3,15 +3,21 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
-from sqlalchemy import func, select
+from sqlalchemy import Table, delete, func, or_, select, update
 from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
+from app.entities.activity import Activity
+from app.entities.comments import Comment
+from app.entities.issues import Issue
 from app.entities.principals import Principal, PrincipalType
+from app.entities.pull_requests import PullRequest
 from app.entities.releases import Release
 from app.entities.repositories import Repository
+from app.entities.stars import Star
+from app.entities.watchers import Watcher
 from app.exceptions import OwnerNotFoundError, RepositoryNotFoundError
 
 if TYPE_CHECKING:
@@ -77,6 +83,30 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         if include_releases:
             options.append(selectinload(Repository.releases).selectinload(Release.author))
         return tuple(options)
+
+    async def delete(self, obj: Repository) -> None:
+        """Delete dependent records in one transaction and detach surviving forks.
+
+        Args:
+            obj: Repository to delete.
+        """
+        related_prs = select(PullRequest.id).where(
+            or_(PullRequest.head_repo_id == obj.id, PullRequest.base_repo_id == obj.id)
+        )
+        issue_ids = list(
+            await self.db.scalars(select(Issue.id).where(or_(Issue.repo_id == obj.id, Issue.id.in_(related_prs))))
+        )
+        await self.db.execute(delete(Comment).where(Comment.issue_id.in_(issue_ids)))
+        # Delete the joined subclass table before its issue records.
+        await self.db.execute(
+            delete(cast(Table, PullRequest.__table__)).where(PullRequest.__table__.c.id.in_(issue_ids))
+        )
+        await self.db.execute(delete(cast(Table, Issue.__table__)).where(Issue.__table__.c.id.in_(issue_ids)))
+        for entity in (Star, Watcher, Activity, Release):
+            await self.db.execute(delete(entity).where(entity.repo_id == obj.id))
+        await self.db.execute(update(Repository).where(Repository.fork_of_id == obj.id).values(fork_of_id=None))
+        await self.db.execute(delete(Repository).where(Repository.id == obj.id))
+        await self.db.commit()
 
     async def find(self, primary_key: uuid.UUID) -> Repository | None:
         """Find a repository by primary key with its owner loaded.

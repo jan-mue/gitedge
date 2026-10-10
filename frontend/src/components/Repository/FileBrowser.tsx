@@ -1,8 +1,9 @@
 import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
-import { Check, FileText, Folder, MoreHorizontal } from "lucide-react"
+import { FileText, Folder } from "lucide-react"
 
 import type { CommitInfo, TreeEntry } from "@/client"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
+import { formatSize } from "@/utils"
 
 interface FileBrowserProps {
   entries: TreeEntry[]
@@ -73,11 +74,7 @@ const FileBrowser = ({
           >
             {lastCommit.sha.slice(0, 10)}
           </RouterLink>
-          <Check className="w-4 h-4 text-success" />
           <span className="text-sm text-foreground truncate flex-1">{lastCommit.message.split("\n")[0]}</span>
-          <button type="button" className="p-1 rounded hover:bg-accent transition-colors">
-            <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-          </button>
           <span className="text-sm text-muted-foreground whitespace-nowrap">
             {formatRelativeDate(lastCommit.timestamp)}
           </span>
@@ -112,6 +109,9 @@ const FileBrowser = ({
             <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           )}
           <span className={entry.type === "tree" ? "text-primary font-medium" : "text-foreground"}>{entry.name}</span>
+          {entry.size != null && (
+            <span className="ml-auto text-xs text-muted-foreground">{formatSize(entry.size)}</span>
+          )}
         </button>
       ))}
 

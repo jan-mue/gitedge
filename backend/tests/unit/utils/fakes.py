@@ -234,6 +234,7 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
         self.users = users
         self.organizations = organizations
         self.release_store: FakeReleaseStore | None = None
+        self.stores: FakeStores | None = None
 
     def _owner(self, repository: Repository) -> Principal | None:
         """Resolve a repository's owner principal."""
@@ -257,6 +258,35 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
         if include_releases and self.release_store is not None:
             repository.releases = self.release_store.releases_for(repository.id)
         return repository
+
+    async def delete(self, obj: Repository) -> None:
+        """Delete dependent records and detach independent forks."""
+        for fork in self.items.values():
+            if fork.fork_of_id == obj.id:
+                fork.fork_of_id = None
+                fork.fork_of = None
+        if self.stores is not None:
+            stores = self.stores
+            issue_ids = {issue.id for issue in stores.issues.items.values() if issue.repo_id == obj.id}
+            issue_ids.update(
+                pr.id
+                for pr in stores.pull_requests.items.values()
+                if obj.id in (pr.repo_id, pr.head_repo_id, pr.base_repo_id)
+            )
+            for comment in list(stores.comments.items.values()):
+                if comment.issue_id in issue_ids:
+                    await stores.comments.delete(comment)
+            for issue in list(stores.issues.items.values()):
+                if issue.id in issue_ids:
+                    await stores.issues.delete(issue)
+            for pr in list(stores.pull_requests.items.values()):
+                if pr.id in issue_ids:
+                    await stores.pull_requests.delete(pr)
+            for store in (stores.stars, stores.watchers, stores.releases, stores.activity):
+                for record in list(store.items.values()):
+                    if record.repo_id == obj.id:
+                        store.items.pop(record.id, None)
+        await super().delete(obj)
 
     async def find(self, primary_key: uuid.UUID) -> Repository | None:
         """Find a repository by its primary key."""
@@ -707,7 +737,7 @@ def build_fake_stores() -> FakeStores:
             is_superuser=True,
         )
     )
-    return FakeStores(
+    stores = FakeStores(
         users=users,
         issues=issues,
         pull_requests=pull_requests,
@@ -722,3 +752,5 @@ def build_fake_stores() -> FakeStores:
         blob=FakeBlobStorageClient(),
         redis=FakeRedisClient(),
     )
+    repository.stores = stores
+    return stores

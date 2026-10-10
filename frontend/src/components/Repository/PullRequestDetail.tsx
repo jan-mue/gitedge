@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link as RouterLink, useParams } from "@tanstack/react-router"
 import { ArrowLeft, CircleCheck, GitMerge, GitPullRequest } from "lucide-react"
 import { useState } from "react"
-
 import {
   repositoriesGetPullRequestFilesOptions,
   repositoriesGetPullRequestOptions,
@@ -12,6 +11,7 @@ import {
 } from "@/client/@tanstack/react-query.gen"
 import MarkdownContent from "@/components/Common/MarkdownContent"
 import CommentsSection from "@/components/Repository/CommentsSection"
+import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import useAuth from "@/hooks/useAuth"
@@ -64,7 +64,12 @@ const PullRequestDetail = () => {
   const [editTitle, setEditTitle] = useState("")
   const [editBody, setEditBody] = useState("")
 
-  const { data: pull } = useQuery({
+  const {
+    data: pull,
+    isPending,
+    isError,
+    refetch,
+  } = useQuery({
     ...repositoriesGetPullRequestOptions({ path: { owner, repo, number: prNumber } }),
   })
 
@@ -99,9 +104,8 @@ const PullRequestDetail = () => {
     onError: handleError.bind(showErrorToast),
   })
 
-  if (!pull) {
-    return <div className="text-sm text-muted-foreground">Loading pull request...</div>
-  }
+  if (isPending) return <RepositoryLoading label="Loading pull request" />
+  if (isError || !pull) return <RepositoryError message="Unable to load pull request." retry={() => refetch()} />
 
   const isOpen = pull.state === "open"
   const canEdit = pull.author_username === user?.name
