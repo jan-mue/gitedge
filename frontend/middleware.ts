@@ -1,4 +1,4 @@
-import { DEV_API_URL, resolveApiUrl } from "./config/api-url"
+import { DEV_API_URL, resolveApiUrl } from "./config/api-url.js"
 
 export const config = {
   runtime: "nodejs",
