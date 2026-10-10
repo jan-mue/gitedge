@@ -50,6 +50,7 @@ from app.exceptions import (
 from app.utils.security import get_password_hash
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -314,6 +315,13 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
         """Count repositories forked from a given repository."""
         return sum(1 for repository in self.items.values() if repository.fork_of_id == fork_of_id)
 
+    async def count_forks_by_repos(self, repo_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
+        """Count forks for multiple repositories, keyed by repository id."""
+        return {
+            repo_id: sum(1 for repository in self.items.values() if repository.fork_of_id == repo_id)
+            for repo_id in repo_ids
+        }
+
 
 class FakeIssueStore(FakeCrudStore[Issue], IssueStore):
     """In-memory issue store."""
@@ -466,6 +474,10 @@ class FakeStarStore(FakeCrudStore[Star], StarStore):
     async def count_by_repo(self, repo_id: uuid.UUID) -> int:
         """Count stars for a repository."""
         return sum(1 for star in self.items.values() if star.repo_id == repo_id)
+
+    async def count_by_repos(self, repo_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
+        """Count stars for multiple repositories, keyed by repository id."""
+        return {repo_id: sum(1 for star in self.items.values() if star.repo_id == repo_id) for repo_id in repo_ids}
 
 
 class FakeWatcherStore(FakeCrudStore[Watcher], WatcherStore):

@@ -272,21 +272,14 @@ class RepositoryService:
         await self.cache_client.set("private", "1" if is_private else "0", ttl=settings.CACHE_TTL, group=group)
         return is_private
 
-    async def _apply_counts(self, repository: Repository, repo_id: uuid.UUID) -> None:
-        """Fill a repository schema's star and fork counts from related tables.
-
-        Args:
-            repository: The repository schema to update in place.
-            repo_id: The repository entity id.
-        """
-        repository.stars_count = await self.star_store.count_by_repo(repo_id)
-        repository.forks_count = await self.repository_store.count_by_fork_of(repo_id)
-
-    async def _to_schema(self, entity: RepositoryEntity) -> Repository:
-        """Convert a repository entity to its public schema.
+    @staticmethod
+    def _build_schema(entity: RepositoryEntity, stars_count: int, forks_count: int) -> Repository:
+        """Build a repository schema with explicit star and fork counts.
 
         Args:
             entity: The repository entity (with its owner loaded).
+            stars_count: The repository's star count.
+            forks_count: The repository's fork count.
 
         Returns:
             The public repository representation.
@@ -300,8 +293,41 @@ class RepositoryService:
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
-        await self._apply_counts(repository, entity.id)
+        repository.stars_count = stars_count
+        repository.forks_count = forks_count
         return repository
+
+    async def _to_schema(self, entity: RepositoryEntity) -> Repository:
+        """Convert a repository entity to its public schema.
+
+        Args:
+            entity: The repository entity (with its owner loaded).
+
+        Returns:
+            The public repository representation.
+        """
+        return self._build_schema(
+            entity,
+            await self.star_store.count_by_repo(entity.id),
+            await self.repository_store.count_by_fork_of(entity.id),
+        )
+
+    async def _to_schemas(self, entities: list[RepositoryEntity]) -> list[Repository]:
+        """Convert repository entities to public schemas with batched counts.
+
+        Args:
+            entities: The repository entities (with their owners loaded).
+
+        Returns:
+            The public repository representations.
+        """
+        ids = [entity.id for entity in entities]
+        star_counts = await self.star_store.count_by_repos(ids)
+        fork_counts = await self.repository_store.count_forks_by_repos(ids)
+        return [
+            self._build_schema(entity, star_counts.get(entity.id, 0), fork_counts.get(entity.id, 0))
+            for entity in entities
+        ]
 
     async def list_repositories(self) -> RepositoriesPublic:
         """List all repositories.
@@ -310,7 +336,7 @@ class RepositoryService:
             RepositoriesPublic with the discovered repositories.
         """
         entities = await self.repository_store.get_all(offset=0, limit=10000)
-        data = [await self._to_schema(entity) for entity in entities]
+        data = await self._to_schemas(entities)
         return RepositoriesPublic(data=data, count=len(data))
 
     async def get_user_repositories(self, owner_id: uuid.UUID, offset: int = 0, limit: int = 100) -> RepositoriesPublic:
@@ -325,7 +351,7 @@ class RepositoryService:
             RepositoriesPublic with the owner's repositories.
         """
         entities = await self.repository_store.get_by_owner(owner_id, offset, limit)
-        data = [await self._to_schema(entity) for entity in entities]
+        data = await self._to_schemas(entities)
         return RepositoriesPublic(data=data, count=len(data))
 
     async def get_repository(self, owner: str, name: str) -> Repository:

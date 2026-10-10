@@ -75,4 +75,16 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    proxy: {
+      "/api": {
+        target: process.env.API_URL || DEV_API_URL,
+        changeOrigin: true,
+      },
+      "^(?:/[^/]+)+/[^/]+\\.git/": {
+        target: process.env.API_URL || DEV_API_URL,
+        changeOrigin: true,
+      },
+    },
+  },
 })

@@ -13,6 +13,7 @@ from app.entities.stars import Star
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import Sequence
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,6 +36,10 @@ class StarStore(CrudStore[Star], ABC):
     @abstractmethod
     async def count_by_repo(self, repo_id: uuid.UUID) -> int:
         """Count stars for a repository."""
+
+    @abstractmethod
+    async def count_by_repos(self, repo_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
+        """Count stars for multiple repositories, keyed by repository id."""
 
 
 class SQLStarStore(StarStore, SQLStore[Star]):
@@ -75,3 +80,12 @@ class SQLStarStore(StarStore, SQLStore[Star]):
         """Count stars for a repository."""
         result = await self.db.execute(select(func.count()).select_from(Star).where(Star.repo_id == repo_id))
         return result.scalar_one()
+
+    async def count_by_repos(self, repo_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
+        """Count stars for multiple repositories, keyed by repository id."""
+        if not repo_ids:
+            return {}
+        result = await self.db.execute(
+            select(Star.repo_id, func.count()).where(Star.repo_id.in_(repo_ids)).group_by(Star.repo_id)
+        )
+        return dict(result.all())
