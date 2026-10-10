@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 
-import { UsersService } from "@/client"
+import { usersDeleteUserMeMutation, usersReadUserMeQueryKey } from "@/client/@tanstack/react-query.gen"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -25,19 +25,19 @@ const DeleteConfirmation = () => {
   const { logout } = useAuth()
 
   const mutation = useMutation({
-    mutationFn: () => UsersService.deleteUserMe(),
+    ...usersDeleteUserMeMutation(),
     onSuccess: () => {
       showSuccessToast("Your account has been successfully deleted")
       logout()
     },
     onError: handleError.bind(showErrorToast),
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["currentUser"] })
+      queryClient.invalidateQueries({ queryKey: usersReadUserMeQueryKey() })
     },
   })
 
   const onSubmit = async () => {
-    mutation.mutate()
+    mutation.mutate({})
   }
 
   return (

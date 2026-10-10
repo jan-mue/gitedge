@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Navigate } from "@tanstack/react-router"
 
-import { RepositoriesService } from "@/client"
+import { repositoriesGetRepositoryInfoOptions } from "@/client/@tanstack/react-query.gen"
 import PendingItems from "@/components/Pending/PendingItems"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/")({
@@ -10,11 +10,9 @@ export const Route = createFileRoute("/_layout/$owner/$repo/")({
 
 function RepositoryIndexRedirect() {
   const { owner, repo } = Route.useParams()
-  const repoPath = owner === "_" ? `${repo}.git` : `${owner}/${repo}.git`
 
   const { data, isError } = useQuery({
-    queryKey: ["repoInfo", repoPath],
-    queryFn: async () => (await RepositoriesService.getRepositoryInfo({ path: { owner, repo } })).data,
+    ...repositoriesGetRepositoryInfoOptions({ path: { owner, repo } }),
   })
 
   if (isError) {

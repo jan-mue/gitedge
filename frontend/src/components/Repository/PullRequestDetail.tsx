@@ -3,7 +3,13 @@ import { Link as RouterLink, useParams } from "@tanstack/react-router"
 import { ArrowLeft, CircleCheck, GitMerge, GitPullRequest } from "lucide-react"
 import { useState } from "react"
 
-import { type IssueState, RepositoriesService } from "@/client"
+import {
+  repositoriesGetPullRequestFilesOptions,
+  repositoriesGetPullRequestOptions,
+  repositoriesGetPullRequestQueryKey,
+  repositoriesListPullRequestsQueryKey,
+  repositoriesUpdatePullRequestMutation,
+} from "@/client/@tanstack/react-query.gen"
 import CommentsSection from "@/components/Repository/CommentsSection"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -49,7 +55,6 @@ const changeLabel: Record<string, string> = {
 
 const PullRequestDetail = () => {
   const { owner, repo, number } = useParams({ from: "/_layout/$owner/$repo/pulls/$number" })
-  const repoPath = `${owner}/${repo}.git`
   const prNumber = Number(number)
   const queryClient = useQueryClient()
   const { user } = useAuth()
@@ -59,37 +64,35 @@ const PullRequestDetail = () => {
   const [editBody, setEditBody] = useState("")
 
   const { data: pull } = useQuery({
-    queryKey: ["pull", repoPath, prNumber],
-    queryFn: async () => (await RepositoriesService.getPullRequest({ path: { owner, repo, number: prNumber } })).data,
+    ...repositoriesGetPullRequestOptions({ path: { owner, repo, number: prNumber } }),
   })
 
   const { data: changes } = useQuery({
-    queryKey: ["pull-files", repoPath, prNumber],
-    queryFn: async () =>
-      (await RepositoriesService.getPullRequestFiles({ path: { owner, repo, number: prNumber } })).data,
+    ...repositoriesGetPullRequestFilesOptions({ path: { owner, repo, number: prNumber } }),
   })
 
   const mutation = useMutation({
-    mutationFn: (state: IssueState) =>
-      RepositoriesService.updatePullRequest({
-        path: { owner, repo, number: prNumber },
-        body: { state },
-      }),
+    ...repositoriesUpdatePullRequestMutation(),
     onSuccess: (response) => {
-      queryClient.setQueryData(["pull", repoPath, prNumber], response.data)
-      queryClient.invalidateQueries({ queryKey: ["pulls", repoPath] })
+      queryClient.setQueryData(
+        repositoriesGetPullRequestQueryKey({ path: { owner, repo, number: prNumber } }),
+        response,
+      )
+      queryClient.invalidateQueries({ queryKey: repositoriesListPullRequestsQueryKey({ path: { owner, repo } }) })
+      queryClient.invalidateQueries({
+        queryKey: repositoriesGetPullRequestFilesOptions({ path: { owner, repo, number: prNumber } }).queryKey,
+      })
     },
   })
 
   const editMutation = useMutation({
-    mutationFn: () =>
-      RepositoriesService.updatePullRequest({
-        path: { owner, repo, number: prNumber },
-        body: { title: editTitle, body: editBody },
-      }),
+    ...repositoriesUpdatePullRequestMutation(),
     onSuccess: (response) => {
-      queryClient.setQueryData(["pull", repoPath, prNumber], response.data)
-      queryClient.invalidateQueries({ queryKey: ["pulls", repoPath] })
+      queryClient.setQueryData(
+        repositoriesGetPullRequestQueryKey({ path: { owner, repo, number: prNumber } }),
+        response,
+      )
+      queryClient.invalidateQueries({ queryKey: repositoriesListPullRequestsQueryKey({ path: { owner, repo } }) })
       setEditing(false)
     },
     onError: handleError.bind(showErrorToast),
@@ -135,7 +138,12 @@ const PullRequestDetail = () => {
             <Button
               size="sm"
               disabled={!editTitle.trim() || editMutation.isPending}
-              onClick={() => editMutation.mutate()}
+              onClick={() =>
+                editMutation.mutate({
+                  path: { owner, repo, number: prNumber },
+                  body: { title: editTitle, body: editBody },
+                })
+              }
               data-testid="edit-pr-submit"
             >
               Save
@@ -228,7 +236,7 @@ const PullRequestDetail = () => {
             <Button
               size="sm"
               disabled={mutation.isPending}
-              onClick={() => mutation.mutate("merged")}
+              onClick={() => mutation.mutate({ path: { owner, repo, number: prNumber }, body: { state: "merged" } })}
               data-testid="merge-pr"
             >
               <GitMerge className="w-3.5 h-3.5" />
@@ -238,7 +246,7 @@ const PullRequestDetail = () => {
               variant="outline"
               size="sm"
               disabled={mutation.isPending}
-              onClick={() => mutation.mutate("closed")}
+              onClick={() => mutation.mutate({ path: { owner, repo, number: prNumber }, body: { state: "closed" } })}
               data-testid="close-pr"
             >
               Close
@@ -249,7 +257,7 @@ const PullRequestDetail = () => {
             variant="outline"
             size="sm"
             disabled={mutation.isPending}
-            onClick={() => mutation.mutate("open")}
+            onClick={() => mutation.mutate({ path: { owner, repo, number: prNumber }, body: { state: "open" } })}
             data-testid="reopen-pr"
           >
             Reopen

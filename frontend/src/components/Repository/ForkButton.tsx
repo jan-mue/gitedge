@@ -6,7 +6,12 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { ForksService } from "@/client"
+import {
+  forksForkRepositoryMutation,
+  forksListForksOptions,
+  forksListForksQueryKey,
+  repositoriesListRepositoriesQueryKey,
+} from "@/client/@tanstack/react-query.gen"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -41,7 +46,6 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>
 
 const ForkButton = ({ owner, repo }: ForkButtonProps) => {
-  const repoPath = `${owner}/${repo}.git`
   const [isOpen, setIsOpen] = useState(false)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -55,18 +59,17 @@ const ForkButton = ({ owner, repo }: ForkButtonProps) => {
   })
 
   const { data: forks } = useQuery({
-    queryKey: ["forks", repoPath],
-    queryFn: async () => (await ForksService.listForks({ path: { owner, repo } })).data,
+    ...forksListForksOptions({ path: { owner, repo } }),
   })
 
   const mutation = useMutation({
-    mutationFn: (data: FormData) => ForksService.forkRepository({ path: { owner, repo }, body: data }),
-    onSuccess: (response) => {
-      const fork = response.data
+    ...forksForkRepositoryMutation(),
+    onSuccess: (fork) => {
       showSuccessToast("Repository forked successfully")
       form.reset()
       setIsOpen(false)
-      queryClient.invalidateQueries({ queryKey: ["forks", repoPath] })
+      queryClient.invalidateQueries({ queryKey: forksListForksQueryKey({ path: { owner, repo } }) })
+      queryClient.invalidateQueries({ queryKey: repositoriesListRepositoriesQueryKey() })
       if (fork.owner) {
         navigate({ to: "/$owner/$repo", params: { owner: fork.owner, repo: fork.name } })
       }
@@ -102,7 +105,7 @@ const ForkButton = ({ owner, repo }: ForkButtonProps) => {
           <DialogDescription>Create a copy of {`${owner}/${repo}`} in your account.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))}>
+          <form onSubmit={form.handleSubmit((data) => mutation.mutate({ path: { owner, repo }, body: data }))}>
             <div className="grid gap-4 py-4">
               <FormField
                 control={form.control}

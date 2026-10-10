@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { type UpdatePassword, UsersService } from "@/client"
+import { usersUpdatePasswordMeMutation } from "@/client/@tanstack/react-query.gen"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
@@ -43,7 +43,7 @@ const ChangePassword = () => {
   })
 
   const mutation = useMutation({
-    mutationFn: (data: UpdatePassword) => UsersService.updatePasswordMe({ body: data }),
+    ...usersUpdatePasswordMeMutation(),
     onSuccess: () => {
       showSuccessToast("Password updated successfully")
       form.reset()
@@ -52,7 +52,7 @@ const ChangePassword = () => {
   })
 
   const onSubmit = async (data: FormData) => {
-    mutation.mutate(data)
+    mutation.mutate({ body: data })
   }
 
   return (

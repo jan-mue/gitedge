@@ -1,22 +1,23 @@
-import { AxiosError } from "axios"
-
 export const signupsEnabled = import.meta.env.VITE_SIGNUPS_ENABLED !== "false"
 
-function extractErrorMessage(err: Error): string {
-  if (err instanceof AxiosError) {
-    const errDetail = (err.response?.data as any)?.detail
-    if (Array.isArray(errDetail) && errDetail.length > 0) {
-      return errDetail[0].msg
+function extractErrorMessage(err: unknown): string {
+  const detail = (err as { detail?: unknown } | null)?.detail
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0] as { msg?: unknown }
+    if (typeof first?.msg === "string") {
+      return first.msg
     }
-    if (typeof errDetail === "string") {
-      return errDetail
-    }
+  }
+  if (typeof detail === "string") {
+    return detail
+  }
+  if (err instanceof Error) {
     return err.message
   }
   return "Something went wrong."
 }
 
-export const handleError = function (this: (msg: string) => void, err: Error) {
+export const handleError = function (this: (msg: string) => void, err: unknown) {
   const errorMessage = extractErrorMessage(err)
   this(errorMessage)
 }

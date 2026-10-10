@@ -4,7 +4,7 @@ import { createFileRoute, Link as RouterLink, redirect, useNavigate } from "@tan
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { LoginService } from "@/client"
+import { loginResetPasswordMutation } from "@/client/@tanstack/react-query.gen"
 import { AuthLayout } from "@/components/Common/AuthLayout"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { LoadingButton } from "@/components/ui/loading-button"
@@ -68,7 +68,7 @@ function ResetPassword() {
   })
 
   const mutation = useMutation({
-    mutationFn: (data: { new_password: string; token: string }) => LoginService.resetPassword({ body: data }),
+    ...loginResetPasswordMutation(),
     onSuccess: () => {
       showSuccessToast("Password updated successfully")
       form.reset()
@@ -78,7 +78,7 @@ function ResetPassword() {
   })
 
   const onSubmit = (data: FormData) => {
-    mutation.mutate({ new_password: data.new_password, token })
+    mutation.mutate({ body: { new_password: data.new_password, token } })
   }
 
   return (

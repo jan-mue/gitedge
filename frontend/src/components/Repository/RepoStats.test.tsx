@@ -18,7 +18,7 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }))
 
-vi.mock("@/client", () => ({
+vi.mock("@/client/sdk.gen", () => ({
   RepositoriesService: { getRepositoryInfo, listBranches },
 }))
 

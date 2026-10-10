@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 
-import { ForksService } from "@/client"
+import { forksListForksOptions } from "@/client/@tanstack/react-query.gen"
 import ForksList from "@/components/Repository/ForksList"
 
 interface ForksProps {
@@ -9,11 +9,8 @@ interface ForksProps {
 }
 
 const Forks = ({ owner, repo }: ForksProps) => {
-  const repoPath = `${owner}/${repo}.git`
-
   const { data } = useQuery({
-    queryKey: ["forks", repoPath],
-    queryFn: async () => (await ForksService.listForks({ path: { owner, repo } })).data,
+    ...forksListForksOptions({ path: { owner, repo } }),
   })
 
   return <ForksList forks={data?.data ?? []} />

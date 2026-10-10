@@ -2,7 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { MessageSquare } from "lucide-react"
 import { useState } from "react"
 
-import { CommentsService } from "@/client"
+import {
+  commentsCreateCommentMutation,
+  commentsDeleteCommentMutation,
+  commentsListCommentsOptions,
+  commentsListCommentsQueryKey,
+  commentsUpdateCommentMutation,
+} from "@/client/@tanstack/react-query.gen"
 import { Button } from "@/components/ui/button"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
@@ -15,7 +21,6 @@ interface CommentsSectionProps {
 }
 
 const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
-  const repoPath = `${owner}/${repo}.git`
   const queryClient = useQueryClient()
   const { showErrorToast } = useCustomToast()
   const { user } = useAuth()
@@ -24,18 +29,14 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
   const [editBody, setEditBody] = useState("")
 
   const { data } = useQuery({
-    queryKey: ["comments", repoPath, number],
-    queryFn: async () => (await CommentsService.listComments({ path: { owner, repo, number } })).data,
+    ...commentsListCommentsOptions({ path: { owner, repo, number } }),
   })
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["comments", repoPath, number] })
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: commentsListCommentsQueryKey({ path: { owner, repo, number } }) })
 
   const mutation = useMutation({
-    mutationFn: (commentBody: string) =>
-      CommentsService.createComment({
-        path: { owner, repo, number },
-        body: { body: commentBody },
-      }),
+    ...commentsCreateCommentMutation(),
     onSuccess: () => {
       setBody("")
       invalidate()
@@ -44,11 +45,7 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
   })
 
   const editMutation = useMutation({
-    mutationFn: ({ id, commentBody }: { id: string; commentBody: string }) =>
-      CommentsService.updateComment({
-        path: { comment_id: id },
-        body: { body: commentBody },
-      }),
+    ...commentsUpdateCommentMutation(),
     onSuccess: () => {
       setEditingId(null)
       setEditBody("")
@@ -58,7 +55,7 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => CommentsService.deleteComment({ path: { comment_id: id } }),
+    ...commentsDeleteCommentMutation(),
     onSuccess: () => invalidate(),
     onError: handleError.bind(showErrorToast),
   })
@@ -101,7 +98,8 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                       className="text-xs text-muted-foreground hover:text-destructive"
                       disabled={deleteMutation.isPending}
                       onClick={() => {
-                        if (window.confirm("Delete this comment?")) deleteMutation.mutate(comment.id)
+                        if (window.confirm("Delete this comment?"))
+                          deleteMutation.mutate({ path: { comment_id: comment.id } })
                       }}
                       data-testid={`delete-comment-${comment.id}`}
                     >
@@ -133,7 +131,9 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                     <Button
                       size="sm"
                       disabled={!editBody.trim() || editMutation.isPending}
-                      onClick={() => editMutation.mutate({ id: comment.id, commentBody: editBody })}
+                      onClick={() =>
+                        editMutation.mutate({ path: { comment_id: comment.id }, body: { body: editBody } })
+                      }
                       data-testid={`edit-comment-submit-${comment.id}`}
                     >
                       Save
@@ -163,7 +163,7 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
           <Button
             size="sm"
             disabled={!body.trim() || mutation.isPending}
-            onClick={() => mutation.mutate(body)}
+            onClick={() => mutation.mutate({ path: { owner, repo, number }, body: { body } })}
             data-testid="comment-submit"
           >
             {mutation.isPending ? "Commenting..." : "Comment"}

@@ -5,7 +5,14 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { type ReleasePublic, ReleasesService } from "@/client"
+import type { ReleasePublic } from "@/client"
+import {
+  releasesCreateReleaseMutation,
+  releasesListReleasesOptions,
+  releasesListReleasesQueryKey,
+  releasesListTagsOptions,
+  releasesUpdateReleaseMutation,
+} from "@/client/@tanstack/react-query.gen"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -95,7 +102,6 @@ const EditReleaseDialog = ({
   release: ReleasePublic
   onOpenChange: (open: boolean) => void
 }) => {
-  const repoPath = `${owner}/${repo}.git`
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
 
@@ -109,18 +115,10 @@ const EditReleaseDialog = ({
   })
 
   const mutation = useMutation({
-    mutationFn: (data: EditFormData) =>
-      ReleasesService.updateRelease({
-        path: { owner, repo, tag_name: release.tag_name },
-        body: {
-          name: data.name || null,
-          body: data.body || null,
-          is_prerelease: data.is_prerelease ?? false,
-        },
-      }),
+    ...releasesUpdateReleaseMutation(),
     onSuccess: () => {
       showSuccessToast("Release updated successfully")
-      queryClient.invalidateQueries({ queryKey: ["releases", repoPath] })
+      queryClient.invalidateQueries({ queryKey: releasesListReleasesQueryKey({ path: { owner, repo } }) })
       onOpenChange(false)
     },
     onError: handleError.bind(showErrorToast),
@@ -134,7 +132,14 @@ const EditReleaseDialog = ({
           <DialogDescription>Update the details for {release.tag_name}.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))}>
+          <form
+            onSubmit={form.handleSubmit((data) =>
+              mutation.mutate({
+                path: { owner, repo, tag_name: release.tag_name },
+                body: { name: data.name || null, body: data.body || null, is_prerelease: data.is_prerelease ?? false },
+              }),
+            )}
+          >
             <div className="grid gap-4 py-4">
               <FormField
                 control={form.control}
@@ -201,7 +206,6 @@ const EditReleaseDialog = ({
 }
 
 const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
-  const repoPath = `${owner}/${repo}.git`
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const { showSuccessToast, showErrorToast } = useCustomToast()
@@ -209,13 +213,11 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
   const [editingRelease, setEditingRelease] = useState<ReleasePublic | null>(null)
 
   const { data: releasesData } = useQuery({
-    queryKey: ["releases", repoPath],
-    queryFn: async () => (await ReleasesService.listReleases({ path: { owner, repo } })).data,
+    ...releasesListReleasesOptions({ path: { owner, repo } }),
   })
 
   const { data: tagsData } = useQuery({
-    queryKey: ["tags", repoPath],
-    queryFn: async () => (await ReleasesService.listTags({ path: { owner, repo } })).data,
+    ...releasesListTagsOptions({ path: { owner, repo } }),
   })
 
   const form = useForm<FormData>({
@@ -226,21 +228,12 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
   })
 
   const mutation = useMutation({
-    mutationFn: (data: FormData) =>
-      ReleasesService.createRelease({
-        path: { owner, repo },
-        body: {
-          tag_name: data.tag_name,
-          name: data.name || null,
-          body: data.body || null,
-          is_prerelease: data.is_prerelease ?? false,
-        },
-      }),
+    ...releasesCreateReleaseMutation(),
     onSuccess: () => {
       showSuccessToast("Release created successfully")
       form.reset()
       setIsOpen(false)
-      queryClient.invalidateQueries({ queryKey: ["releases", repoPath] })
+      queryClient.invalidateQueries({ queryKey: releasesListReleasesQueryKey({ path: { owner, repo } }) })
     },
     onError: handleError.bind(showErrorToast),
   })
@@ -267,7 +260,19 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
               <DialogDescription>Create a release tied to a Git tag.</DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))}>
+              <form
+                onSubmit={form.handleSubmit((data) =>
+                  mutation.mutate({
+                    path: { owner, repo },
+                    body: {
+                      tag_name: data.tag_name,
+                      name: data.name || null,
+                      body: data.body || null,
+                      is_prerelease: data.is_prerelease ?? false,
+                    },
+                  }),
+                )}
+              >
                 <div className="grid gap-4 py-4">
                   <FormField
                     control={form.control}

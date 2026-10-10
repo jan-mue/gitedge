@@ -54,7 +54,7 @@ function Login() {
 
   const onSubmit = (data: FormData) => {
     if (loginMutation.isPending) return
-    loginMutation.mutate(data)
+    loginMutation.mutate({ body: data })
   }
 
   return (

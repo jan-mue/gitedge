@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { type UserCreate, UsersService } from "@/client"
+import { usersCreateUserMutation, usersReadUsersQueryKey } from "@/client/@tanstack/react-query.gen"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -63,7 +63,7 @@ const AddUser = () => {
   })
 
   const mutation = useMutation({
-    mutationFn: (data: UserCreate) => UsersService.createUser({ body: data }),
+    ...usersCreateUserMutation(),
     onSuccess: () => {
       showSuccessToast("User created successfully")
       form.reset()
@@ -71,12 +71,12 @@ const AddUser = () => {
     },
     onError: handleError.bind(showErrorToast),
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] })
+      queryClient.invalidateQueries({ queryKey: usersReadUsersQueryKey() })
     },
   })
 
   const onSubmit = (data: FormData) => {
-    mutation.mutate(data)
+    mutation.mutate({ body: data })
   }
 
   return (

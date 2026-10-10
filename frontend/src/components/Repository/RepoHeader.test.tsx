@@ -9,7 +9,7 @@ const { starState, watchState } = vi.hoisted(() => ({
   watchState: { data: { is_watching: false, watchers_count: 0 } },
 }))
 
-vi.mock("@/client", () => ({
+vi.mock("@/client/sdk.gen", () => ({
   StarsService: {
     getStarState: vi.fn().mockResolvedValue(starState),
     starRepository: vi.fn().mockResolvedValue(starState),

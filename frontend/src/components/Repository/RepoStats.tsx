@@ -3,7 +3,10 @@ import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
 import { Check, Copy, GitBranch, GitCommitHorizontal, Lock, Tag } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { RepositoriesService } from "@/client"
+import {
+  repositoriesGetRepositoryInfoOptions,
+  repositoriesListBranchesOptions,
+} from "@/client/@tanstack/react-query.gen"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 
 interface RepoStatsProps {
@@ -19,26 +22,17 @@ const RepoStats = ({ owner, repo, gitRef, revision }: RepoStatsProps) => {
   const [copiedText, copy] = useCopyToClipboard()
   const navigate = useNavigate()
   const cloneUrl = `${window.location.origin}/${owner}/${repo}.git`
-  const repoPath = `${owner}/${repo}.git`
   const isCopied = copiedText === cloneUrl
 
   const [branchDropdownOpen, setBranchDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const { data: repoInfo } = useQuery({
-    queryKey: ["repoInfo", repoPath, ref],
-    queryFn: async () =>
-      (
-        await RepositoriesService.getRepositoryInfo({
-          path: { owner, repo },
-          query: { ref },
-        })
-      ).data,
+    ...repositoriesGetRepositoryInfoOptions({ path: { owner, repo }, query: { ref } }),
   })
 
   const { data: branches } = useQuery({
-    queryKey: ["branches", repoPath],
-    queryFn: async () => (await RepositoriesService.listBranches({ path: { owner, repo } })).data,
+    ...repositoriesListBranchesOptions({ path: { owner, repo } }),
     enabled: branchDropdownOpen,
   })
 

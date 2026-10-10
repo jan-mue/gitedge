@@ -1,6 +1,11 @@
 import { useQuery } from "@tanstack/react-query"
 
-import { RepositoriesService } from "@/client"
+import {
+  repositoriesGetBlobOptions,
+  repositoriesGetReadmeOptions,
+  repositoriesGetRepositoryInfoOptions,
+  repositoriesGetTreeOptions,
+} from "@/client/@tanstack/react-query.gen"
 import CodeViewer from "@/components/Repositories/CodeViewer"
 import RepoBreadcrumbs from "@/components/Repositories/RepoBreadcrumbs"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
@@ -26,32 +31,24 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
     isLoading: treeLoading,
     isError: treeError,
   } = useQuery({
-    queryKey: ["tree", repoPath, refName, path],
-    queryFn: async () =>
-      (await RepositoriesService.getTree({ path: { owner, repo }, query: { ref: refName, tree_path: path } })).data,
+    ...repositoriesGetTreeOptions({ path: { owner, repo }, query: { ref: refName, tree_path: path } }),
     retry: false,
   })
 
   const isFile = Boolean(path) && treeError
 
   const { data: blob } = useQuery({
-    queryKey: ["blob", repoPath, refName, path],
-    queryFn: async () =>
-      (await RepositoriesService.getBlob({ path: { owner, repo }, query: { ref: refName, file_path: path } })).data,
+    ...repositoriesGetBlobOptions({ path: { owner, repo }, query: { ref: refName, file_path: path } }),
     retry: false,
     enabled: isFile,
   })
 
   const { data: repoInfo } = useQuery({
-    queryKey: ["repoInfo", repoPath, refName],
-    queryFn: async () =>
-      (await RepositoriesService.getRepositoryInfo({ path: { owner, repo }, query: { ref: refName } })).data,
+    ...repositoriesGetRepositoryInfoOptions({ path: { owner, repo }, query: { ref: refName } }),
   })
 
   const { data: readme } = useQuery({
-    queryKey: ["readme", repoPath, refName, path],
-    queryFn: async () =>
-      (await RepositoriesService.getReadme({ path: { owner, repo }, query: { ref: refName, tree_path: path } })).data,
+    ...repositoriesGetReadmeOptions({ path: { owner, repo }, query: { ref: refName, tree_path: path } }),
     retry: false,
     enabled: Boolean(tree),
   })
