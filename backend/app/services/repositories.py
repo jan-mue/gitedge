@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 import re
@@ -40,8 +41,10 @@ from app.schemas.repositories import (
     TreeEntryType,
     TreeListing,
 )
+from app.schemas.repository_activity import GitActivityHistory
 from app.services.blob_backend import load_repository_from_storage, save_repository_changes_to_storage
 from app.services.markdown import render_markdown
+from app.services.repository_activity import collect_git_activity
 from app.utils.cache_headers import (
     CACHE_CONTROL_IMMUTABLE,
     CACHE_CONTROL_PRIVATE,
@@ -777,6 +780,22 @@ class RepositoryService:
             group=self._cache_group(owner, name),
             ttl=settings.CACHE_TTL,
             model=TagsPublic,
+            compute=compute,
+        )
+
+    async def activity_history(self, owner: str, name: str) -> GitActivityHistory:
+        """Get cached, complete activity statistics for the repository's branches."""
+
+        async def compute() -> GitActivityHistory:
+            repo = await self.load_repository(owner, name)
+            _, _, default_branch = self._get_ref_counts(repo)
+            return await asyncio.to_thread(collect_git_activity, repo, default_branch)
+
+        return await self._cached_model(
+            key="activity-history:v1",
+            group=self._cache_group(owner, name),
+            ttl=settings.CACHE_TTL,
+            model=GitActivityHistory,
             compute=compute,
         )
 

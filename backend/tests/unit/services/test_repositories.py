@@ -4,6 +4,7 @@ import os
 import stat
 import tempfile
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -133,6 +134,45 @@ async def test_ensure_repository() -> None:
     assert repository.name == REPO
     assert repository.owner_id == OWNER_ID
     assert await ensure_repository(store, OWNER, REPO) is repository
+
+
+async def test_activity_history_deduplicates_branches_and_excludes_merge_diffs(service: RepositoryService) -> None:
+    timestamp = int(datetime.now(UTC).timestamp())
+    objects: list[ShaFile] = []
+
+    def commit_file(content: bytes, parents: list[ObjectID], message: str) -> Commit:
+        blob = Blob.from_string(content)
+        tree = _write_tree({"file.txt": (stat.S_IFREG | 0o644, blob.id)})
+        commit = _make_commit(tree.id, message)
+        commit.parents = parents
+        commit.author_time = commit.commit_time = timestamp
+        objects.extend([blob, tree, commit])
+        return commit
+
+    root = commit_file(b"one\n+++ tricky\n", [], "Initial")
+    main = commit_file(b"one\nnew\n", [root.id], "Main")
+    feature = commit_file(b"feature\n", [root.id], "Feature")
+    merged = commit_file(b"one\nnew\nfeature\n", [main.id, feature.id], "Merge")
+    branch = commit_file(b"one\n+++ tricky\nside\n", [root.id], "Unmerged")
+    repo = _load_repository(service.backend, "owner/repo.git", objects, merged.id)
+    repo.refs[Ref(b"refs/heads/feature")] = feature.id
+    repo.refs[Ref(b"refs/heads/side")] = branch.id
+    repo.refs[Ref(b"refs/heads/side-copy")] = branch.id
+
+    history = await service.activity_history(OWNER, REPO)
+    assert history.default_branch == "main"
+    assert len(history.commits) == 5
+    by_sha = {commit.sha: commit for commit in history.commits}
+    assert by_sha[root.id.decode()].additions == 2
+    assert by_sha[main.id.decode()].additions == 1
+    assert by_sha[main.id.decode()].deletions == 1
+    assert by_sha[feature.id.decode()].deletions == 2
+    assert by_sha[merged.id.decode()].is_merge
+    assert by_sha[merged.id.decode()].additions == 0
+    assert by_sha[merged.id.decode()].files == []
+    assert not by_sha[branch.id.decode()].is_default
+    assert by_sha[branch.id.decode()].files == ["file.txt"]
+    assert (await service.activity_history(OWNER, REPO)) == history
 
 
 async def test_create_repository(service: RepositoryService) -> None:

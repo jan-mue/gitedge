@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
+
+from fastapi import HTTPException
 
 from app.entities.activity import Activity, ActivityKind, ActivityTargetType
 from app.schemas.activity import ActivitiesPublic, ActivityPublic
+from app.schemas.repositories import CommitListItem
+from app.schemas.repository_activity import ActivityOverview, ActivitySeriesPoint, RepositoryActivityStatistics
+from app.services.repository_activity import aggregate_contributors
 
 if TYPE_CHECKING:
     import uuid
@@ -15,6 +21,7 @@ if TYPE_CHECKING:
     from app.clients.stars import StarStore
     from app.entities.repositories import Repository
     from app.entities.users import User
+    from app.services.repositories import RepositoryService
 
 
 class ActivityService:
@@ -36,6 +43,75 @@ class ActivityService:
         self.activity_store = activity_store
         self.repository_store = repository_store
         self.star_store = star_store
+
+    async def repository_statistics(
+        self, owner: str, name: str, repository_service: RepositoryService, days: int = 7
+    ) -> RepositoryActivityStatistics:
+        """Build all activity views from complete Git history and period events."""
+        repository = await self.repository_store.find_by_owner_and_name(owner, name)
+        if repository is None:
+            raise HTTPException(status_code=404, detail="Repository not found")
+        end = datetime.now(UTC)
+        start = end - timedelta(days=days)
+        history = await repository_service.activity_history(owner, name)
+        events = await self.activity_store.list_in_period(repository.id, start, end)
+        merged = [event for event in events if event.kind == ActivityKind.PULL_REQUEST_MERGE]
+        proposed = [event for event in events if event.kind == ActivityKind.PULL_REQUEST_OPEN]
+        closed = [event for event in events if event.kind == ActivityKind.ISSUE_CLOSE]
+        opened = [event for event in events if event.kind == ActivityKind.ISSUE_OPEN]
+        active_prs = {
+            event.target_number
+            for event in events
+            if event.target_type == ActivityTargetType.PULL_REQUEST and event.target_number is not None
+        }
+        active_issues = {
+            event.target_number
+            for event in events
+            if event.target_type == ActivityTargetType.ISSUE and event.target_number is not None
+        }
+        commits = [
+            commit
+            for commit in history.commits
+            if not commit.is_merge and start.timestamp() <= commit.timestamp <= end.timestamp()
+        ]
+        default_commits = [commit for commit in commits if commit.is_default]
+        daily = {
+            start.date() + timedelta(days=index): ActivitySeriesPoint(date=start.date() + timedelta(days=index))
+            for index in range((end.date() - start.date()).days + 1)
+        }
+        for commit in default_commits:
+            point = daily[datetime.fromtimestamp(commit.timestamp, UTC).date()]
+            point.commits += 1
+            point.additions += commit.additions
+            point.deletions += commit.deletions
+        contributors, frequency = aggregate_contributors(history)
+        return RepositoryActivityStatistics(
+            start=start,
+            end=end,
+            default_branch=history.default_branch,
+            overview=ActivityOverview(
+                active_prs=len(active_prs),
+                active_issues=len(active_issues),
+                merged_prs=len({event.target_number for event in merged}),
+                proposed_prs=len({event.target_number for event in proposed}),
+                closed_issues=len({event.target_number for event in closed}),
+                new_issues=len({event.target_number for event in opened}),
+                merge_authors=len({event.actor_id for event in merged}),
+                authors=len({commit.author_email.casefold() or commit.author for commit in commits}),
+                commits=len(default_commits),
+                branch_commits=len(commits),
+                files_changed=len({path for commit in default_commits for path in commit.files}),
+                additions=sum(commit.additions for commit in default_commits),
+                deletions=sum(commit.deletions for commit in default_commits),
+            ),
+            daily_commits=list(daily.values()),
+            merged_prs=self._to_public_list(merged[:10]),
+            contributors=contributors,
+            code_frequency=frequency,
+            recent_commits=[
+                CommitListItem.model_validate(commit.model_dump()) for commit in history.commits if commit.is_default
+            ][:50],
+        )
 
     async def record(
         self,

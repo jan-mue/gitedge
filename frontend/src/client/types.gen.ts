@@ -28,6 +28,66 @@ export type ActivitiesPublic = {
 export type ActivityKind = 'star' | 'watch' | 'fork' | 'issue_open' | 'issue_close' | 'issue_reopen' | 'comment' | 'pull_request_open' | 'pull_request_merge' | 'pull_request_close' | 'pull_request_reopen' | 'release';
 
 /**
+ * ActivityOverview
+ *
+ * Pulse totals for the selected period.
+ */
+export type ActivityOverview = {
+    /**
+     * Active Prs
+     */
+    active_prs: number;
+    /**
+     * Active Issues
+     */
+    active_issues: number;
+    /**
+     * Merged Prs
+     */
+    merged_prs: number;
+    /**
+     * Proposed Prs
+     */
+    proposed_prs: number;
+    /**
+     * Closed Issues
+     */
+    closed_issues: number;
+    /**
+     * New Issues
+     */
+    new_issues: number;
+    /**
+     * Merge Authors
+     */
+    merge_authors: number;
+    /**
+     * Authors
+     */
+    authors: number;
+    /**
+     * Commits
+     */
+    commits: number;
+    /**
+     * Branch Commits
+     */
+    branch_commits: number;
+    /**
+     * Files Changed
+     */
+    files_changed: number;
+    /**
+     * Additions
+     */
+    additions: number;
+    /**
+     * Deletions
+     */
+    deletions: number;
+};
+
+/**
  * ActivityPublic
  *
  * Public activity representation.
@@ -63,6 +123,30 @@ export type ActivityPublic = {
      * Created At
      */
     created_at: string;
+};
+
+/**
+ * ActivitySeriesPoint
+ *
+ * A daily or weekly bucket of non-merge commits and line changes.
+ */
+export type ActivitySeriesPoint = {
+    /**
+     * Date
+     */
+    date: string;
+    /**
+     * Commits
+     */
+    commits: number;
+    /**
+     * Additions
+     */
+    additions: number;
+    /**
+     * Deletions
+     */
+    deletions: number;
 };
 
 /**
@@ -352,6 +436,34 @@ export type CompareResult = {
      * Deletions
      */
     deletions: number;
+};
+
+/**
+ * ContributorActivity
+ *
+ * An author's all-time contribution totals and weekly series.
+ */
+export type ContributorActivity = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Commits
+     */
+    commits: number;
+    /**
+     * Additions
+     */
+    additions: number;
+    /**
+     * Deletions
+     */
+    deletions: number;
+    /**
+     * Series
+     */
+    series: Array<ActivitySeriesPoint>;
 };
 
 /**
@@ -1093,6 +1205,47 @@ export type Repository = {
      * Updated At
      */
     updated_at: string;
+};
+
+/**
+ * RepositoryActivityStatistics
+ *
+ * Data for pulse, contributors, code frequency, and recent commits.
+ */
+export type RepositoryActivityStatistics = {
+    /**
+     * Start
+     */
+    start: string;
+    /**
+     * End
+     */
+    end: string;
+    /**
+     * Default Branch
+     */
+    default_branch: string;
+    overview: ActivityOverview;
+    /**
+     * Daily Commits
+     */
+    daily_commits: Array<ActivitySeriesPoint>;
+    /**
+     * Merged Prs
+     */
+    merged_prs: Array<ActivityPublic>;
+    /**
+     * Contributors
+     */
+    contributors: Array<ContributorActivity>;
+    /**
+     * Code Frequency
+     */
+    code_frequency: Array<ActivitySeriesPoint>;
+    /**
+     * Recent Commits
+     */
+    recent_commits: Array<CommitListItem>;
 };
 
 /**
@@ -2848,6 +3001,45 @@ export type releasesListTagsResponses = {
 };
 
 export type releasesListTagsResponse = releasesListTagsResponses[keyof releasesListTagsResponses];
+
+export type activityGetRepositoryActivityStatisticsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Days
+         */
+        days?: number;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/activity/statistics';
+};
+
+export type activityGetRepositoryActivityStatisticsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type activityGetRepositoryActivityStatisticsError = activityGetRepositoryActivityStatisticsErrors[keyof activityGetRepositoryActivityStatisticsErrors];
+
+export type activityGetRepositoryActivityStatisticsResponses = {
+    /**
+     * Successful Response
+     */
+    200: RepositoryActivityStatistics;
+};
+
+export type activityGetRepositoryActivityStatisticsResponse = activityGetRepositoryActivityStatisticsResponses[keyof activityGetRepositoryActivityStatisticsResponses];
 
 export type activityGetRepositoryActivityData = {
     body?: never;

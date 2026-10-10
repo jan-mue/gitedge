@@ -2,13 +2,28 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from typing import Annotated
 
-from app.api.dependencies import ActivityServiceDep, CurrentUser
+from fastapi import APIRouter, Query
+
+from app.api.dependencies import ActivityServiceDep, CurrentUser, RepositoryServiceDep
 from app.schemas.activity import ActivitiesPublic
+from app.schemas.repository_activity import RepositoryActivityStatistics
 
 router = APIRouter(prefix="/repositories", tags=["activity"])
 user_router = APIRouter(prefix="/users", tags=["activity"])
+
+
+@router.get("/{owner}/{repo}/activity/statistics")
+async def get_repository_activity_statistics(
+    owner: str,
+    repo: str,
+    activity_service: ActivityServiceDep,
+    repository_service: RepositoryServiceDep,
+    days: Annotated[int, Query(ge=1, le=31)] = 7,
+) -> RepositoryActivityStatistics:
+    """Get pulse, contributors, code frequency, and recent commit statistics."""
+    return await activity_service.repository_statistics(owner, repo, repository_service, days)
 
 
 @router.get("/{owner}/{repo}/activity")
