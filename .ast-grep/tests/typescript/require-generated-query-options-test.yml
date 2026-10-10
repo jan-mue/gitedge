@@ -1,0 +1,112 @@
+id: require-generated-query-options
+valid:
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    useQuery(usersReadUserMeOptions())
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    useQuery({ ...usersReadUserMeOptions(), enabled: isLoggedIn(), retry: false })
+  - |
+    import { usersReadUsersOptions } from "@/client/@tanstack/react-query.gen"
+    useSuspenseQuery(usersReadUsersOptions({ query: { skip: 0, limit: 100 } }))
+  - |
+    import { usersCreateUserMutation } from "@/client/@tanstack/react-query.gen"
+    useMutation({ ...usersCreateUserMutation(), onSuccess: () => navigate(), onError: handleError })
+  - |
+    import { repositoriesListCommitsInfiniteOptions } from "@/client/@tanstack/react-query.gen"
+    useInfiniteQuery({ ...repositoriesListCommitsInfiniteOptions({ path: { owner, repo } }), initialPageParam: 0 })
+  - |
+    import { starsStarRepositoryMutation, starsUnstarRepositoryMutation } from "@/client/@tanstack/react-query.gen"
+    useMutation({ ...(state?.is_starred ? starsUnstarRepositoryMutation() : starsStarRepositoryMutation()), onSuccess })
+  - |
+    import { useQuery as query } from "@tanstack/react-query"
+    import { usersReadUserMeOptions as currentUserOptions } from "@/client/@tanstack/react-query.gen"
+    query({ ...currentUserOptions(), enabled: true })
+  - |
+    import * as ReactQuery from "@tanstack/react-query"
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    ReactQuery.useQuery(usersReadUserMeOptions())
+  - |
+    import { usersReadUserMeOptions, usersReadUsersOptions } from "@/client/@tanstack/react-query.gen"
+    useQueries({ queries: [usersReadUserMeOptions(), { ...usersReadUsersOptions(), enabled: true }] })
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    const Profile = () => { useQuery(usersReadUserMeOptions()); return <div /> }
+  - |
+    import * as generated from "@/client/@tanstack/react-query.gen"
+    useQuery(generated.usersReadUserMeOptions())
+  - |
+    import { usersCreateUserMutation } from "@/client/@tanstack/react-query.gen"
+    useMutation({ ...usersCreateUserMutation(), onSuccess: () => ({ queryFn: loadUser }) })
+  - useQueryClient()
+  - useIsFetching()
+  - useIsMutating()
+invalid:
+  - 'useQuery({ queryKey: ["users"], queryFn: () => UsersService.readUsers() })'
+  - 'useSuspenseQuery({ queryKey: ["users"], queryFn: loadUsers })'
+  - 'useMutation({ mutationFn: (body) => UsersService.createUser({ body }) })'
+  - 'useInfiniteQuery({ queryKey: ["commits"], queryFn: loadCommits, initialPageParam: 0 })'
+  - 'useSuspenseInfiniteQuery({ queryKey: ["commits"], queryFn: loadCommits })'
+  - 'useQuery<UserPublic>({ queryKey: ["currentUser"], queryFn: loadUser })'
+  - useQuery(options)
+  - useMutation()
+  - |
+    import { useQuery as query } from "@tanstack/react-query"
+    query({ queryKey: ["users"], queryFn: loadUsers })
+  - |
+    import * as ReactQuery from "@tanstack/react-query"
+    ReactQuery.useMutation({ mutationFn: createUser })
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    useQuery({ ...usersReadUserMeOptions(), queryKey: ["currentUser"] })
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    useQuery({ ...usersReadUserMeOptions(), queryFn: loadUser })
+  - |
+    import { usersCreateUserMutation } from "@/client/@tanstack/react-query.gen"
+    useMutation({ ...usersCreateUserMutation(), mutationFn: createUser })
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    useQuery({ ...usersReadUserMeOptions(), "queryFn": loadUser })
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    useQuery({ ...usersReadUserMeOptions(), queryFn })
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    useQuery({ ...usersReadUserMeOptions(), queryFn() { return loadUser() } })
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    useQuery({ ...usersReadUserMeOptions(), ...customOptions })
+  - useQuery(customOptions())
+  - useQuery(usersReadUserMeOptions())
+  - |
+    import { usersReadUserMeOptions } from "./custom-options"
+    useQuery(usersReadUserMeOptions())
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    useQuery({ enabled: true, onSuccess: () => usersReadUserMeOptions() })
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    useQuery({ ...(enabled ? usersReadUserMeOptions() : customOptions()) })
+  - 'useQueries({ queries: [{ queryKey: ["users"], queryFn: loadUsers }] })'
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    useSuspenseQueries({ queries: [usersReadUserMeOptions(), { queryKey: ["users"], queryFn: loadUsers }] })
+  - |
+    import { useMutation as mutate } from "@tanstack/react-query"
+    mutate({ mutationFn: createUser })
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    useQuery({ queryFn: loadUser }, usersReadUserMeOptions())
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    useQuery({ ...usersReadUserMeOptions(), ["queryFn"]: loadUser })
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    useQuery({ queryKey: ["custom"], ...usersReadUserMeOptions() })
+  - |
+    import * as custom from "./custom-options"
+    useQuery(custom.usersReadUserMeOptions())
+  - |
+    import { usersReadUserMeOptions } from "@/client/@tanstack/react-query.gen"
+    const Profile = () => { useQuery({ queryKey: ["user"], queryFn: loadUser }); return <div /> }
