@@ -11,12 +11,19 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
+from redis_fastapi import get_async_redis
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.activity import ActivityStore, SQLActivityStore
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
-from app.clients.cache import AbstractCacheClient, build_cache_client
+from app.clients.cache import (
+    AbstractCacheClient,
+    NoopCacheClient,
+    RedisCacheClient,
+    VercelCacheClient,
+    cache_backend_kind,
+)
 from app.clients.comments import CommentStore, SQLCommentStore
 from app.clients.email import EmailClient, SMTPClient
 from app.clients.issues import IssueStore, SQLIssueStore
@@ -255,14 +262,21 @@ def get_redis_client() -> AbstractRedisClient:
 RedisClientDep = Annotated[AbstractRedisClient, Depends(get_redis_client)]
 
 
-@cache
-def get_cache_client() -> AbstractCacheClient:
-    """Get the shared cache client dependency.
+async def get_cache_client(request: Request) -> AbstractCacheClient:
+    """Get the cache client dependency for the configured backend.
+
+    Args:
+        request: The incoming request, exposing the Redis pool state.
 
     Returns:
         Cache client for the configured backend.
     """
-    return build_cache_client()
+    kind = cache_backend_kind()
+    if kind == "vercel":
+        return VercelCacheClient(settings.CACHE_NAMESPACE)
+    if kind == "redis":
+        return RedisCacheClient(await get_async_redis(request))
+    return NoopCacheClient()
 
 
 CacheClientDep = Annotated[AbstractCacheClient, Depends(get_cache_client)]
@@ -270,10 +284,6 @@ CacheClientDep = Annotated[AbstractCacheClient, Depends(get_cache_client)]
 
 def get_backend() -> BlobBackend:
     """Create a request-scoped Git backend instance.
-
-    The backend holds loaded repositories in memory, so it is created per
-    request: on serverless platforms a process-wide cache would not be shared
-    and could serve stale data. Persistent caching happens in the cache client.
 
     Returns:
         A new BlobBackend instance.

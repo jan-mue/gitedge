@@ -23,7 +23,6 @@ if TYPE_CHECKING:
 
 router = APIRouter(tags=["git"])
 
-# Git endpoints whose response must never be cached by a CDN.
 _NO_STORE_PATHS = frozenset({"/info/refs", "/HEAD", "/git-upload-pack", "/git-receive-pack"})
 
 
@@ -41,7 +40,6 @@ async def _git_cache_control(repository_service: RepositoryService, owner: str, 
     """
     if service_path in _NO_STORE_PATHS:
         return CACHE_CONTROL_NO_STORE
-    # Pack and loose object files are addressed by content, so they are immutable.
     headers = await repository_service.cache_headers(owner, name, immutable=service_path != "/objects/info/packs")
     return headers["Cache-Control"]
 

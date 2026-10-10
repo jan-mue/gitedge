@@ -40,6 +40,7 @@ dependencies = [
 dev = [
     "coverage==7.16.2",
     "deptry==0.25.1",
+    "httpx2==2.13.1",
     "inline-snapshot[black]==0.36.0",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",

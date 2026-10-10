@@ -13,13 +13,16 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Literal
 
-import redis.asyncio as aioredis
 from redis_fastapi import CacheBackend
 from vercel.cache import RuntimeCacheError
 from vercel.functions import AsyncRuntimeCache
 
 from app.config import settings
+
+if TYPE_CHECKING:
+    from redis_fastapi.deps import AsyncClient
 
 logger = logging.getLogger(__name__)
 
@@ -95,14 +98,12 @@ class NoopCacheClient(AbstractCacheClient):
 class RedisCacheClient(AbstractCacheClient):
     """Redis-backed cache using fastapi-redis-sdk."""
 
-    def __init__(self, url: str, password: str | None) -> None:
+    def __init__(self, redis: AsyncClient) -> None:
         """Initialize the Redis cache client.
 
         Args:
-            url: Redis connection URL.
-            password: Optional Redis password.
+            redis: Async Redis client backed by the shared connection pool.
         """
-        redis = aioredis.from_url(url, password=password, decode_responses=True)
         self._backend = CacheBackend(redis)
 
     async def get(self, key: str, *, group: str) -> str | None:
@@ -192,20 +193,22 @@ class VercelCacheClient(AbstractCacheClient):
             logger.warning("Vercel cache invalidate failed for %s: %s", group, e)
 
 
-def build_cache_client() -> AbstractCacheClient:
-    """Build the cache client for the configured backend.
-
-    ``CACHE_KIND="auto"`` uses the Vercel Runtime Cache when deployed and Redis
-    otherwise.
+def cache_backend_kind() -> Literal["none", "redis", "vercel"]:
+    """Resolve the configured cache backend, expanding ``"auto"``.
 
     Returns:
-        A cache client matching ``settings.CACHE_KIND``.
+        The effective cache backend.
     """
     kind = settings.CACHE_KIND
     if kind == "auto":
-        kind = "vercel" if settings.VERCEL_ENV != "development" else "redis"
-    if kind == "vercel":
-        return VercelCacheClient(settings.CACHE_NAMESPACE)
-    if kind == "redis":
-        return RedisCacheClient(settings.REDIS_URL, settings.REDIS_PASSWORD)
-    return NoopCacheClient()
+        return "vercel" if settings.VERCEL_ENV != "development" else "redis"
+    return kind
+
+
+def uses_redis_cache() -> bool:
+    """Check whether the cache is backed by Redis.
+
+    Returns:
+        True if the effective cache backend is Redis.
+    """
+    return cache_backend_kind() == "redis"

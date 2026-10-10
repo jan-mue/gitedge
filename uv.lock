@@ -884,6 +884,7 @@ dependencies = [
 dev = [
     { name = "coverage" },
     { name = "deptry" },
+    { name = "httpx2" },
     { name = "inline-snapshot", extra = ["black"] },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -927,6 +928,7 @@ requires-dist = [
 dev = [
     { name = "coverage", specifier = "==7.16.2" },
     { name = "deptry", specifier = "==0.25.1" },
+    { name = "httpx2", specifier = "==2.13.1" },
     { name = "inline-snapshot", extras = ["black"], specifier = "==0.36.0" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "pytest-asyncio", specifier = "==1.4.0" },
