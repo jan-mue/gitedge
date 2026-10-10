@@ -78,8 +78,6 @@ def _create_wsgi_environ(request: Request, body: bytes, path: str) -> dict[str, 
     if content_type:
         environ["CONTENT_TYPE"] = content_type
 
-    # ASGI has already removed HTTP transfer framing from the buffered body.
-    # Give WSGI its actual length and prevent Dulwich from dechunking it again.
     environ["CONTENT_LENGTH"] = str(len(body))
 
     for key, value in request.headers.items():
