@@ -1,3 +1,4 @@
+import { cp, mkdir, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import tailwindcss from "@tailwindcss/vite"
 import { tanstackRouter } from "@tanstack/router-plugin/vite"
@@ -41,6 +42,8 @@ function resolveApiUrl(): string {
   return ""
 }
 
+const apiUrl = resolveApiUrl()
+
 // https://vitejs.dev/config/
 export default defineConfig({
   build: {
@@ -53,7 +56,7 @@ export default defineConfig({
     },
   },
   define: {
-    "import.meta.env.VITE_API_URL": JSON.stringify(resolveApiUrl()),
+    "import.meta.env.VITE_API_URL": JSON.stringify(apiUrl),
   },
   plugins: [
     tanstackRouter({
@@ -62,6 +65,30 @@ export default defineConfig({
     }),
     react(),
     tailwindcss(),
+    {
+      name: "vercel-git-routing",
+      apply: "build",
+      async closeBundle() {
+        if (!apiUrl) return
+
+        // Vercel consumes this as final build output, including CDN-only Git routes.
+        const outputDir = path.resolve(import.meta.dirname, ".vercel/output")
+        await rm(outputDir, { recursive: true, force: true })
+        await mkdir(outputDir, { recursive: true })
+        await cp(path.resolve(import.meta.dirname, "dist"), path.join(outputDir, "static"), { recursive: true })
+        await writeFile(
+          path.join(outputDir, "config.json"),
+          JSON.stringify({
+            version: 3,
+            routes: [
+              { src: "/([^/]+/[^/]+\\.git)/(.*)", dest: `${apiUrl}/$1/$2` },
+              { handle: "filesystem" },
+              { src: "/(.*)", dest: "/index.html" },
+            ],
+          }),
+        )
+      },
+    },
   ],
   server: {
     proxy: {

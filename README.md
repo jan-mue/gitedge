@@ -270,9 +270,10 @@ and backend), each configured by its own `vercel.json`. The backend build runs
 deployments discover each other's URLs through Vercel's related projects, which
 also feeds the dynamic CORS allowlist described above.
 
-Git HTTP requests on the frontend domain are forwarded by `frontend/middleware.ts`
-to `VITE_API_URL` in production and the related backend deployment in previews.
-Redeploy the frontend after merging routing changes to activate them.
+The Vite build generates Vercel CDN routes that forward Git HTTP requests on the
+frontend domain to `VITE_API_URL` in production and the related backend deployment
+in previews. These routes run without middleware. Redeploy the frontend after
+merging routing changes to activate them.
 
 ## License
 
