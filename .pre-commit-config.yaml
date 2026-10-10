@@ -86,7 +86,18 @@ repos:
         name: ast-grep lint
         language: python
         entry: sg scan --color=never --update-all --report-style=short
-        types: [python]
+        types: [file]
+        files: '\.(py|ts|tsx)$|^\.ast-grep/|^sgconfig\.yml$'
+        pass_filenames: false
+        additional_dependencies:
+          - ast-grep-cli==0.45.3
+
+      - id: ast-grep-test
+        name: ast-grep rule tests
+        language: python
+        entry: sg test --color=never --skip-snapshot-tests
+        files: '^\.ast-grep/|^sgconfig\.yml$'
+        pass_filenames: false
         additional_dependencies:
           - ast-grep-cli==0.45.3
 

@@ -1,4 +1,3 @@
-import { AxiosError } from "axios"
 import { describe, expect, test } from "vitest"
 
 import { getInitials, handleError } from "./utils"
@@ -39,28 +38,20 @@ describe("getInitials", () => {
 })
 
 describe("handleError", () => {
-  function makeAxiosError(responseData: Record<string, unknown>): Error {
-    const err = new AxiosError()
-    Object.assign(err, { response: { data: responseData } })
-    return err as Error
-  }
-
-  test("calls callback with AxiosError message", () => {
+  test("calls callback with error message", () => {
     const messages: string[] = []
     const callback = (msg: string) => messages.push(msg)
-    const axiosError = new AxiosError("Network Error")
 
-    handleError.call(callback, axiosError)
+    handleError.call(callback, new Error("Network Error"))
 
     expect(messages).toEqual(["Network Error"])
   })
 
-  test("calls callback with detail string from response data", () => {
+  test("calls callback with detail string from the error body", () => {
     const messages: string[] = []
     const callback = (msg: string) => messages.push(msg)
-    const error = makeAxiosError({ detail: "User not found" })
 
-    handleError.call(callback, error)
+    handleError.call(callback, { detail: "User not found" })
 
     expect(messages).toEqual(["User not found"])
   })
@@ -68,57 +59,51 @@ describe("handleError", () => {
   test("calls callback with first validation error message from array", () => {
     const messages: string[] = []
     const callback = (msg: string) => messages.push(msg)
-    const error = makeAxiosError({
+    const error = {
       detail: [
         { msg: "Email is required", loc: ["body", "email"] },
         { msg: "Password too short", loc: ["body", "password"] },
       ],
-    })
+    }
 
     handleError.call(callback, error)
 
     expect(messages).toEqual(["Email is required"])
   })
 
-  test("calls callback with AxiosError message when no detail", () => {
+  test("calls callback with error message when there is no detail", () => {
     const messages: string[] = []
     const callback = (msg: string) => messages.push(msg)
-    const error = new AxiosError("Request failed")
 
-    handleError.call(callback, error)
+    handleError.call(callback, new Error("Request failed"))
 
     expect(messages).toEqual(["Request failed"])
   })
 
-  test("calls callback with default message for non-Axios error", () => {
+  test("calls callback with default message for a non-error value", () => {
     const messages: string[] = []
     const callback = (msg: string) => messages.push(msg)
-    const error = { body: {} } as unknown as Error
 
-    handleError.call(callback, error)
+    handleError.call(callback, { body: {} })
 
     expect(messages).toEqual(["Something went wrong."])
   })
 
-  test("calls callback with default message for empty error", () => {
+  test("calls callback with default message for an empty object", () => {
     const messages: string[] = []
     const callback = (msg: string) => messages.push(msg)
-    const error = {} as Error
 
-    handleError.call(callback, error)
+    handleError.call(callback, {})
 
     expect(messages).toEqual(["Something went wrong."])
   })
 
-  test("calls callback with AxiosError message when detail is empty array", () => {
+  test("calls callback with default message when detail is an empty array", () => {
     const messages: string[] = []
     const callback = (msg: string) => messages.push(msg)
-    const error = new AxiosError("Request failed")
-    Object.assign(error, { response: { data: { detail: [] } } })
 
-    handleError.call(callback, error)
+    handleError.call(callback, { detail: [] })
 
-    // Empty array falls back to the AxiosError message
-    expect(messages).toEqual(["Request failed"])
+    expect(messages).toEqual(["Something went wrong."])
   })
 })

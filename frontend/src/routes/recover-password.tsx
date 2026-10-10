@@ -4,7 +4,7 @@ import { createFileRoute, Link as RouterLink, redirect } from "@tanstack/react-r
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { LoginService } from "@/client"
+import { loginRecoverPasswordMutation } from "@/client/@tanstack/react-query.gen"
 import { AuthLayout } from "@/components/Common/AuthLayout"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -46,14 +46,8 @@ function RecoverPassword() {
   })
   const { showSuccessToast, showErrorToast } = useCustomToast()
 
-  const recoverPassword = async (data: FormData) => {
-    await LoginService.recoverPassword({
-      path: { email: data.email },
-    })
-  }
-
   const mutation = useMutation({
-    mutationFn: recoverPassword,
+    ...loginRecoverPasswordMutation(),
     onSuccess: () => {
       showSuccessToast("Password recovery email sent successfully")
       form.reset()
@@ -63,7 +57,7 @@ function RecoverPassword() {
 
   const onSubmit = async (data: FormData) => {
     if (mutation.isPending) return
-    mutation.mutate(data)
+    mutation.mutate({ path: { email: data.email } })
   }
 
   return (

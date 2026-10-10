@@ -5,7 +5,7 @@ export default defineConfig({
   output: "./src/client",
 
   plugins: [
-    { name: "@hey-api/client-axios", throwOnError: true },
+    { name: "@hey-api/client-fetch", throwOnError: true },
     { name: "@hey-api/typescript", case: "preserve" },
     {
       name: "@hey-api/sdk",
@@ -16,6 +16,12 @@ export default defineConfig({
         containerName: "{{name}}Service",
         methodName: (name: string): string => name.replace(/^[^-]*-/, ""),
       },
+    },
+    {
+      name: "@tanstack/react-query",
+      queryOptions: true,
+      queryKeys: true,
+      mutationOptions: true,
     },
   ],
 })

@@ -3,7 +3,7 @@ import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
 import { Check, GitBranch } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { RepositoriesService } from "@/client"
+import { repositoriesListBranchesOptions, repositoriesListCommitsOptions } from "@/client/@tanstack/react-query.gen"
 
 interface CommitsListProps {
   owner: string
@@ -14,21 +14,17 @@ interface CommitsListProps {
 const formatDate = (timestamp: number) => new Date(timestamp * 1000).toLocaleString()
 
 const CommitsList = ({ owner, repo, branch }: CommitsListProps) => {
-  const repoPath = `${owner}/${repo}.git`
   const ref = branch ?? "main"
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const { data: commitsData } = useQuery({
-    queryKey: ["commits", repoPath, ref],
-    queryFn: async () =>
-      (await RepositoriesService.listCommits({ path: { owner, repo }, query: { ref, limit: 50 } })).data,
+    ...repositoriesListCommitsOptions({ path: { owner, repo }, query: { ref, limit: 50 } }),
   })
 
   const { data: branches } = useQuery({
-    queryKey: ["branches", repoPath],
-    queryFn: async () => (await RepositoriesService.listBranches({ path: { owner, repo } })).data,
+    ...repositoriesListBranchesOptions({ path: { owner, repo } }),
     enabled: open,
   })
 

@@ -1,0 +1,119 @@
+id: require-generated-query-options
+language: tsx
+severity: error
+message: Use generated TanStack Query options or mutation helpers from @/client/@tanstack/react-query.gen.
+note: |
+  Import query options and mutation helpers from @/client/@tanstack/react-query.gen and pass them
+  directly to TanStack Query hooks, e.g. useQuery(usersReadUserMeOptions()), or spread them into
+  an options object, e.g. useMutation({ ...usersCreateUserMutation(), onSuccess }). You can add
+  options such as enabled, retry, and lifecycle callbacks, but must not override queryKey,
+  queryFn, or mutationFn or spread custom options. Generated keys keep cache reads, updates,
+  and invalidation consistent. For useQueries and useSuspenseQueries, every entry in the queries
+  array must use generated options.
+files:
+  - frontend/src/**/*.ts
+  - frontend/src/**/*.tsx
+ignores:
+  - frontend/src/client/**
+rule:
+  all:
+    - kind: call_expression
+    - has:
+        field: function
+        matches: query-hook
+    - not:
+        has:
+          field: arguments
+          has:
+            all:
+              - matches: generated-options
+              - not:
+                  follows:
+                    stopBy: end
+                    pattern: $PREVIOUS
+utils:
+  query-hook:
+    any:
+      - regex: '^(?:[\w$]+\.)?use(?:Query|SuspenseQuery|InfiniteQuery|SuspenseInfiniteQuery|Mutation|Queries|SuspenseQueries)$'
+      - all:
+          - kind: identifier
+          - pattern: $HOOK
+          - inside:
+              stopBy: end
+              kind: program
+              has:
+                kind: import_statement
+                all:
+                  - has:
+                      field: source
+                      regex: '^[''"]@tanstack/react-query[''"]$'
+                  - has:
+                      stopBy: end
+                      kind: import_specifier
+                      all:
+                        - has:
+                            field: name
+                            regex: '^use(?:Query|SuspenseQuery|InfiniteQuery|SuspenseInfiniteQuery|Mutation|Queries|SuspenseQueries)$'
+                        - has:
+                            field: alias
+                            pattern: $HOOK
+  generated-options:
+    any:
+      - matches: generated-call
+      - kind: parenthesized_expression
+        has:
+          matches: generated-options
+      - kind: ternary_expression
+        all:
+          - has:
+              field: consequence
+              matches: generated-options
+          - has:
+              field: alternative
+              matches: generated-options
+      - kind: object
+        all:
+          - has:
+              kind: spread_element
+              has:
+                matches: generated-options
+          - not:
+              has:
+                any:
+                  - kind: pair
+                    has:
+                      field: key
+                      regex: '^[''"]?(queryKey|queryFn|mutationFn)[''"]?$'
+                  - kind: method_definition
+                    has:
+                      field: name
+                      regex: '^(queryKey|queryFn|mutationFn)$'
+                  - kind: shorthand_property_identifier
+                    regex: '^(queryKey|queryFn|mutationFn)$'
+                  - kind: pair
+                    has:
+                      field: key
+                      kind: computed_property_name
+                  - kind: spread_element
+                    not:
+                      has:
+                        matches: generated-options
+      - kind: object
+        has:
+          kind: pair
+          all:
+            - has:
+                field: key
+                regex: '^queries$'
+            - has:
+                field: value
+                kind: array
+                all:
+                  - has:
+                      matches: generated-options
+                  - not:
+                      has:
+                        all:
+                          - pattern: $ELEMENT
+                          - not:
+                              matches: generated-options

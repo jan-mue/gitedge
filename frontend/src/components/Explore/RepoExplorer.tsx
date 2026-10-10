@@ -3,15 +3,14 @@ import { Link as RouterLink } from "@tanstack/react-router"
 import { GitBranch, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 
-import { RepositoriesService } from "@/client"
+import { repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
 import StarButton from "@/components/Repository/StarButton"
 
 const RepoExplorer = () => {
   const [query, setQuery] = useState("")
 
   const { data } = useQuery({
-    queryKey: ["repositories"],
-    queryFn: async () => (await RepositoriesService.listRepositories()).data,
+    ...repositoriesListRepositoriesOptions(),
   })
 
   const repositories = useMemo(() => {

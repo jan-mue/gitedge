@@ -13,7 +13,7 @@ const { getIssue, getPullRequest, getPullRequestFiles, listComments } = vi.hoist
   listComments: vi.fn(),
 }))
 
-vi.mock("@/client", () => ({
+vi.mock("@/client/sdk.gen", () => ({
   RepositoriesService: { getIssue, getPullRequest, getPullRequestFiles },
   CommentsService: { listComments },
 }))

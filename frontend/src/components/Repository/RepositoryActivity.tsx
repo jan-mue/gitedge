@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 
-import { ActivityService } from "@/client"
+import { activityGetRepositoryActivityOptions } from "@/client/@tanstack/react-query.gen"
 import ActivityList from "@/components/Repository/ActivityList"
 
 interface RepositoryActivityProps {
@@ -9,11 +9,8 @@ interface RepositoryActivityProps {
 }
 
 const RepositoryActivity = ({ owner, repo }: RepositoryActivityProps) => {
-  const repoPath = `${owner}/${repo}.git`
-
   const { data } = useQuery({
-    queryKey: ["activity", repoPath],
-    queryFn: async () => (await ActivityService.getRepositoryActivity({ path: { owner, repo } })).data,
+    ...activityGetRepositoryActivityOptions({ path: { owner, repo } }),
   })
 
   return <ActivityList activities={data?.data ?? []} emptyText="No activity in this repository yet." />

@@ -3,7 +3,12 @@ import { Link as RouterLink, useParams } from "@tanstack/react-router"
 import { ArrowLeft, CircleCheck, CircleDot } from "lucide-react"
 import { useState } from "react"
 
-import { type IssueState, RepositoriesService } from "@/client"
+import {
+  repositoriesGetIssueOptions,
+  repositoriesGetIssueQueryKey,
+  repositoriesListIssuesQueryKey,
+  repositoriesUpdateIssueMutation,
+} from "@/client/@tanstack/react-query.gen"
 import MarkdownContent from "@/components/Common/MarkdownContent"
 import CommentsSection from "@/components/Repository/CommentsSection"
 import { Badge } from "@/components/ui/badge"
@@ -14,7 +19,6 @@ import { handleError } from "@/utils"
 
 const IssueDetail = () => {
   const { owner, repo, number } = useParams({ from: "/_layout/$owner/$repo/issues/$number" })
-  const repoPath = `${owner}/${repo}.git`
   const issueNumber = Number(number)
   const queryClient = useQueryClient()
   const { user } = useAuth()
@@ -24,31 +28,22 @@ const IssueDetail = () => {
   const [editBody, setEditBody] = useState("")
 
   const { data: issue } = useQuery({
-    queryKey: ["issue", repoPath, issueNumber],
-    queryFn: async () => (await RepositoriesService.getIssue({ path: { owner, repo, number: issueNumber } })).data,
+    ...repositoriesGetIssueOptions({ path: { owner, repo, number: issueNumber } }),
   })
 
   const mutation = useMutation({
-    mutationFn: (state: IssueState) =>
-      RepositoriesService.updateIssue({
-        path: { owner, repo, number: issueNumber },
-        body: { state },
-      }),
+    ...repositoriesUpdateIssueMutation(),
     onSuccess: (response) => {
-      queryClient.setQueryData(["issue", repoPath, issueNumber], response.data)
-      queryClient.invalidateQueries({ queryKey: ["issues", repoPath] })
+      queryClient.setQueryData(repositoriesGetIssueQueryKey({ path: { owner, repo, number: issueNumber } }), response)
+      queryClient.invalidateQueries({ queryKey: repositoriesListIssuesQueryKey({ path: { owner, repo } }) })
     },
   })
 
   const editMutation = useMutation({
-    mutationFn: () =>
-      RepositoriesService.updateIssue({
-        path: { owner, repo, number: issueNumber },
-        body: { title: editTitle, body: editBody },
-      }),
+    ...repositoriesUpdateIssueMutation(),
     onSuccess: (response) => {
-      queryClient.setQueryData(["issue", repoPath, issueNumber], response.data)
-      queryClient.invalidateQueries({ queryKey: ["issues", repoPath] })
+      queryClient.setQueryData(repositoriesGetIssueQueryKey({ path: { owner, repo, number: issueNumber } }), response)
+      queryClient.invalidateQueries({ queryKey: repositoriesListIssuesQueryKey({ path: { owner, repo } }) })
       setEditing(false)
     },
     onError: handleError.bind(showErrorToast),
@@ -94,7 +89,12 @@ const IssueDetail = () => {
             <Button
               size="sm"
               disabled={!editTitle.trim() || editMutation.isPending}
-              onClick={() => editMutation.mutate()}
+              onClick={() =>
+                editMutation.mutate({
+                  path: { owner, repo, number: issueNumber },
+                  body: { title: editTitle, body: editBody },
+                })
+              }
               data-testid="edit-issue-submit"
             >
               Save
@@ -157,7 +157,9 @@ const IssueDetail = () => {
           variant={isOpen ? "outline" : "default"}
           size="sm"
           disabled={mutation.isPending}
-          onClick={() => mutation.mutate(isOpen ? "closed" : "open")}
+          onClick={() =>
+            mutation.mutate({ path: { owner, repo, number: issueNumber }, body: { state: isOpen ? "closed" : "open" } })
+          }
           data-testid="toggle-issue-state"
         >
           {isOpen ? "Close issue" : "Reopen issue"}

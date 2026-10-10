@@ -3,18 +3,11 @@ import { createFileRoute } from "@tanstack/react-router"
 import { GitBranch } from "lucide-react"
 import { Suspense } from "react"
 
-import { RepositoriesService } from "@/client"
+import { repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
 import { DataTable } from "@/components/Common/DataTable"
 import PendingItems from "@/components/Pending/PendingItems"
 import CreateRepository from "@/components/Repositories/CreateRepository"
 import { columns } from "@/components/Repositories/columns"
-
-function getRepositoriesQueryOptions() {
-  return {
-    queryFn: async () => (await RepositoriesService.listRepositories()).data,
-    queryKey: ["repositories"],
-  }
-}
 
 export const Route = createFileRoute("/_layout/repositories")({
   component: Repositories,
@@ -28,7 +21,7 @@ export const Route = createFileRoute("/_layout/repositories")({
 })
 
 function RepositoriesTableContent() {
-  const { data: repositories } = useSuspenseQuery(getRepositoriesQueryOptions())
+  const { data: repositories } = useSuspenseQuery(repositoriesListRepositoriesOptions())
 
   if (repositories.data.length === 0) {
     return (

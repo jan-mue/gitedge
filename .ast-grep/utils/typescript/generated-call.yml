@@ -1,0 +1,46 @@
+id: generated-call
+language: tsx
+rule:
+  all:
+    - kind: call_expression
+    - has:
+        field: function
+        any:
+          - kind: identifier
+            pattern: $HELPER
+            inside:
+              stopBy: end
+              kind: program
+              has:
+                kind: import_statement
+                all:
+                  - has:
+                      field: source
+                      regex: '^[''"]@/client/@tanstack/react-query\.gen[''"]$'
+                  - has:
+                      stopBy: end
+                      kind: import_specifier
+                      any:
+                        - all:
+                            - pattern: $HELPER
+                            - regex: '(Options|Mutation)$'
+                        - all:
+                            - has:
+                                field: name
+                                regex: '(Options|Mutation)$'
+                            - has:
+                                field: alias
+                                pattern: $HELPER
+          - kind: member_expression
+            all:
+              - has:
+                  field: object
+                  pattern: $NAMESPACE
+              - has:
+                  field: property
+                  regex: '(Options|Mutation)$'
+              - inside:
+                  stopBy: end
+                  kind: program
+                  has:
+                    pattern: import * as $NAMESPACE from "@/client/@tanstack/react-query.gen"

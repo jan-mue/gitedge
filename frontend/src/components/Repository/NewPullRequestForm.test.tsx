@@ -9,7 +9,7 @@ const listBranches = vi.hoisted(() => vi.fn())
 const createPullRequest = vi.hoisted(() => vi.fn())
 const navigate = vi.hoisted(() => vi.fn())
 
-vi.mock("@/client", () => ({
+vi.mock("@/client/sdk.gen", () => ({
   RepositoriesService: { listBranches, createPullRequest },
 }))
 
@@ -58,6 +58,7 @@ describe("NewPullRequestForm", () => {
     await user.click(screen.getByTestId("submit-pr-btn"))
 
     expect(createPullRequest).toHaveBeenCalledWith({
+      throwOnError: true,
       path: { owner: "owner", repo: "repo" },
       body: {
         title: "Title",

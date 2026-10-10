@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 
-import { WatchersService } from "@/client"
+import { watchersListWatchersOptions } from "@/client/@tanstack/react-query.gen"
 import PeopleList from "@/components/Repository/PeopleList"
 
 interface WatchersProps {
@@ -9,11 +9,8 @@ interface WatchersProps {
 }
 
 const Watchers = ({ owner, repo }: WatchersProps) => {
-  const repoPath = `${owner}/${repo}.git`
-
   const { data } = useQuery({
-    queryKey: ["watchers", repoPath],
-    queryFn: async () => (await WatchersService.listWatchers({ path: { owner, repo } })).data,
+    ...watchersListWatchersOptions({ path: { owner, repo } }),
   })
 
   return <PeopleList users={data?.data ?? []} emptyText="No watchers yet." />

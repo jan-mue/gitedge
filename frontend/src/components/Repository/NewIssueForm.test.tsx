@@ -8,7 +8,7 @@ import NewIssueForm from "./NewIssueForm"
 const createIssue = vi.hoisted(() => vi.fn())
 const navigate = vi.hoisted(() => vi.fn())
 
-vi.mock("@/client", () => ({
+vi.mock("@/client/sdk.gen", () => ({
   RepositoriesService: { createIssue },
 }))
 
@@ -48,6 +48,7 @@ describe("NewIssueForm", () => {
     expect(createIssue).toHaveBeenCalledWith({
       path: { owner: "owner", repo: "repo" },
       body: { title: "Title", body: "Body" },
+      throwOnError: true,
     })
     await vi.waitFor(() => expect(navigate).toHaveBeenCalled())
   })

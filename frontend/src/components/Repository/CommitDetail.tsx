@@ -3,7 +3,7 @@ import { Link as RouterLink, useParams } from "@tanstack/react-router"
 import { ArrowLeft, GitCommitHorizontal } from "lucide-react"
 
 import type { CommitFileChange } from "@/client"
-import { RepositoriesService } from "@/client"
+import { repositoriesGetCommitOptions } from "@/client/@tanstack/react-query.gen"
 
 const changeBadge: Record<string, string> = {
   add: "bg-success/15 text-success",
@@ -69,11 +69,9 @@ const FileDiff = ({ file }: { file: CommitFileChange }) => (
 
 const CommitDetail = () => {
   const { owner, repo, hash } = useParams({ from: "/_layout/$owner/$repo/commit/$hash" })
-  const repoPath = `${owner}/${repo}.git`
 
   const { data: commit } = useQuery({
-    queryKey: ["commit", repoPath, hash],
-    queryFn: async () => (await RepositoriesService.getCommit({ path: { owner, repo, sha: hash } })).data,
+    ...repositoriesGetCommitOptions({ path: { owner, repo, sha: hash } }),
   })
 
   if (!commit) {

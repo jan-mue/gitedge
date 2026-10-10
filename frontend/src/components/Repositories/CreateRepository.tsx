@@ -5,7 +5,10 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { RepositoriesService } from "@/client"
+import {
+  repositoriesCreateRepositoryMutation,
+  repositoriesListRepositoriesQueryKey,
+} from "@/client/@tanstack/react-query.gen"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -56,10 +59,7 @@ const CreateRepository = () => {
   })
 
   const mutation = useMutation({
-    mutationFn: (data: FormData) =>
-      RepositoriesService.createRepository({
-        body: { owner: data.owner, name: data.name },
-      }),
+    ...repositoriesCreateRepositoryMutation(),
     onSuccess: () => {
       showSuccessToast("Repository created successfully")
       form.reset()
@@ -67,12 +67,12 @@ const CreateRepository = () => {
     },
     onError: handleError.bind(showErrorToast),
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["repositories"] })
+      queryClient.invalidateQueries({ queryKey: repositoriesListRepositoriesQueryKey() })
     },
   })
 
   const onSubmit = (data: FormData) => {
-    mutation.mutate(data)
+    mutation.mutate({ body: data })
   }
 
   return (

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Link as RouterLink } from "@tanstack/react-router"
 import { CircleDot, MessageSquare, Search } from "lucide-react"
 
-import { RepositoriesService } from "@/client"
+import { repositoriesListIssuesOptions } from "@/client/@tanstack/react-query.gen"
 
 interface IssuesListProps {
   owner: string
@@ -10,11 +10,8 @@ interface IssuesListProps {
 }
 
 const IssuesList = ({ owner, repo }: IssuesListProps) => {
-  const repoPath = `${owner}/${repo}.git`
-
   const { data: issuesData } = useQuery({
-    queryKey: ["issues", repoPath],
-    queryFn: async () => (await RepositoriesService.listIssues({ path: { owner, repo } })).data,
+    ...repositoriesListIssuesOptions({ path: { owner, repo } }),
   })
 
   const issues = issuesData?.data ?? []

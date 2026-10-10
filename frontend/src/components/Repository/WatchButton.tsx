@@ -2,7 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link as RouterLink } from "@tanstack/react-router"
 import { Eye, EyeOff } from "lucide-react"
 
-import { WatchersService } from "@/client"
+import {
+  watchersGetWatchStateOptions,
+  watchersGetWatchStateQueryKey,
+  watchersListWatchersQueryKey,
+  watchersUnwatchRepositoryMutation,
+  watchersWatchRepositoryMutation,
+} from "@/client/@tanstack/react-query.gen"
 
 interface WatchButtonProps {
   owner: string
@@ -10,20 +16,18 @@ interface WatchButtonProps {
 }
 
 const WatchButton = ({ owner, repo }: WatchButtonProps) => {
-  const repoPath = `${owner}/${repo}.git`
   const queryClient = useQueryClient()
 
   const { data: state } = useQuery({
-    queryKey: ["watch", repoPath],
-    queryFn: async () => (await WatchersService.getWatchState({ path: { owner, repo } })).data,
+    ...watchersGetWatchStateOptions({ path: { owner, repo } }),
   })
 
   const mutation = useMutation({
-    mutationFn: async () =>
-      state?.is_watching
-        ? (await WatchersService.unwatchRepository({ path: { owner, repo } })).data
-        : (await WatchersService.watchRepository({ path: { owner, repo } })).data,
-    onSuccess: (next) => queryClient.setQueryData(["watch", repoPath], next),
+    ...(state?.is_watching ? watchersUnwatchRepositoryMutation() : watchersWatchRepositoryMutation()),
+    onSuccess: (next) => {
+      queryClient.setQueryData(watchersGetWatchStateQueryKey({ path: { owner, repo } }), next)
+      queryClient.invalidateQueries({ queryKey: watchersListWatchersQueryKey({ path: { owner, repo } }) })
+    },
   })
 
   const isWatching = state?.is_watching ?? false
@@ -34,7 +38,7 @@ const WatchButton = ({ owner, repo }: WatchButtonProps) => {
     <div className="flex items-stretch" data-testid="watch-button">
       <button
         type="button"
-        onClick={() => mutation.mutate()}
+        onClick={() => mutation.mutate({ path: { owner, repo } })}
         disabled={mutation.isPending}
         className="flex items-center gap-1.5 rounded-l border border-r-0 border-border bg-secondary px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent disabled:opacity-50"
       >
