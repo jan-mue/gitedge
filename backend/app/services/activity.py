@@ -55,7 +55,11 @@ class ActivityService:
         start = end - timedelta(days=days)
         history = await repository_service.activity_history(owner, name)
         events = await self.activity_store.list_in_period(repository.id, start, end)
-        merged = [event for event in events if event.kind == ActivityKind.PULL_REQUEST_MERGE]
+        merged_by_number: dict[int, Activity] = {}
+        for event in events:
+            if event.kind == ActivityKind.PULL_REQUEST_MERGE and event.target_number is not None:
+                merged_by_number.setdefault(event.target_number, event)
+        merged = list(merged_by_number.values())
         proposed = [event for event in events if event.kind == ActivityKind.PULL_REQUEST_OPEN]
         closed = [event for event in events if event.kind == ActivityKind.ISSUE_CLOSE]
         opened = [event for event in events if event.kind == ActivityKind.ISSUE_OPEN]
@@ -92,7 +96,7 @@ class ActivityService:
             overview=ActivityOverview(
                 active_prs=len(active_prs),
                 active_issues=len(active_issues),
-                merged_prs=len({event.target_number for event in merged}),
+                merged_prs=len(merged),
                 proposed_prs=len({event.target_number for event in proposed}),
                 closed_issues=len({event.target_number for event in closed}),
                 new_issues=len({event.target_number for event in opened}),

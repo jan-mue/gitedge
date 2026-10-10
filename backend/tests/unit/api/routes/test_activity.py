@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
+import pytest
+
 from app.config import settings
 from app.entities.activity import Activity, ActivityKind, ActivityTargetType
 from app.schemas.repository_activity import GitActivityCommit, GitActivityHistory
@@ -109,6 +111,17 @@ def test_activity_statistics_period_and_complete_event_totals(
                 is_merge=False,
                 files=["other.txt"],
             ),
+            GitActivityCommit(
+                sha="c" * 40,
+                message="Historical change",
+                author="Author",
+                author_email="author@example.com",
+                timestamp=int((now - timedelta(days=120)).timestamp()),
+                is_default=True,
+                is_merge=False,
+                additions=5,
+                files=["historical.txt"],
+            ),
         ],
     )
     mocker.patch("app.services.repositories.RepositoryService.activity_history", return_value=history)
@@ -129,12 +142,82 @@ def test_activity_statistics_period_and_complete_event_totals(
     assert day["overview"]["closed_issues"] == 0
     assert day["overview"]["branch_commits"] == 1
     assert day["contributors"] == payload["contributors"]
+    half_year = client.get(f"{ACTIVITY_URL}/statistics?days=180").json()
+    assert half_year["overview"]["commits"] == 2
+    assert half_year["overview"]["branch_commits"] == 3
+    assert half_year["overview"]["additions"] == 8
+    assert half_year["overview"]["files_changed"] == 2
+    assert sum(point["commits"] for point in half_year["daily_commits"]) == 2
 
 
 def test_activity_statistics_missing_repository_and_invalid_period(client: TestClient) -> None:
     assert client.get(f"{settings.API_V1_STR}/repositories/missing/repo/activity/statistics").status_code == 404
     assert client.get(f"{ACTIVITY_URL}/statistics?days=0").status_code == 422
-    assert client.get(f"{ACTIVITY_URL}/statistics?days=32").status_code == 422
+    assert client.get(f"{ACTIVITY_URL}/statistics?days=366").status_code == 422
+
+
+def test_activity_statistics_unique_merges_before_display_limit(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    fake_stores: FakeStores,
+    mocker: MockerFixture,
+) -> None:
+    client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Create repository"})
+    seed = next(iter(fake_stores.activity.items.values()))
+    now = datetime.now(UTC)
+    for number in range(1, 13):
+        fake_stores.activity.persist(
+            Activity(
+                actor_id=seed.actor_id,
+                repo_id=seed.repo_id,
+                kind=ActivityKind.PULL_REQUEST_MERGE,
+                target_type=ActivityTargetType.PULL_REQUEST,
+                target_number=number,
+                title=f"Pull request {number}",
+                created_at=now - timedelta(hours=number),
+            )
+        )
+    for minutes in [1, 2]:
+        fake_stores.activity.persist(
+            Activity(
+                actor_id=seed.actor_id,
+                repo_id=seed.repo_id,
+                kind=ActivityKind.PULL_REQUEST_MERGE,
+                target_type=ActivityTargetType.PULL_REQUEST,
+                target_number=1,
+                title=f"Updated title {minutes}",
+                created_at=now - timedelta(minutes=minutes),
+            )
+        )
+    mocker.patch(
+        "app.services.repositories.RepositoryService.activity_history",
+        return_value=GitActivityHistory(default_branch="main", commits=[]),
+    )
+    payload = client.get(f"{ACTIVITY_URL}/statistics").json()
+    assert payload["overview"]["merged_prs"] == 12
+    assert payload["overview"]["merge_authors"] == 1
+    assert [event["target_number"] for event in payload["merged_prs"]] == list(range(1, 11))
+    assert payload["merged_prs"][0]["title"] == "Updated title 1"
+
+
+@pytest.mark.parametrize("days", [1, 3, 7, 30, 90, 180, 365])
+def test_activity_statistics_supported_periods(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    mocker: MockerFixture,
+    days: int,
+) -> None:
+    client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Recent issue"})
+    mocker.patch(
+        "app.services.repositories.RepositoryService.activity_history",
+        return_value=GitActivityHistory(default_branch="main", commits=[]),
+    )
+    response = client.get(f"{ACTIVITY_URL}/statistics?days={days}")
+    assert response.status_code == 200
+    payload = response.json()
+    assert datetime.fromisoformat(payload["end"]) - datetime.fromisoformat(payload["start"]) == timedelta(days=days)
+    assert len(payload["daily_commits"]) == days + 1
+    assert payload["overview"]["new_issues"] == 1
 
 
 def test_empty_repository_activity_statistics(client: TestClient, superuser_token_headers: dict[str, str]) -> None:

@@ -79,6 +79,15 @@ describe("RepositoryActivity", () => {
     expect(await screen.findByText("Overview")).toBeInTheDocument()
     expect(screen.getByText("Improve activity")).toHaveAttribute("href", "/owner/repo/pulls/17")
     expect(screen.getByText("120 additions")).toBeInTheDocument()
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "1 day",
+      "3 days",
+      "1 week",
+      "1 month",
+      "3 months",
+      "6 months",
+      "1 year",
+    ])
     getStatistics.mockResolvedValue({ data: { ...statistics, overview: { ...statistics.overview, additions: 25 } } })
     await user.selectOptions(screen.getByLabelText("Activity period"), "1")
     await waitFor(() =>
@@ -87,6 +96,10 @@ describe("RepositoryActivity", () => {
       ),
     )
     expect(await screen.findByText("25 additions")).toBeInTheDocument()
+    for (const days of [90, 180, 365]) {
+      await user.selectOptions(screen.getByLabelText("Activity period"), String(days))
+      await waitFor(() => expect(getStatistics).toHaveBeenLastCalledWith(expect.objectContaining({ query: { days } })))
+    }
   })
 
   test("switches views, ranks by selected metric, and links to real commit routes", async () => {

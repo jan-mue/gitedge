@@ -501,8 +501,18 @@ class TestActivityAndFeed:
         page.goto(f"{app_url}/admin/activityrepo/activity")
         expect(page.get_by_role("combobox", name="Activity period")).to_be_visible(timeout=15000)
         expect(page.get_by_role("main")).to_contain_text("4 additions and 0 deletions")
-        page.get_by_role("combobox", name="Activity period").select_option("1")
-        expect(page.get_by_role("main")).to_contain_text("4 additions and 0 deletions")
+        period = page.get_by_role("combobox", name="Activity period")
+        expect(period.locator("option")).to_have_text(
+            ["1 day", "3 days", "1 week", "1 month", "3 months", "6 months", "1 year"]
+        )
+        for days in [1, 3, 30, 90, 180, 365]:
+            with page.expect_response(
+                lambda response, days=days: response.url.endswith(f"/activity/statistics?days={days}")
+            ) as statistics:
+                period.select_option(str(days))
+            assert statistics.value.status == 200
+            assert len(statistics.value.json()["daily_commits"]) == days + 1
+            expect(page.get_by_role("main")).to_contain_text("4 additions and 0 deletions")
 
         page.get_by_role("button", name="Contributors", exact=True).click()
         contributor = page.get_by_test_id("activity-contributor")

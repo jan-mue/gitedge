@@ -20,7 +20,7 @@ async def get_repository_activity_statistics(
     repo: str,
     activity_service: ActivityServiceDep,
     repository_service: RepositoryServiceDep,
-    days: Annotated[int, Query(ge=1, le=31)] = 7,
+    days: Annotated[int, Query(ge=1, le=365)] = 7,
 ) -> RepositoryActivityStatistics:
     """Get pulse, contributors, code frequency, and recent commit statistics."""
     return await activity_service.repository_statistics(owner, repo, repository_service, days)
