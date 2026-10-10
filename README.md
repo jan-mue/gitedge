@@ -115,7 +115,8 @@ or `development`. The backend switches on it:
 
 #### Related Projects and `VERCEL_RELATED_PROJECTS`
 
-Each project declares its related projects in its `vercel.json`:
+Each project declares its related projects in its Vercel configuration
+(`frontend/vercel.ts` or `backend/vercel.json`):
 
 ```json
 {
@@ -265,10 +266,17 @@ bun run email:export
 ## Deployment
 
 GitEdge is deployed on [Vercel](https://vercel.com/) as two projects (frontend
-and backend), each configured by its own `vercel.json`. The backend build runs
-`backend/scripts/prestart.sh` to apply migrations and seed initial data. Preview
+and backend), configured by `frontend/vercel.ts` and `backend/vercel.json`. The
+backend build runs `backend/scripts/prestart.sh` to apply migrations and seed initial data. Preview
 deployments discover each other's URLs through Vercel's related projects, which
 also feeds the dynamic CORS allowlist described above.
+
+The frontend rewrites `/<owner>/<repo>.git/*` to the backend before serving the
+SPA fallback, so clone, fetch, and push use the frontend's public domain. These
+rewrites use the same backend URL as the API client: `VITE_API_URL` in production
+and the related backend deployment in previews. Set `VITE_API_URL` on the frontend
+project to the backend's production origin. Redeploy the frontend after changing
+its routing configuration or production backend URL.
 
 ## License
 
