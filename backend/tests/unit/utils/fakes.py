@@ -650,6 +650,8 @@ class FakeStores:
     releases: FakeReleaseStore
     activity: FakeActivityStore
     cache: FakeCacheClient
+    blob: FakeBlobStorageClient
+    redis: FakeRedisClient
 
 
 @lru_cache(maxsize=1)
@@ -697,4 +699,6 @@ def build_fake_stores() -> FakeStores:
         releases=releases,
         activity=FakeActivityStore(users, repository),
         cache=FakeCacheClient(),
+        blob=FakeBlobStorageClient(),
+        redis=FakeRedisClient(),
     )

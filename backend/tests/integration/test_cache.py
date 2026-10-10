@@ -57,10 +57,10 @@ def test_private_repository_is_not_cached(app_url: str) -> None:
 
 def test_push_invalidates_cached_reads(app_url: str) -> None:
     _push_repo(app_url, "admin/invalid.git")
-    first, _ = _get(f"{app_url}/api/v1/repositories/admin/invalid/commits")
-    first_sha = first["data"][0]["sha"]
+    first, _ = _get(f"{app_url}/api/v1/repositories/admin/invalid/tags")
+    assert first["count"] == 0
 
-    _push_repo(app_url, "admin/invalid.git")
-    second, _ = _get(f"{app_url}/api/v1/repositories/admin/invalid/commits")
+    _push_repo(app_url, "admin/invalid.git", tag="v1.0.0")
+    second, _ = _get(f"{app_url}/api/v1/repositories/admin/invalid/tags")
 
-    assert second["data"][0]["sha"] != first_sha
+    assert second["count"] == 1
