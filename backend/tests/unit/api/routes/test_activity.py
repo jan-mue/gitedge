@@ -148,6 +148,8 @@ def test_activity_statistics_period_and_complete_event_totals(
     assert half_year["overview"]["additions"] == 8
     assert half_year["overview"]["files_changed"] == 2
     assert sum(point["commits"] for point in half_year["daily_commits"]) == 2
+    assert half_year["recent_commits"] == payload["recent_commits"]
+    assert sum(point["commits"] for point in payload["recent_commits"]) == 2
 
 
 def test_activity_statistics_missing_repository_and_invalid_period(client: TestClient) -> None:
@@ -231,7 +233,8 @@ def test_empty_repository_activity_statistics(client: TestClient, superuser_toke
     payload = response.json()
     assert payload["overview"]["commits"] == 0
     assert payload["contributors"] == []
-    assert payload["recent_commits"] == []
+    assert len(payload["recent_commits"]) >= 53
+    assert all(point["commits"] == 0 for point in payload["recent_commits"])
 
 
 def test_profile_by_username(

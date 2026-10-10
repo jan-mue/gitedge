@@ -83,6 +83,21 @@ def _week(timestamp: int) -> date:
     return day - timedelta(days=day.weekday())
 
 
+def aggregate_recent_commits(history: GitActivityHistory, end: datetime) -> list[ActivitySeriesPoint]:
+    """Count default-branch commits, including merges, by week over the past year."""
+    start = end - timedelta(days=365)
+    first = _week(int(start.timestamp()))
+    last = _week(int(end.timestamp()))
+    weeks = {
+        first + timedelta(weeks=index): ActivitySeriesPoint(date=first + timedelta(weeks=index))
+        for index in range((last - first).days // 7 + 1)
+    }
+    for commit in history.commits:
+        if commit.is_default and start.timestamp() <= commit.timestamp <= end.timestamp():
+            weeks[_week(commit.timestamp)].commits += 1
+    return list(weeks.values())
+
+
 def aggregate_contributors(history: GitActivityHistory) -> tuple[list[ContributorActivity], list[ActivitySeriesPoint]]:
     """Aggregate default-branch non-merge commits into zero-filled weekly series."""
     commits = [commit for commit in history.commits if commit.is_default and not commit.is_merge]

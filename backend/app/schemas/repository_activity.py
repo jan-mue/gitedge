@@ -80,4 +80,4 @@ class RepositoryActivityStatistics(GitEdgeBaseModel):
     merged_prs: list[ActivityPublic]
     contributors: list[ContributorActivity]
     code_frequency: list[ActivitySeriesPoint]
-    recent_commits: list[CommitListItem]
+    recent_commits: list[ActivitySeriesPoint]

@@ -1,7 +1,7 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from app.schemas.repository_activity import GitActivityCommit, GitActivityHistory
-from app.services.repository_activity import aggregate_contributors
+from app.services.repository_activity import aggregate_contributors, aggregate_recent_commits
 
 
 def test_contributors_group_email_fill_empty_weeks_and_exclude_merges() -> None:
@@ -39,3 +39,39 @@ def test_contributors_group_email_fill_empty_weeks_and_exclude_merges() -> None:
 
 def test_empty_git_activity() -> None:
     assert aggregate_contributors(GitActivityHistory(default_branch="main")) == ([], [])
+
+
+def test_recent_commits_cover_past_year_with_merges_and_empty_weeks() -> None:
+    end = datetime(2026, 10, 10, 12, tzinfo=UTC)
+    start = end - timedelta(days=365)
+
+    def commit(sha: str, timestamp: datetime, *, is_default: bool = True, is_merge: bool = False) -> GitActivityCommit:
+        return GitActivityCommit(
+            sha=sha,
+            message="Change",
+            author="Author",
+            author_email="author@example.com",
+            timestamp=int(timestamp.timestamp()),
+            is_default=is_default,
+            is_merge=is_merge,
+        )
+
+    history = GitActivityHistory(
+        default_branch="main",
+        commits=[
+            commit("start", start),
+            commit("old", start - timedelta(seconds=1)),
+            commit("end", end),
+            commit("merge", end - timedelta(hours=1), is_merge=True),
+            commit("branch", end, is_default=False),
+            commit("future", end + timedelta(seconds=1)),
+        ],
+    )
+    series = aggregate_recent_commits(history, end)
+    assert len(series) == 53
+    assert series[0].date == date(2025, 10, 6)
+    assert series[-1].date == date(2026, 10, 5)
+    assert series[0].commits == 1
+    assert series[-1].commits == 2
+    assert all(point.commits == 0 for point in series[1:-1])
+    assert all(point.commits == 0 for point in aggregate_recent_commits(GitActivityHistory(default_branch="main"), end))

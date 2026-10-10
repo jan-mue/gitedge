@@ -1245,7 +1245,7 @@ export type RepositoryActivityStatistics = {
     /**
      * Recent Commits
      */
-    recent_commits: Array<CommitListItem>;
+    recent_commits: Array<ActivitySeriesPoint>;
 };
 
 /**

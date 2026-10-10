@@ -90,9 +90,7 @@ const RepositoryActivity = ({ owner, repo }: RepositoryActivityProps) => {
                 </div>
               </div>
             )}
-            {view === "recent-commits" && (
-              <ActivityRecentCommits commits={data.recent_commits} owner={owner} repo={repo} />
-            )}
+            {view === "recent-commits" && <ActivityRecentCommits series={data.recent_commits} />}
           </>
         )}
       </div>

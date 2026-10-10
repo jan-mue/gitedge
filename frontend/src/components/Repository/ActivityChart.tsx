@@ -28,7 +28,7 @@ interface ActivityChartProps {
 
 const formatTick = (value: string, daily: boolean) =>
   new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
-    ...(daily ? { weekday: "short" } : { month: "short", year: "2-digit" }),
+    ...(daily ? { weekday: "short" } : { month: "short", year: "numeric" }),
     timeZone: "UTC",
   })
 
@@ -108,15 +108,25 @@ const ActivityChart = ({
       }
     >
       <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-        <Chart data={visible} margin={{ top: 5, right: 16, bottom: 0, left: 0 }} accessibilityLayer>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+        <Chart
+          data={visible}
+          stackOffset={variant === "frequency" ? "sign" : "none"}
+          margin={{ top: 5, right: 16, bottom: 0, left: 0 }}
+          accessibilityLayer
+        >
+          <CartesianGrid vertical={false} stroke="var(--border)" />
           <XAxis
             dataKey="date"
             tickFormatter={(value: string) => formatTick(value, daily)}
             tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-            minTickGap={20}
+            minTickGap={daily ? 20 : 40}
           />
-          <YAxis width={60} allowDecimals={false} tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} />
+          <YAxis
+            width={60}
+            allowDecimals={false}
+            domain={variant === "frequency" ? ["dataMin", "dataMax"] : [0, "auto"]}
+            tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+          />
           <Tooltip
             contentStyle={{
               background: "var(--popover)",
@@ -136,7 +146,7 @@ const ActivityChart = ({
               <Bar dataKey="deletions" fill="var(--destructive)" stackId="changes" />
             </>
           ) : (
-            <Bar dataKey={metric} fill="var(--primary)" />
+            <Bar dataKey={metric} name={metric === "commits" ? "Commits" : metric} fill="var(--primary)" />
           )}
         </Chart>
       </ResponsiveContainer>

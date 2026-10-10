@@ -57,15 +57,7 @@ const statistics: RepositoryActivityStatistics = {
     { name: "Bob", commits: 2, additions: 100, deletions: 30, series: [] },
   ],
   code_frequency: [{ date: "2026-10-05", commits: 6, additions: 120, deletions: 40 }],
-  recent_commits: [
-    {
-      sha: "a".repeat(40),
-      author: "Alice",
-      author_email: "alice@example.com",
-      message: "Implement activity\n\nDetails",
-      timestamp: 1791630000,
-    },
-  ],
+  recent_commits: [{ date: "2026-10-05", commits: 8, additions: 0, deletions: 0 }],
 }
 
 describe("RepositoryActivity", () => {
@@ -102,7 +94,7 @@ describe("RepositoryActivity", () => {
     }
   })
 
-  test("switches views, ranks by selected metric, and links to real commit routes", async () => {
+  test("switches views, ranks by selected metric, and shows the past-year commit chart", async () => {
     const { user } = render(<RepositoryActivity owner="owner" repo="repo" />)
     await screen.findByText("Overview")
     await user.click(screen.getByRole("button", { name: "Contributors" }))
@@ -113,7 +105,8 @@ describe("RepositoryActivity", () => {
     await user.click(screen.getByRole("button", { name: "Code frequency" }))
     expect(screen.getByLabelText("Weekly additions and deletions")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Recent commits" }))
-    expect(screen.getByText("Implement activity")).toHaveAttribute("href", `/owner/repo/commit/${"a".repeat(40)}`)
+    expect(screen.getByText("Number of commits in the past year")).toBeInTheDocument()
+    expect(screen.getByLabelText("Weekly commits in the past year")).toHaveAttribute("data-metric", "commits")
     expect(screen.getByRole("button", { name: "Recent commits" })).toHaveAttribute("aria-pressed", "true")
     expect(getStatistics).toHaveBeenCalledTimes(1)
   })
@@ -138,6 +131,6 @@ describe("RepositoryActivity", () => {
     await user.click(screen.getByRole("button", { name: "Code frequency" }))
     expect(screen.getByText("No code changes yet.")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Recent commits" }))
-    expect(screen.getByText("No commits yet.")).toBeInTheDocument()
+    expect(screen.getByLabelText("Weekly commits in the past year")).toBeInTheDocument()
   })
 })

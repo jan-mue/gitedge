@@ -9,9 +9,8 @@ from fastapi import HTTPException
 
 from app.entities.activity import Activity, ActivityKind, ActivityTargetType
 from app.schemas.activity import ActivitiesPublic, ActivityPublic
-from app.schemas.repositories import CommitListItem
 from app.schemas.repository_activity import ActivityOverview, ActivitySeriesPoint, RepositoryActivityStatistics
-from app.services.repository_activity import aggregate_contributors
+from app.services.repository_activity import aggregate_contributors, aggregate_recent_commits
 
 if TYPE_CHECKING:
     import uuid
@@ -112,9 +111,7 @@ class ActivityService:
             merged_prs=self._to_public_list(merged[:10]),
             contributors=contributors,
             code_frequency=frequency,
-            recent_commits=[
-                CommitListItem.model_validate(commit.model_dump()) for commit in history.commits if commit.is_default
-            ][:50],
+            recent_commits=aggregate_recent_commits(history, end),
         )
 
     async def record(
