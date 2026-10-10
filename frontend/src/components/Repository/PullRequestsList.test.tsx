@@ -6,7 +6,7 @@ import PullRequestsList from "./PullRequestsList"
 
 const listPullRequests = vi.hoisted(() => vi.fn())
 
-vi.mock("@/client", () => ({
+vi.mock("@/client/sdk.gen", () => ({
   RepositoriesService: { listPullRequests },
 }))
 

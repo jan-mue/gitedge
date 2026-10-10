@@ -4,7 +4,11 @@ import { GitBranch } from "lucide-react"
 import { useState } from "react"
 
 import type { Repository } from "@/client"
-import { ProfilesService } from "@/client"
+import {
+  profilesListUserRepositoriesOptions,
+  profilesListUserStarredRepositoriesOptions,
+  profilesReadUserByUsernameOptions,
+} from "@/client/@tanstack/react-query.gen"
 import StarButton from "@/components/Repository/StarButton"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -35,20 +39,17 @@ const UserProfile = ({ username }: UserProfileProps) => {
   const [tab, setTab] = useState<"repositories" | "starred">("repositories")
 
   const { data: user } = useQuery({
-    queryKey: ["profile", username],
-    queryFn: async () => (await ProfilesService.readUserByUsername({ path: { username } })).data,
+    ...profilesReadUserByUsernameOptions({ path: { username } }),
   })
 
   const isUser = user?.principal_type === "user"
 
   const { data: repos } = useQuery({
-    queryKey: ["profile", username, "repositories"],
-    queryFn: async () => (await ProfilesService.listUserRepositories({ path: { username } })).data,
+    ...profilesListUserRepositoriesOptions({ path: { username } }),
   })
 
   const { data: starred } = useQuery({
-    queryKey: ["profile", username, "starred"],
-    queryFn: async () => (await ProfilesService.listUserStarredRepositories({ path: { username } })).data,
+    ...profilesListUserStarredRepositoriesOptions({ path: { username } }),
     enabled: isUser,
   })
 

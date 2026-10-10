@@ -4,7 +4,7 @@ import { Filter, GitMerge, MessageSquare, MoreHorizontal, Smile, TrendingUp, X }
 import { useMemo, useState } from "react"
 
 import type { ActivityPublic, Repository } from "@/client"
-import { ActivityService, RepositoriesService } from "@/client"
+import { activityGetFeedOptions, repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
 import StarButton from "@/components/Repository/StarButton"
 import useAuth from "@/hooks/useAuth"
 
@@ -97,13 +97,11 @@ const Feed = () => {
   const [showFilter, setShowFilter] = useState(false)
 
   const { data: feed } = useQuery({
-    queryKey: ["feed"],
-    queryFn: async () => (await ActivityService.getFeed()).data,
+    ...activityGetFeedOptions(),
   })
 
   const { data: repositories } = useQuery({
-    queryKey: ["repositories"],
-    queryFn: async () => (await RepositoriesService.listRepositories()).data,
+    ...repositoriesListRepositoriesOptions(),
   })
 
   const activities = feed?.data ?? []

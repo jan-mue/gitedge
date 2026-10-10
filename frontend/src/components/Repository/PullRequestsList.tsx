@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Link as RouterLink } from "@tanstack/react-router"
 import { GitPullRequest, Search } from "lucide-react"
 
-import { RepositoriesService } from "@/client"
+import { repositoriesListPullRequestsOptions } from "@/client/@tanstack/react-query.gen"
 
 interface PullRequestsListProps {
   owner: string
@@ -10,11 +10,8 @@ interface PullRequestsListProps {
 }
 
 const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
-  const repoPath = `${owner}/${repo}.git`
-
   const { data: pullsData } = useQuery({
-    queryKey: ["pulls", repoPath],
-    queryFn: async () => (await RepositoriesService.listPullRequests({ path: { owner, repo } })).data,
+    ...repositoriesListPullRequestsOptions({ path: { owner, repo } }),
   })
 
   const pulls = pullsData?.data ?? []

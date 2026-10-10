@@ -3,27 +3,14 @@ import { createFileRoute, redirect } from "@tanstack/react-router"
 import { Building2 } from "lucide-react"
 import { Suspense } from "react"
 
-import { OrganizationsService, type UserPublic, UsersService } from "@/client"
+import { type UserPublic, UsersService } from "@/client"
+import { organizationsListOrganizationsOptions, usersReadUsersOptions } from "@/client/@tanstack/react-query.gen"
 import AddUser from "@/components/Admin/AddUser"
 import { columns, type UserTableData } from "@/components/Admin/columns"
 import { DataTable } from "@/components/Common/DataTable"
 import PendingUsers from "@/components/Pending/PendingUsers"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import useAuth from "@/hooks/useAuth"
-
-function getUsersQueryOptions() {
-  return {
-    queryFn: async () => (await UsersService.readUsers({ query: { skip: 0, limit: 100 } })).data,
-    queryKey: ["users"],
-  }
-}
-
-function getOrganizationsQueryOptions() {
-  return {
-    queryFn: async () => (await OrganizationsService.listOrganizations({ query: { offset: 0, limit: 100 } })).data,
-    queryKey: ["organizations"],
-  }
-}
 
 export const Route = createFileRoute("/_layout/admin")({
   component: Admin,
@@ -46,7 +33,7 @@ export const Route = createFileRoute("/_layout/admin")({
 
 function UsersTableContent() {
   const { user: currentUser } = useAuth()
-  const { data: users } = useSuspenseQuery(getUsersQueryOptions())
+  const { data: users } = useSuspenseQuery(usersReadUsersOptions({ query: { skip: 0, limit: 100 } }))
 
   const tableData: UserTableData[] = users.data.map((user: UserPublic) => ({
     ...user,
@@ -65,7 +52,9 @@ function UsersTable() {
 }
 
 function OrganizationsContent() {
-  const { data: organizations } = useSuspenseQuery(getOrganizationsQueryOptions())
+  const { data: organizations } = useSuspenseQuery(
+    organizationsListOrganizationsOptions({ query: { offset: 0, limit: 100 } }),
+  )
 
   if (organizations.data.length === 0) {
     return (

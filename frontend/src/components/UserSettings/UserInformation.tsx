@@ -4,7 +4,8 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { UsersService, type UserUpdateMe } from "@/client"
+import type { UserUpdateMe } from "@/client"
+import { usersUpdateUserMeMutation } from "@/client/@tanstack/react-query.gen"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -42,7 +43,7 @@ const UserInformation = () => {
   }
 
   const mutation = useMutation({
-    mutationFn: (data: UserUpdateMe) => UsersService.updateUserMe({ body: data }),
+    ...usersUpdateUserMeMutation(),
     onSuccess: () => {
       showSuccessToast("User updated successfully")
       toggleEditMode()
@@ -64,7 +65,7 @@ const UserInformation = () => {
       updateData.email = data.email
     }
 
-    mutation.mutate(updateData)
+    mutation.mutate({ body: updateData })
   }
 
   const onCancel = () => {

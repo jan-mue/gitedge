@@ -6,7 +6,7 @@ import IssuesList from "./IssuesList"
 
 const listIssues = vi.hoisted(() => vi.fn())
 
-vi.mock("@/client", () => ({
+vi.mock("@/client/sdk.gen", () => ({
   RepositoriesService: { listIssues },
 }))
 

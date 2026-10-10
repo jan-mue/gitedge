@@ -3,7 +3,11 @@ import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 import { useState } from "react"
 
-import { RepositoriesService } from "@/client"
+import {
+  repositoriesCreatePullRequestMutation,
+  repositoriesListBranchesOptions,
+  repositoriesListPullRequestsQueryKey,
+} from "@/client/@tanstack/react-query.gen"
 
 interface NewPullRequestFormProps {
   owner: string
@@ -13,7 +17,6 @@ interface NewPullRequestFormProps {
 const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const repoPath = `${owner}/${repo}.git`
 
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
@@ -21,23 +24,13 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
   const [baseBranch, setBaseBranch] = useState("main")
 
   const { data: branches } = useQuery({
-    queryKey: ["branches", repoPath],
-    queryFn: async () => (await RepositoriesService.listBranches({ path: { owner, repo } })).data,
+    ...repositoriesListBranchesOptions({ path: { owner, repo } }),
   })
 
   const createPRMutation = useMutation({
-    mutationFn: () =>
-      RepositoriesService.createPullRequest({
-        path: { owner, repo },
-        body: {
-          title,
-          body: body || null,
-          head_branch: headBranch,
-          base_branch: baseBranch,
-        },
-      }),
+    ...repositoriesCreatePullRequestMutation(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pulls", repoPath] })
+      queryClient.invalidateQueries({ queryKey: repositoriesListPullRequestsQueryKey({ path: { owner, repo } }) })
       navigate({
         to: "/$owner/$repo/pulls",
         params: { owner, repo },
@@ -47,7 +40,10 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
 
   const handleSubmit = () => {
     if (!title.trim() || !headBranch.trim()) return
-    createPRMutation.mutate()
+    createPRMutation.mutate({
+      path: { owner, repo },
+      body: { title, body: body || null, head_branch: headBranch, base_branch: baseBranch },
+    })
   }
 
   return (

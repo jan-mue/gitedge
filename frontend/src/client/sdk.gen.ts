@@ -30,7 +30,6 @@ export class LoginService {
     public static loginAccessToken<ThrowOnError extends boolean = true>(options: Options<loginLoginAccessTokenData, ThrowOnError>): RequestResult<loginLoginAccessTokenResponses, loginLoginAccessTokenErrors, ThrowOnError> {
         return (options.client ?? client).post<loginLoginAccessTokenResponses, loginLoginAccessTokenErrors, ThrowOnError>({
             ...urlSearchParamsBodySerializer,
-            responseType: 'json',
             url: '/api/v1/login/access-token',
             ...options,
             headers: {
@@ -47,7 +46,6 @@ export class LoginService {
      */
     public static testToken<ThrowOnError extends boolean = true>(options?: Options<loginTestTokenData, ThrowOnError>): RequestResult<loginTestTokenResponses, unknown, ThrowOnError> {
         return (options?.client ?? client).post<loginTestTokenResponses, unknown, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/login/test-token',
             ...options
@@ -86,7 +84,6 @@ export class LoginService {
      */
     public static recoverPasswordHtmlContent<ThrowOnError extends boolean = true>(options: Options<loginRecoverPasswordHtmlContentData, ThrowOnError>): RequestResult<loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordHtmlContentErrors, ThrowOnError> {
         return (options.client ?? client).post<loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordHtmlContentErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/password-recovery-html-content/{email}',
             ...options
@@ -102,7 +99,6 @@ export class UsersService {
      */
     public static readUsers<ThrowOnError extends boolean = true>(options?: Options<usersReadUsersData, ThrowOnError>): RequestResult<usersReadUsersResponses, usersReadUsersErrors, ThrowOnError> {
         return (options?.client ?? client).get<usersReadUsersResponses, usersReadUsersErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/users/',
             ...options
@@ -116,7 +112,6 @@ export class UsersService {
      */
     public static createUser<ThrowOnError extends boolean = true>(options: Options<usersCreateUserData, ThrowOnError>): RequestResult<usersCreateUserResponses, usersCreateUserErrors, ThrowOnError> {
         return (options.client ?? client).post<usersCreateUserResponses, usersCreateUserErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/users/',
             ...options,
@@ -147,7 +142,6 @@ export class UsersService {
      */
     public static readUserMe<ThrowOnError extends boolean = true>(options?: Options<usersReadUserMeData, ThrowOnError>): RequestResult<usersReadUserMeResponses, unknown, ThrowOnError> {
         return (options?.client ?? client).get<usersReadUserMeResponses, unknown, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/users/me',
             ...options
@@ -161,7 +155,6 @@ export class UsersService {
      */
     public static updateUserMe<ThrowOnError extends boolean = true>(options: Options<usersUpdateUserMeData, ThrowOnError>): RequestResult<usersUpdateUserMeResponses, usersUpdateUserMeErrors, ThrowOnError> {
         return (options.client ?? client).patch<usersUpdateUserMeResponses, usersUpdateUserMeErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/users/me',
             ...options,
@@ -196,7 +189,6 @@ export class UsersService {
      */
     public static registerUser<ThrowOnError extends boolean = true>(options: Options<usersRegisterUserData, ThrowOnError>): RequestResult<usersRegisterUserResponses, usersRegisterUserErrors, ThrowOnError> {
         return (options.client ?? client).post<usersRegisterUserResponses, usersRegisterUserErrors, ThrowOnError>({
-            responseType: 'json',
             url: '/api/v1/users/signup',
             ...options,
             headers: {
@@ -226,7 +218,6 @@ export class UsersService {
      */
     public static updateUser<ThrowOnError extends boolean = true>(options: Options<usersUpdateUserData, ThrowOnError>): RequestResult<usersUpdateUserResponses, usersUpdateUserErrors, ThrowOnError> {
         return (options.client ?? client).patch<usersUpdateUserResponses, usersUpdateUserErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/users/{user_id}',
             ...options,
@@ -253,11 +244,7 @@ export class GitService {
      * Response with refs.
      */
     public static getInfoRefs<ThrowOnError extends boolean = true>(options: Options<gitGetInfoRefsData, ThrowOnError>): RequestResult<gitGetInfoRefsResponses, gitGetInfoRefsErrors, ThrowOnError> {
-        return (options.client ?? client).get<gitGetInfoRefsResponses, gitGetInfoRefsErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/{repo_path}/info/refs',
-            ...options
-        });
+        return (options.client ?? client).get<gitGetInfoRefsResponses, gitGetInfoRefsErrors, ThrowOnError>({ url: '/api/v1/{repo_path}/info/refs', ...options });
     }
     
     /**
@@ -274,11 +261,7 @@ export class GitService {
      * Response with HEAD.
      */
     public static getHead<ThrowOnError extends boolean = true>(options: Options<gitGetHeadData, ThrowOnError>): RequestResult<gitGetHeadResponses, gitGetHeadErrors, ThrowOnError> {
-        return (options.client ?? client).get<gitGetHeadResponses, gitGetHeadErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/{repo_path}/HEAD',
-            ...options
-        });
+        return (options.client ?? client).get<gitGetHeadResponses, gitGetHeadErrors, ThrowOnError>({ url: '/api/v1/{repo_path}/HEAD', ...options });
     }
     
     /**
@@ -295,11 +278,7 @@ export class GitService {
      * Response with pack info.
      */
     public static getInfoPacks<ThrowOnError extends boolean = true>(options: Options<gitGetInfoPacksData, ThrowOnError>): RequestResult<gitGetInfoPacksResponses, gitGetInfoPacksErrors, ThrowOnError> {
-        return (options.client ?? client).get<gitGetInfoPacksResponses, gitGetInfoPacksErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/{repo_path}/objects/info/packs',
-            ...options
-        });
+        return (options.client ?? client).get<gitGetInfoPacksResponses, gitGetInfoPacksErrors, ThrowOnError>({ url: '/api/v1/{repo_path}/objects/info/packs', ...options });
     }
     
     /**
@@ -318,11 +297,7 @@ export class GitService {
      * Response with object data.
      */
     public static getLooseObject<ThrowOnError extends boolean = true>(options: Options<gitGetLooseObjectData, ThrowOnError>): RequestResult<gitGetLooseObjectResponses, gitGetLooseObjectErrors, ThrowOnError> {
-        return (options.client ?? client).get<gitGetLooseObjectResponses, gitGetLooseObjectErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/{repo_path}/objects/{prefix}/{suffix}',
-            ...options
-        });
+        return (options.client ?? client).get<gitGetLooseObjectResponses, gitGetLooseObjectErrors, ThrowOnError>({ url: '/api/v1/{repo_path}/objects/{prefix}/{suffix}', ...options });
     }
     
     /**
@@ -340,11 +315,7 @@ export class GitService {
      * Response with pack/index data.
      */
     public static getPackFile<ThrowOnError extends boolean = true>(options: Options<gitGetPackFileData, ThrowOnError>): RequestResult<gitGetPackFileResponses, gitGetPackFileErrors, ThrowOnError> {
-        return (options.client ?? client).get<gitGetPackFileResponses, gitGetPackFileErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/{repo_path}/objects/pack/{pack_file}',
-            ...options
-        });
+        return (options.client ?? client).get<gitGetPackFileResponses, gitGetPackFileErrors, ThrowOnError>({ url: '/api/v1/{repo_path}/objects/pack/{pack_file}', ...options });
     }
     
     /**
@@ -361,11 +332,7 @@ export class GitService {
      * Response with pack data.
      */
     public static gitUploadPack<ThrowOnError extends boolean = true>(options: Options<gitGitUploadPackData, ThrowOnError>): RequestResult<gitGitUploadPackResponses, gitGitUploadPackErrors, ThrowOnError> {
-        return (options.client ?? client).post<gitGitUploadPackResponses, gitGitUploadPackErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/{repo_path}/git-upload-pack',
-            ...options
-        });
+        return (options.client ?? client).post<gitGitUploadPackResponses, gitGitUploadPackErrors, ThrowOnError>({ url: '/api/v1/{repo_path}/git-upload-pack', ...options });
     }
     
     /**
@@ -382,11 +349,7 @@ export class GitService {
      * Response with push result.
      */
     public static gitReceivePack<ThrowOnError extends boolean = true>(options: Options<gitGitReceivePackData, ThrowOnError>): RequestResult<gitGitReceivePackResponses, gitGitReceivePackErrors, ThrowOnError> {
-        return (options.client ?? client).post<gitGitReceivePackResponses, gitGitReceivePackErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/{repo_path}/git-receive-pack',
-            ...options
-        });
+        return (options.client ?? client).post<gitGitReceivePackResponses, gitGitReceivePackErrors, ThrowOnError>({ url: '/api/v1/{repo_path}/git-receive-pack', ...options });
     }
 }
 
@@ -397,11 +360,7 @@ export class OrganizationsService {
      * List organizations.
      */
     public static listOrganizations<ThrowOnError extends boolean = true>(options?: Options<organizationsListOrganizationsData, ThrowOnError>): RequestResult<organizationsListOrganizationsResponses, organizationsListOrganizationsErrors, ThrowOnError> {
-        return (options?.client ?? client).get<organizationsListOrganizationsResponses, organizationsListOrganizationsErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/organizations/',
-            ...options
-        });
+        return (options?.client ?? client).get<organizationsListOrganizationsResponses, organizationsListOrganizationsErrors, ThrowOnError>({ url: '/api/v1/organizations/', ...options });
     }
     
     /**
@@ -411,7 +370,6 @@ export class OrganizationsService {
      */
     public static createOrganization<ThrowOnError extends boolean = true>(options: Options<organizationsCreateOrganizationData, ThrowOnError>): RequestResult<organizationsCreateOrganizationResponses, organizationsCreateOrganizationErrors, ThrowOnError> {
         return (options.client ?? client).post<organizationsCreateOrganizationResponses, organizationsCreateOrganizationErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/organizations/',
             ...options,
@@ -431,7 +389,6 @@ export class StarsService {
      */
     public static unstarRepository<ThrowOnError extends boolean = true>(options: Options<starsUnstarRepositoryData, ThrowOnError>): RequestResult<starsUnstarRepositoryResponses, starsUnstarRepositoryErrors, ThrowOnError> {
         return (options.client ?? client).delete<starsUnstarRepositoryResponses, starsUnstarRepositoryErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/repositories/{owner}/{repo}/star',
             ...options
@@ -445,7 +402,6 @@ export class StarsService {
      */
     public static getStarState<ThrowOnError extends boolean = true>(options: Options<starsGetStarStateData, ThrowOnError>): RequestResult<starsGetStarStateResponses, starsGetStarStateErrors, ThrowOnError> {
         return (options.client ?? client).get<starsGetStarStateResponses, starsGetStarStateErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/repositories/{owner}/{repo}/star',
             ...options
@@ -459,7 +415,6 @@ export class StarsService {
      */
     public static starRepository<ThrowOnError extends boolean = true>(options: Options<starsStarRepositoryData, ThrowOnError>): RequestResult<starsStarRepositoryResponses, starsStarRepositoryErrors, ThrowOnError> {
         return (options.client ?? client).put<starsStarRepositoryResponses, starsStarRepositoryErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/repositories/{owner}/{repo}/star',
             ...options
@@ -472,11 +427,7 @@ export class StarsService {
      * List users who starred a repository.
      */
     public static listStargazers<ThrowOnError extends boolean = true>(options: Options<starsListStargazersData, ThrowOnError>): RequestResult<starsListStargazersResponses, starsListStargazersErrors, ThrowOnError> {
-        return (options.client ?? client).get<starsListStargazersResponses, starsListStargazersErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/stargazers',
-            ...options
-        });
+        return (options.client ?? client).get<starsListStargazersResponses, starsListStargazersErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/stargazers', ...options });
     }
     
     /**
@@ -486,7 +437,6 @@ export class StarsService {
      */
     public static listStarredRepositories<ThrowOnError extends boolean = true>(options?: Options<starsListStarredRepositoriesData, ThrowOnError>): RequestResult<starsListStarredRepositoriesResponses, starsListStarredRepositoriesErrors, ThrowOnError> {
         return (options?.client ?? client).get<starsListStarredRepositoriesResponses, starsListStarredRepositoriesErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/users/me/starred',
             ...options
@@ -502,7 +452,6 @@ export class WatchersService {
      */
     public static unwatchRepository<ThrowOnError extends boolean = true>(options: Options<watchersUnwatchRepositoryData, ThrowOnError>): RequestResult<watchersUnwatchRepositoryResponses, watchersUnwatchRepositoryErrors, ThrowOnError> {
         return (options.client ?? client).delete<watchersUnwatchRepositoryResponses, watchersUnwatchRepositoryErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/repositories/{owner}/{repo}/watch',
             ...options
@@ -516,7 +465,6 @@ export class WatchersService {
      */
     public static getWatchState<ThrowOnError extends boolean = true>(options: Options<watchersGetWatchStateData, ThrowOnError>): RequestResult<watchersGetWatchStateResponses, watchersGetWatchStateErrors, ThrowOnError> {
         return (options.client ?? client).get<watchersGetWatchStateResponses, watchersGetWatchStateErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/repositories/{owner}/{repo}/watch',
             ...options
@@ -530,7 +478,6 @@ export class WatchersService {
      */
     public static watchRepository<ThrowOnError extends boolean = true>(options: Options<watchersWatchRepositoryData, ThrowOnError>): RequestResult<watchersWatchRepositoryResponses, watchersWatchRepositoryErrors, ThrowOnError> {
         return (options.client ?? client).put<watchersWatchRepositoryResponses, watchersWatchRepositoryErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/repositories/{owner}/{repo}/watch',
             ...options
@@ -543,11 +490,7 @@ export class WatchersService {
      * List users watching a repository.
      */
     public static listWatchers<ThrowOnError extends boolean = true>(options: Options<watchersListWatchersData, ThrowOnError>): RequestResult<watchersListWatchersResponses, watchersListWatchersErrors, ThrowOnError> {
-        return (options.client ?? client).get<watchersListWatchersResponses, watchersListWatchersErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/watchers',
-            ...options
-        });
+        return (options.client ?? client).get<watchersListWatchersResponses, watchersListWatchersErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/watchers', ...options });
     }
 }
 
@@ -558,11 +501,7 @@ export class ForksService {
      * List forks of a repository.
      */
     public static listForks<ThrowOnError extends boolean = true>(options: Options<forksListForksData, ThrowOnError>): RequestResult<forksListForksResponses, forksListForksErrors, ThrowOnError> {
-        return (options.client ?? client).get<forksListForksResponses, forksListForksErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/forks',
-            ...options
-        });
+        return (options.client ?? client).get<forksListForksResponses, forksListForksErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/forks', ...options });
     }
     
     /**
@@ -572,7 +511,6 @@ export class ForksService {
      */
     public static forkRepository<ThrowOnError extends boolean = true>(options: Options<forksForkRepositoryData, ThrowOnError>): RequestResult<forksForkRepositoryResponses, forksForkRepositoryErrors, ThrowOnError> {
         return (options.client ?? client).post<forksForkRepositoryResponses, forksForkRepositoryErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/repositories/{owner}/{repo}/forks',
             ...options,
@@ -591,11 +529,7 @@ export class CommentsService {
      * List comments for an issue or pull request.
      */
     public static listComments<ThrowOnError extends boolean = true>(options: Options<commentsListCommentsData, ThrowOnError>): RequestResult<commentsListCommentsResponses, commentsListCommentsErrors, ThrowOnError> {
-        return (options.client ?? client).get<commentsListCommentsResponses, commentsListCommentsErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/issues/{number}/comments',
-            ...options
-        });
+        return (options.client ?? client).get<commentsListCommentsResponses, commentsListCommentsErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/issues/{number}/comments', ...options });
     }
     
     /**
@@ -605,7 +539,6 @@ export class CommentsService {
      */
     public static createComment<ThrowOnError extends boolean = true>(options: Options<commentsCreateCommentData, ThrowOnError>): RequestResult<commentsCreateCommentResponses, commentsCreateCommentErrors, ThrowOnError> {
         return (options.client ?? client).post<commentsCreateCommentResponses, commentsCreateCommentErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/repositories/{owner}/{repo}/issues/{number}/comments',
             ...options,
@@ -636,7 +569,6 @@ export class CommentsService {
      */
     public static updateComment<ThrowOnError extends boolean = true>(options: Options<commentsUpdateCommentData, ThrowOnError>): RequestResult<commentsUpdateCommentResponses, commentsUpdateCommentErrors, ThrowOnError> {
         return (options.client ?? client).patch<commentsUpdateCommentResponses, commentsUpdateCommentErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/comments/{comment_id}',
             ...options,
@@ -655,11 +587,7 @@ export class ReleasesService {
      * List releases for a repository.
      */
     public static listReleases<ThrowOnError extends boolean = true>(options: Options<releasesListReleasesData, ThrowOnError>): RequestResult<releasesListReleasesResponses, releasesListReleasesErrors, ThrowOnError> {
-        return (options.client ?? client).get<releasesListReleasesResponses, releasesListReleasesErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/releases',
-            ...options
-        });
+        return (options.client ?? client).get<releasesListReleasesResponses, releasesListReleasesErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/releases', ...options });
     }
     
     /**
@@ -669,7 +597,6 @@ export class ReleasesService {
      */
     public static createRelease<ThrowOnError extends boolean = true>(options: Options<releasesCreateReleaseData, ThrowOnError>): RequestResult<releasesCreateReleaseResponses, releasesCreateReleaseErrors, ThrowOnError> {
         return (options.client ?? client).post<releasesCreateReleaseResponses, releasesCreateReleaseErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/repositories/{owner}/{repo}/releases',
             ...options,
@@ -686,11 +613,7 @@ export class ReleasesService {
      * Get a single release by tag name.
      */
     public static getRelease<ThrowOnError extends boolean = true>(options: Options<releasesGetReleaseData, ThrowOnError>): RequestResult<releasesGetReleaseResponses, releasesGetReleaseErrors, ThrowOnError> {
-        return (options.client ?? client).get<releasesGetReleaseResponses, releasesGetReleaseErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/releases/{tag_name}',
-            ...options
-        });
+        return (options.client ?? client).get<releasesGetReleaseResponses, releasesGetReleaseErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/releases/{tag_name}', ...options });
     }
     
     /**
@@ -700,7 +623,6 @@ export class ReleasesService {
      */
     public static updateRelease<ThrowOnError extends boolean = true>(options: Options<releasesUpdateReleaseData, ThrowOnError>): RequestResult<releasesUpdateReleaseResponses, releasesUpdateReleaseErrors, ThrowOnError> {
         return (options.client ?? client).patch<releasesUpdateReleaseResponses, releasesUpdateReleaseErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/repositories/{owner}/{repo}/releases/{tag_name}',
             ...options,
@@ -717,11 +639,7 @@ export class ReleasesService {
      * List Git tags for a repository.
      */
     public static listTags<ThrowOnError extends boolean = true>(options: Options<releasesListTagsData, ThrowOnError>): RequestResult<releasesListTagsResponses, releasesListTagsErrors, ThrowOnError> {
-        return (options.client ?? client).get<releasesListTagsResponses, releasesListTagsErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/tags',
-            ...options
-        });
+        return (options.client ?? client).get<releasesListTagsResponses, releasesListTagsErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/tags', ...options });
     }
 }
 
@@ -732,11 +650,7 @@ export class ActivityService {
      * List activity for a repository.
      */
     public static getRepositoryActivity<ThrowOnError extends boolean = true>(options: Options<activityGetRepositoryActivityData, ThrowOnError>): RequestResult<activityGetRepositoryActivityResponses, activityGetRepositoryActivityErrors, ThrowOnError> {
-        return (options.client ?? client).get<activityGetRepositoryActivityResponses, activityGetRepositoryActivityErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/activity',
-            ...options
-        });
+        return (options.client ?? client).get<activityGetRepositoryActivityResponses, activityGetRepositoryActivityErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/activity', ...options });
     }
     
     /**
@@ -746,7 +660,6 @@ export class ActivityService {
      */
     public static getFeed<ThrowOnError extends boolean = true>(options?: Options<activityGetFeedData, ThrowOnError>): RequestResult<activityGetFeedResponses, activityGetFeedErrors, ThrowOnError> {
         return (options?.client ?? client).get<activityGetFeedResponses, activityGetFeedErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/users/me/feed',
             ...options
@@ -761,11 +674,7 @@ export class ProfilesService {
      * Get a profile (user or organization) by name.
      */
     public static readUserByUsername<ThrowOnError extends boolean = true>(options: Options<profilesReadUserByUsernameData, ThrowOnError>): RequestResult<profilesReadUserByUsernameResponses, profilesReadUserByUsernameErrors, ThrowOnError> {
-        return (options.client ?? client).get<profilesReadUserByUsernameResponses, profilesReadUserByUsernameErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/users/{username}',
-            ...options
-        });
+        return (options.client ?? client).get<profilesReadUserByUsernameResponses, profilesReadUserByUsernameErrors, ThrowOnError>({ url: '/api/v1/users/{username}', ...options });
     }
     
     /**
@@ -774,11 +683,7 @@ export class ProfilesService {
      * List repositories owned by a user or organization.
      */
     public static listUserRepositories<ThrowOnError extends boolean = true>(options: Options<profilesListUserRepositoriesData, ThrowOnError>): RequestResult<profilesListUserRepositoriesResponses, profilesListUserRepositoriesErrors, ThrowOnError> {
-        return (options.client ?? client).get<profilesListUserRepositoriesResponses, profilesListUserRepositoriesErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/users/{username}/repositories',
-            ...options
-        });
+        return (options.client ?? client).get<profilesListUserRepositoriesResponses, profilesListUserRepositoriesErrors, ThrowOnError>({ url: '/api/v1/users/{username}/repositories', ...options });
     }
     
     /**
@@ -790,11 +695,7 @@ export class ProfilesService {
      * HTTPException: If no user matches the name (organizations cannot star).
      */
     public static listUserStarredRepositories<ThrowOnError extends boolean = true>(options: Options<profilesListUserStarredRepositoriesData, ThrowOnError>): RequestResult<profilesListUserStarredRepositoriesResponses, profilesListUserStarredRepositoriesErrors, ThrowOnError> {
-        return (options.client ?? client).get<profilesListUserStarredRepositoriesResponses, profilesListUserStarredRepositoriesErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/users/{username}/starred',
-            ...options
-        });
+        return (options.client ?? client).get<profilesListUserStarredRepositoriesResponses, profilesListUserStarredRepositoriesErrors, ThrowOnError>({ url: '/api/v1/users/{username}/starred', ...options });
     }
 }
 
@@ -805,11 +706,7 @@ export class RepositoriesService {
      * List all repositories.
      */
     public static listRepositories<ThrowOnError extends boolean = true>(options?: Options<repositoriesListRepositoriesData, ThrowOnError>): RequestResult<repositoriesListRepositoriesResponses, unknown, ThrowOnError> {
-        return (options?.client ?? client).get<repositoriesListRepositoriesResponses, unknown, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/',
-            ...options
-        });
+        return (options?.client ?? client).get<repositoriesListRepositoriesResponses, unknown, ThrowOnError>({ url: '/api/v1/repositories/', ...options });
     }
     
     /**
@@ -819,7 +716,6 @@ export class RepositoriesService {
      */
     public static createRepository<ThrowOnError extends boolean = true>(options: Options<repositoriesCreateRepositoryData, ThrowOnError>): RequestResult<repositoriesCreateRepositoryResponses, repositoriesCreateRepositoryErrors, ThrowOnError> {
         return (options.client ?? client).post<repositoriesCreateRepositoryResponses, repositoriesCreateRepositoryErrors, ThrowOnError>({
-            responseType: 'json',
             url: '/api/v1/repositories/',
             ...options,
             headers: {
@@ -835,11 +731,7 @@ export class RepositoriesService {
      * Get directory listing for a repository path.
      */
     public static getTree<ThrowOnError extends boolean = true>(options: Options<repositoriesGetTreeData, ThrowOnError>): RequestResult<repositoriesGetTreeResponses, repositoriesGetTreeErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetTreeResponses, repositoriesGetTreeErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/tree',
-            ...options
-        });
+        return (options.client ?? client).get<repositoriesGetTreeResponses, repositoriesGetTreeErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/tree', ...options });
     }
     
     /**
@@ -848,11 +740,7 @@ export class RepositoriesService {
      * Get file content with syntax highlighting.
      */
     public static getBlob<ThrowOnError extends boolean = true>(options: Options<repositoriesGetBlobData, ThrowOnError>): RequestResult<repositoriesGetBlobResponses, repositoriesGetBlobErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetBlobResponses, repositoriesGetBlobErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/blob',
-            ...options
-        });
+        return (options.client ?? client).get<repositoriesGetBlobResponses, repositoriesGetBlobErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/blob', ...options });
     }
     
     /**
@@ -861,11 +749,7 @@ export class RepositoriesService {
      * Get extended repository information.
      */
     public static getRepositoryInfo<ThrowOnError extends boolean = true>(options: Options<repositoriesGetRepositoryInfoData, ThrowOnError>): RequestResult<repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryInfoErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryInfoErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/info',
-            ...options
-        });
+        return (options.client ?? client).get<repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryInfoErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/info', ...options });
     }
     
     /**
@@ -874,11 +758,7 @@ export class RepositoriesService {
      * Get README content from a repository directory.
      */
     public static getReadme<ThrowOnError extends boolean = true>(options: Options<repositoriesGetReadmeData, ThrowOnError>): RequestResult<repositoriesGetReadmeResponses, repositoriesGetReadmeErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetReadmeResponses, repositoriesGetReadmeErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/readme',
-            ...options
-        });
+        return (options.client ?? client).get<repositoriesGetReadmeResponses, repositoriesGetReadmeErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/readme', ...options });
     }
     
     /**
@@ -887,11 +767,7 @@ export class RepositoriesService {
      * List all branches in a repository.
      */
     public static listBranches<ThrowOnError extends boolean = true>(options: Options<repositoriesListBranchesData, ThrowOnError>): RequestResult<repositoriesListBranchesResponses, repositoriesListBranchesErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesListBranchesResponses, repositoriesListBranchesErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/branches',
-            ...options
-        });
+        return (options.client ?? client).get<repositoriesListBranchesResponses, repositoriesListBranchesErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/branches', ...options });
     }
     
     /**
@@ -900,11 +776,7 @@ export class RepositoriesService {
      * List commit history for a repository ref.
      */
     public static listCommits<ThrowOnError extends boolean = true>(options: Options<repositoriesListCommitsData, ThrowOnError>): RequestResult<repositoriesListCommitsResponses, repositoriesListCommitsErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesListCommitsResponses, repositoriesListCommitsErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/commits',
-            ...options
-        });
+        return (options.client ?? client).get<repositoriesListCommitsResponses, repositoriesListCommitsErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/commits', ...options });
     }
     
     /**
@@ -913,11 +785,7 @@ export class RepositoriesService {
      * Get a single commit with its diff.
      */
     public static getCommit<ThrowOnError extends boolean = true>(options: Options<repositoriesGetCommitData, ThrowOnError>): RequestResult<repositoriesGetCommitResponses, repositoriesGetCommitErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetCommitResponses, repositoriesGetCommitErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/commits/{sha}',
-            ...options
-        });
+        return (options.client ?? client).get<repositoriesGetCommitResponses, repositoriesGetCommitErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/commits/{sha}', ...options });
     }
     
     /**
@@ -926,11 +794,7 @@ export class RepositoriesService {
      * List issues for a repository.
      */
     public static listIssues<ThrowOnError extends boolean = true>(options: Options<repositoriesListIssuesData, ThrowOnError>): RequestResult<repositoriesListIssuesResponses, repositoriesListIssuesErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesListIssuesResponses, repositoriesListIssuesErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/issues',
-            ...options
-        });
+        return (options.client ?? client).get<repositoriesListIssuesResponses, repositoriesListIssuesErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/issues', ...options });
     }
     
     /**
@@ -940,7 +804,6 @@ export class RepositoriesService {
      */
     public static createIssue<ThrowOnError extends boolean = true>(options: Options<repositoriesCreateIssueData, ThrowOnError>): RequestResult<repositoriesCreateIssueResponses, repositoriesCreateIssueErrors, ThrowOnError> {
         return (options.client ?? client).post<repositoriesCreateIssueResponses, repositoriesCreateIssueErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/repositories/{owner}/{repo}/issues',
             ...options,
@@ -957,11 +820,7 @@ export class RepositoriesService {
      * Get a single issue by number.
      */
     public static getIssue<ThrowOnError extends boolean = true>(options: Options<repositoriesGetIssueData, ThrowOnError>): RequestResult<repositoriesGetIssueResponses, repositoriesGetIssueErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetIssueResponses, repositoriesGetIssueErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/issues/{number}',
-            ...options
-        });
+        return (options.client ?? client).get<repositoriesGetIssueResponses, repositoriesGetIssueErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/issues/{number}', ...options });
     }
     
     /**
@@ -971,7 +830,6 @@ export class RepositoriesService {
      */
     public static updateIssue<ThrowOnError extends boolean = true>(options: Options<repositoriesUpdateIssueData, ThrowOnError>): RequestResult<repositoriesUpdateIssueResponses, repositoriesUpdateIssueErrors, ThrowOnError> {
         return (options.client ?? client).patch<repositoriesUpdateIssueResponses, repositoriesUpdateIssueErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/repositories/{owner}/{repo}/issues/{number}',
             ...options,
@@ -988,11 +846,7 @@ export class RepositoriesService {
      * List pull requests for a repository.
      */
     public static listPullRequests<ThrowOnError extends boolean = true>(options: Options<repositoriesListPullRequestsData, ThrowOnError>): RequestResult<repositoriesListPullRequestsResponses, repositoriesListPullRequestsErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesListPullRequestsResponses, repositoriesListPullRequestsErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/pulls',
-            ...options
-        });
+        return (options.client ?? client).get<repositoriesListPullRequestsResponses, repositoriesListPullRequestsErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/pulls', ...options });
     }
     
     /**
@@ -1002,7 +856,6 @@ export class RepositoriesService {
      */
     public static createPullRequest<ThrowOnError extends boolean = true>(options: Options<repositoriesCreatePullRequestData, ThrowOnError>): RequestResult<repositoriesCreatePullRequestResponses, repositoriesCreatePullRequestErrors, ThrowOnError> {
         return (options.client ?? client).post<repositoriesCreatePullRequestResponses, repositoriesCreatePullRequestErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/repositories/{owner}/{repo}/pulls',
             ...options,
@@ -1019,11 +872,7 @@ export class RepositoriesService {
      * Get a single pull request by number.
      */
     public static getPullRequest<ThrowOnError extends boolean = true>(options: Options<repositoriesGetPullRequestData, ThrowOnError>): RequestResult<repositoriesGetPullRequestResponses, repositoriesGetPullRequestErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetPullRequestResponses, repositoriesGetPullRequestErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}',
-            ...options
-        });
+        return (options.client ?? client).get<repositoriesGetPullRequestResponses, repositoriesGetPullRequestErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}', ...options });
     }
     
     /**
@@ -1033,7 +882,6 @@ export class RepositoriesService {
      */
     public static updatePullRequest<ThrowOnError extends boolean = true>(options: Options<repositoriesUpdatePullRequestData, ThrowOnError>): RequestResult<repositoriesUpdatePullRequestResponses, repositoriesUpdatePullRequestErrors, ThrowOnError> {
         return (options.client ?? client).patch<repositoriesUpdatePullRequestResponses, repositoriesUpdatePullRequestErrors, ThrowOnError>({
-            responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}',
             ...options,
@@ -1050,11 +898,7 @@ export class RepositoriesService {
      * List the files changed by a pull request, diffed against its base branch.
      */
     public static getPullRequestFiles<ThrowOnError extends boolean = true>(options: Options<repositoriesGetPullRequestFilesData, ThrowOnError>): RequestResult<repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestFilesErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestFilesErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/files',
-            ...options
-        });
+        return (options.client ?? client).get<repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestFilesErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/files', ...options });
     }
     
     /**
@@ -1063,11 +907,7 @@ export class RepositoriesService {
      * Get a specific repository.
      */
     public static getRepository<ThrowOnError extends boolean = true>(options: Options<repositoriesGetRepositoryData, ThrowOnError>): RequestResult<repositoriesGetRepositoryResponses, repositoriesGetRepositoryErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetRepositoryResponses, repositoriesGetRepositoryErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/repositories/{owner}/{repo}',
-            ...options
-        });
+        return (options.client ?? client).get<repositoriesGetRepositoryResponses, repositoriesGetRepositoryErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}', ...options });
     }
 }
 
@@ -1091,11 +931,7 @@ export class UtilsService {
      * Check if the database connection is working.
      */
     public static healthCheck<ThrowOnError extends boolean = true>(options?: Options<utilsHealthCheckData, ThrowOnError>): RequestResult<utilsHealthCheckResponses, unknown, ThrowOnError> {
-        return (options?.client ?? client).get<utilsHealthCheckResponses, unknown, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/utils/health-check/',
-            ...options
-        });
+        return (options?.client ?? client).get<utilsHealthCheckResponses, unknown, ThrowOnError>({ url: '/api/v1/utils/health-check/', ...options });
     }
 }
 
@@ -1116,7 +952,6 @@ export class PrivateService {
      */
     public static createUser<ThrowOnError extends boolean = true>(options: Options<privateCreateUserData, ThrowOnError>): RequestResult<privateCreateUserResponses, privateCreateUserErrors, ThrowOnError> {
         return (options.client ?? client).post<privateCreateUserResponses, privateCreateUserErrors, ThrowOnError>({
-            responseType: 'json',
             url: '/api/v1/private/users/',
             ...options,
             headers: {

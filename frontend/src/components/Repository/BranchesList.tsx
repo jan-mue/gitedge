@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { GitBranch, Tag } from "lucide-react"
 
-import { ReleasesService, RepositoriesService } from "@/client"
+import { releasesListTagsOptions, repositoriesListBranchesOptions } from "@/client/@tanstack/react-query.gen"
 
 interface BranchesListProps {
   owner: string
@@ -9,16 +9,12 @@ interface BranchesListProps {
 }
 
 const BranchesList = ({ owner, repo }: BranchesListProps) => {
-  const repoPath = `${owner}/${repo}.git`
-
   const { data: branches } = useQuery({
-    queryKey: ["branches", repoPath],
-    queryFn: async () => (await RepositoriesService.listBranches({ path: { owner, repo } })).data,
+    ...repositoriesListBranchesOptions({ path: { owner, repo } }),
   })
 
   const { data: tagsData } = useQuery({
-    queryKey: ["tags", repoPath],
-    queryFn: async () => (await ReleasesService.listTags({ path: { owner, repo } })).data,
+    ...releasesListTagsOptions({ path: { owner, repo } }),
   })
 
   const tags = tagsData?.data ?? []

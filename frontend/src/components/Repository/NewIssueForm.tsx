@@ -3,7 +3,7 @@ import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 import { useState } from "react"
 
-import { RepositoriesService } from "@/client"
+import { repositoriesCreateIssueMutation, repositoriesListIssuesQueryKey } from "@/client/@tanstack/react-query.gen"
 
 interface NewIssueFormProps {
   owner: string
@@ -13,19 +13,14 @@ interface NewIssueFormProps {
 const NewIssueForm = ({ owner, repo }: NewIssueFormProps) => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const repoPath = `${owner}/${repo}.git`
 
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
 
   const createIssueMutation = useMutation({
-    mutationFn: () =>
-      RepositoriesService.createIssue({
-        path: { owner, repo },
-        body: { title, body: body || null },
-      }),
+    ...repositoriesCreateIssueMutation(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["issues", repoPath] })
+      queryClient.invalidateQueries({ queryKey: repositoriesListIssuesQueryKey({ path: { owner, repo } }) })
       navigate({
         to: "/$owner/$repo/issues",
         params: { owner, repo },
@@ -35,7 +30,7 @@ const NewIssueForm = ({ owner, repo }: NewIssueFormProps) => {
 
   const handleSubmit = () => {
     if (!title.trim()) return
-    createIssueMutation.mutate()
+    createIssueMutation.mutate({ path: { owner, repo }, body: { title, body: body || null } })
   }
 
   return (

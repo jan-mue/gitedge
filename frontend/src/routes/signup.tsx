@@ -69,7 +69,7 @@ function SignUp() {
 
     // exclude confirm_password from submission data
     const { confirm_password: _confirm_password, ...submitData } = data
-    signUpMutation.mutate(submitData)
+    signUpMutation.mutate({ body: submitData })
   }
 
   return (

@@ -3,7 +3,13 @@ import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
 import { ChevronDown, GitFork, Inbox, LogOut, Plus, Settings, ShieldCheck, User } from "lucide-react"
 import { useState } from "react"
 
-import { OrganizationsService, RepositoriesService } from "@/client"
+import {
+  organizationsCreateOrganizationMutation,
+  organizationsListOrganizationsOptions,
+  organizationsListOrganizationsQueryKey,
+  repositoriesCreateRepositoryMutation,
+  repositoriesListRepositoriesQueryKey,
+} from "@/client/@tanstack/react-query.gen"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   DropdownMenu,
@@ -32,20 +38,16 @@ const GlobalNav = () => {
   const username = user?.name ?? ""
 
   const { data: organizations } = useQuery({
-    queryKey: ["organizations"],
-    queryFn: async () => (await OrganizationsService.listOrganizations()).data,
+    ...organizationsListOrganizationsOptions(),
   })
 
   const ownerOptions = [username, ...(organizations?.data.map((org) => org.name) ?? [])].filter(Boolean)
   const selectedOwner = repoOwner || username
 
   const createRepoMutation = useMutation({
-    mutationFn: () =>
-      RepositoriesService.createRepository({
-        body: { owner: selectedOwner, name: repoName.trim() },
-      }),
+    ...repositoriesCreateRepositoryMutation(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["repositories"] })
+      queryClient.invalidateQueries({ queryKey: repositoriesListRepositoriesQueryKey() })
       setShowNewRepo(false)
       setRepoName("")
       setRepoDesc("")
@@ -55,9 +57,9 @@ const GlobalNav = () => {
   })
 
   const createOrgMutation = useMutation({
-    mutationFn: () => OrganizationsService.createOrganization({ body: { name: orgName.trim() } }),
+    ...organizationsCreateOrganizationMutation(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["organizations"] })
+      queryClient.invalidateQueries({ queryKey: organizationsListOrganizationsQueryKey() })
       setShowNewOrg(false)
       setOrgName("")
     },
@@ -231,7 +233,7 @@ const GlobalNav = () => {
               type="button"
               data-testid="new-repo-submit"
               disabled={!repoName.trim() || createRepoMutation.isPending}
-              onClick={() => createRepoMutation.mutate()}
+              onClick={() => createRepoMutation.mutate({ body: { owner: selectedOwner, name: repoName.trim() } })}
               className="rounded bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:opacity-90 disabled:opacity-50"
             >
               Create Repository
@@ -272,7 +274,7 @@ const GlobalNav = () => {
               type="button"
               data-testid="new-org-submit"
               disabled={!orgName.trim() || createOrgMutation.isPending}
-              onClick={() => createOrgMutation.mutate()}
+              onClick={() => createOrgMutation.mutate({ body: { name: orgName.trim() } })}
               className="rounded bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:opacity-90 disabled:opacity-50"
             >
               Create Organization
