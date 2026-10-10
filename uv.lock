@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.14, <4.0"
 
 [options]
@@ -793,6 +793,22 @@ wheels = [
 ]
 
 [[package]]
+name = "fastapi-redis-sdk"
+version = "0.8.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "fastapi" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "redis" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1f/ff/a1891337482e0b4caf90b5bb3b5fe3cc031f05c4dc628e85441dc2618d8e/fastapi_redis_sdk-0.8.1.tar.gz", hash = "sha256:98cf2e2d476cf98e66ffd5df8ce3374b5d702b6fe4f7f2369c43fd0fe4cd7631", size = 40767, upload-time = "2026-09-25T09:14:41.152Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c3/0f/22eca03926218343602a26620ebd092043783b9edc00d0c5f9b6f92c830c/fastapi_redis_sdk-0.8.1-py3-none-any.whl", hash = "sha256:c0ed749839ce621de89cc8f54bb330bf8a4918af24572c639480c5d2d4627c9e", size = 46325, upload-time = "2026-09-25T09:14:39.083Z" },
+]
+
+[[package]]
 name = "frozenlist"
 version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -844,6 +860,7 @@ dependencies = [
     { name = "dulwich" },
     { name = "emails" },
     { name = "fastapi" },
+    { name = "fastapi-redis-sdk" },
     { name = "jinja2" },
     { name = "markdown-it-py", extra = ["linkify"] },
     { name = "mdit-py-plugins" },
@@ -867,11 +884,13 @@ dependencies = [
 dev = [
     { name = "coverage" },
     { name = "deptry" },
+    { name = "httpx2" },
     { name = "inline-snapshot", extra = ["black"] },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-mock" },
     { name = "pytest-playwright" },
+    { name = "pytest-socket" },
     { name = "pytest-xprocess" },
     { name = "testcontainers", extra = ["mailpit", "minio", "redis"] },
     { name = "types-pygments" },
@@ -885,6 +904,7 @@ requires-dist = [
     { name = "dulwich", specifier = "==1.2.15" },
     { name = "emails", specifier = "==1.1.3" },
     { name = "fastapi", specifier = "==0.142.2" },
+    { name = "fastapi-redis-sdk", specifier = "==0.8.1" },
     { name = "jinja2", specifier = "==3.1.6" },
     { name = "markdown-it-py", extras = ["linkify"], specifier = "==4.2.0" },
     { name = "mdit-py-plugins", specifier = "==0.6.1" },
@@ -908,11 +928,13 @@ requires-dist = [
 dev = [
     { name = "coverage", specifier = "==7.16.2" },
     { name = "deptry", specifier = "==0.25.1" },
+    { name = "httpx2", specifier = "==2.13.1" },
     { name = "inline-snapshot", extras = ["black"], specifier = "==0.36.0" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "pytest-asyncio", specifier = "==1.4.0" },
     { name = "pytest-mock", specifier = "==3.16.0" },
     { name = "pytest-playwright", specifier = "==0.9.0" },
+    { name = "pytest-socket", specifier = "==0.8.1" },
     { name = "pytest-xprocess", specifier = "==1.0.2" },
     { name = "testcontainers", extras = ["mailpit", "minio", "postgres", "redis"], specifier = "==4.15.0" },
     { name = "types-pygments", specifier = "==2.21.0.20260819" },
@@ -1818,6 +1840,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/26/c4/31cab1a9edfa35546950bb30c033dbfe4d4f3a216f4bafb0537a1469a70c/pytest_playwright-0.9.0.tar.gz", hash = "sha256:bd44daa852b0fb8b0e55a2f88b727507dedda0e350bea5d09420647252f2454b", size = 17899, upload-time = "2026-08-10T10:20:16.407Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ab/70/72ff5c3833f0faa9b5fb23f24c0a606f070ad33bb61b802ba38dfe125e7d/pytest_playwright-0.9.0-py3-none-any.whl", hash = "sha256:9d9dc74e335c647944cecfffa706cc9e6e4bf4c25e84592c128b584d494d4471", size = 17915, upload-time = "2026-08-10T10:20:18.253Z" },
+]
+
+[[package]]
+name = "pytest-socket"
+version = "0.8.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ba/ce/4ef7b049852c95a8727b4a7e6496f762df1ac0b47bc0320d10293f5e95ec/pytest_socket-0.8.1.tar.gz", hash = "sha256:2f57787914ad2e1308d09ce141b95c3e55741fbb4fb7b7556593a6b063e0c9c7", size = 17313, upload-time = "2026-08-19T15:16:25.653Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/87/ef/ab507f117b3d19b54e3c9c632a99c28c3b284562ec6e02e274581d530d92/pytest_socket-0.8.1-py3-none-any.whl", hash = "sha256:f9846bed1dcd96eed459e5e14795bbaf96715cf4e827891fe70773817ecb8ed4", size = 8751, upload-time = "2026-08-19T15:16:24.426Z" },
 ]
 
 [[package]]

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from typing import TYPE_CHECKING, TypedDict
 
+from redis_fastapi import redis_lifespan
+
+from app.clients.cache import uses_redis_cache
 from app.clients.database import create_db_engine, create_session_factory
 
 if TYPE_CHECKING:
@@ -22,16 +25,19 @@ class LifespanState(TypedDict):
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[LifespanState]:
+async def lifespan(app: FastAPI) -> AsyncIterator[LifespanState]:
     """Create shared resources on startup and release them on shutdown.
 
     Args:
-        _app: The FastAPI application.
+        app: The FastAPI application.
 
     Yields:
         The lifespan state made available to requests.
     """
-    async with create_db_engine() as engine:
+    async with AsyncExitStack() as stack:
+        if uses_redis_cache():
+            await stack.enter_async_context(redis_lifespan(app))
+        engine = await stack.enter_async_context(create_db_engine())
         yield {
             "db_engine": engine,
             "db_session_factory": create_session_factory(engine),

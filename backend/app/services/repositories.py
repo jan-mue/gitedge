@@ -13,11 +13,13 @@ from dulwich.objects import Blob, Commit, ObjectID, Tag, Tree
 from dulwich.patch import write_commit_diff, write_tree_diff
 from dulwich.refs import SYMREF, Ref
 from fastapi import HTTPException
+from pydantic import BaseModel, TypeAdapter
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import TextLexer, get_lexer_for_filename
 from pygments.util import ClassNotFound
 
+from app.config import settings
 from app.entities.repositories import Repository as RepositoryEntity
 from app.schemas.releases import TagInfo, TagsPublic
 from app.schemas.repositories import (
@@ -40,11 +42,19 @@ from app.schemas.repositories import (
 )
 from app.services.blob_backend import load_repository_from_storage, save_repository_changes_to_storage
 from app.services.markdown import render_markdown
+from app.utils.cache_headers import (
+    CACHE_CONTROL_IMMUTABLE,
+    CACHE_CONTROL_PRIVATE,
+    CACHE_CONTROL_REVALIDATE,
+    is_commit_sha,
+)
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import Awaitable, Callable
 
     from app.clients.blob_storage import BlobStorageClient
+    from app.clients.cache import AbstractCacheClient
     from app.clients.redis import AbstractRedisClient
     from app.clients.repositories import RepositoryStore
     from app.clients.stars import StarStore
@@ -153,6 +163,7 @@ class RepositoryService:
         backend: BlobBackend,
         blob_client: BlobStorageClient,
         redis_client: AbstractRedisClient,
+        cache_client: AbstractCacheClient,
         repository_store: RepositoryStore,
         star_store: StarStore,
     ) -> None:
@@ -162,14 +173,104 @@ class RepositoryService:
             backend: Git backend.
             blob_client: Blob storage client.
             redis_client: Redis client.
+            cache_client: Cache client for derived read responses.
             repository_store: Repository store used to enrich repository metadata with database records.
             star_store: Star store used to compute star counts.
         """
         self.backend = backend
         self.blob_client = blob_client
         self.redis_client = redis_client
+        self.cache_client = cache_client
         self.repository_store = repository_store
         self.star_store = star_store
+
+    def _cache_group(self, owner: str, name: str) -> str:
+        """Build the cache group for a repository.
+
+        Args:
+            owner: Owner name.
+            name: Repository name.
+
+        Returns:
+            The group used to invalidate a repository's cached responses.
+        """
+        return f"repo:{owner}/{name}"
+
+    @staticmethod
+    def _ttl_for_ref(ref: str) -> int:
+        """Pick a cache TTL based on whether a ref is immutable.
+
+        Args:
+            ref: Git ref used to address the content.
+
+        Returns:
+            The cache TTL in seconds.
+        """
+        return settings.CACHE_IMMUTABLE_TTL if is_commit_sha(ref) else settings.CACHE_TTL
+
+    async def _cached_model[M: BaseModel](
+        self,
+        *,
+        key: str,
+        group: str,
+        ttl: int,
+        model: type[M],
+        compute: Callable[[], Awaitable[M]],
+    ) -> M:
+        """Return a cached model, computing and storing it on a miss.
+
+        Args:
+            key: Cache key within the group.
+            group: Group used for bulk invalidation.
+            ttl: Time to live in seconds.
+            model: Pydantic model type used to (de)serialize the value.
+            compute: Coroutine producing the value on a miss.
+
+        Returns:
+            The cached or freshly computed model.
+        """
+        cached = await self.cache_client.get(key, group=group)
+        if cached is not None:
+            return model.model_validate_json(cached)
+        value = await compute()
+        await self.cache_client.set(key, value.model_dump_json(), ttl=ttl, group=group)
+        return value
+
+    async def cache_headers(self, owner: str, name: str, *, immutable: bool) -> dict[str, str]:
+        """Compute CDN cache headers for repository content.
+
+        Args:
+            owner: Owner name.
+            name: Repository name.
+            immutable: Whether the content is addressed by an immutable commit SHA.
+
+        Returns:
+            Response headers instructing a CDN how to cache the content.
+        """
+        if await self._is_private(owner, name):
+            return {"Cache-Control": CACHE_CONTROL_PRIVATE}
+        if immutable:
+            return {"Cache-Control": CACHE_CONTROL_IMMUTABLE}
+        return {"Cache-Control": CACHE_CONTROL_REVALIDATE}
+
+    async def _is_private(self, owner: str, name: str) -> bool:
+        """Resolve whether a repository is private, caching the answer briefly.
+
+        Args:
+            owner: Owner name.
+            name: Repository name.
+
+        Returns:
+            True if the repository exists and is private.
+        """
+        group = self._cache_group(owner, name)
+        cached = await self.cache_client.get("private", group=group)
+        if cached is not None:
+            return cached == "1"
+        entity = await self.repository_store.find_by_owner_and_name(owner, name)
+        is_private = entity is not None and entity.is_private
+        await self.cache_client.set("private", "1" if is_private else "0", ttl=settings.CACHE_TTL, group=group)
+        return is_private
 
     async def _apply_counts(self, repository: Repository, repo_id: uuid.UUID) -> None:
         """Fill a repository schema's star and fork counts from related tables.
@@ -304,6 +405,7 @@ class RepositoryService:
 
         await save_repository_changes_to_storage(self.blob_client, self.redis_client, key, changes)
         self.backend.clear_repository_changes(key)
+        await self.cache_client.invalidate(self._cache_group(owner, name))
 
     async def load_repository(self, owner: str, name: str) -> BlobRepository:
         """Load a repository from storage.
@@ -347,34 +449,44 @@ class RepositoryService:
         Returns:
             TreeListing with the directory entries.
         """
-        repo = await self.load_repository(owner, name)
-        commit_sha = self._resolve_ref(repo, ref)
-        tree = self._get_tree_at_path(repo, commit_sha, tree_path)
 
-        entries: list[TreeEntry] = []
-        store = repo.object_store
+        async def compute() -> TreeListing:
+            repo = await self.load_repository(owner, name)
+            commit_sha = self._resolve_ref(repo, ref)
+            tree = self._get_tree_at_path(repo, commit_sha, tree_path)
 
-        for item in sorted(tree.items(), key=lambda e: (not stat.S_ISDIR(e.mode), e.path)):
-            entry_name = item.path.decode()
-            entry_path = f"{tree_path}/{entry_name}".lstrip("/") if tree_path else entry_name
-            is_dir = stat.S_ISDIR(item.mode)
+            entries: list[TreeEntry] = []
+            store = repo.object_store
 
-            size = None
-            if not is_dir:
-                obj = store[item.sha]
-                if isinstance(obj, Blob):
-                    size = len(obj.data)
+            for item in sorted(tree.items(), key=lambda e: (not stat.S_ISDIR(e.mode), e.path)):
+                entry_name = item.path.decode()
+                entry_path = f"{tree_path}/{entry_name}".lstrip("/") if tree_path else entry_name
+                is_dir = stat.S_ISDIR(item.mode)
 
-            entries.append(
-                TreeEntry(
-                    name=entry_name,
-                    path=entry_path,
-                    type=TreeEntryType.TREE if is_dir else TreeEntryType.BLOB,
-                    size=size,
+                size = None
+                if not is_dir:
+                    obj = store[item.sha]
+                    if isinstance(obj, Blob):
+                        size = len(obj.data)
+
+                entries.append(
+                    TreeEntry(
+                        name=entry_name,
+                        path=entry_path,
+                        type=TreeEntryType.TREE if is_dir else TreeEntryType.BLOB,
+                        size=size,
+                    )
                 )
-            )
 
-        return TreeListing(entries=entries, tree_path=tree_path, ref=ref)
+            return TreeListing(entries=entries, tree_path=tree_path, ref=ref)
+
+        return await self._cached_model(
+            key=f"tree:{ref}:{tree_path}",
+            group=self._cache_group(owner, name),
+            ttl=self._ttl_for_ref(ref),
+            model=TreeListing,
+            compute=compute,
+        )
 
     async def get_blob(self, owner: str, name: str, ref: str, file_path: str) -> FileContent:
         """Get file content with syntax highlighting.
@@ -394,58 +506,67 @@ class RepositoryService:
         if not file_path:
             raise HTTPException(status_code=400, detail="file_path is required")
 
-        repo = await self.load_repository(owner, name)
-        commit_sha = self._resolve_ref(repo, ref)
-        blob, filename = self._get_blob_at_path(repo, commit_sha, file_path)
+        async def compute() -> FileContent:
+            repo = await self.load_repository(owner, name)
+            commit_sha = self._resolve_ref(repo, ref)
+            blob, filename = self._get_blob_at_path(repo, commit_sha, file_path)
 
-        raw_data = blob.data
-        try:
-            content = raw_data.decode("utf-8")
-        except UnicodeDecodeError:
-            content = "(binary file)"
+            raw_data = blob.data
+            try:
+                content = raw_data.decode("utf-8")
+            except UnicodeDecodeError:
+                content = "(binary file)"
 
-        try:
-            lexer = get_lexer_for_filename(filename)
-        except ClassNotFound:
-            lexer = TextLexer()
+            try:
+                lexer = get_lexer_for_filename(filename)
+            except ClassNotFound:
+                lexer = TextLexer()
 
-        formatter = HtmlFormatter(
-            style="default",
-            cssclass="highlight",
-            linenos="table",
-            lineanchors="L",
-            anchorlinenos=True,
-            wrapcode=True,
-        )
+            formatter = HtmlFormatter(
+                style="default",
+                cssclass="highlight",
+                linenos="table",
+                lineanchors="L",
+                anchorlinenos=True,
+                wrapcode=True,
+            )
 
-        # Create dark mode formatter for CSS only (same HTML, different colors)
-        dark_formatter = HtmlFormatter(
-            style="github-dark",
-            cssclass="highlight",
-        )
+            # Create dark mode formatter for CSS only (same HTML, different colors)
+            dark_formatter = HtmlFormatter(
+                style="github-dark",
+                cssclass="highlight",
+            )
 
-        highlighted_html = highlight(content, lexer, formatter)
-        css = _get_style_defs(formatter, ".highlight")
+            highlighted_html = highlight(content, lexer, formatter)
+            css = _get_style_defs(formatter, ".highlight")
 
-        # Scope all dark CSS rules under .dark to prevent them from leaking into
-        # light mode. get_style_defs() only prefixes .highlight rules, but Pygments
-        # also emits global rules (td.linenos, span.linenos, pre) that need scoping.
-        raw_dark_css = _get_style_defs(dark_formatter, ".highlight")
-        css_dark = "\n".join(
-            f".dark {line}" if line and not line.startswith(".dark") else line for line in raw_dark_css.split("\n")
-        )
-        line_count = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
+            # Scope all dark CSS rules under .dark to prevent them from leaking into
+            # light mode. get_style_defs() only prefixes .highlight rules, but Pygments
+            # also emits global rules (td.linenos, span.linenos, pre) that need scoping.
+            raw_dark_css = _get_style_defs(dark_formatter, ".highlight")
+            css_dark = "\n".join(
+                f".dark {line}" if line and not line.startswith(".dark") else line for line in raw_dark_css.split("\n")
+            )
+            line_count = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
 
-        return FileContent(
-            name=filename,
-            path=file_path,
-            size=len(raw_data),
-            content=content,
-            highlighted_html=highlighted_html,
-            css=css,
-            css_dark=css_dark,
-            language=lexer.name,
-            line_count=line_count,
+            return FileContent(
+                name=filename,
+                path=file_path,
+                size=len(raw_data),
+                content=content,
+                highlighted_html=highlighted_html,
+                css=css,
+                css_dark=css_dark,
+                language=lexer.name,
+                line_count=line_count,
+            )
+
+        return await self._cached_model(
+            key=f"blob:{ref}:{file_path}",
+            group=self._cache_group(owner, name),
+            ttl=self._ttl_for_ref(ref),
+            model=FileContent,
+            compute=compute,
         )
 
     async def get_info(self, owner: str, name: str, ref: str) -> RepositoryInfo:
@@ -461,39 +582,49 @@ class RepositoryService:
         Returns:
             RepositoryInfo with metadata.
         """
-        repo = await self.load_repository(owner, name)
 
-        branch_count, tag_count, default_branch = self._get_ref_counts(repo)
+        async def compute() -> RepositoryInfo:
+            repo = await self.load_repository(owner, name)
 
-        commit_sha = self._try_resolve_ref(repo, ref)
-        last_commit = self._get_commit_info(repo, commit_sha) if commit_sha is not None else None
+            branch_count, tag_count, default_branch = self._get_ref_counts(repo)
 
-        description = None
-        is_private = False
-        stars_count = 0
-        forks_count = 0
-        fork_of = None
-        entity = await self.repository_store.find_by_owner_and_name(owner, name)
-        if entity is not None:
-            description = entity.description
-            is_private = entity.is_private
-            stars_count = await self.star_store.count_by_repo(entity.id)
-            forks_count = await self.repository_store.count_by_fork_of(entity.id)
-            if entity.fork_of is not None:
-                fork_of = f"{entity.fork_of.owner.name}/{entity.fork_of.name}"
+            commit_sha = self._try_resolve_ref(repo, ref)
+            last_commit = self._get_commit_info(repo, commit_sha) if commit_sha is not None else None
 
-        return RepositoryInfo(
-            name=name,
-            owner=owner,
-            description=description,
-            is_private=is_private,
-            default_branch=default_branch,
-            branch_count=branch_count,
-            tag_count=tag_count,
-            stars_count=stars_count,
-            forks_count=forks_count,
-            fork_of=fork_of,
-            last_commit=last_commit,
+            description = None
+            is_private = False
+            stars_count = 0
+            forks_count = 0
+            fork_of = None
+            entity = await self.repository_store.find_by_owner_and_name(owner, name)
+            if entity is not None:
+                description = entity.description
+                is_private = entity.is_private
+                stars_count = await self.star_store.count_by_repo(entity.id)
+                forks_count = await self.repository_store.count_by_fork_of(entity.id)
+                if entity.fork_of is not None:
+                    fork_of = f"{entity.fork_of.owner.name}/{entity.fork_of.name}"
+
+            return RepositoryInfo(
+                name=name,
+                owner=owner,
+                description=description,
+                is_private=is_private,
+                default_branch=default_branch,
+                branch_count=branch_count,
+                tag_count=tag_count,
+                stars_count=stars_count,
+                forks_count=forks_count,
+                fork_of=fork_of,
+                last_commit=last_commit,
+            )
+
+        return await self._cached_model(
+            key=f"info:{ref}",
+            group=self._cache_group(owner, name),
+            ttl=settings.CACHE_TTL,
+            model=RepositoryInfo,
+            compute=compute,
         )
 
     async def get_readme(self, owner: str, name: str, ref: str, tree_path: str) -> ReadmeContent:
@@ -511,17 +642,27 @@ class RepositoryService:
         Raises:
             HTTPException: If no README is found.
         """
-        repo = await self.load_repository(owner, name)
-        commit_sha = self._resolve_ref(repo, ref)
-        tree = self._get_tree_at_path(repo, commit_sha, tree_path)
 
-        result = self._find_readme_in_tree(repo, tree)
-        if result is None:
-            raise HTTPException(status_code=404, detail="README not found")
+        async def compute() -> ReadmeContent:
+            repo = await self.load_repository(owner, name)
+            commit_sha = self._resolve_ref(repo, ref)
+            tree = self._get_tree_at_path(repo, commit_sha, tree_path)
 
-        filename, content = result
-        html = render_markdown(content) if filename.lower().endswith((".md", ".markdown")) else ""
-        return ReadmeContent(filename=filename, content=content, html=html)
+            result = self._find_readme_in_tree(repo, tree)
+            if result is None:
+                raise HTTPException(status_code=404, detail="README not found")
+
+            filename, content = result
+            html = render_markdown(content) if filename.lower().endswith((".md", ".markdown")) else ""
+            return ReadmeContent(filename=filename, content=content, html=html)
+
+        return await self._cached_model(
+            key=f"readme:{ref}:{tree_path}",
+            group=self._cache_group(owner, name),
+            ttl=self._ttl_for_ref(ref),
+            model=ReadmeContent,
+            compute=compute,
+        )
 
     async def list_branches(self, owner: str, name: str) -> list[BranchInfo]:
         """List all branches in a repository.
@@ -533,6 +674,12 @@ class RepositoryService:
         Returns:
             List of BranchInfo with branch names and default flag.
         """
+        group = self._cache_group(owner, name)
+        adapter: TypeAdapter[list[BranchInfo]] = TypeAdapter(list[BranchInfo])
+        cached = await self.cache_client.get("branches", group=group)
+        if cached is not None:
+            return adapter.validate_json(cached)
+
         repo = await self.load_repository(owner, name)
         refs = repo.refs
         all_keys = refs.allkeys()
@@ -552,6 +699,9 @@ class RepositoryService:
                 branch_name = key_str[len("refs/heads/") :]
                 branches.append(BranchInfo(name=branch_name, is_default=branch_name == default_branch))
 
+        await self.cache_client.set(
+            "branches", adapter.dump_json(branches).decode(), ttl=settings.CACHE_TTL, group=group
+        )
         return branches
 
     async def list_tags(self, owner: str, name: str) -> TagsPublic:
@@ -564,35 +714,45 @@ class RepositoryService:
         Returns:
             TagsPublic with tag names, target commit SHAs and timestamps.
         """
-        repo = await self.load_repository(owner, name)
-        refs = repo.refs
-        store = repo.object_store
 
-        tags: list[TagInfo] = []
-        for key in sorted(refs.allkeys()):
-            key_str = key.decode() if isinstance(key, bytes) else str(key)
-            if not key_str.startswith("refs/tags/"):
-                continue
-            tag_name = key_str[len("refs/tags/") :]
-            sha = refs.read_loose_ref(Ref(key if isinstance(key, bytes) else key.encode()))
-            if sha is None:
-                continue
+        async def compute() -> TagsPublic:
+            repo = await self.load_repository(owner, name)
+            refs = repo.refs
+            store = repo.object_store
 
-            commit_sha = sha
-            timestamp: int | None = None
-            obj = store[ObjectID(sha)]
-            if isinstance(obj, Tag):
-                commit_sha = obj.object[1]
-                timestamp = obj.tag_time
-            commit_obj = store[ObjectID(commit_sha)]
-            if isinstance(commit_obj, Commit) and timestamp is None:
-                timestamp = commit_obj.commit_time
+            tags: list[TagInfo] = []
+            for key in sorted(refs.allkeys()):
+                key_str = key.decode() if isinstance(key, bytes) else str(key)
+                if not key_str.startswith("refs/tags/"):
+                    continue
+                tag_name = key_str[len("refs/tags/") :]
+                sha = refs.read_loose_ref(Ref(key if isinstance(key, bytes) else key.encode()))
+                if sha is None:
+                    continue
 
-            sha_str = commit_sha.decode() if isinstance(commit_sha, bytes) else str(commit_sha)
-            tags.append(TagInfo(name=tag_name, commit_sha=sha_str, timestamp=timestamp))
+                commit_sha = sha
+                timestamp: int | None = None
+                obj = store[ObjectID(sha)]
+                if isinstance(obj, Tag):
+                    commit_sha = obj.object[1]
+                    timestamp = obj.tag_time
+                commit_obj = store[ObjectID(commit_sha)]
+                if isinstance(commit_obj, Commit) and timestamp is None:
+                    timestamp = commit_obj.commit_time
 
-        tags.sort(key=lambda tag: tag.name, reverse=True)
-        return TagsPublic(data=tags, count=len(tags))
+                sha_str = commit_sha.decode() if isinstance(commit_sha, bytes) else str(commit_sha)
+                tags.append(TagInfo(name=tag_name, commit_sha=sha_str, timestamp=timestamp))
+
+            tags.sort(key=lambda tag: tag.name, reverse=True)
+            return TagsPublic(data=tags, count=len(tags))
+
+        return await self._cached_model(
+            key="tags",
+            group=self._cache_group(owner, name),
+            ttl=settings.CACHE_TTL,
+            model=TagsPublic,
+            compute=compute,
+        )
 
     async def list_commits(
         self, owner: str, name: str, ref: str = "main", offset: int = 0, limit: int = 50
@@ -609,34 +769,44 @@ class RepositoryService:
         Returns:
             CommitsPublic with the requested page of commits.
         """
-        repo = await self.load_repository(owner, name)
-        commit_sha = self._try_resolve_ref(repo, ref)
-        if commit_sha is None:
-            return CommitsPublic(data=[], count=0, ref=ref)
 
-        data: list[CommitListItem] = []
-        skipped = 0
-        for entry in repo.get_walker(include=[ObjectID(commit_sha)]):
-            if skipped < offset:
-                skipped += 1
-                continue
-            if len(data) >= limit:
-                break
+        async def compute() -> CommitsPublic:
+            repo = await self.load_repository(owner, name)
+            commit_sha = self._try_resolve_ref(repo, ref)
+            if commit_sha is None:
+                return CommitsPublic(data=[], count=0, ref=ref)
 
-            commit = entry.commit
-            sha = commit.id.decode() if isinstance(commit.id, bytes) else str(commit.id)
-            author, author_email = _split_author(commit.author.decode("utf-8", errors="replace"))
-            data.append(
-                CommitListItem(
-                    sha=sha,
-                    message=commit.message.decode("utf-8", errors="replace").strip(),
-                    author=author,
-                    author_email=author_email,
-                    timestamp=commit.author_time,
+            data: list[CommitListItem] = []
+            skipped = 0
+            for entry in repo.get_walker(include=[ObjectID(commit_sha)]):
+                if skipped < offset:
+                    skipped += 1
+                    continue
+                if len(data) >= limit:
+                    break
+
+                commit = entry.commit
+                sha = commit.id.decode() if isinstance(commit.id, bytes) else str(commit.id)
+                author, author_email = _split_author(commit.author.decode("utf-8", errors="replace"))
+                data.append(
+                    CommitListItem(
+                        sha=sha,
+                        message=commit.message.decode("utf-8", errors="replace").strip(),
+                        author=author,
+                        author_email=author_email,
+                        timestamp=commit.author_time,
+                    )
                 )
-            )
 
-        return CommitsPublic(data=data, count=len(data), ref=ref)
+            return CommitsPublic(data=data, count=len(data), ref=ref)
+
+        return await self._cached_model(
+            key=f"commits:{ref}:{offset}:{limit}",
+            group=self._cache_group(owner, name),
+            ttl=self._ttl_for_ref(ref),
+            model=CommitsPublic,
+            compute=compute,
+        )
 
     async def get_commit(self, owner: str, name: str, sha: str) -> CommitDetail:
         """Get detailed information about a single commit, including its diff.
@@ -652,31 +822,41 @@ class RepositoryService:
         Raises:
             HTTPException: If the commit is not found.
         """
-        repo = await self.load_repository(owner, name)
-        store = repo.object_store
-        try:
-            obj = store[ObjectID(sha.encode())]
-        except (KeyError, ValueError) as e:
-            raise HTTPException(status_code=404, detail="Commit not found") from e
-        if not isinstance(obj, Commit):
-            raise HTTPException(status_code=404, detail="Commit not found")
 
-        buffer = io.BytesIO()
-        write_commit_diff(buffer, store, obj)
-        files = self._parse_patch(buffer.getvalue().decode("utf-8", errors="replace"))
+        async def compute() -> CommitDetail:
+            repo = await self.load_repository(owner, name)
+            store = repo.object_store
+            try:
+                obj = store[ObjectID(sha.encode())]
+            except (KeyError, ValueError) as e:
+                raise HTTPException(status_code=404, detail="Commit not found") from e
+            if not isinstance(obj, Commit):
+                raise HTTPException(status_code=404, detail="Commit not found")
 
-        author, author_email = _split_author(obj.author.decode("utf-8", errors="replace"))
-        sha_str = obj.id.decode() if isinstance(obj.id, bytes) else str(obj.id)
-        return CommitDetail(
-            sha=sha_str,
-            message=obj.message.decode("utf-8", errors="replace").strip(),
-            author=author,
-            author_email=author_email,
-            timestamp=obj.author_time,
-            parents=[p.decode() if isinstance(p, bytes) else str(p) for p in obj.parents],
-            files=files,
-            additions=sum(file.additions for file in files),
-            deletions=sum(file.deletions for file in files),
+            buffer = io.BytesIO()
+            write_commit_diff(buffer, store, obj)
+            files = self._parse_patch(buffer.getvalue().decode("utf-8", errors="replace"))
+
+            author, author_email = _split_author(obj.author.decode("utf-8", errors="replace"))
+            sha_str = obj.id.decode() if isinstance(obj.id, bytes) else str(obj.id)
+            return CommitDetail(
+                sha=sha_str,
+                message=obj.message.decode("utf-8", errors="replace").strip(),
+                author=author,
+                author_email=author_email,
+                timestamp=obj.author_time,
+                parents=[p.decode() if isinstance(p, bytes) else str(p) for p in obj.parents],
+                files=files,
+                additions=sum(file.additions for file in files),
+                deletions=sum(file.deletions for file in files),
+            )
+
+        return await self._cached_model(
+            key=f"commit:{sha}",
+            group=self._cache_group(owner, name),
+            ttl=settings.CACHE_IMMUTABLE_TTL,
+            model=CommitDetail,
+            compute=compute,
         )
 
     async def compare(self, owner: str, name: str, base_ref: str, head_ref: str) -> CompareResult:
@@ -691,30 +871,43 @@ class RepositoryService:
         Returns:
             CompareResult with the changed files and the resolved head commit.
         """
-        repo = await self.load_repository(owner, name)
-        base_sha = self._try_resolve_ref(repo, base_ref)
-        head_sha = self._try_resolve_ref(repo, head_ref)
-        if base_sha is None or head_sha is None:
-            return CompareResult(files=[], additions=0, deletions=0)
 
-        store = repo.object_store
-        base_commit = store[ObjectID(base_sha)]
-        head_commit = store[ObjectID(head_sha)]
-        if not isinstance(base_commit, Commit) or not isinstance(head_commit, Commit):
-            return CompareResult(files=[], additions=0, deletions=0)
+        async def compute() -> CompareResult:
+            repo = await self.load_repository(owner, name)
+            base_sha = self._try_resolve_ref(repo, base_ref)
+            head_sha = self._try_resolve_ref(repo, head_ref)
+            if base_sha is None or head_sha is None:
+                return CompareResult(files=[], additions=0, deletions=0)
 
-        buffer = io.BytesIO()
-        write_tree_diff(buffer, store, base_commit.tree, head_commit.tree)
-        files = self._parse_patch(buffer.getvalue().decode("utf-8", errors="replace"))
+            store = repo.object_store
+            base_commit = store[ObjectID(base_sha)]
+            head_commit = store[ObjectID(head_sha)]
+            if not isinstance(base_commit, Commit) or not isinstance(head_commit, Commit):
+                return CompareResult(files=[], additions=0, deletions=0)
 
-        base_str = base_commit.id.decode() if isinstance(base_commit.id, bytes) else str(base_commit.id)
-        head_str = head_commit.id.decode() if isinstance(head_commit.id, bytes) else str(head_commit.id)
-        return CompareResult(
-            base_commit=base_str,
-            head_commit=head_str,
-            files=files,
-            additions=sum(file.additions for file in files),
-            deletions=sum(file.deletions for file in files),
+            buffer = io.BytesIO()
+            write_tree_diff(buffer, store, base_commit.tree, head_commit.tree)
+            files = self._parse_patch(buffer.getvalue().decode("utf-8", errors="replace"))
+
+            base_str = base_commit.id.decode() if isinstance(base_commit.id, bytes) else str(base_commit.id)
+            head_str = head_commit.id.decode() if isinstance(head_commit.id, bytes) else str(head_commit.id)
+            return CompareResult(
+                base_commit=base_str,
+                head_commit=head_str,
+                files=files,
+                additions=sum(file.additions for file in files),
+                deletions=sum(file.deletions for file in files),
+            )
+
+        ttl = (
+            settings.CACHE_IMMUTABLE_TTL if is_commit_sha(base_ref) and is_commit_sha(head_ref) else settings.CACHE_TTL
+        )
+        return await self._cached_model(
+            key=f"compare:{base_ref}:{head_ref}",
+            group=self._cache_group(owner, name),
+            ttl=ttl,
+            model=CompareResult,
+            compute=compute,
         )
 
     @staticmethod

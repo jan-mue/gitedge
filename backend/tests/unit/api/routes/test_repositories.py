@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from app.config import settings
+from app.utils.cache_headers import CACHE_CONTROL_PRIVATE, CACHE_CONTROL_REVALIDATE
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -16,6 +17,25 @@ REPO_NAME = "repo"
 REPO_URL = f"{settings.API_V1_STR}/repositories/{REPO_OWNER}/{REPO_NAME}"
 ISSUES_URL = f"{REPO_URL}/issues"
 PULLS_URL = f"{REPO_URL}/pulls"
+REPOSITORIES_URL = f"{settings.API_V1_STR}/repositories/"
+
+
+def test_repository_metadata_sets_cache_headers(client: TestClient) -> None:
+    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME})
+
+    r = client.get(REPO_URL)
+    assert r.status_code == 200
+    assert r.headers["cache-control"] == CACHE_CONTROL_REVALIDATE
+
+
+def test_private_repository_is_not_cached(client: TestClient, fake_stores: FakeStores) -> None:
+    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME})
+    entity = next(iter(fake_stores.repository.items.values()))
+    entity.is_private = True
+
+    r = client.get(REPO_URL)
+    assert r.status_code == 200
+    assert r.headers["cache-control"] == CACHE_CONTROL_PRIVATE
 
 
 async def test_create_issue(

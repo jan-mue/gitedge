@@ -5,14 +5,18 @@ from typing import TYPE_CHECKING
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
+from pytest_socket import disable_socket
 
 from app.api.dependencies import (
     check_database_connection,
     get_activity_store,
+    get_blob_client,
+    get_cache_client,
     get_comment_store,
     get_issue_store,
     get_organization_store,
     get_pull_request_store,
+    get_redis_client,
     get_release_store,
     get_repository_store,
     get_star_store,
@@ -33,6 +37,11 @@ if TYPE_CHECKING:
 app.dependency_overrides[check_database_connection] = lambda: True
 
 
+def pytest_runtest_setup() -> None:
+    """Block network access so unit tests cannot reach real services."""
+    disable_socket(allow_unix_socket=True)
+
+
 @pytest.fixture(autouse=True)
 def fake_stores() -> Generator[FakeStores]:
     """Override the data access stores with in-memory fakes."""
@@ -47,6 +56,9 @@ def fake_stores() -> Generator[FakeStores]:
     app.dependency_overrides[get_comment_store] = lambda: fakes.comments
     app.dependency_overrides[get_release_store] = lambda: fakes.releases
     app.dependency_overrides[get_activity_store] = lambda: fakes.activity
+    app.dependency_overrides[get_cache_client] = lambda: fakes.cache
+    app.dependency_overrides[get_blob_client] = lambda: fakes.blob
+    app.dependency_overrides[get_redis_client] = lambda: fakes.redis
 
     yield fakes
 
@@ -60,6 +72,9 @@ def fake_stores() -> Generator[FakeStores]:
     app.dependency_overrides.pop(get_comment_store, None)
     app.dependency_overrides.pop(get_release_store, None)
     app.dependency_overrides.pop(get_activity_store, None)
+    app.dependency_overrides.pop(get_cache_client, None)
+    app.dependency_overrides.pop(get_blob_client, None)
+    app.dependency_overrides.pop(get_redis_client, None)
 
 
 @pytest.fixture

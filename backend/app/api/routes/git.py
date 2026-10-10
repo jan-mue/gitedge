@@ -13,6 +13,7 @@ from dulwich.web import GunzipFilter, HTTPGitApplication, LimitedInputFilter
 from fastapi import APIRouter, Request, Response
 
 from app.api.dependencies import RepositoryServiceDep
+from app.utils.cache_headers import CACHE_CONTROL_NO_STORE
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,6 +22,26 @@ if TYPE_CHECKING:
     from app.services.repositories import RepositoryService
 
 router = APIRouter(tags=["git"])
+
+_NO_STORE_PATHS = frozenset({"/info/refs", "/HEAD", "/git-upload-pack", "/git-receive-pack"})
+
+
+async def _git_cache_control(repository_service: RepositoryService, owner: str, name: str, service_path: str) -> str:
+    """Pick a Cache-Control value for a Git HTTP response.
+
+    Args:
+        repository_service: Repository service that resolves repository privacy.
+        owner: Repository owner.
+        name: Repository name.
+        service_path: Git service path (e.g. "/info/refs").
+
+    Returns:
+        The Cache-Control header value.
+    """
+    if service_path in _NO_STORE_PATHS:
+        return CACHE_CONTROL_NO_STORE
+    headers = await repository_service.cache_headers(owner, name, immutable=service_path != "/objects/info/packs")
+    return headers["Cache-Control"]
 
 
 def _create_wsgi_environ(request: Request, body: bytes, path: str) -> dict[str, Any]:
@@ -123,6 +144,7 @@ async def _handle_git_request(
 
     status_code = int(response_status.split(maxsplit=1)[0])
     headers_dict = dict(response_headers)
+    headers_dict["Cache-Control"] = await _git_cache_control(repository_service, owner, name, service_path)
 
     return Response(
         content=b"".join(response_body),

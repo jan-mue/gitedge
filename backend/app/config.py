@@ -113,6 +113,11 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_PASSWORD: str | None = None
 
+    CACHE_KIND: Literal["auto", "none", "redis", "vercel"] = "auto"
+    CACHE_NAMESPACE: str = "gitedge"
+    CACHE_TTL: int = 60
+    CACHE_IMMUTABLE_TTL: int = 31536000
+
     # Blob storage settings
     BLOB_STORAGE_KIND: Literal["vercel", "s3"] = "s3"
     VERCEL_BLOB_TOKEN: str | None = None
