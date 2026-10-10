@@ -1,4 +1,4 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>jan-mue/renovate-config"]
+  "extends": ["github>jan-mue/renovate-config", ":pinAllExceptPeerDependencies"]
 }
