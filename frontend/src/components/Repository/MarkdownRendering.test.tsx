@@ -1,22 +1,18 @@
 import type { ReactNode } from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 
+import {
+  handleCommentsListComments,
+  handleRepositoriesGetIssue,
+  handleRepositoriesGetPullRequest,
+  handleRepositoriesGetPullRequestFiles,
+} from "@/client/msw.gen"
+import { issue, pullRequest } from "@/test/fixtures"
+import { server } from "@/test/server"
 import { render, screen } from "@/test/test-utils"
 import CommentsSection from "./CommentsSection"
 import IssueDetail from "./IssueDetail"
 import PullRequestDetail from "./PullRequestDetail"
-
-const { getIssue, getPullRequest, getPullRequestFiles, listComments } = vi.hoisted(() => ({
-  getIssue: vi.fn(),
-  getPullRequest: vi.fn(),
-  getPullRequestFiles: vi.fn(),
-  listComments: vi.fn(),
-}))
-
-vi.mock("@/client/sdk.gen", () => ({
-  RepositoriesService: { getIssue, getPullRequest, getPullRequestFiles },
-  CommentsService: { listComments },
-}))
 
 vi.mock("@tanstack/react-router", () => ({
   useParams: () => ({ owner: "owner", repo: "repo", number: "1" }),
@@ -36,27 +32,18 @@ const bodyHtml = "<p><strong>Description</strong></p>"
 
 describe("Markdown descriptions and comments", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    listComments.mockResolvedValue({ data: { data: [], count: 0 } })
-    getPullRequestFiles.mockResolvedValue({ data: { files: [] } })
+    server.use(
+      handleCommentsListComments({ body: { data: [], count: 0 } }),
+      handleRepositoriesGetPullRequestFiles({ body: { files: [], additions: 0, deletions: 0 } }),
+      handleRepositoriesGetIssue({ body: { ...issue, body, body_html: bodyHtml } }),
+      handleRepositoriesGetPullRequest({ body: { ...pullRequest, body, body_html: bodyHtml } }),
+    )
   })
 
   test.each([
-    { name: "issue", Component: IssueDetail, get: getIssue, edit: "edit-issue", input: "edit-issue-body" },
-    { name: "pull request", Component: PullRequestDetail, get: getPullRequest, edit: "edit-pr", input: "edit-pr-body" },
-  ])("displays backend HTML and edits raw Markdown for a $name", async ({ Component, get, edit, input }) => {
-    get.mockResolvedValue({
-      data: {
-        title: "Title",
-        number: 1,
-        state: "open",
-        author_username: "owner",
-        body,
-        body_html: bodyHtml,
-        head_branch: "feature",
-        base_branch: "main",
-      },
-    })
+    { name: "issue", Component: IssueDetail, edit: "edit-issue", input: "edit-issue-body" },
+    { name: "pull request", Component: PullRequestDetail, edit: "edit-pr", input: "edit-pr-body" },
+  ])("displays backend HTML and edits raw Markdown for a $name", async ({ Component, edit, input }) => {
     const { user } = render(<Component />)
 
     expect((await screen.findByText("Description")).tagName).toBe("STRONG")
@@ -67,12 +54,23 @@ describe("Markdown descriptions and comments", () => {
   })
 
   test("displays backend HTML and edits raw Markdown for comments", async () => {
-    listComments.mockResolvedValue({
-      data: {
-        count: 1,
-        data: [{ id: "1", author_username: "owner", body, body_html: bodyHtml, created_at: "2026-01-01T00:00:00Z" }],
-      },
-    })
+    server.use(
+      handleCommentsListComments({
+        body: {
+          count: 1,
+          data: [
+            {
+              id: "1",
+              author_username: "owner",
+              body,
+              body_html: bodyHtml,
+              created_at: "2026-01-01T00:00:00Z",
+              updated_at: "2026-01-01T00:00:00Z",
+            },
+          ],
+        },
+      }),
+    )
     const { user } = render(<CommentsSection owner="owner" repo="repo" number={1} />)
 
     expect((await screen.findByText("Description")).tagName).toBe("STRONG")

@@ -220,6 +220,14 @@ For more information on writing and running Playwright tests, see the official
 bun run test
 ```
 
+API requests are intercepted by MSW. Import `server` from `@/test/server` and
+register handlers from `@/client/msw.gen` with `server.use(...)` in each test or
+`beforeEach`. The Hey API MSW plugin generates these typed handlers alongside
+the client. Handlers are reset after each test, and unhandled requests are errors.
+Use `vi.mock()` for non-API dependencies such as navigation.
+The ast-grep pre-commit hook rejects API client and TanStack Query module mocks,
+direct API client spies or replacements, and global fetch stubs in frontend tests.
+
 ## Linting and formatting
 
 Run all pre-commit hooks (ruff, ty, biome, codespell, deptry, and more):
