@@ -185,7 +185,12 @@ class ActivityService:
             if offset and await self.activity_store.list_feed(user.id, 0, 1):
                 return ActivitiesPublic(data=[], count=0)
             activities = await self.activity_store.list_recent(offset, limit)
-        return ActivitiesPublic(data=self._to_public_list(activities), count=len(activities))
+        previews = await self.activity_store.get_target_previews(activities)
+        public = [
+            self._to_public(activity).model_copy(update={"preview": previews.get(activity.id)})
+            for activity in activities
+        ]
+        return ActivitiesPublic(data=public, count=len(activities))
 
     @staticmethod
     def _to_public_list(activities: list[Activity]) -> list[ActivityPublic]:

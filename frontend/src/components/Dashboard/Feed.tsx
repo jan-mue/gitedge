@@ -1,99 +1,16 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { Link as RouterLink } from "@tanstack/react-router"
-import { Filter, GitMerge, MessageSquare, MoreHorizontal, Smile, TrendingUp, X } from "lucide-react"
+import { Filter, TrendingUp, X } from "lucide-react"
 import { useMemo, useState } from "react"
 
-import type { ActivityPublic, Repository } from "@/client"
+import type { Repository } from "@/client"
 import { activityGetFeedInfiniteOptions, repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
+import ActivityCard, { activityActions as kindAction } from "@/components/Dashboard/ActivityCard"
 import FeedLoading, { FeedListLoading } from "@/components/Dashboard/FeedLoading"
 import { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import StarButton from "@/components/Repository/StarButton"
 import { LoadingButton } from "@/components/ui/loading-button"
 import useAuth from "@/hooks/useAuth"
-
-const kindAction: Record<string, string> = {
-  star: "starred",
-  watch: "started watching",
-  fork: "forked",
-  issue_open: "opened issue",
-  issue_close: "closed issue",
-  issue_reopen: "reopened issue",
-  comment: "commented on",
-  pull_request_open: "opened pull request",
-  pull_request_merge: "merged pull request",
-  pull_request_close: "closed pull request",
-  pull_request_reopen: "reopened pull request",
-  release: "published release",
-}
-
-const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
-  const owner = activity.repo_owner
-  const repoName = activity.repo_name
-  const isMerge = activity.kind === "pull_request_merge"
-
-  return (
-    <article className="overflow-hidden rounded-lg border border-border bg-card">
-      <div className="px-4 py-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-foreground">
-              {(activity.actor_username ?? "?").slice(0, 1).toUpperCase()}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm text-foreground">
-                <span className="font-semibold">{activity.actor_username ?? "Someone"}</span>{" "}
-                <span className="text-muted-foreground">{kindAction[activity.kind] ?? activity.kind}</span>{" "}
-                {owner && repoName && (
-                  <RouterLink
-                    to="/$owner/$repo"
-                    params={{ owner, repo: repoName }}
-                    className="font-semibold text-primary hover:underline"
-                  >
-                    {owner}/{repoName}
-                  </RouterLink>
-                )}
-              </p>
-              {activity.created_at && (
-                <p className="text-xs text-muted-foreground">{new Date(activity.created_at).toLocaleString()}</p>
-              )}
-            </div>
-          </div>
-          <button type="button" className="shrink-0 rounded p-1 transition-colors hover:bg-accent">
-            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </div>
-      </div>
-
-      {activity.title && (
-        <div className="px-4 pb-4">
-          <h3 className="mb-2 text-base font-semibold text-foreground">
-            {activity.title}
-            {activity.target_number != null && (
-              <span className="font-normal text-muted-foreground"> #{activity.target_number}</span>
-            )}
-          </h3>
-          {isMerge && (
-            <div className="mb-3 flex items-center gap-2">
-              <span className="flex items-center gap-1 rounded-full bg-[hsl(280_60%_35%)] px-2 py-0.5 text-xs font-medium text-white">
-                <GitMerge className="h-3 w-3" /> Merged
-              </span>
-            </div>
-          )}
-          <div className="flex items-center gap-4">
-            <button type="button" className="text-muted-foreground transition-colors hover:text-foreground">
-              <Smile className="h-4 w-4" />
-            </button>
-            {activity.kind === "comment" && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <MessageSquare className="h-3.5 w-3.5" /> comment
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-    </article>
-  )
-}
 
 const Feed = () => {
   const { user } = useAuth()

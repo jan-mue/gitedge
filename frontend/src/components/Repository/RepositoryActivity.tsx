@@ -4,9 +4,9 @@ import { useState } from "react"
 import { activityGetRepositoryActivityStatisticsOptions } from "@/client/@tanstack/react-query.gen"
 import ActivityChart from "@/components/Repository/ActivityChart"
 import ActivityContributors from "@/components/Repository/ActivityContributors"
+import ActivityLoading, { type ActivityView } from "@/components/Repository/ActivityLoading"
 import ActivityPulse from "@/components/Repository/ActivityPulse"
 import ActivityRecentCommits from "@/components/Repository/ActivityRecentCommits"
-import RepositoryLoading from "@/components/Repository/RepositoryLoading"
 
 interface RepositoryActivityProps {
   owner: string
@@ -21,7 +21,7 @@ const views = [
 ] as const
 
 const RepositoryActivity = ({ owner, repo }: RepositoryActivityProps) => {
-  const [view, setView] = useState<(typeof views)[number]["key"]>("pulse")
+  const [view, setView] = useState<ActivityView>("pulse")
   const [days, setDays] = useState(7)
   const { data, isPending, isError, refetch } = useQuery({
     ...activityGetRepositoryActivityStatisticsOptions({ path: { owner, repo }, query: { days } }),
@@ -51,7 +51,7 @@ const RepositoryActivity = ({ owner, repo }: RepositoryActivityProps) => {
         </div>
       </nav>
       <div id="activity-content" className="min-w-0 flex-1" aria-busy={isPending}>
-        {isPending && <RepositoryLoading label="Loading activity" />}
+        {isPending && <ActivityLoading view={view} />}
         {isError && (
           <div role="alert" className="space-y-3 rounded-lg border border-border p-6 text-center">
             <p className="text-sm text-muted-foreground">Could not load repository activity.</p>

@@ -26,6 +26,42 @@ FEED_URL = f"{settings.API_V1_STR}/users/me/feed"
 ACTIVITY_URL = f"{REPO_URL}/activity"
 
 
+@pytest.mark.parametrize("target", ["issues", "pulls"])
+def test_feed_includes_bounded_target_previews(
+    client: TestClient, superuser_token_headers: dict[str, str], target: str
+) -> None:
+    url = f"{REPO_URL}/{target}"
+    created = client.post(
+        url,
+        headers=superuser_token_headers,
+        json={"title": "Detailed activity", "body": "Description", "head_branch": "feature"},
+    )
+    assert created.status_code == 201
+    number = created.json()["number"]
+    assert (
+        client.post(
+            f"{ISSUES_URL}/{number}/comments",
+            headers=superuser_token_headers,
+            json={"body": "A real comment"},
+        ).status_code
+        == 201
+    )
+    assert (
+        client.patch(
+            f"{url}/{number}",
+            headers=superuser_token_headers,
+            json={"body": "x" * 5000, "state": "closed"},
+        ).status_code
+        == 200
+    )
+    events = client.get(FEED_URL, headers=superuser_token_headers).json()["data"]
+    assert events
+    assert all(
+        event["preview"] == {"body": "x" * 4000, "body_truncated": True, "state": "closed", "comments_count": 1}
+        for event in events
+    )
+
+
 def test_feed_pagination_does_not_switch_to_global_activity(
     client: TestClient,
     superuser_token_headers: dict[str, str],

@@ -10,7 +10,7 @@ const FeedLoading = () => (
           className="feed-loading-card overflow-hidden rounded-lg border bg-card"
           style={{ animationDelay: `${card * 100}ms` }}
         >
-          <div className="flex items-center gap-3 border-b border-border/60 px-4 py-4">
+          <div className="flex items-center gap-3 px-4 py-3">
             <div className="feed-loading-avatar flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary/60">
               <GitBranch className="size-4" />
             </div>
@@ -20,14 +20,15 @@ const FeedLoading = () => (
             </div>
             <div className="feed-loading-line size-5 rounded bg-muted" />
           </div>
-          <div className="space-y-3 px-4 py-5">
+          <div className="space-y-3 px-4 pb-4">
             <div className={`feed-loading-line h-4 rounded bg-muted ${card % 2 ? "w-1/2" : "w-3/4"}`} />
-            <div className="feed-loading-line h-3 w-full rounded-full bg-muted" />
-            <div className="feed-loading-line h-3 w-4/5 rounded-full bg-muted" />
-            <div className="flex gap-2 pt-2">
-              <div className="feed-loading-line h-5 w-16 rounded-full bg-muted" />
-              <div className="feed-loading-line h-5 w-10 rounded-full bg-muted" />
+            <div className="feed-loading-line h-5 w-20 rounded-full bg-muted" />
+            <div className="space-y-3 rounded-lg bg-secondary p-4">
+              <div className="feed-loading-line h-3 w-full rounded-full bg-accent" />
+              <div className="feed-loading-line h-3 w-full rounded-full bg-accent" />
+              <div className="feed-loading-line h-3 w-4/5 rounded-full bg-accent" />
             </div>
+            <div className="feed-loading-line h-3 w-24 rounded bg-muted" />
           </div>
         </div>
       ))}

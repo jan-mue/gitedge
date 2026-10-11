@@ -123,6 +123,7 @@ export type ActivityPublic = {
      * Created At
      */
     created_at: string;
+    preview?: ActivityTargetPreview | null;
 };
 
 /**
@@ -147,6 +148,27 @@ export type ActivitySeriesPoint = {
      * Deletions
      */
     deletions: number;
+};
+
+/**
+ * ActivityTargetPreview
+ *
+ * Current issue or pull request details, with the description limited to 4,000 characters.
+ */
+export type ActivityTargetPreview = {
+    /**
+     * Body
+     */
+    body?: string | null;
+    /**
+     * Body Truncated
+     */
+    body_truncated?: boolean;
+    state: IssueState;
+    /**
+     * Comments Count
+     */
+    comments_count: number;
 };
 
 /**

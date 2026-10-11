@@ -47,6 +47,7 @@ from app.exceptions import (
     PullRequestNotFoundError,
     RepositoryNotFoundError,
 )
+from app.schemas.activity import ActivityTargetPreview
 from app.utils.security import get_password_hash
 
 if TYPE_CHECKING:
@@ -654,6 +655,26 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
                 star.repo_id for star in self.repository.stores.stars.items.values() if star.user_id == user_id
             )
         return await self.list_by_repos(list(repo_ids), offset, limit)
+
+    async def get_target_previews(self, activities: list[Activity]) -> dict[uuid.UUID, ActivityTargetPreview]:
+        """Build feed previews from the fake issue, pull request, and comment stores."""
+        if self.repository is None or self.repository.stores is None:
+            return {}
+        stores = self.repository.stores
+        issues = {
+            (issue.repo_id, issue.number, issue.kind): issue
+            for issue in [*stores.issues.items.values(), *stores.pull_requests.items.values()]
+        }
+        return {
+            activity.id: ActivityTargetPreview(
+                body=issue.body[:4000] if issue.body else None,
+                body_truncated=bool(issue.body and len(issue.body) > 4000),
+                state=issue.state,
+                comments_count=sum(comment.issue_id == issue.id for comment in stores.comments.items.values()),
+            )
+            for activity in activities
+            if (issue := issues.get((activity.repo_id, activity.target_number, activity.target_type))) is not None
+        }
 
     def _hydrate(self, activity: Activity) -> Activity:
         """Populate the activity's actor and repository from the other fake stores."""
