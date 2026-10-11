@@ -5,6 +5,7 @@ export default defineConfig({
   output: "./src/client",
 
   plugins: [
+    { name: "msw", exportFromIndex: false },
     { name: "@hey-api/client-fetch", throwOnError: true },
     { name: "@hey-api/typescript", case: "preserve" },
     {

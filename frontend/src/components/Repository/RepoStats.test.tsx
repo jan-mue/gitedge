@@ -2,12 +2,12 @@ import userEvent from "@testing-library/user-event"
 import type { ReactNode } from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 
+import { handleRepositoriesGetRepositoryInfo, handleRepositoriesListBranches } from "@/client/msw.gen"
+import { server } from "@/test/server"
 import { render, screen } from "@/test/test-utils"
 import RepoStats from "./RepoStats"
 
 const navigate = vi.hoisted(() => vi.fn())
-const getRepositoryInfo = vi.hoisted(() => vi.fn())
-const listBranches = vi.hoisted(() => vi.fn())
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => navigate,
@@ -18,34 +18,31 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }))
 
-vi.mock("@/client/sdk.gen", () => ({
-  RepositoriesService: { getRepositoryInfo, listBranches },
-}))
-
 describe("RepoStats", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    getRepositoryInfo.mockResolvedValue({
-      data: {
-        name: "repo",
-        path: "owner/repo.git",
-        default_branch: "main",
-        branch_count: 2,
-        tag_count: 1,
-        last_commit: {
-          sha: "abcdef1234",
-          message: "Initial commit",
-          author: "Test User",
-          timestamp: 1_700_000_000,
+    server.use(
+      handleRepositoriesGetRepositoryInfo({
+        body: {
+          name: "repo",
+          owner: "owner",
+          default_branch: "main",
+          branch_count: 2,
+          tag_count: 1,
+          last_commit: {
+            sha: "abcdef1234",
+            message: "Initial commit",
+            author: "Test User",
+            timestamp: 1_700_000_000,
+          },
         },
-      },
-    })
-    listBranches.mockResolvedValue({
-      data: [
-        { name: "main", is_default: true },
-        { name: "develop", is_default: false },
-      ],
-    })
+      }),
+      handleRepositoriesListBranches({
+        body: [
+          { name: "main", is_default: true },
+          { name: "develop", is_default: false },
+        ],
+      }),
+    )
   })
 
   test("renders the clone url and copy button", () => {
@@ -71,7 +68,7 @@ describe("RepoStats", () => {
     await user.click(screen.getByTestId("branch-selector"))
 
     expect(await screen.findByTestId("branch-dropdown")).toBeInTheDocument()
-    expect(screen.getByTestId("branch-option-main")).toBeInTheDocument()
+    expect(await screen.findByTestId("branch-option-main")).toBeInTheDocument()
     expect(screen.getByTestId("branch-option-develop")).toBeInTheDocument()
   })
 

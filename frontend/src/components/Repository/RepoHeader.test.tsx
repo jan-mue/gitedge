@@ -1,30 +1,10 @@
 import type { ReactNode } from "react"
-import { describe, expect, test, vi } from "vitest"
+import { beforeEach, describe, expect, test, vi } from "vitest"
 
-import { render, screen } from "@/test/test-utils"
+import { handleForksListForks, handleStarsGetStarState, handleWatchersGetWatchState } from "@/client/msw.gen"
+import { server } from "@/test/server"
+import { render, screen, waitFor } from "@/test/test-utils"
 import RepoHeader from "./RepoHeader"
-
-const { starState, watchState } = vi.hoisted(() => ({
-  starState: { data: { is_starred: false, stars_count: 0 } },
-  watchState: { data: { is_watching: false, watchers_count: 0 } },
-}))
-
-vi.mock("@/client/sdk.gen", () => ({
-  StarsService: {
-    getStarState: vi.fn().mockResolvedValue(starState),
-    starRepository: vi.fn().mockResolvedValue(starState),
-    unstarRepository: vi.fn().mockResolvedValue(starState),
-  },
-  WatchersService: {
-    getWatchState: vi.fn().mockResolvedValue(watchState),
-    watchRepository: vi.fn().mockResolvedValue(watchState),
-    unwatchRepository: vi.fn().mockResolvedValue(watchState),
-  },
-  ForksService: {
-    forkRepository: vi.fn(),
-    listForks: vi.fn().mockResolvedValue({ data: { data: [], count: 0 } }),
-  },
-}))
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, "data-testid": testId }: { children: ReactNode; "data-testid"?: string }) => (
@@ -37,6 +17,14 @@ vi.mock("@tanstack/react-router", () => ({
 }))
 
 describe("RepoHeader", () => {
+  beforeEach(() => {
+    server.use(
+      handleStarsGetStarState({ body: { is_starred: false, stars_count: 2 } }),
+      handleWatchersGetWatchState({ body: { is_watching: false, watchers_count: 3 } }),
+      handleForksListForks({ body: { data: [], count: 4 } }),
+    )
+  })
+
   test("renders the header and tabs", () => {
     render(<RepoHeader owner="owner" repo="repo" />)
 
@@ -51,5 +39,15 @@ describe("RepoHeader", () => {
 
     expect(screen.getByTestId("repo-header")).toHaveTextContent("owner")
     expect(screen.getByTestId("repo-header")).toHaveTextContent("repo")
+  })
+
+  test("renders counts returned by the API", async () => {
+    render(<RepoHeader owner="owner" repo="repo" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("star-count")).toHaveTextContent("2")
+      expect(screen.getByTestId("watch-count")).toHaveTextContent("3")
+      expect(screen.getByTestId("fork-count")).toHaveTextContent("4")
+    })
   })
 })

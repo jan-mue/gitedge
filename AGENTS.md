@@ -52,7 +52,8 @@ Keep layers focused; dependencies point inward:
 - Use `pytest-mock`, not `unittest.mock`
 - `asyncio_mode=auto`: write `async def test_...` directly, never `@pytest.mark.asyncio`
 - Frontend tests: co-located `*.test.{ts,tsx}`, `describe`/`test` (never `it`), custom
-  `render()` from `@/test/test-utils`, `vi.mock()` for modules
+  `render()` from `@/test/test-utils`, MSW handlers from `@/client/msw.gen` registered
+  with `server.use()` from `@/test/server` for API requests, `vi.mock()` for other modules
 
 ## Lint Commands
 

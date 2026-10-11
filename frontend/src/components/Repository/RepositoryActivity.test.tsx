@@ -1,13 +1,13 @@
+import { HttpResponse } from "msw"
 import type { ReactNode } from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 
 import type { RepositoryActivityStatistics } from "@/client"
+import { handleActivityGetRepositoryActivityStatistics } from "@/client/msw.gen"
+import { server } from "@/test/server"
 import { render, screen, waitFor } from "@/test/test-utils"
 import RepositoryActivity from "./RepositoryActivity"
 
-const getStatistics = vi.hoisted(() => vi.fn())
-
-vi.mock("@/client/sdk.gen", () => ({ ActivityService: { getRepositoryActivityStatistics: getStatistics } }))
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to, params }: { children: ReactNode; to: string; params: Record<string, string> }) => (
     <a href={to.replace(/\$(\w+)/g, (_, key: string) => params[key])}>{children}</a>
@@ -62,13 +62,27 @@ const statistics: RepositoryActivityStatistics = {
 
 describe("RepositoryActivity", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    getStatistics.mockResolvedValue({ data: statistics })
+    server.use(handleActivityGetRepositoryActivityStatistics({ body: statistics }))
   })
 
   test("renders pulse and fetches a new period with changed totals", async () => {
+    const getStatistics = vi.fn()
+    server.use(
+      handleActivityGetRepositoryActivityStatistics(({ request, params }) => {
+        const days = Number(new URL(request.url).searchParams.get("days"))
+        getStatistics({ params, days })
+        return HttpResponse.json({
+          ...statistics,
+          overview: { ...statistics.overview, additions: days === 1 ? 25 : 120 },
+        })
+      }),
+    )
     const { user } = render(<RepositoryActivity owner="owner" repo="repo" />)
     expect(await screen.findByText("Overview")).toBeInTheDocument()
+    expect(getStatistics).toHaveBeenCalledExactlyOnceWith({
+      params: expect.objectContaining({ owner: "owner", repo: "repo" }),
+      days: 7,
+    })
     expect(screen.getByText("Improve activity")).toHaveAttribute("href", "/owner/repo/pulls/17")
     expect(screen.getByText("120 additions")).toBeInTheDocument()
     expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
@@ -80,21 +94,28 @@ describe("RepositoryActivity", () => {
       "6 months",
       "1 year",
     ])
-    getStatistics.mockResolvedValue({ data: { ...statistics, overview: { ...statistics.overview, additions: 25 } } })
     await user.selectOptions(screen.getByLabelText("Activity period"), "1")
     await waitFor(() =>
-      expect(getStatistics).toHaveBeenLastCalledWith(
-        expect.objectContaining({ path: { owner: "owner", repo: "repo" }, query: { days: 1 } }),
-      ),
+      expect(getStatistics).toHaveBeenLastCalledWith({
+        params: expect.objectContaining({ owner: "owner", repo: "repo" }),
+        days: 1,
+      }),
     )
     expect(await screen.findByText("25 additions")).toBeInTheDocument()
     for (const days of [90, 180, 365]) {
       await user.selectOptions(screen.getByLabelText("Activity period"), String(days))
-      await waitFor(() => expect(getStatistics).toHaveBeenLastCalledWith(expect.objectContaining({ query: { days } })))
+      await waitFor(() =>
+        expect(getStatistics).toHaveBeenLastCalledWith({
+          params: expect.objectContaining({ owner: "owner", repo: "repo" }),
+          days,
+        }),
+      )
     }
   })
 
   test("switches views, ranks by selected metric, and shows the past-year commit chart", async () => {
+    const getStatistics = vi.fn(() => HttpResponse.json(statistics))
+    server.use(handleActivityGetRepositoryActivityStatistics(getStatistics))
     const { user } = render(<RepositoryActivity owner="owner" repo="repo" />)
     await screen.findByText("Overview")
     await user.click(screen.getByRole("button", { name: "Contributors" }))
@@ -112,7 +133,9 @@ describe("RepositoryActivity", () => {
   })
 
   test("shows loading, error, and retry states", async () => {
-    getStatistics.mockRejectedValueOnce(new Error("Unavailable"))
+    server.use(
+      handleActivityGetRepositoryActivityStatistics(() => new HttpResponse(null, { status: 503 }), { once: true }),
+    )
     const { user } = render(<RepositoryActivity owner="owner" repo="repo" />)
     expect(screen.getByRole("status")).toHaveTextContent("Loading activity")
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not load repository activity")
@@ -121,9 +144,11 @@ describe("RepositoryActivity", () => {
   })
 
   test("renders empty states without fabricated activity", async () => {
-    getStatistics.mockResolvedValue({
-      data: { ...statistics, merged_prs: [], contributors: [], code_frequency: [], recent_commits: [] },
-    })
+    server.use(
+      handleActivityGetRepositoryActivityStatistics({
+        body: { ...statistics, merged_prs: [], contributors: [], code_frequency: [], recent_commits: [] },
+      }),
+    )
     const { user } = render(<RepositoryActivity owner="owner" repo="repo" />)
     expect(await screen.findByText("No pull requests were merged during this period.")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Contributors" }))

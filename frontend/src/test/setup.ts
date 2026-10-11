@@ -1,13 +1,19 @@
 import "@testing-library/jest-dom/vitest"
 import { cleanup } from "@testing-library/react"
-import { afterEach, beforeAll, vi } from "vitest"
+import { afterAll, afterEach, beforeAll, vi } from "vitest"
+import { client } from "@/client/client.gen"
+import { server } from "@/test/server"
 
 afterEach(() => {
   cleanup()
+  server.resetHandlers()
   vi.clearAllMocks()
 })
 
 beforeAll(() => {
+  // Node's fetch requires an absolute URL; use the same origin as jsdom.
+  client.setConfig({ baseUrl: window.location.origin })
+  server.listen({ onUnhandledRequest: "error" })
   Object.defineProperty(window, "matchMedia", {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({
@@ -60,3 +66,5 @@ beforeAll(() => {
     configurable: true,
   })
 })
+
+afterAll(() => server.close())

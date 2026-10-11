@@ -1,17 +1,15 @@
 import userEvent from "@testing-library/user-event"
+import { HttpResponse } from "msw"
 import type { ReactNode } from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 
+import { handleRepositoriesCreatePullRequest, handleRepositoriesListBranches } from "@/client/msw.gen"
+import { branches, pullRequest } from "@/test/fixtures"
+import { server } from "@/test/server"
 import { render, screen, within } from "@/test/test-utils"
 import NewPullRequestForm from "./NewPullRequestForm"
 
-const listBranches = vi.hoisted(() => vi.fn())
-const createPullRequest = vi.hoisted(() => vi.fn())
 const navigate = vi.hoisted(() => vi.fn())
-
-vi.mock("@/client/sdk.gen", () => ({
-  RepositoriesService: { listBranches, createPullRequest },
-}))
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, "data-testid": testId }: { children: ReactNode; "data-testid"?: string }) => (
@@ -22,13 +20,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 describe("NewPullRequestForm", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    listBranches.mockResolvedValue({
-      data: [
-        { name: "main", is_default: true },
-        { name: "feature", is_default: false },
-      ],
-    })
+    server.use(handleRepositoriesListBranches({ body: branches }))
   })
 
   test("disables submit until a title and head branch are set", async () => {
@@ -48,7 +40,13 @@ describe("NewPullRequestForm", () => {
 
   test("creates a pull request and navigates back to the list", async () => {
     const user = userEvent.setup()
-    createPullRequest.mockResolvedValue({ data: {} })
+    const createPullRequest = vi.fn()
+    server.use(
+      handleRepositoriesCreatePullRequest(async ({ request, params }) => {
+        createPullRequest({ params, body: await request.json() })
+        return HttpResponse.json(pullRequest, { status: 201 })
+      }),
+    )
     render(<NewPullRequestForm owner="owner" repo="repo" />)
 
     const sourceSelect = screen.getByTestId("pr-source-branch")
@@ -57,9 +55,14 @@ describe("NewPullRequestForm", () => {
     await user.selectOptions(sourceSelect, "feature")
     await user.click(screen.getByTestId("submit-pr-btn"))
 
-    expect(createPullRequest).toHaveBeenCalledWith({
-      throwOnError: true,
-      path: { owner: "owner", repo: "repo" },
+    await vi.waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({
+        to: "/$owner/$repo/pulls",
+        params: { owner: "owner", repo: "repo" },
+      }),
+    )
+    expect(createPullRequest).toHaveBeenCalledExactlyOnceWith({
+      params: expect.objectContaining({ owner: "owner", repo: "repo" }),
       body: {
         title: "Title",
         body: null,
@@ -67,6 +70,5 @@ describe("NewPullRequestForm", () => {
         base_branch: "main",
       },
     })
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalled())
   })
 })
