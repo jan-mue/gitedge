@@ -2,7 +2,7 @@ import { useState } from "react"
 import type { LanguageStatistic } from "@/client"
 
 const colors: Record<string, string> = {
-  Python: "#ffd343",
+  Python: "#3572a5",
   JavaScript: "#f1e05a",
   TypeScript: "#3178c6",
   Go: "#00add8",
