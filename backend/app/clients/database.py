@@ -133,7 +133,7 @@ class SQLStore[T: Base](CrudStore[T]):
     async def add(self, obj: T) -> None:
         """Add a new entity."""
         self.db.add(obj)
-        await self.db.flush()
+        await self.db.commit()
         await self.db.refresh(obj)
 
     async def update(self, obj: T, new_data: dict[str, Any] | None = None) -> None:
@@ -141,12 +141,12 @@ class SQLStore[T: Base](CrudStore[T]):
         if new_data:
             for key, value in new_data.items():
                 setattr(obj, key, value)
-        await self.db.flush()
+        await self.db.commit()
 
     async def delete(self, obj: T) -> None:
         """Delete an entity."""
         await self.db.delete(obj)
-        await self.db.flush()
+        await self.db.commit()
 
     async def refresh(self, obj: T) -> None:
         """Refresh an entity from the database."""

@@ -72,11 +72,11 @@ async def get_db(request: Request) -> AsyncGenerator[AsyncSession]:
         SQLAlchemy async session.
     """
     session_factory: async_sessionmaker[AsyncSession] = request.state.db_session_factory
-    async with session_factory.begin() as session:
+    async with session_factory() as session:
         yield session
 
 
-SessionDep = Annotated[AsyncSession, Depends(get_db, scope="function")]
+SessionDep = Annotated[AsyncSession, Depends(get_db)]
 TokenDep = Annotated[str, Depends(reusable_oauth2)]
 
 

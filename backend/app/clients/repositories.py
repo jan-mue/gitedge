@@ -101,6 +101,7 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
             await self.db.execute(delete(entity).where(entity.repo_id == obj.id))
         await self.db.execute(update(Repository).where(Repository.fork_of_id == obj.id).values(fork_of_id=None))
         await self.db.execute(delete(Repository).where(Repository.id == obj.id))
+        await self.db.commit()
 
     async def find(self, primary_key: uuid.UUID) -> Repository | None:
         """Find a repository by primary key with its owner loaded.

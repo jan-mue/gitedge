@@ -13,7 +13,7 @@ async def init() -> None:
     """Initialize the database with any required initial data."""
     async with create_db_engine() as engine:
         session_factory = create_session_factory(engine)
-        async with session_factory.begin() as session:
+        async with session_factory() as session:
             await init_db(session)
 
 
