@@ -27,6 +27,30 @@ const activity: ActivityPublic = {
 }
 
 describe("ActivityCard", () => {
+  test("shows the actual comment preview and labels expanded comment links", async () => {
+    const { user } = render(
+      <ActivityCard
+        activity={{
+          ...activity,
+          kind: "comment",
+          target_type: "issue",
+          preview: {
+            body: `Actual reply. ${"More context. ".repeat(30)}`,
+            body_truncated: true,
+            state: "open",
+            comments_count: 2,
+          },
+        }}
+      />,
+    )
+    expect(screen.getByText("Comment", { exact: true })).toBeInTheDocument()
+    expect(screen.getByText(/Actual reply\./)).toBeInTheDocument()
+    expect(screen.queryByText("Issue description")).not.toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Read more" }))
+    expect(screen.getByRole("link", { name: "View full comment" })).toHaveAttribute("href", "/owner/repo/issues/17")
+    expect(screen.queryByRole("link", { name: "View full description" })).not.toBeInTheDocument()
+  })
+
   test("links real users and targets, shows status and comments, and expands descriptions", async () => {
     const { user } = render(<ActivityCard activity={activity} />)
     expect(screen.getByRole("link", { name: "alice" })).toHaveAttribute("href", "/profile/alice")

@@ -153,7 +153,7 @@ export type ActivitySeriesPoint = {
 /**
  * ActivityTargetPreview
  *
- * Current issue or pull request details, with the description limited to 4,000 characters.
+ * Current discussion details, with the issue description or event's comment limited to 4,000 characters.
  */
 export type ActivityTargetPreview = {
     /**

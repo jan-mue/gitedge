@@ -13,6 +13,8 @@ from app.schemas.repository_activity import ActivityOverview, ActivitySeriesPoin
 from app.services.repository_activity import aggregate_contributors, aggregate_recent_commits
 
 if TYPE_CHECKING:
+    import uuid
+
     from app.clients.activity import ActivityStore
     from app.clients.repositories import RepositoryStore
     from app.clients.stars import StarStore
@@ -121,6 +123,7 @@ class ActivityService:
         title: str | None = None,
         target_type: ActivityTargetType | None = None,
         target_number: int | None = None,
+        comment_id: uuid.UUID | None = None,
     ) -> Activity:
         """Record an activity event.
 
@@ -131,6 +134,7 @@ class ActivityService:
             title: Optional human readable title.
             target_type: Optional target type.
             target_number: Optional target number within the repository.
+            comment_id: The specific comment referenced by a comment event.
 
         Returns:
             The persisted activity entity.
@@ -142,6 +146,7 @@ class ActivityService:
             title=title,
             target_type=target_type,
             target_number=target_number,
+            comment_id=comment_id,
         )
         await self.activity_store.add(activity)
         return activity

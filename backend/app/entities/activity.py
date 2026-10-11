@@ -53,6 +53,9 @@ class Activity(Base):
     title: Mapped[str | None] = mapped_column(Text, nullable=True)
     target_type: Mapped[ActivityTargetType | None] = mapped_column(String(40), nullable=True)
     target_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    comment_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("comment.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     actor: Mapped["User"] = relationship(back_populates="activities")
     repo: Mapped["Repository | None"] = relationship(back_populates="activities")

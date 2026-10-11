@@ -9,7 +9,7 @@ from app.schemas.base import GitEdgeBaseModel
 
 
 class ActivityTargetPreview(GitEdgeBaseModel):
-    """Current issue or pull request details, with the description limited to 4,000 characters."""
+    """Current discussion details, with the issue description or event's comment limited to 4,000 characters."""
 
     body: str | None = None
     body_truncated: bool = False

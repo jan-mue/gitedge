@@ -14,6 +14,7 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
 from playwright.sync_api import expect
 
 from tests.integration.conftest import (
@@ -504,6 +505,58 @@ class TestPullRequestCommentsAndMerge:
 
 class TestActivityAndFeed:
     """Test the repository activity page and the dashboard feed."""
+
+    @pytest.mark.parametrize("target", ["issues", "pulls"])
+    def test_comment_feed_previews_show_each_reply(self, app_url: str, page: Page, target: str) -> None:
+        """Render distinct reply previews and preserve their identity through edits and deletion."""
+        _push_repo(app_url, f"{SUPERUSER_USERNAME}/commentfeed.git", extra_branches=("feature",))
+        log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
+        token = page.evaluate("() => localStorage.getItem('access_token')")
+        headers = {"Authorization": f"Bearer {token}"}
+        base = f"{app_url}/api/v1"
+        repo_url = f"{base}/repositories/{SUPERUSER_USERNAME}/commentfeed"
+        created = page.request.post(
+            f"{repo_url}/{target}",
+            headers=headers,
+            data={
+                "title": "Comment preview target",
+                "body": "Original discussion description",
+                "head_branch": "feature",
+            },
+        )
+        assert created.status == 201
+        comments_url = f"{repo_url}/issues/{created.json()['number']}/comments"
+        first = page.request.post(comments_url, headers=headers, data={"body": "First actual reply"})
+        second = page.request.post(comments_url, headers=headers, data={"body": "Second actual reply"})
+        assert first.status == second.status == 201
+
+        page.goto(f"{app_url}/")
+        feed = page.get_by_test_id("dashboard-feed")
+        comments = feed.locator("article").filter(has_text="commented on")
+        expect(comments).to_have_count(2)
+        expect(comments.get_by_text("First actual reply", exact=True)).to_have_count(1)
+        expect(comments.get_by_text("Second actual reply", exact=True)).to_have_count(1)
+        for card in comments.all():
+            expect(card).not_to_contain_text("Original discussion description")
+        discussion = feed.locator("article").filter(
+            has_text=f"opened {'issue' if target == 'issues' else 'pull request'}"
+        )
+        expect(discussion).to_contain_text("Original discussion description")
+
+        comment_url = f"{base}/comments/{first.json()['id']}"
+        assert page.request.patch(comment_url, headers=headers, data={"body": "Edited actual reply"}).status == 200
+        page.reload()
+        expect(comments.get_by_text("Edited actual reply", exact=True)).to_have_count(1)
+        expect(comments.get_by_text("Second actual reply", exact=True)).to_have_count(1)
+        expect(comments.get_by_text("First actual reply", exact=True)).to_have_count(0)
+
+        assert page.request.delete(comment_url, headers=headers).status == 204
+        page.reload()
+        expect(comments).to_have_count(2)
+        expect(comments.get_by_text("Second actual reply", exact=True)).to_have_count(1)
+        expect(comments.get_by_text("Edited actual reply", exact=True)).to_have_count(0)
+        for card in comments.all():
+            expect(card).not_to_contain_text("Original discussion description")
 
     def test_activity_statistics_and_dashboard_star_feed(self, app_url: str, page: Page) -> None:
         """Show pushed Git data in analytics and star events in the dashboard.

@@ -13,6 +13,8 @@ from app.entities.repositories import Repository
 from app.schemas.repository_activity import GitActivityCommit, GitActivityHistory
 
 if TYPE_CHECKING:
+    from typing import Any
+
     from fastapi.testclient import TestClient
     from pytest_mock import MockerFixture
 
@@ -57,9 +59,63 @@ def test_feed_includes_bounded_target_previews(
     events = client.get(FEED_URL, headers=superuser_token_headers).json()["data"]
     assert events
     assert all(
-        event["preview"] == {"body": "x" * 4000, "body_truncated": True, "state": "closed", "comments_count": 1}
+        event["preview"]
+        == {
+            "body": "A real comment" if event["kind"] == "comment" else "x" * 4000,
+            "body_truncated": event["kind"] != "comment",
+            "state": "closed",
+            "comments_count": 1,
+        }
         for event in events
     )
+
+
+@pytest.mark.parametrize("target", ["issues", "pulls"])
+def test_comment_previews_follow_the_specific_reply(
+    client: TestClient, superuser_token_headers: dict[str, str], target: str
+) -> None:
+    created = client.post(
+        f"{REPO_URL}/{target}",
+        headers=superuser_token_headers,
+        json={"title": "Several replies", "body": "Issue description", "head_branch": "feature"},
+    )
+    assert created.status_code == 201
+    comments_url = f"{ISSUES_URL}/{created.json()['number']}/comments"
+    replies = [
+        client.post(comments_url, headers=superuser_token_headers, json={"body": body}).json()
+        for body in ["First reply", "Second reply"]
+    ]
+
+    def comment_events() -> list[dict[str, Any]]:
+        return [
+            event
+            for event in client.get(FEED_URL, headers=superuser_token_headers).json()["data"]
+            if event["kind"] == "comment"
+        ]
+
+    events = comment_events()
+    assert [event["preview"]["body"] for event in events] == ["Second reply", "First reply"]
+    assert all(event["preview"]["comments_count"] == 2 for event in events)
+    assert (
+        client.patch(
+            f"{settings.API_V1_STR}/comments/{replies[0]['id']}",
+            headers=superuser_token_headers,
+            json={"body": "x" * 5000},
+        ).status_code
+        == 200
+    )
+    updated = comment_events()
+    assert updated[0]["preview"]["body"] == "Second reply"
+    assert updated[1]["preview"]["body"] == "x" * 4000
+    assert updated[1]["preview"]["body_truncated"] is True
+    assert (
+        client.delete(f"{settings.API_V1_STR}/comments/{replies[0]['id']}", headers=superuser_token_headers).status_code
+        == 204
+    )
+    deleted = comment_events()
+    assert deleted[0]["preview"]["body"] == "Second reply"
+    assert deleted[1]["preview"]["body"] is None
+    assert all(event["preview"]["comments_count"] == 1 for event in deleted)
 
 
 def test_feed_pagination_does_not_switch_to_global_activity(

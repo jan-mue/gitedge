@@ -5,11 +5,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, or_, select, tuple_
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
-from app.entities.activity import Activity, ActivityTargetType
+from app.entities.activity import Activity, ActivityKind, ActivityTargetType
 from app.entities.comments import Comment
 from app.entities.issues import Issue
 from app.entities.repositories import Repository
@@ -113,38 +113,42 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
         return list(result.all())
 
     async def get_target_previews(self, activities: list[Activity]) -> dict[uuid.UUID, ActivityTargetPreview]:
-        """Read bounded descriptions, states, and comment counts in one metadata query."""
-        targets = {
-            (activity.repo_id, activity.target_number)
+        """Read bounded event bodies, discussion states, and comment counts in one metadata query."""
+        event_ids = {
+            activity.id
             for activity in activities
             if activity.repo_id is not None
             and activity.target_number is not None
             and activity.target_type in (ActivityTargetType.ISSUE, ActivityTargetType.PULL_REQUEST)
         }
-        if not targets:
+        if not event_ids:
             return {}
         comments = select(func.count()).where(Comment.issue_id == Issue.id).correlate(Issue).scalar_subquery()
+        body = case((Activity.kind == ActivityKind.COMMENT, Comment.body), else_=Issue.body)
         rows = await self.db.execute(
             select(
-                Issue.repo_id,
-                Issue.number,
-                Issue.kind,
-                func.substr(Issue.body, 1, _PREVIEW_LENGTH),
+                Activity.id,
+                func.substr(body, 1, _PREVIEW_LENGTH),
                 Issue.state,
                 comments,
-                func.length(Issue.body),
-            ).where(tuple_(Issue.repo_id, Issue.number).in_(targets))
+                func.length(body),
+            )
+            .join(
+                Issue,
+                and_(
+                    Issue.repo_id == Activity.repo_id,
+                    Issue.number == Activity.target_number,
+                    Issue.kind == Activity.target_type,
+                ),
+            )
+            .outerjoin(Comment, and_(Comment.id == Activity.comment_id, Comment.issue_id == Issue.id))
+            .where(Activity.id.in_(event_ids))
         )
-        previews = {
-            (repo_id, number, kind): ActivityTargetPreview(
+        return {
+            event_id: ActivityTargetPreview(
                 body=body, body_truncated=(length or 0) > _PREVIEW_LENGTH, state=state, comments_count=count
             )
-            for repo_id, number, kind, body, state, count, length in rows
-        }
-        return {
-            activity.id: preview
-            for activity in activities
-            if (preview := previews.get((activity.repo_id, activity.target_number, activity.target_type))) is not None
+            for event_id, body, state, count, length in rows
         }
 
     async def list_by_repo(self, repo_id: uuid.UUID, offset: int = 0, limit: int = 50) -> list[Activity]:

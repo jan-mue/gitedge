@@ -28,7 +28,7 @@ from app.clients.stars import StarStore
 from app.clients.users import UserStore
 from app.clients.watchers import WatcherStore
 from app.config import settings
-from app.entities.activity import Activity
+from app.entities.activity import Activity, ActivityKind
 from app.entities.base import Base
 from app.entities.comments import Comment
 from app.entities.issues import Issue, IssueState
@@ -665,16 +665,22 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
             (issue.repo_id, issue.number, issue.kind): issue
             for issue in [*stores.issues.items.values(), *stores.pull_requests.items.values()]
         }
-        return {
-            activity.id: ActivityTargetPreview(
-                body=issue.body[:4000] if issue.body else None,
-                body_truncated=bool(issue.body and len(issue.body) > 4000),
+        previews = {}
+        for activity in activities:
+            issue = issues.get((activity.repo_id, activity.target_number, activity.target_type))
+            if issue is None:
+                continue
+            body = issue.body
+            if activity.kind == ActivityKind.COMMENT:
+                comment = stores.comments.items.get(activity.comment_id) if activity.comment_id else None
+                body = comment.body if comment is not None and comment.issue_id == issue.id else None
+            previews[activity.id] = ActivityTargetPreview(
+                body=body[:4000] if body else None,
+                body_truncated=bool(body and len(body) > 4000),
                 state=issue.state,
                 comments_count=sum(comment.issue_id == issue.id for comment in stores.comments.items.values()),
             )
-            for activity in activities
-            if (issue := issues.get((activity.repo_id, activity.target_number, activity.target_type))) is not None
-        }
+        return previews
 
     def _hydrate(self, activity: Activity) -> Activity:
         """Populate the activity's actor and repository from the other fake stores."""

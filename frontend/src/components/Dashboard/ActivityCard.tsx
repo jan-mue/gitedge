@@ -214,15 +214,11 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
           )}
           {body && (
             <div id={bodyId} className="rounded-lg bg-secondary p-4">
-              {activity.kind === "comment" && (
-                <p className="mb-2 text-xs text-muted-foreground">
-                  {target === "pull_request" ? "Pull request description" : "Issue description"}
-                </p>
-              )}
+              {activity.kind === "comment" && <p className="mb-2 text-xs text-muted-foreground">Comment</p>}
               <Description text={expanded || !isLong ? body : `${body.slice(0, 200).trimEnd()}…`} />
               {expanded && activity.preview?.body_truncated && (
                 <TargetLink activity={activity} className="mt-2 inline-block text-sm text-primary hover:underline">
-                  View full description
+                  {activity.kind === "comment" ? "View full comment" : "View full description"}
                 </TargetLink>
               )}
             </div>
