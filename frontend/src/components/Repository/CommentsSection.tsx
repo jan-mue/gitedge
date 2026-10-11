@@ -3,6 +3,7 @@ import { MessageSquare } from "lucide-react"
 import { useState } from "react"
 
 import {
+  activityGetFeedQueryKey,
   commentsCreateCommentMutation,
   commentsDeleteCommentMutation,
   commentsListCommentsOptions,
@@ -34,13 +35,17 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
   })
 
   const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: commentsListCommentsQueryKey({ path: { owner, repo, number } }) })
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: commentsListCommentsQueryKey({ path: { owner, repo, number } }) }),
+      // Match regular and paginated feeds, including every cached page size.
+      queryClient.invalidateQueries({ queryKey: activityGetFeedQueryKey() }),
+    ])
 
   const mutation = useMutation({
     ...commentsCreateCommentMutation(),
     onSuccess: () => {
       setBody("")
-      invalidate()
+      return invalidate()
     },
     onError: handleError.bind(showErrorToast),
   })
@@ -50,7 +55,7 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
     onSuccess: () => {
       setEditingId(null)
       setEditBody("")
-      invalidate()
+      return invalidate()
     },
     onError: handleError.bind(showErrorToast),
   })

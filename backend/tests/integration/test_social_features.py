@@ -11,6 +11,7 @@ from __future__ import annotations
 import subprocess
 import tempfile
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -508,7 +509,7 @@ class TestActivityAndFeed:
 
     @pytest.mark.parametrize("target", ["issues", "pulls"])
     def test_comment_feed_previews_show_each_reply(self, app_url: str, page: Page, target: str) -> None:
-        """Render distinct reply previews and preserve their identity through edits and deletion."""
+        """Refresh cached reply previews after UI mutations without reloading the application."""
         _push_repo(app_url, f"{SUPERUSER_USERNAME}/commentfeed.git", extra_branches=("feature",))
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         token = page.evaluate("() => localStorage.getItem('access_token')")
@@ -526,37 +527,65 @@ class TestActivityAndFeed:
         )
         assert created.status == 201
         comments_url = f"{repo_url}/issues/{created.json()['number']}/comments"
-        first = page.request.post(comments_url, headers=headers, data={"body": "First actual reply"})
         second = page.request.post(comments_url, headers=headers, data={"body": "Second actual reply"})
-        assert first.status == second.status == 201
+        assert second.status == 201
 
+        # Keep Date.now fixed so the feed cannot become stale naturally during the test.
+        # Timers still run normally; a new request must come from mutation invalidation.
+        page.clock.set_fixed_time(datetime.now(UTC))
         page.goto(f"{app_url}/")
+        page.evaluate("window.commentFeedNavigationMarker = 'same-document'")
         feed = page.get_by_test_id("dashboard-feed")
         comments = feed.locator("article").filter(has_text="commented on")
-        expect(comments).to_have_count(2)
-        expect(comments.get_by_text("First actual reply", exact=True)).to_have_count(1)
+        expect(comments).to_have_count(1)
         expect(comments.get_by_text("Second actual reply", exact=True)).to_have_count(1)
-        for card in comments.all():
-            expect(card).not_to_contain_text("Original discussion description")
         discussion = feed.locator("article").filter(
             has_text=f"opened {'issue' if target == 'issues' else 'pull request'}"
         )
         expect(discussion).to_contain_text("Original discussion description")
+        discussion.get_by_role("link", name="Comment preview target #1", exact=True).click()
+        page.get_by_test_id("comment-input").fill("First actual reply")
+        with page.expect_response(
+            lambda response: response.url.endswith("/comments") and response.request.method == "POST"
+        ) as first:
+            page.get_by_test_id("comment-submit").click()
+        assert first.value.status == 201
+        comment_id = first.value.json()["id"]
+        expect(page.get_by_test_id("comments-section")).to_contain_text("First actual reply")
+        page.get_by_role("link", name="GitEdge", exact=True).click()
+        expect(comments).to_have_count(2)
+        expect(comments.get_by_text("First actual reply", exact=True)).to_have_count(1)
+        expect(comments.get_by_text("Second actual reply", exact=True)).to_have_count(1)
+        expect(discussion.get_by_role("link", name="2 comments", exact=True)).to_be_visible()
 
-        comment_url = f"{base}/comments/{first.json()['id']}"
-        assert page.request.patch(comment_url, headers=headers, data={"body": "Edited actual reply"}).status == 200
-        page.reload()
+        comments.filter(has_text="First actual reply").get_by_role(
+            "link", name="Comment preview target #1", exact=True
+        ).click()
+        page.get_by_test_id(f"edit-comment-{comment_id}").click()
+        page.get_by_test_id(f"edit-comment-input-{comment_id}").fill("Edited actual reply")
+        page.get_by_test_id(f"edit-comment-submit-{comment_id}").click()
+        expect(page.get_by_test_id(f"edit-comment-input-{comment_id}")).to_have_count(0)
+        expect(page.get_by_test_id(f"comment-{comment_id}")).to_contain_text("Edited actual reply")
+        page.get_by_role("link", name="GitEdge", exact=True).click()
         expect(comments.get_by_text("Edited actual reply", exact=True)).to_have_count(1)
         expect(comments.get_by_text("Second actual reply", exact=True)).to_have_count(1)
         expect(comments.get_by_text("First actual reply", exact=True)).to_have_count(0)
 
-        assert page.request.delete(comment_url, headers=headers).status == 204
-        page.reload()
+        comments.filter(has_text="Edited actual reply").get_by_role(
+            "link", name="Comment preview target #1", exact=True
+        ).click()
+        page.once("dialog", lambda dialog: dialog.accept())
+        page.get_by_test_id(f"delete-comment-{comment_id}").click()
+        expect(page.get_by_test_id(f"comment-{comment_id}")).to_have_count(0)
+        page.get_by_role("link", name="GitEdge", exact=True).click()
         expect(comments).to_have_count(2)
         expect(comments.get_by_text("Second actual reply", exact=True)).to_have_count(1)
         expect(comments.get_by_text("Edited actual reply", exact=True)).to_have_count(0)
+        expect(discussion.get_by_role("link", name="1 comment", exact=True)).to_be_visible()
+        expect(discussion).to_contain_text("Original discussion description")
         for card in comments.all():
             expect(card).not_to_contain_text("Original discussion description")
+        assert page.evaluate("window.commentFeedNavigationMarker") == "same-document"
 
     def test_activity_statistics_and_dashboard_star_feed(self, app_url: str, page: Page) -> None:
         """Show pushed Git data in analytics and star events in the dashboard.
