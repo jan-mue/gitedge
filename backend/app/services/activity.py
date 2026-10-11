@@ -13,8 +13,6 @@ from app.schemas.repository_activity import ActivityOverview, ActivitySeriesPoin
 from app.services.repository_activity import aggregate_contributors, aggregate_recent_commits
 
 if TYPE_CHECKING:
-    import uuid
-
     from app.clients.activity import ActivityStore
     from app.clients.repositories import RepositoryStore
     from app.clients.stars import StarStore
@@ -181,14 +179,11 @@ class ActivityService:
         Returns:
             ActivitiesPublic with the feed events, newest first.
         """
-        repo_ids: set[uuid.UUID] = set()
-        owned = await self.repository_store.get_by_owner(user.id, 0, 1000)
-        repo_ids.update(repository.id for repository in owned)
-        stars = await self.star_store.list_by_user(user.id, 0, 1000)
-        repo_ids.update(star.repo_id for star in stars)
-
-        activities = await self.activity_store.list_by_repos(list(repo_ids), offset, limit) if repo_ids else []
+        activities = await self.activity_store.list_feed(user.id, offset, limit)
         if not activities:
+            # An exhausted personalized feed must not switch to global activity.
+            if offset and await self.activity_store.list_feed(user.id, 0, 1):
+                return ActivitiesPublic(data=[], count=0)
             activities = await self.activity_store.list_recent(offset, limit)
         return ActivitiesPublic(data=self._to_public_list(activities), count=len(activities))
 

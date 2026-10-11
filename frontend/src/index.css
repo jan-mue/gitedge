@@ -499,6 +499,51 @@ tr:target {
   position: relative;
   overflow: hidden;
 }
+
+/* One moving highlight per card keeps the feed animation light on the GPU. */
+.feed-loading-card {
+  position: relative;
+  animation: feed-reveal 420ms ease-out both;
+}
+.feed-loading-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    color-mix(in srgb, var(--primary) 8%, transparent) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: repository-shimmer 2.6s ease-in-out infinite;
+  animation-delay: inherit;
+}
+.feed-loading-avatar {
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 3%, transparent);
+}
+.feed-content-enter {
+  animation: feed-reveal 220ms ease-out;
+}
+@keyframes feed-reveal {
+  from {
+    opacity: 0.35;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .feed-loading-card,
+  .feed-loading-card::after,
+  .feed-content-enter {
+    animation: none;
+    transform: none;
+  }
+}
 .repository-skeleton::after {
   content: "";
   position: absolute;

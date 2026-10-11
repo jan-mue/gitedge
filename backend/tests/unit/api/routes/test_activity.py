@@ -9,6 +9,7 @@ import pytest
 
 from app.config import settings
 from app.entities.activity import Activity, ActivityKind, ActivityTargetType
+from app.entities.repositories import Repository
 from app.schemas.repository_activity import GitActivityCommit, GitActivityHistory
 
 if TYPE_CHECKING:
@@ -23,6 +24,58 @@ REPO_URL = f"{settings.API_V1_STR}/repositories/{REPO_OWNER}/{REPO_NAME}"
 ISSUES_URL = f"{REPO_URL}/issues"
 FEED_URL = f"{settings.API_V1_STR}/users/me/feed"
 ACTIVITY_URL = f"{REPO_URL}/activity"
+
+
+def test_feed_pagination_does_not_switch_to_global_activity(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    fake_stores: FakeStores,
+) -> None:
+    client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Personal"})
+    other = next(user for user in fake_stores.users.items.values() if not user.is_superuser)
+    foreign_url = f"{settings.API_V1_STR}/repositories/{other.name}/foreign/issues"
+    client.post(foreign_url, headers=normal_user_token_headers, json={"title": "Global"})
+    first = client.get(FEED_URL, headers=superuser_token_headers, params={"limit": 1}).json()
+    assert [item["title"] for item in first["data"]] == ["Personal"]
+    last = client.get(FEED_URL, headers=superuser_token_headers, params={"limit": 1, "offset": 1}).json()
+    assert last == {"data": [], "count": 0}
+    client.put(f"{settings.API_V1_STR}/repositories/{other.name}/foreign/star", headers=superuser_token_headers)
+    starred = client.get(FEED_URL, headers=superuser_token_headers).json()
+    assert "Global" in [item["title"] for item in starred["data"]]
+
+
+@pytest.mark.usefixtures("normal_user_token_headers")
+async def test_feed_has_no_repository_hydration_limit(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    fake_stores: FakeStores,
+) -> None:
+    owner = next(user for user in fake_stores.users.items.values() if user.is_superuser)
+    for index in range(1001):
+        await fake_stores.repository.add(Repository(name=f"repo-{index}", owner_id=owner.id))
+    repo = next(repo for repo in fake_stores.repository.items.values() if repo.name == "repo-1000")
+    await fake_stores.activity.add(
+        Activity(actor_id=owner.id, repo_id=repo.id, kind=ActivityKind.ISSUE_OPEN, title="Beyond the old limit")
+    )
+    other = next(user for user in fake_stores.users.items.values() if not user.is_superuser)
+    foreign = Repository(name="foreign", owner_id=other.id)
+    await fake_stores.repository.add(foreign)
+    await fake_stores.activity.add(
+        Activity(actor_id=other.id, repo_id=foreign.id, kind=ActivityKind.ISSUE_OPEN, title="Unrelated")
+    )
+    response = client.get(FEED_URL, headers=superuser_token_headers)
+    assert response.status_code == 200
+    assert [event["title"] for event in response.json()["data"]] == ["Beyond the old limit"]
+
+
+@pytest.mark.parametrize("params", [{"offset": -1}, {"limit": 0}, {"limit": 101}])
+def test_feed_bounds_page_size(
+    client: TestClient, superuser_token_headers: dict[str, str], params: dict[str, int]
+) -> None:
+    assert client.get(FEED_URL, headers=superuser_token_headers, params=params).status_code == 422
+
+
 PROFILE_URL = f"{settings.API_V1_STR}/users/{REPO_OWNER}"
 PROFILE_REPOS_URL = f"{PROFILE_URL}/repositories"
 PROFILE_STARRED_URL = f"{PROFILE_URL}/starred"

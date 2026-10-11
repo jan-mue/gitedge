@@ -10,7 +10,8 @@ import type { SourceMode } from "@/components/Repositories/SourceLink"
 import FileBrowser from "@/components/Repository/FileBrowser"
 import ReadmeViewer from "@/components/Repository/ReadmeViewer"
 import RepoStats from "@/components/Repository/RepoStats"
-import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
+import { RepositoryError } from "@/components/Repository/RepositoryLoading"
+import SourceLoading from "@/components/Repository/SourceLoading"
 import { Skeleton } from "@/components/ui/skeleton"
 
 interface SourceViewProps {
@@ -20,6 +21,8 @@ interface SourceViewProps {
   refName: string
   path: string
 }
+
+const readmeNames = new Set(["README.md", "README.MD", "readme.md", "README", "README.txt", "README.rst", "Readme.md"])
 
 const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
   const {
@@ -33,6 +36,20 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
   })
   const tree = source && "entries" in source ? source : undefined
   const blob = source && "content" in source ? source : undefined
+  const parentPath = path.split("/").slice(0, -1).join("/")
+  // Warm directory listings identify files immediately; direct links resolve the
+  // parent in parallel so extensionless files get the same code-shaped skeleton.
+  const { data: parent } = useQuery({
+    ...repositoriesGetSourceOptions({ path: { owner, repo }, query: { ref: refName, source_path: parentPath } }),
+    enabled: Boolean(path) && isPending,
+    retry: false,
+  })
+  const kind = !path
+    ? "tree"
+    : parent && "entries" in parent
+      ? parent.entries.find((entry) => entry.path === path)?.type
+      : undefined
+  const hasReadme = tree?.entries.some((entry) => entry.type === "blob" && readmeNames.has(entry.name)) ?? false
   const { data: repoInfo, isPending: infoPending } = useQuery(
     repositoriesGetRepositoryInfoOptions({ path: { owner, repo }, query: { ref: refName } }),
   )
@@ -43,7 +60,7 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
   } = useQuery({
     ...repositoriesGetReadmeOptions({ path: { owner, repo }, query: { ref: refName, tree_path: path } }),
     retry: false,
-    enabled: Boolean(tree),
+    enabled: hasReadme,
   })
 
   if (blob) {
@@ -59,6 +76,13 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
       </div>
     )
   }
+  if ((isPending || (isError && infoPending)) && kind !== "tree")
+    return (
+      <div className="flex flex-col gap-4">
+        <RepoBreadcrumbs owner={owner} repo={repo} path={path} mode={mode} refName={refName} />
+        <SourceLoading kind={kind} />
+      </div>
+    )
   const empty = !path && repoInfo?.branch_count === 0
   return (
     <div className="flex flex-col gap-4">
@@ -69,7 +93,7 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
         revision={refName}
       />
       {isPending || (isError && infoPending) ? (
-        <RepositoryLoading label="Loading source" />
+        <SourceLoading kind="tree" />
       ) : tree ? (
         <>
           {path && <RepoBreadcrumbs owner={owner} repo={repo} path={path} mode={mode} refName={refName} />}
@@ -82,9 +106,10 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
             treePath={path}
             lastCommit={repoInfo?.last_commit}
           />
-          {readme ? (
+          {hasReadme && readme ? (
             <ReadmeViewer html={readme.html} content={readme.content} filename={readme.filename} />
           ) : (
+            hasReadme &&
             readmePending &&
             readmeFetching && (
               <div role="status" aria-label="Loading README" className="space-y-3 rounded-lg border p-6">

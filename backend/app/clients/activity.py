@@ -5,12 +5,13 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.activity import Activity
 from app.entities.repositories import Repository
+from app.entities.stars import Star
 
 if TYPE_CHECKING:
     import uuid
@@ -26,6 +27,10 @@ _ACTIVITY_OPTIONS = (
 
 class ActivityStore(CrudStore[Activity], ABC):
     """Abstract activity store with activity-specific queries."""
+
+    @abstractmethod
+    async def list_feed(self, user_id: uuid.UUID, offset: int = 0, limit: int = 50) -> list[Activity]:
+        """List events from owned and starred repositories without loading those repositories."""
 
     @abstractmethod
     async def list_in_period(self, repo_id: uuid.UUID, start: datetime, end: datetime) -> list[Activity]:
@@ -61,7 +66,7 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
             select(Activity)
             .options(*_ACTIVITY_OPTIONS)
             .where(Activity.repo_id == repo_id, Activity.created_at >= start, Activity.created_at <= end)
-            .order_by(Activity.created_at.desc())
+            .order_by(Activity.created_at.desc(), Activity.id.desc())
         )
         return list(result.all())
 
@@ -71,6 +76,29 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
             select(Activity)
             .options(*_ACTIVITY_OPTIONS)
             .order_by(Activity.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        return list(result.all())
+
+    async def list_feed(self, user_id: uuid.UUID, offset: int = 0, limit: int = 50) -> list[Activity]:
+        """Select a personalized feed page using ownership and star subqueries.
+
+        Args:
+            user_id: Authenticated user.
+            offset: Number of events to skip.
+            limit: Maximum number of events.
+
+        Returns:
+            Events with actor and repository metadata loaded.
+        """
+        owned = select(Repository.id).where(Repository.owner_id == user_id)
+        starred = select(Star.repo_id).where(Star.user_id == user_id)
+        result = await self.db.scalars(
+            select(Activity)
+            .options(*_ACTIVITY_OPTIONS)
+            .where(or_(Activity.repo_id.in_(owned), Activity.repo_id.in_(starred)))
+            .order_by(Activity.created_at.desc(), Activity.id.desc())
             .offset(offset)
             .limit(limit)
         )

@@ -644,6 +644,17 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
         self.users = users
         self.repository = repository
 
+    async def list_feed(self, user_id: uuid.UUID, offset: int = 0, limit: int = 50) -> list[Activity]:
+        """List personalized events using the fake repository and star stores."""
+        if self.repository is None:
+            return []
+        repo_ids = {repo.id for repo in self.repository.items.values() if repo.owner_id == user_id}
+        if self.repository.stores is not None:
+            repo_ids.update(
+                star.repo_id for star in self.repository.stores.stars.items.values() if star.user_id == user_id
+            )
+        return await self.list_by_repos(list(repo_ids), offset, limit)
+
     def _hydrate(self, activity: Activity) -> Activity:
         """Populate the activity's actor and repository from the other fake stores."""
         if self.users is not None:
