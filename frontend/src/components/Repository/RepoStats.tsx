@@ -21,9 +21,10 @@ interface RepoStatsProps {
   gitRef: string
   /** Ref used for API calls (branch name or commit SHA). Defaults to gitRef. */
   revision?: string
+  showStatistics?: boolean
 }
 
-const RepoStats = ({ owner, repo, gitRef, revision }: RepoStatsProps) => {
+const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: RepoStatsProps) => {
   const ref = revision ?? gitRef
   const [copiedText, copy] = useCopyToClipboard()
   const navigate = useNavigate()
@@ -40,6 +41,7 @@ const RepoStats = ({ owner, repo, gitRef, revision }: RepoStatsProps) => {
   const { data: statistics, isPending: statisticsPending } = useQuery({
     ...repositoriesGetStatisticsOptions({ path: { owner, repo }, query: { ref } }),
     staleTime: 30_000,
+    enabled: showStatistics,
   })
 
   const {
@@ -76,7 +78,7 @@ const RepoStats = ({ owner, repo, gitRef, revision }: RepoStatsProps) => {
     <div className="space-y-3" data-testid="repo-stats">
       {repoInfo?.description && <div className="text-foreground">{repoInfo.description}</div>}
 
-      {repoInfo && (
+      {showStatistics && repoInfo && (
         <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
           <RouterLink
             to="/$owner/$repo/commits/branch/$branch"
@@ -118,11 +120,12 @@ const RepoStats = ({ owner, repo, gitRef, revision }: RepoStatsProps) => {
         </div>
       )}
 
-      {statisticsPending ? (
-        <Skeleton className="h-2 w-full" />
-      ) : (
-        statistics && <LanguageBar languages={statistics.languages ?? []} />
-      )}
+      {showStatistics &&
+        (statisticsPending ? (
+          <Skeleton className="h-2 w-full" />
+        ) : (
+          statistics && <LanguageBar languages={statistics.languages ?? []} />
+        ))}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative" ref={dropdownRef}>
           <button

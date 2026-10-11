@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event"
 import type { ReactNode } from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 
-import { render, screen } from "@/test/test-utils"
+import { render, screen, waitFor } from "@/test/test-utils"
 import RepoStats from "./RepoStats"
 
 const navigate = vi.hoisted(() => vi.fn())
@@ -66,6 +66,21 @@ describe("RepoStats", () => {
     expect(await screen.findByText("branches")).toBeInTheDocument()
     expect(screen.getByText("tag")).toBeInTheDocument()
     expect(await screen.findByText("42")).toBeInTheDocument()
+  })
+
+  test("retains navigation without displaying or requesting statistics in subdirectories", async () => {
+    const user = userEvent.setup()
+    render(<RepoStats owner="owner" repo="repo" gitRef="main" showStatistics={false} />)
+    await waitFor(() => expect(getRepositoryInfo).toHaveBeenCalled())
+
+    expect(getStatistics).not.toHaveBeenCalled()
+    expect(screen.queryByText("42")).not.toBeInTheDocument()
+    expect(screen.queryByText("branches")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Python: 100%" })).not.toBeInTheDocument()
+    expect(screen.getByTestId("clone-url")).toBeInTheDocument()
+
+    await user.click(screen.getByTestId("branch-selector"))
+    expect(await screen.findByTestId("branch-option-develop")).toBeInTheDocument()
   })
 
   test("lists branches in the dropdown", async () => {

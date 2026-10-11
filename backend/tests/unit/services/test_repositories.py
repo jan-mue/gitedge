@@ -174,6 +174,7 @@ async def test_activity_history_deduplicates_branches_and_excludes_merge_diffs(s
     assert not by_sha[branch.id.decode()].is_default
     assert by_sha[branch.id.decode()].files == ["file.txt"]
     assert (await service.activity_history(OWNER, REPO)) == history
+    assert (await service.get_statistics(OWNER, REPO, "main")).commit_count == 4
 
 
 async def test_create_repository(service: RepositoryService) -> None:
@@ -457,7 +458,7 @@ async def test_statistics_file_index_and_raw(service: RepositoryService) -> None
     stats = await service.get_statistics(OWNER, REPO, "main")
     assert stats.commit_count == 1
     assert stats.size == len(b"# Title\n\nHello world\n") + len(b'def main():\n    print("hi")\n')
-    assert {language.name for language in stats.languages} == {"Python", "Markdown"}
+    assert {language.name for language in stats.languages} == {"Python"}
     assert sum(language.percentage for language in stats.languages) == pytest.approx(100, abs=0.02)
     assert (await service.get_file_index(OWNER, REPO, sha.decode())).paths == ["README.md", "src/main.py"]
     assert await service.get_raw(OWNER, REPO, "main", "README.md") == b"# Title\n\nHello world\n"
@@ -473,6 +474,57 @@ async def test_statistics_binary_and_empty_files(service: RepositoryService) -> 
     await service.create_repository(OWNER, "empty")
     assert (await service.get_statistics(OWNER, "empty", "HEAD")).commit_count == 0
     assert (await service.get_file_index(OWNER, "empty", "HEAD")).paths == []
+
+
+async def test_statistics_groups_source_bytes_and_excludes_non_source(service: RepositoryService) -> None:
+    contents = {
+        "main.ts": b"const answer = 42;\n",
+        "view.tsx": b"export const View = () => <p>Hello</p>;\n",
+        "main.py": b"print('hello')\n",
+        "README.md": b"# Documentation\n" * 100,
+        "package.json": b'{"name":"example"}',
+        "bun.lock": b'{"lockfileVersion":1}',
+        "app.min.js": b"const answer=42;",
+    }
+    blobs = {path: Blob.from_string(content) for path, content in contents.items()}
+    tree = _write_tree({path: (stat.S_IFREG | 0o644, blob.id) for path, blob in blobs.items()})
+    commit = _make_commit(tree.id)
+    _load_repository(service.backend, "owner/repo.git", [*blobs.values(), tree, commit], commit.id)
+
+    stats = await service.get_statistics(OWNER, REPO, "main")
+    source_bytes = len(contents["main.ts"]) + len(contents["view.tsx"]) + len(contents["main.py"])
+    assert stats.size == sum(len(content) for content in contents.values())
+    assert {language.name: language.size for language in stats.languages} == {
+        "TypeScript": len(contents["main.ts"]) + len(contents["view.tsx"]),
+        "Python": len(contents["main.py"]),
+    }
+    for language in stats.languages:
+        assert language.percentage == round(language.size / source_bytes * 100, 2)
+
+
+async def test_statistics_reuses_commit_cache_across_refs(service: RepositoryService, mocker: MockerFixture) -> None:
+    sha = _populate_repo(service.backend)
+    compute = mocker.spy(RepositoryService, "_compute_statistics")
+    original = await service.get_statistics(OWNER, REPO, "main")
+    assert await service.get_statistics(OWNER, REPO, sha.decode()) == original
+    assert await service.get_statistics(OWNER, REPO, "HEAD") == original
+    assert compute.call_count == 1
+
+    _populate_single_file(service.backend, "owner/repo.git", "changed.tsx", b"<p>Changed</p>")
+    changed = await service.get_statistics(OWNER, REPO, "main")
+    assert [language.name for language in changed.languages] == ["TypeScript"]
+    assert compute.call_count == 2
+
+
+async def test_file_index_does_not_load_blob_contents(service: RepositoryService, mocker: MockerFixture) -> None:
+    _populate_repo(service.backend)
+    repo = service.backend.open_repository("owner/repo.git")
+    read = mocker.spy(repo.object_store, "get_raw")
+    assert (await service.get_file_index(OWNER, REPO, "main")).paths == ["README.md", "src/main.py"]
+    blob_ids = {
+        Blob.from_string(content).id for content in [b"# Title\n\nHello world\n", b'def main():\n    print("hi")\n']
+    }
+    assert all(call.args[0] not in blob_ids for call in read.call_args_list)
 
 
 async def test_blame_tracks_lines_across_commits_and_renames(service: RepositoryService) -> None:

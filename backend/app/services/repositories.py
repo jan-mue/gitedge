@@ -51,6 +51,7 @@ from app.schemas.repositories import (
 )
 from app.schemas.repository_activity import GitActivityHistory
 from app.services.blob_backend import load_repository_from_storage, save_repository_changes_to_storage
+from app.services.languages import source_language
 from app.services.markdown import render_markdown
 from app.services.repository_activity import collect_git_activity
 from app.utils.cache_headers import (
@@ -62,7 +63,7 @@ from app.utils.cache_headers import (
 
 if TYPE_CHECKING:
     import uuid
-    from collections.abc import Awaitable, Callable
+    from collections.abc import Awaitable, Callable, Iterator
 
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.cache import AbstractCacheClient
@@ -489,11 +490,10 @@ class RepositoryService:
             await self.cache_client.invalidate(self._cache_group(entity.fork_of.owner.name, entity.fork_of.name))
 
     @staticmethod
-    def _revision_files(repo: BlobRepository, sha: bytes) -> list[tuple[str, Blob]]:
-        """Collect blobs from a revision, skipping submodules and symlinks."""
+    def _revision_files(repo: BlobRepository, sha: bytes) -> Iterator[tuple[str, ObjectID]]:
+        """Iterate file paths and object IDs, skipping submodules and symlinks."""
         root = RepositoryService._get_tree_at_path(repo, sha, "")
         pending = [("", root)]
-        files: list[tuple[str, Blob]] = []
         while pending:
             prefix, tree = pending.pop()
             for entry in tree.items():
@@ -503,10 +503,7 @@ class RepositoryService:
                     if isinstance(child, Tree):
                         pending.append((path + "/", child))
                 elif stat.S_ISREG(entry.mode):
-                    blob = repo.object_store[entry.sha]
-                    if isinstance(blob, Blob):
-                        files.append((path, blob))
-        return files
+                    yield path, entry.sha
 
     async def get_file_index(self, owner: str, name: str, ref: str) -> FileIndex:
         """Return all searchable file paths at a revision."""
@@ -516,8 +513,9 @@ class RepositoryService:
             sha = self._try_resolve_ref(repo, ref)
             if sha is None:
                 return FileIndex(paths=[])
-            files = await run_in_threadpool(self._revision_files, repo, sha)
-            return FileIndex(paths=sorted(path for path, _ in files))
+            return await run_in_threadpool(
+                lambda: FileIndex(paths=sorted(path for path, _ in self._revision_files(repo, sha)))
+            )
 
         return await self._cached_model(
             key=f"files:{ref}",
@@ -529,25 +527,30 @@ class RepositoryService:
 
     @staticmethod
     def _compute_statistics(repo: BlobRepository, sha: bytes) -> RepositoryStatistics:
-        """Compute language shares for text files, total bytes, and reachable commit count."""
+        """Compute source language shares, total bytes, and reachable commit count."""
         sizes: dict[str, int] = {}
         total = 0
-        for path, blob in RepositoryService._revision_files(repo, sha):
+        for path, blob_sha in RepositoryService._revision_files(repo, sha):
+            blob = repo.object_store[blob_sha]
+            if not isinstance(blob, Blob):
+                continue
             total += len(blob.data)
-            if b"\0" in blob.data:
+            language = source_language(path, blob.data)
+            if language:
+                sizes[language] = sizes.get(language, 0) + len(blob.data)
+        pending = [ObjectID(sha)]
+        commits: set[ObjectID] = set()
+        while pending:
+            commit_sha = pending.pop()
+            if commit_sha in commits:
                 continue
-            try:
-                blob.data.decode("utf-8")
-            except UnicodeDecodeError:
-                continue
-            try:
-                language = get_lexer_for_filename(path).name
-            except ClassNotFound:
-                language = "Other"
-            sizes[language] = sizes.get(language, 0) + len(blob.data)
+            commit = repo.object_store[commit_sha]
+            if isinstance(commit, Commit):
+                commits.add(commit_sha)
+                pending.extend(commit.parents)
         source_size = sum(sizes.values())
         return RepositoryStatistics(
-            commit_count=sum(1 for _ in repo.get_walker(include=[ObjectID(sha)])),
+            commit_count=len(commits),
             size=total,
             languages=[
                 LanguageStatistic(name=language, size=size, percentage=round(size / source_size * 100, 2))
@@ -558,18 +561,18 @@ class RepositoryService:
 
     async def get_statistics(self, owner: str, name: str, ref: str) -> RepositoryStatistics:
         """Return cached statistics without slowing the source listing."""
+        repo = await self.load_repository(owner, name)
+        sha = self._try_resolve_ref(repo, ref)
+        if sha is None:
+            return RepositoryStatistics()
 
         async def compute() -> RepositoryStatistics:
-            repo = await self.load_repository(owner, name)
-            sha = self._try_resolve_ref(repo, ref)
-            if sha is None:
-                return RepositoryStatistics()
             return await run_in_threadpool(self._compute_statistics, repo, sha)
 
         return await self._cached_model(
-            key=f"statistics:{ref}",
+            key=f"statistics:v2:{sha.decode()}",
             group=self._cache_group(owner, name),
-            ttl=self._ttl_for_ref(ref),
+            ttl=settings.CACHE_IMMUTABLE_TTL,
             model=RepositoryStatistics,
             compute=compute,
         )

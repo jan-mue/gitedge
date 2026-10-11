@@ -89,6 +89,7 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
         repo={repo}
         gitRef={mode === "commit" ? refName.slice(0, 10) : refName}
         revision={refName}
+        showStatistics={!path}
       />
       {isPending || (isError && infoPending) ? (
         <SourceLoading kind="tree" />

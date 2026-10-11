@@ -36,7 +36,7 @@ repos:
         additional_dependencies:
           - tomli
         args: [--write-changes]
-        exclude: frontend/
+        exclude: frontend/|^backend/resources/linguist/
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0494aa7fa1314e98913a41227d8f0a515b2c1049 # frozen: 0.38.2
     hooks:

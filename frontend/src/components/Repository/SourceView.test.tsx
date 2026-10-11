@@ -8,7 +8,11 @@ const { getSource, getRepositoryInfo, getReadme } = vi.hoisted(() => ({
   getReadme: vi.fn(),
 }))
 vi.mock("@/client/sdk.gen", () => ({ RepositoriesService: { getSource, getRepositoryInfo, getReadme } }))
-vi.mock("@/components/Repository/RepoStats", () => ({ default: () => <div>Repository statistics</div> }))
+vi.mock("@/components/Repository/RepoStats", () => ({
+  default: ({ showStatistics }: { showStatistics: boolean }) => (
+    <div>{showStatistics ? "Repository statistics" : "Repository navigation"}</div>
+  ),
+}))
 vi.mock("@/components/Repository/FileBrowser", () => ({ default: () => <div data-testid="file-tree">Files</div> }))
 vi.mock("@/components/Repository/ReadmeViewer", () => ({ default: () => <div>README content</div> }))
 vi.mock("@/components/Repositories/RepoBreadcrumbs", () => ({ default: () => <div>Path</div> }))
@@ -24,8 +28,20 @@ describe("Source loading", () => {
     getSource.mockResolvedValue({ data: { entries: [{ name: "src", path: "src", type: "tree" }] } })
     render(<SourceView {...props} />)
     expect(await screen.findByTestId("file-tree")).toBeInTheDocument()
+    expect(screen.getByText("Repository statistics")).toBeInTheDocument()
     expect(screen.queryByRole("status", { name: "Loading README" })).not.toBeInTheDocument()
     expect(getReadme).not.toHaveBeenCalled()
+  })
+  test("shows statistics only at the root of branch and commit trees", async () => {
+    getSource.mockResolvedValue({ data: { entries: [] } })
+    const { rerender } = render(<SourceView {...props} path="src" />)
+    expect(await screen.findByText("Repository navigation")).toBeInTheDocument()
+    expect(screen.queryByText("Repository statistics")).not.toBeInTheDocument()
+    rerender(<SourceView {...props} mode="commit" refName={"a".repeat(40)} path="src" />)
+    expect(await screen.findByText("Repository navigation")).toBeInTheDocument()
+    expect(screen.queryByText("Repository statistics")).not.toBeInTheDocument()
+    rerender(<SourceView {...props} mode="commit" refName={"a".repeat(40)} />)
+    expect(await screen.findByText("Repository statistics")).toBeInTheDocument()
   })
   test("shows README loading only after the listing confirms a README file", async () => {
     getSource.mockResolvedValue({ data: { entries: [{ name: "README.md", path: "README.md", type: "blob" }] } })
