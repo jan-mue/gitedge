@@ -9,7 +9,11 @@ import {
   handleRepositoriesListIssues,
   handleRepositoriesListPullRequests,
   handleStarsGetStarState,
+  handleStarsStarRepository,
+  handleStarsUnstarRepository,
   handleWatchersGetWatchState,
+  handleWatchersUnwatchRepository,
+  handleWatchersWatchRepository,
 } from "@/client/msw.gen"
 import ErrorComponent from "@/components/Common/ErrorComponent"
 import NotFound from "@/components/Common/NotFound"
@@ -57,6 +61,10 @@ const handlers = [
       { name: "develop", is_default: false },
     ],
   }),
+  handleStarsStarRepository({ body: { is_starred: true, stars_count: 129 } }),
+  handleStarsUnstarRepository({ body: { is_starred: false, stars_count: 128 } }),
+  handleWatchersWatchRepository({ body: { is_watching: true, watchers_count: 33 } }),
+  handleWatchersUnwatchRepository({ body: { is_watching: false, watchers_count: 32 } }),
 ]
 const meta = {
   title: "Patterns/Repository",

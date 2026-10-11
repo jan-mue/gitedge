@@ -152,3 +152,19 @@ test("keyboard, hover, password, validation, tabs, and dialogs", async ({ page }
   await expect(page.getByRole("dialog")).not.toBeVisible()
   await expect(trigger).toBeFocused()
 })
+
+test("repository actions and navigation use real API and router state", async ({ page }, testInfo) => {
+  const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"
+  await page.goto(`/iframe.html?id=patterns-repository--header&viewMode=story&globals=theme:${theme}`)
+  await expect(page.getByTestId("star-count")).toHaveText("128")
+  await page.getByRole("button", { name: "Star", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Starred", exact: true })).toHaveAttribute("aria-pressed", "true")
+  await expect(page.getByTestId("star-count")).toHaveText("129")
+  await page.getByRole("button", { name: "Starred", exact: true }).click()
+  await expect(page.getByTestId("star-count")).toHaveText("128")
+  await page.getByRole("button", { name: "Watch", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Unwatch", exact: true })).toHaveAttribute("aria-pressed", "true")
+  await expect(page.getByTestId("watch-count")).toHaveText("33")
+  await page.getByRole("link", { name: "Issues", exact: true }).click()
+  await expect(page.getByRole("link", { name: "Issues", exact: true })).toHaveAttribute("data-active", "true")
+})
