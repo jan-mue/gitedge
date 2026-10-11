@@ -27,6 +27,22 @@ const activity: ActivityPublic = {
 }
 
 describe("ActivityCard", () => {
+  test("explains unavailable comment previews and keeps the discussion link", () => {
+    render(
+      <ActivityCard
+        activity={{
+          ...activity,
+          kind: "comment",
+          target_type: "issue",
+          preview: { body: null, state: "open", comments_count: 2 },
+        }}
+      />,
+    )
+    expect(screen.getByText("Comment preview unavailable.")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "2 comments" })).toHaveAttribute("href", "/owner/repo/issues/17")
+    expect(screen.queryByRole("button", { name: "Read more" })).not.toBeInTheDocument()
+  })
+
   test("shows the actual comment preview and labels expanded comment links", async () => {
     const { user } = render(
       <ActivityCard

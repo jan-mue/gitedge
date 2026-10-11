@@ -223,6 +223,9 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
               )}
             </div>
           )}
+          {!body && activity.kind === "comment" && (
+            <p className="rounded-lg bg-secondary p-4 text-sm text-muted-foreground">Comment preview unavailable.</p>
+          )}
           {isLong && (
             <button
               type="button"

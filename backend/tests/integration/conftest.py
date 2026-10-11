@@ -22,8 +22,12 @@ import pytest
 import redis
 from alembic.command import upgrade
 from alembic.config import Config
+from alembic.migration import MigrationContext
+from alembic.operations import Operations
+from alembic.script import ScriptDirectory
 from playwright.sync_api import expect
 from pydantic import PostgresDsn, TypeAdapter
+from sqlalchemy import create_engine
 from testcontainers.mailpit import MailpitContainer
 from testcontainers.minio import MinioContainer
 from testcontainers.postgres import PostgresContainer
@@ -187,6 +191,18 @@ def create_repository_row(owner: str, name: str, *, is_private: bool = False) ->
             """,
             (str(uuid.uuid4()), name, is_private, owner.lower()),
         )
+
+
+def run_migration_upgrade(revision_id: str) -> None:
+    """Apply a data migration to records seeded after infrastructure startup."""
+    revision = ScriptDirectory.from_config(Config(BACKEND_DIR / "alembic.ini")).get_revision(revision_id)
+    assert revision is not None
+    engine = create_engine(str(settings.DATABASE_URL))
+    try:
+        with engine.begin() as conn, Operations.context(MigrationContext.configure(conn)):
+            revision.module.upgrade()
+    finally:
+        engine.dispose()
 
 
 def _delete_redis_keys(redis_url: str) -> None:
