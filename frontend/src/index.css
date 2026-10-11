@@ -259,9 +259,10 @@
 }
 
 /* Pygments colors namespaces like keywords and leaves light-theme bold active. */
-.dark .file-viewer .highlight .nn {
-  color: #e6edf3;
-  font-weight: normal;
+.file-viewer .highlight .nn {
+  @variant dark {
+    @apply text-foreground font-normal;
+  }
 }
 
 .dark .file-viewer .highlight td.linenos {
