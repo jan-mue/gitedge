@@ -92,16 +92,25 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
     return <RepositoryError message="Only the repository owner or an administrator can change these settings." />
   const fullName = `${owner}/${repo}`
   return (
-    <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <aside className="h-fit rounded border bg-card">
-        <h2 className="border-b bg-secondary px-4 py-3 text-lg font-semibold">Settings</h2>
-        <nav className="flex flex-col text-sm">
-          <a href="#basic-settings" className="flex items-center gap-2 border-b px-4 py-3 hover:bg-accent">
-            <Settings className="size-4" />
+    <div className="grid min-w-0 gap-6 md:grid-cols-[16rem_minmax(0,1fr)]">
+      <aside className="min-w-0 md:h-fit md:rounded md:border md:bg-card">
+        <h2 className="hidden border-b bg-secondary px-4 py-3 text-lg font-semibold md:block">Settings</h2>
+        <nav
+          className="flex gap-1 overflow-x-auto text-sm md:flex-col md:gap-0 md:overflow-visible"
+          aria-label="Repository settings"
+        >
+          <a
+            href="#basic-settings"
+            className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded bg-accent/50 px-3 py-2 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring md:rounded-none md:border-b md:bg-transparent md:px-4 md:py-3"
+          >
+            <Settings className="size-4 shrink-0" aria-hidden="true" />
             Repository
           </a>
-          <a href="#danger-zone" className="flex items-center gap-2 px-4 py-3 text-destructive hover:bg-accent">
-            <Trash2 className="size-4" />
+          <a
+            href="#danger-zone"
+            className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded bg-accent/50 px-3 py-2 text-destructive transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring md:rounded-none md:bg-transparent md:px-4 md:py-3"
+          >
+            <Trash2 className="size-4 shrink-0" aria-hidden="true" />
             Danger zone
           </a>
         </nav>
