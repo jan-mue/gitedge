@@ -5,7 +5,6 @@ import ReactDOM from "react-dom/client"
 import "@fontsource-variable/inter"
 import "@fontsource-variable/jetbrains-mono"
 import { client } from "./client/client.gen"
-import AppLoading from "./components/Common/AppLoading"
 import { ThemeProvider } from "./components/theme-provider"
 import { Toaster } from "./components/ui/sonner"
 import "./index.css"
@@ -26,12 +25,7 @@ client.interceptors.error.use((error, response) => {
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1 } } })
 
-const router = createRouter({
-  routeTree,
-  defaultPendingMs: 0,
-  defaultPendingMinMs: 0,
-  defaultPendingComponent: AppLoading,
-})
+const router = createRouter({ routeTree })
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router
