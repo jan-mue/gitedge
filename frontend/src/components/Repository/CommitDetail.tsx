@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link as RouterLink, useParams } from "@tanstack/react-router"
 import { ArrowLeft, GitCommitHorizontal } from "lucide-react"
-
 import type { CommitFileChange } from "@/client"
 import { repositoriesGetCommitOptions } from "@/client/@tanstack/react-query.gen"
+import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 
 const changeBadge: Record<string, string> = {
   add: "bg-success/15 text-success",
@@ -70,13 +70,17 @@ const FileDiff = ({ file }: { file: CommitFileChange }) => (
 const CommitDetail = () => {
   const { owner, repo, hash } = useParams({ from: "/_layout/$owner/$repo/commit/$hash" })
 
-  const { data: commit } = useQuery({
+  const {
+    data: commit,
+    isPending,
+    isError,
+    refetch,
+  } = useQuery({
     ...repositoriesGetCommitOptions({ path: { owner, repo, sha: hash } }),
   })
 
-  if (!commit) {
-    return <div className="text-sm text-muted-foreground">Loading commit...</div>
-  }
+  if (isPending) return <RepositoryLoading label="Loading commit" />
+  if (isError || !commit) return <RepositoryError message="Unable to load commit." retry={() => refetch()} />
 
   const [title, ...bodyLines] = commit.message.split("\n")
   const body = bodyLines.join("\n").trim()

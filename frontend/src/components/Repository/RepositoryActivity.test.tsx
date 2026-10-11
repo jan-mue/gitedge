@@ -110,6 +110,7 @@ describe("RepositoryActivity", () => {
           days,
         }),
       )
+      expect(await screen.findByLabelText("Activity period")).toHaveValue(String(days))
     }
   })
 
@@ -141,6 +142,28 @@ describe("RepositoryActivity", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not load repository activity")
     await user.click(screen.getByRole("button", { name: "Try again" }))
     expect(await screen.findByText("Overview")).toBeInTheDocument()
+  })
+
+  test("matches the selected activity view while statistics are loading", async () => {
+    let finish: (value: RepositoryActivityStatistics) => void = () => {}
+    const response = new Promise<RepositoryActivityStatistics>((resolve) => {
+      finish = resolve
+    })
+    server.use(handleActivityGetRepositoryActivityStatistics(async () => HttpResponse.json(await response)))
+    const { user } = render(<RepositoryActivity owner="owner" repo="repo" />)
+    expect(screen.getByRole("status")).toHaveAttribute("data-loading-view", "pulse")
+    for (const [label, view] of [
+      ["Contributors", "contributors"],
+      ["Code frequency", "code-frequency"],
+      ["Recent commits", "recent-commits"],
+    ]) {
+      await user.click(screen.getByRole("button", { name: label }))
+      expect(screen.getByRole("status")).toHaveAttribute("data-loading-view", view)
+    }
+    expect(screen.queryByText("No contributions yet.")).not.toBeInTheDocument()
+    finish(statistics)
+    expect(await screen.findByText("Number of commits in the past year")).toBeInTheDocument()
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
   })
 
   test("renders empty states without fabricated activity", async () => {

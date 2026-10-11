@@ -28,20 +28,22 @@ beforeAll(() => {
     })),
   })
 
-  global.ResizeObserver = vi.fn().mockImplementation(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-  }))
+  global.ResizeObserver = class {
+    observe = vi.fn()
+    unobserve = vi.fn()
+    disconnect = vi.fn()
+  }
 
-  global.IntersectionObserver = vi.fn().mockImplementation(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-    root: null,
-    rootMargin: "",
-    thresholds: [],
-  }))
+  global.IntersectionObserver = class {
+    observe = vi.fn()
+    unobserve = vi.fn()
+    disconnect = vi.fn()
+    takeRecords = vi.fn(() => [])
+    root = null
+    rootMargin = ""
+    scrollMargin = "0px"
+    thresholds = []
+  }
 
   const localStorageMock = {
     getItem: vi.fn(() => null),

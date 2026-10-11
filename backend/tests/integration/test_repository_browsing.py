@@ -39,7 +39,7 @@ def _run_git(cwd: Path, args: list[str]) -> str:
     return result.stdout.strip()
 
 
-def _push_test_repo(wrangler_dev_url: str, repo_name: str) -> None:
+def _push_test_repo(wrangler_dev_url: str, repo_name: str, extra_files: dict[str, str] | None = None) -> None:
     """Push a test repository with known files to the server.
 
     Creates a repo with:
@@ -74,6 +74,11 @@ def _push_test_repo(wrangler_dev_url: str, repo_name: str) -> None:
         utils_py = src_dir / "utils.py"
         utils_py.write_text('def add(a: int, b: int) -> int:\n    """Add two numbers."""\n    return a + b\n')
 
+        for path, content in (extra_files or {}).items():
+            file = source_dir / path
+            file.parent.mkdir(parents=True, exist_ok=True)
+            file.write_text(content)
+
         _run_git(source_dir, ["add", "."])
         _run_git(source_dir, ["commit", "-m", "Initial commit with test files"])
         _run_git(source_dir, ["remote", "add", "origin", remote_url])
@@ -82,6 +87,43 @@ def _push_test_repo(wrangler_dev_url: str, repo_name: str) -> None:
 
 class TestRepositoryBrowsing:
     """Test browsing a repository's file tree via the UI."""
+
+    def test_source_language_statistics_only_load_at_root(self, app_url: str, page: Page) -> None:
+        sources = {"src/main.ts": "const answer = 42;\n", "src/view.tsx": "export const View = () => <p>Hello</p>;\n"}
+        _push_test_repo(
+            app_url,
+            "admin/languagerepo.git",
+            extra_files={
+                **sources,
+                "package.json": '{"name":"example"}',
+                "bun.lock": '{"lockfileVersion":1}',
+                "vendor/library.js": "const vendor = 42;\n" * 100,
+                "dist/bundle.js": "const bundle = 42;\n" * 100,
+            },
+        )
+        log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
+        requests: list[str] = []
+        page.on("request", lambda request: requests.append(request.url) if "/statistics?" in request.url else None)
+        page.goto(f"{app_url}/admin/languagerepo/src/branch/main/src")
+        expect(page.get_by_test_id("tree-entry-view.tsx")).to_be_visible(timeout=15000)
+        expect(page.get_by_test_id("branch-selector")).to_be_visible()
+        assert requests == []
+
+        with page.expect_response(lambda response: "/statistics?" in response.url) as response:
+            page.goto(f"{app_url}/admin/languagerepo")
+        statistics = response.value.json()
+        languages = {language["name"]: language for language in statistics["languages"]}
+        assert set(languages) == {"TypeScript", "Python"}
+        assert languages["TypeScript"]["size"] == sum(len(content) for content in sources.values())
+        button = page.get_by_role("button", name=f"TypeScript: {languages['TypeScript']['percentage']}%")
+        expect(button).to_be_visible()
+        page.get_by_test_id("tree-entry-src").click()
+        expect(page.get_by_test_id("tree-entry-view.tsx")).to_be_visible()
+        expect(button).to_have_count(0)
+        assert len(requests) == 1
+        page.go_back()
+        expect(button).to_be_visible()
+        assert len(requests) == 1
 
     def test_repository_appears_in_list(self, app_url: str, page: Page) -> None:
         """Test that a pushed repository appears in the repositories list.

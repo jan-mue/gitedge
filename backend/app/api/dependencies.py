@@ -144,18 +144,24 @@ async def get_current_user(user_store: UserStoreDep, token: TokenDep) -> User:
     except (InvalidTokenError, ValidationError) as e:
         logger.error("Token decode error: %s", str(e))
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
         ) from e
     if not token_data.sub:
         logger.error("Token has no sub claim")
-        raise HTTPException(status_code=403, detail="Could not validate credentials")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     user = await user_store.find(token_data.sub)
     if not user:
         logger.error("User not found for id: %s", token_data.sub)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")

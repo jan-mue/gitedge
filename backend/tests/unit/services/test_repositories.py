@@ -17,6 +17,7 @@ from fastapi import HTTPException
 
 from app.entities.users import User
 from app.exceptions import RepositoryNotFoundError
+from app.schemas.repositories import FileContent, RepositoryUpdate, TreeListing
 from app.services.blob_backend import BlobBackend
 from app.services.repositories import RepositoryService, ensure_repository
 from app.types import PackContents
@@ -173,6 +174,7 @@ async def test_activity_history_deduplicates_branches_and_excludes_merge_diffs(s
     assert not by_sha[branch.id.decode()].is_default
     assert by_sha[branch.id.decode()].files == ["file.txt"]
     assert (await service.activity_history(OWNER, REPO)) == history
+    assert (await service.get_statistics(OWNER, REPO, "main")).commit_count == 4
 
 
 async def test_create_repository(service: RepositoryService) -> None:
@@ -449,3 +451,197 @@ async def test_cache_headers_private(service: RepositoryService) -> None:
     headers = await service.cache_headers(OWNER, REPO, immutable=True)
 
     assert headers["Cache-Control"] == CACHE_CONTROL_PRIVATE
+
+
+async def test_statistics_file_index_and_raw(service: RepositoryService) -> None:
+    sha = _populate_repo(service.backend)
+    stats = await service.get_statistics(OWNER, REPO, "main")
+    assert stats.commit_count == 1
+    assert stats.size == len(b"# Title\n\nHello world\n") + len(b'def main():\n    print("hi")\n')
+    assert {language.name for language in stats.languages} == {"Python"}
+    assert sum(language.percentage for language in stats.languages) == pytest.approx(100, abs=0.02)
+    assert (await service.get_file_index(OWNER, REPO, sha.decode())).paths == ["README.md", "src/main.py"]
+    assert await service.get_raw(OWNER, REPO, "main", "README.md") == b"# Title\n\nHello world\n"
+    assert isinstance(await service.get_source(OWNER, REPO, "main", "src"), TreeListing)
+    assert isinstance(await service.get_source(OWNER, REPO, "main", "src/main.py"), FileContent)
+
+
+async def test_statistics_binary_and_empty_files(service: RepositoryService) -> None:
+    _populate_single_file(service.backend, "owner/repo.git", "image.png", b"\x89PNG\0\xff")
+    result = await service.get_statistics(OWNER, REPO, "main")
+    assert result.size == 6
+    assert result.languages == []
+    await service.create_repository(OWNER, "empty")
+    assert (await service.get_statistics(OWNER, "empty", "HEAD")).commit_count == 0
+    assert (await service.get_file_index(OWNER, "empty", "HEAD")).paths == []
+
+
+async def test_statistics_groups_source_bytes_and_excludes_non_source(service: RepositoryService) -> None:
+    contents = {
+        "main.ts": b"const answer = 42;\n",
+        "view.tsx": b"export const View = () => <p>Hello</p>;\n",
+        "main.py": b"print('hello')\n",
+        "README.md": b"# Documentation\n" * 100,
+        "package.json": b'{"name":"example"}',
+        "bun.lock": b'{"lockfileVersion":1}',
+        "app.min.js": b"const answer=42;",
+    }
+    blobs = {path: Blob.from_string(content) for path, content in contents.items()}
+    tree = _write_tree({path: (stat.S_IFREG | 0o644, blob.id) for path, blob in blobs.items()})
+    commit = _make_commit(tree.id)
+    _load_repository(service.backend, "owner/repo.git", [*blobs.values(), tree, commit], commit.id)
+
+    stats = await service.get_statistics(OWNER, REPO, "main")
+    source_bytes = len(contents["main.ts"]) + len(contents["view.tsx"]) + len(contents["main.py"])
+    assert stats.size == sum(len(content) for content in contents.values())
+    assert {language.name: language.size for language in stats.languages} == {
+        "TypeScript": len(contents["main.ts"]) + len(contents["view.tsx"]),
+        "Python": len(contents["main.py"]),
+    }
+    for language in stats.languages:
+        assert language.percentage == round(language.size / source_bytes * 100, 2)
+
+
+async def test_statistics_reuses_commit_cache_across_refs(service: RepositoryService, mocker: MockerFixture) -> None:
+    sha = _populate_repo(service.backend)
+    compute = mocker.spy(RepositoryService, "_compute_statistics")
+    original = await service.get_statistics(OWNER, REPO, "main")
+    assert await service.get_statistics(OWNER, REPO, sha.decode()) == original
+    assert await service.get_statistics(OWNER, REPO, "HEAD") == original
+    assert compute.call_count == 1
+
+    _populate_single_file(service.backend, "owner/repo.git", "changed.tsx", b"<p>Changed</p>")
+    changed = await service.get_statistics(OWNER, REPO, "main")
+    assert [language.name for language in changed.languages] == ["TypeScript"]
+    assert compute.call_count == 2
+
+
+async def test_file_index_does_not_load_blob_contents(service: RepositoryService, mocker: MockerFixture) -> None:
+    _populate_repo(service.backend)
+    repo = service.backend.open_repository("owner/repo.git")
+    read = mocker.spy(repo.object_store, "get_raw")
+    assert (await service.get_file_index(OWNER, REPO, "main")).paths == ["README.md", "src/main.py"]
+    blob_ids = {
+        Blob.from_string(content).id for content in [b"# Title\n\nHello world\n", b'def main():\n    print("hi")\n']
+    }
+    assert all(call.args[0] not in blob_ids for call in read.call_args_list)
+
+
+async def test_blame_tracks_lines_across_commits_and_renames(service: RepositoryService) -> None:
+    first_blob = Blob.from_string(b"unchanged\noriginal\n")
+    first_tree = _write_tree({"old.txt": (stat.S_IFREG | 0o644, first_blob.id)})
+    first = _make_commit(first_tree.id, "Original content")
+    rename_tree = _write_tree({"renamed.txt": (stat.S_IFREG | 0o644, first_blob.id)})
+    rename = _make_commit(rename_tree.id, "Rename file")
+    rename.parents = [first.id]
+    second_blob = Blob.from_string(b"unchanged\nchanged\nadded\n")
+    second_tree = _write_tree({"renamed.txt": (stat.S_IFREG | 0o644, second_blob.id)})
+    second = _make_commit(second_tree.id, "Rename and edit")
+    second.parents = [rename.id]
+    second.author = b"Second Author <second@example.com>"
+    _load_repository(
+        service.backend,
+        "owner/repo.git",
+        [first_blob, first_tree, first, rename_tree, rename, second_blob, second_tree, second],
+        second.id,
+    )
+    result = await service.get_blame(OWNER, REPO, "main", "renamed.txt")
+    assert result.revision == second.id.decode()
+    assert [line.content for line in result.lines] == ["unchanged", "changed", "added"]
+    assert [line.commit.sha for line in result.lines] == [first.id.decode(), second.id.decode(), second.id.decode()]
+    assert result.lines[-1].commit.author == "Second Author"
+    historical = await service.get_blame(OWNER, REPO, first.id.decode(), "old.txt")
+    assert [line.content for line in historical.lines] == ["unchanged", "original"]
+    history = await service.list_commits(OWNER, REPO, "main", file_path="renamed.txt")
+    assert history.data[0].sha == second.id.decode()
+
+
+@pytest.mark.parametrize("data", [b"\0binary", b"\xff", b"x" * (1024 * 1024 + 1)])
+async def test_blame_rejects_unrenderable_files(service: RepositoryService, data: bytes) -> None:
+    _populate_single_file(service.backend, "owner/repo.git", "file.txt", data)
+    with pytest.raises(HTTPException) as error:
+        await service.get_blame(OWNER, REPO, "main", "file.txt")
+    assert error.value.status_code in (400, 413)
+
+
+async def test_blame_empty_and_missing_files(service: RepositoryService) -> None:
+    _populate_single_file(service.backend, "owner/repo.git", "empty.txt", b"")
+    assert (await service.get_blame(OWNER, REPO, "main", "empty.txt")).lines == []
+    with pytest.raises(HTTPException) as error:
+        await service.get_blame(OWNER, REPO, "main", "missing.txt")
+    assert error.value.status_code == 404
+
+
+async def test_settings_rename_preserves_git_and_updates_head(service: RepositoryService) -> None:
+    sha = _populate_repo(service.backend)
+    await service.save_changes(OWNER, REPO)
+    entity = await ensure_repository(service.repository_store, OWNER, REPO)
+    user = entity.owner
+    assert isinstance(user, User)
+    repo = service.backend.open_repository("owner/repo.git")
+    for basename, pack in _pack([repo.object_store[oid] for oid in repo.object_store]).items():
+        await service.blob_client.put(f"owner/repo.git/packs/{basename}.pack", pack.pack)
+        await service.blob_client.put(f"owner/repo.git/packs/{basename}.idx", pack.index)
+    repo.refs.set_if_equals(Ref(b"refs/heads/develop"), None, sha)
+    await service.save_changes(OWNER, REPO)
+    updated = await service.update_repository(
+        OWNER, REPO, RepositoryUpdate(name="renamed", description="Updated", default_branch="develop"), user
+    )
+    assert updated.name == "renamed"
+    assert updated.description == "Updated"
+    assert updated.default_branch == "develop"
+    assert not service.backend.repository_exists("owner/repo.git")
+    assert not await service.redis_client.scan_keys("owner/repo.git/refs/*")
+    assert not await service.blob_client.list_keys("owner/repo.git/")
+    assert (await service.get_info(OWNER, "renamed", "HEAD")).default_branch == "develop"
+    assert await service.get_raw(OWNER, "renamed", "HEAD", "README.md") == b"# Title\n\nHello world\n"
+    with pytest.raises(RepositoryNotFoundError):
+        await service.get_repository(OWNER, REPO)
+
+
+async def test_settings_reject_invalid_branch_or_duplicate_name(service: RepositoryService) -> None:
+    _populate_repo(service.backend)
+    entity = await ensure_repository(service.repository_store, OWNER, REPO)
+    user = entity.owner
+    assert isinstance(user, User)
+    await service.create_repository(OWNER, "taken")
+    for body, status in [
+        (RepositoryUpdate(default_branch="missing"), 400),
+        (RepositoryUpdate(default_branch="bad..name"), 400),
+        (RepositoryUpdate(name="taken"), 409),
+    ]:
+        with pytest.raises(HTTPException) as error:
+            await service.update_repository(OWNER, REPO, body, user)
+        assert error.value.status_code == status
+    assert entity.name == REPO
+    assert entity.default_branch == "main"
+
+
+async def test_settings_and_deletion_require_owner(service: RepositoryService) -> None:
+    await service.create_repository(OWNER, REPO)
+    outsider = User(id=uuid.uuid4(), name="outsider", email="out@example.com", hashed_password="x", is_superuser=False)
+    with pytest.raises(HTTPException) as error:
+        await service.update_repository(OWNER, REPO, RepositoryUpdate(description="changed"), outsider)
+    assert error.value.status_code == 403
+    with pytest.raises(HTTPException) as error:
+        await service.delete_repository(OWNER, REPO, outsider)
+    assert error.value.status_code == 403
+    assert service.backend.repository_exists("owner/repo.git")
+
+
+async def test_delete_evicts_storage_and_cache_without_deleting_neighbor(service: RepositoryService) -> None:
+    _populate_repo(service.backend)
+    await service.save_changes(OWNER, REPO)
+    entity = await ensure_repository(service.repository_store, OWNER, REPO)
+    user = entity.owner
+    assert isinstance(user, User)
+    await service.get_statistics(OWNER, REPO, "main")
+    await service.create_repository(OWNER, "repo-other")
+    await service.delete_repository(OWNER, REPO, user)
+    assert not service.backend.repository_exists("owner/repo.git")
+    assert not await service.redis_client.scan_keys("owner/repo.git/refs/*")
+    assert not await service.blob_client.list_keys("owner/repo.git/")
+    assert await service.repository_store.find_by_owner_and_name(OWNER, REPO) is None
+    assert await service.repository_store.find_by_owner_and_name(OWNER, "repo-other") is not None
+    with pytest.raises(HTTPException):
+        await service.get_statistics(OWNER, REPO, "main")
