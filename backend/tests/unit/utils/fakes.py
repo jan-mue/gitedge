@@ -28,7 +28,7 @@ from app.clients.stars import StarStore
 from app.clients.users import UserStore
 from app.clients.watchers import WatcherStore
 from app.config import settings
-from app.entities.activity import Activity
+from app.entities.activity import Activity, ActivityKind
 from app.entities.base import Base
 from app.entities.comments import Comment
 from app.entities.issues import Issue, IssueState
@@ -47,6 +47,7 @@ from app.exceptions import (
     PullRequestNotFoundError,
     RepositoryNotFoundError,
 )
+from app.schemas.activity import ActivityTargetPreview
 from app.utils.security import get_password_hash
 
 if TYPE_CHECKING:
@@ -234,6 +235,7 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
         self.users = users
         self.organizations = organizations
         self.release_store: FakeReleaseStore | None = None
+        self.stores: FakeStores | None = None
 
     def _owner(self, repository: Repository) -> Principal | None:
         """Resolve a repository's owner principal."""
@@ -257,6 +259,35 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
         if include_releases and self.release_store is not None:
             repository.releases = self.release_store.releases_for(repository.id)
         return repository
+
+    async def delete(self, obj: Repository) -> None:
+        """Delete dependent records and detach independent forks."""
+        for fork in self.items.values():
+            if fork.fork_of_id == obj.id:
+                fork.fork_of_id = None
+                fork.fork_of = None
+        if self.stores is not None:
+            stores = self.stores
+            issue_ids = {issue.id for issue in stores.issues.items.values() if issue.repo_id == obj.id}
+            issue_ids.update(
+                pr.id
+                for pr in stores.pull_requests.items.values()
+                if obj.id in (pr.repo_id, pr.head_repo_id, pr.base_repo_id)
+            )
+            for comment in list(stores.comments.items.values()):
+                if comment.issue_id in issue_ids:
+                    await stores.comments.delete(comment)
+            for issue in list(stores.issues.items.values()):
+                if issue.id in issue_ids:
+                    await stores.issues.delete(issue)
+            for pr in list(stores.pull_requests.items.values()):
+                if pr.id in issue_ids:
+                    await stores.pull_requests.delete(pr)
+            for store in (stores.stars, stores.watchers, stores.releases, stores.activity):
+                for record in list(store.items.values()):
+                    if record.repo_id == obj.id:
+                        store.items.pop(record.id, None)
+        await super().delete(obj)
 
     async def find(self, primary_key: uuid.UUID) -> Repository | None:
         """Find a repository by its primary key."""
@@ -614,6 +645,43 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
         self.users = users
         self.repository = repository
 
+    async def list_feed(self, user_id: uuid.UUID, offset: int = 0, limit: int = 50) -> list[Activity]:
+        """List personalized events using the fake repository and star stores."""
+        if self.repository is None:
+            return []
+        repo_ids = {repo.id for repo in self.repository.items.values() if repo.owner_id == user_id}
+        if self.repository.stores is not None:
+            repo_ids.update(
+                star.repo_id for star in self.repository.stores.stars.items.values() if star.user_id == user_id
+            )
+        return await self.list_by_repos(list(repo_ids), offset, limit)
+
+    async def get_target_previews(self, activities: list[Activity]) -> dict[uuid.UUID, ActivityTargetPreview]:
+        """Build feed previews from the fake issue, pull request, and comment stores."""
+        if self.repository is None or self.repository.stores is None:
+            return {}
+        stores = self.repository.stores
+        issues = {
+            (issue.repo_id, issue.number, issue.kind): issue
+            for issue in [*stores.issues.items.values(), *stores.pull_requests.items.values()]
+        }
+        previews = {}
+        for activity in activities:
+            issue = issues.get((activity.repo_id, activity.target_number, activity.target_type))
+            if issue is None:
+                continue
+            body = issue.body
+            if activity.kind == ActivityKind.COMMENT:
+                comment = stores.comments.items.get(activity.comment_id) if activity.comment_id else None
+                body = comment.body if comment is not None and comment.issue_id == issue.id else None
+            previews[activity.id] = ActivityTargetPreview(
+                body=body[:4000] if body else None,
+                body_truncated=bool(body and len(body) > 4000),
+                state=issue.state,
+                comments_count=sum(comment.issue_id == issue.id for comment in stores.comments.items.values()),
+            )
+        return previews
+
     def _hydrate(self, activity: Activity) -> Activity:
         """Populate the activity's actor and repository from the other fake stores."""
         if self.users is not None:
@@ -707,7 +775,7 @@ def build_fake_stores() -> FakeStores:
             is_superuser=True,
         )
     )
-    return FakeStores(
+    stores = FakeStores(
         users=users,
         issues=issues,
         pull_requests=pull_requests,
@@ -722,3 +790,5 @@ def build_fake_stores() -> FakeStores:
         blob=FakeBlobStorageClient(),
         redis=FakeRedisClient(),
     )
+    repository.stores = stores
+    return stores

@@ -5,6 +5,7 @@
 node_modules/
 backend/app/frontend/
 /test-results/
+backend/test-results/
 frontend/test-results/
 /playwright-report/
 /blob-report/

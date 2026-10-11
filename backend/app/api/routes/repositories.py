@@ -13,12 +13,14 @@ from app.api.dependencies import (
     RepositoryServiceDep,
 )
 from app.schemas.repositories import (
+    BlameContent,
     BranchInfo,
     CommitDetail,
     CommitsPublic,
     CompareResult,
     CreateRepositoryRequest,
     FileContent,
+    FileIndex,
     IssueCreate,
     IssuePublic,
     IssuesListPublic,
@@ -31,6 +33,8 @@ from app.schemas.repositories import (
     RepositoriesPublic,
     Repository,
     RepositoryInfo,
+    RepositoryStatistics,
+    RepositoryUpdate,
     TreeListing,
 )
 from app.utils.cache_headers import is_commit_sha
@@ -75,6 +79,21 @@ async def create_repository(body: CreateRepositoryRequest, repository_service: R
     return await repository_service.create_repository(body.owner, body.name)
 
 
+@router.get("/{owner}/{repo}/source")
+async def get_source(
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    ref: str = "HEAD",
+    source_path: str = "",
+) -> TreeListing | FileContent:
+    """Resolve a directory or file in one source request."""
+    result = await repository_service.get_source(owner, repo, ref, source_path)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
+    return result
+
+
 @router.get("/{owner}/{repo}/tree")
 async def get_tree(
     owner: str,
@@ -103,6 +122,64 @@ async def get_blob(
     result = await repository_service.get_blob(owner, repo, ref, file_path)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
     return result
+
+
+@router.get("/{owner}/{repo}/blame")
+async def get_blame(
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    ref: str = "HEAD",
+    file_path: str = "",
+) -> BlameContent:
+    """Get line attribution for a file at a revision."""
+    result = await repository_service.get_blame(owner, repo, ref, file_path)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
+    return result
+
+
+@router.get("/{owner}/{repo}/statistics")
+async def get_statistics(
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    ref: str = "HEAD",
+) -> RepositoryStatistics:
+    """Get byte-weighted language, size, and commit statistics."""
+    result = await repository_service.get_statistics(owner, repo, ref)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
+    return result
+
+
+@router.get("/{owner}/{repo}/files")
+async def get_file_index(
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    ref: str = "HEAD",
+) -> FileIndex:
+    """Get searchable file paths at a revision."""
+    result = await repository_service.get_file_index(owner, repo, ref)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
+    return result
+
+
+@router.get("/{owner}/{repo}/raw")
+async def get_raw(
+    owner: str,
+    repo: str,
+    repository_service: RepositoryServiceDep,
+    ref: str = "HEAD",
+    file_path: str = "",
+) -> Response:
+    """Serve original file bytes without interpreting repository content as HTML."""
+    data = await repository_service.get_raw(owner, repo, ref, file_path)
+    response = Response(data, media_type="text/plain", headers={"X-Content-Type-Options": "nosniff"})
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
+    return response
 
 
 @router.get("/{owner}/{repo}/info")
@@ -151,11 +228,12 @@ async def list_commits(
     response: Response,
     repository_service: RepositoryServiceDep,
     ref: str = "main",
-    offset: int = 0,
-    limit: int = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    file_path: str = "",
 ) -> CommitsPublic:
     """List commit history for a repository ref."""
-    result = await repository_service.list_commits(owner, repo, ref, offset, limit)
+    result = await repository_service.list_commits(owner, repo, ref, offset, limit, file_path)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
     return result
 
@@ -270,3 +348,26 @@ async def get_repository(
     result = await repository_service.get_repository(owner, repo)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=False)
     return result
+
+
+@router.patch("/{owner}/{repo}")
+async def update_repository(
+    owner: str,
+    repo: str,
+    body: RepositoryUpdate,
+    repository_service: RepositoryServiceDep,
+    current_user: CurrentUser,
+) -> Repository:
+    """Update repository settings as the owner or administrator."""
+    return await repository_service.update_repository(owner, repo, body, current_user)
+
+
+@router.delete("/{owner}/{repo}", status_code=204)
+async def delete_repository(
+    owner: str,
+    repo: str,
+    repository_service: RepositoryServiceDep,
+    current_user: CurrentUser,
+) -> None:
+    """Permanently delete a repository as the owner or administrator."""
+    await repository_service.delete_repository(owner, repo, current_user)

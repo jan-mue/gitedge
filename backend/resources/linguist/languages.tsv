@@ -1,0 +1,839 @@
+# GitHub Linguist 5fbdfcb8133be2bed88bf3ce62b2335f50474525
+# Source: lib/linguist/languages.yml; license: LICENSE
+# Name	Group	Type	Extensions	Filenames	Interpreters
+1C Enterprise	1C Enterprise	programming	.bsl .os	-	-
+2-Dimensional Array	2-Dimensional Array	data	.2da	-	-
+4D	4D	programming	.4dm	-	-
+ABAP	ABAP	programming	.abap	-	-
+ABAP CDS	ABAP CDS	programming	.asddls	-	-
+ABNF	ABNF	data	.abnf	-	-
+AGS Script	AGS Script	programming	.asc .ash	-	-
+AIDL	AIDL	programming	.aidl	-	aidl
+AL	AL	programming	.al	-	-
+ALGOL	ALGOL	programming	.alg	-	-
+AMPL	AMPL	programming	.ampl .mod	-	-
+ANTLR	ANTLR	programming	.g4	-	-
+API Blueprint	API Blueprint	markup	.apib	-	-
+APL	APL	programming	.apl .dyalog	-	apl aplx dyalog
+ASL	ASL	programming	.asl .dsl	-	-
+ASN.1	ASN.1	data	.asn .asn1	-	-
+ASP.NET	ASP.NET	programming	.asax .ascx .ashx .asmx .aspx .axd	-	-
+ATS	ATS	programming	.dats .hats .sats	-	-
+ActionScript	ActionScript	programming	.as	-	-
+Ada	Ada	programming	.adb .ada .ads	-	-
+Adblock Filter List	Adblock Filter List	data	.txt	-	-
+Adobe Font Metrics	Adobe Font Metrics	data	.afm	-	-
+Agda	Agda	programming	.agda	-	-
+Aiken	Aiken	programming	.ak	-	-
+Aleo	Aleo	programming	.aleo	-	-
+Alloy	Alloy	programming	.als	-	-
+Alpine Abuild	Shell	programming	-	APKBUILD	-
+Altium Designer	Altium Designer	data	.OutJob .PcbDoc .PrjPCB .SchDoc	-	-
+AngelScript	AngelScript	programming	.as .angelscript	-	-
+Answer Set Programming	Answer Set Programming	programming	.lp	-	clingo
+Ant Build System	Ant Build System	data	-	ant.xml build.xml	-
+Antlers	Antlers	markup	.antlers.html .antlers.php .antlers.xml	-	-
+ApacheConf	ApacheConf	data	.apacheconf .vhost	.htaccess apache2.conf httpd.conf	-
+Apex	Apex	programming	.cls .apex .trigger	-	-
+Apollo Guidance Computer	Assembly	programming	.agc	-	-
+AppleScript	AppleScript	programming	.applescript .scpt	-	osascript
+Arc	Arc	programming	.arc	-	-
+ArkTS	ArkTS	programming	.ets	-	-
+AsciiDoc	AsciiDoc	prose	.asciidoc .adoc .asc	-	-
+AspectJ	AspectJ	programming	.aj	-	-
+Assembly	Assembly	programming	.asm .a51 .i .inc .nas .nasm .s	-	-
+Astro	Astro	markup	.astro	-	-
+Asymptote	Asymptote	programming	.asy	-	asy
+Augeas	Augeas	programming	.aug	-	-
+AutoHotkey	AutoHotkey	programming	.ahk .ah1 .ah2 .ahkl	-	-
+AutoIt	AutoIt	programming	.au3	-	-
+Avro IDL	Avro IDL	data	.avdl	-	-
+Awk	Awk	programming	.awk .auk .gawk .mawk .nawk	-	awk gawk mawk nawk
+B	B	programming	.b	-	-
+B (Formal Method)	B (Formal Method)	programming	.mch	-	-
+B4X	B4X	programming	.bas	-	-
+BAML	BAML	programming	.baml	-	-
+BASIC	BASIC	programming	.bas	-	-
+BBCode	BBCode	markup	.bbcode	-	-
+BIRD2	BIRD2	data	-	bird.conf	-
+BQN	BQN	programming	.bqn	-	-
+Ballerina	Ballerina	programming	.bal	-	-
+Batchfile	Batchfile	programming	.bat .cmd	gradlew.bat mvnw.cmd	-
+Beef	Beef	programming	.bf	-	-
+Befunge	Befunge	programming	.befunge .bf	-	-
+Bend	Bend	programming	.bend	-	-
+Berry	Berry	programming	.be	-	-
+BibTeX	TeX	markup	.bib .bibtex	-	-
+BibTeX Style	BibTeX Style	programming	.bst	-	-
+Bicep	Bicep	programming	.bicep .bicepparam	-	-
+Bikeshed	Bikeshed	markup	.bs	-	-
+Bison	Yacc	programming	.bison	-	-
+BitBake	BitBake	programming	.bb .bbappend .bbclass .inc	-	-
+Blade	Blade	markup	.blade .blade.php	-	-
+BlitzBasic	BlitzBasic	programming	.bb .decls	-	-
+BlitzMax	BlitzMax	programming	.bmx	-	-
+Blueprint	Blueprint	markup	.blp	-	-
+Bluespec	Bluespec	programming	.bsv	-	-
+Bluespec BH	Bluespec	programming	.bs	-	-
+Boo	Boo	programming	.boo	-	-
+Boogie	Boogie	programming	.bpl	-	boogie
+Brainfuck	Brainfuck	programming	.b .bf	-	-
+BrighterScript	BrighterScript	programming	.bs	-	-
+Brightscript	Brightscript	programming	.brs	-	-
+Browserslist	Browserslist	data	-	.browserslistrc browserslist	-
+Bru	Bru	markup	.bru	-	-
+BuildStream	BuildStream	data	.bst	-	-
+C	C	programming	.c .cats .h .h.in .idc	-	tcc
+C#	C#	programming	.cs .cake .cs.pp .csx .linq	-	-
+C++	C++	programming	.cpp .c++ .cc .cp .cppm .cxx .h .h++ .hh .hpp .hxx .inc .inl .ino .ipp .ixx .re .tcc .tpp .txx	-	-
+C-ObjDump	C-ObjDump	data	.c-objdump	-	-
+C2hs Haskell	Haskell	programming	.chs	-	-
+C3	C3	programming	.c3	-	-
+CAP CDS	CAP CDS	programming	.cds	-	-
+CIL	CIL	data	.cil	-	-
+CLIPS	CLIPS	programming	.clp	-	-
+CMake	CMake	programming	.cmake .cmake.in	CMakeLists.txt	-
+COBOL	COBOL	programming	.cob .cbl .ccp .cobol .cpy	-	-
+CODEOWNERS	CODEOWNERS	data	-	CODEOWNERS	-
+COLLADA	COLLADA	data	.dae	-	-
+CQL	CQL	programming	.cql	-	-
+CSON	CSON	data	.cson	-	-
+CSS	CSS	markup	.css	-	-
+CSV	CSV	data	.csv	-	-
+CUE	CUE	programming	.cue	-	-
+CWeb	CWeb	programming	.w	-	-
+Cabal Config	Cabal Config	data	.cabal	cabal.config cabal.project	-
+Caddyfile	Caddyfile	data	.caddyfile	Caddyfile	-
+Cadence	Cadence	programming	.cdc	-	-
+Cairo	Cairo	programming	.cairo	-	-
+Cairo Zero	Cairo	programming	.cairo	-	-
+CameLIGO	LigoLANG	programming	.mligo	-	-
+Cangjie	Cangjie	programming	.cj	-	-
+Cap'n Proto	Cap'n Proto	programming	.capnp	-	-
+Carbon	Carbon	programming	.carbon	-	-
+CartoCSS	CartoCSS	programming	.mss	-	-
+Ceylon	Ceylon	programming	.ceylon	-	-
+Chapel	Chapel	programming	.chpl	-	-
+Charity	Charity	programming	.ch	-	-
+Checksums	Checksums	data	.crc32 .md2 .md4 .md5 .sha1 .sha2 .sha224 .sha256 .sha256sum .sha3 .sha384 .sha512	MD5SUMS SHA1SUMS SHA256SUMS SHA256SUMS.txt SHA512SUMS checksums.txt cksums md5sum.txt	-
+ChucK	ChucK	programming	.ck	-	-
+Circom	Circom	programming	.circom	-	-
+Cirru	Cirru	programming	.cirru	-	-
+Clarion	Clarion	programming	.clw	-	-
+Clarity	Clarity	programming	.clar	-	-
+Classic ASP	Classic ASP	programming	.asp	-	-
+Clean	Clean	programming	.icl .dcl	-	-
+Click	Click	programming	.click	-	-
+Clojure	Clojure	programming	.clj .bb .boot .cl2 .cljc .cljs .cljs.hl .cljscm .cljx .hic	riemann.config	bb
+Closure Templates	Closure Templates	markup	.soy	-	-
+Cloud Firestore Security Rules	Cloud Firestore Security Rules	data	-	firestore.rules	-
+Clue	Clue	programming	.clue	-	-
+CoNLL-U	CoNLL-U	data	.conllu .conll	-	-
+CodeQL	CodeQL	programming	.ql .qll	-	-
+CoffeeScript	CoffeeScript	programming	.coffee ._coffee .cake .cjsx .coffee.erb .iced	Cakefile	coffee
+ColdFusion	ColdFusion	programming	.cfm .cfml	-	-
+ColdFusion CFC	ColdFusion	programming	.cfc	-	-
+Common Lisp	Common Lisp	programming	.lisp .asd .cl .l .lsp .ny .podsl .sexp	-	lisp sbcl ccl clisp ecl
+Common Workflow Language	Common Workflow Language	programming	.cwl	-	cwl-runner
+Component Pascal	Component Pascal	programming	.cp .cps	-	-
+Cooklang	Cooklang	markup	.cook	-	-
+Cool	Cool	programming	.cl	-	-
+Cpp-ObjDump	Cpp-ObjDump	data	.cppobjdump .c++-objdump .c++objdump .cpp-objdump .cxx-objdump	-	-
+Creole	Creole	prose	.creole	-	-
+Crystal	Crystal	programming	.cr	-	crystal
+Csound	Csound	programming	.orc .udo	-	-
+Csound Document	Csound Document	programming	.csd	-	-
+Csound Score	Csound Score	programming	.sco	-	-
+Cuda	Cuda	programming	.cu .cuh	-	-
+Cue Sheet	Cue Sheet	data	.cue	-	-
+Curry	Curry	programming	.curry	-	-
+Cycript	Cycript	programming	.cy	-	-
+Cylc	INI	data	.cylc	suite.rc	-
+Cypher	Cypher	programming	.cyp .cypher	-	-
+Cython	Cython	programming	.pyx .pxd .pxi	-	-
+D	D	programming	.d .di	-	-
+D-ObjDump	D-ObjDump	data	.d-objdump	-	-
+D2	D2	markup	.d2	-	-
+DIGITAL Command Language	DIGITAL Command Language	programming	.com	-	-
+DM	DM	programming	.dm	-	-
+DNS Zone	DNS Zone	data	.zone .arpa	-	-
+DTrace	DTrace	programming	.d	-	dtrace
+Dafny	Dafny	programming	.dfy	-	dafny
+Darcs Patch	Darcs Patch	data	.darcspatch .dpatch	-	-
+Dart	Dart	programming	.dart	-	dart
+Daslang	Daslang	programming	.das	-	-
+DataWeave	DataWeave	programming	.dwl	-	-
+Debian Package Control File	Debian Package Control File	data	.dsc	-	-
+DenizenScript	DenizenScript	programming	.dsc	-	-
+Dhall	Dhall	programming	.dhall	-	-
+Diff	Diff	data	.diff .patch	-	-
+DirectX 3D File	DirectX 3D File	data	.x	-	-
+Dockerfile	Dockerfile	programming	.dockerfile .containerfile	Containerfile Dockerfile	-
+Dogescript	Dogescript	programming	.djs	-	-
+Dotenv	Dotenv	data	.env	.env .env.ci .env.dev .env.development .env.development.local .env.example .env.local .env.prod .env.production .env.sample .env.staging .env.template .env.test .env.testing	-
+Dune	Dune	programming	-	dune-project	-
+Dylan	Dylan	programming	.dylan .dyl .intr .lid	-	-
+E	E	programming	.e	-	rune
+E-mail	E-mail	data	.eml .mbox	-	-
+EBNF	EBNF	data	.ebnf	-	-
+ECL	ECL	programming	.ecl .eclxml	-	-
+ECLiPSe	Prolog	programming	.ecl	-	-
+EJS	EJS	markup	.ejs .ect .ejs.t .jst	-	-
+EQ	EQ	programming	.eq	-	-
+Eagle	Eagle	data	.sch .brd	-	-
+Earthly	Earthly	programming	-	Earthfile	-
+Easybuild	Python	data	.eb	-	-
+Ecere Projects	JavaScript	data	.epj	-	-
+Ecmarkup	HTML	markup	.html	-	-
+Edge	Edge	markup	.edge	-	-
+EdgeQL	EdgeQL	programming	.edgeql .esdl	-	-
+EditorConfig	INI	data	.editorconfig	.editorconfig	-
+Edje Data Collection	Edje Data Collection	data	.edc	-	-
+Eiffel	Eiffel	programming	.e	-	-
+Elixir	Elixir	programming	.ex .exs	mix.lock	elixir
+Elm	Elm	programming	.elm	-	-
+Elvish	Elvish	programming	.elv	-	elvish
+Elvish Transcript	Elvish	programming	-	-	-
+Emacs Lisp	Emacs Lisp	programming	.el .emacs .emacs.desktop	.abbrev_defs .emacs .emacs.desktop .gnus .spacemacs .viper Cask Eask Project.ede _emacs abbrev_defs	-
+EmberScript	EmberScript	programming	.em .emberscript	-	-
+Erlang	Erlang	programming	.erl .app .app.src .es .escript .hrl .xrl .yrl	Emakefile rebar.config rebar.config.lock rebar.lock	escript
+Euphoria	Euphoria	programming	.e .ex	-	eui euiw
+F#	F#	programming	.fs .fsi .fsx	-	-
+F*	F*	programming	.fst .fsti	-	-
+FIGlet Font	FIGlet Font	data	.flf	-	-
+FIRRTL	FIRRTL	programming	.fir	-	-
+FLUX	FLUX	programming	.fx .flux	-	-
+FPP	FPP	programming	.fpp .fppi	-	-
+Factor	Factor	programming	.factor	.factor-boot-rc .factor-rc	-
+Fancy	Fancy	programming	.fy .fancypack	Fakefile	-
+Fantom	Fantom	programming	.fan	-	-
+Faust	Faust	programming	.dsp	-	-
+Fennel	Fennel	programming	.fnl	-	fennel
+Filebench WML	Filebench WML	programming	.f	-	-
+Filterscript	RenderScript	programming	.fs	-	-
+FlatBuffers	FlatBuffers	data	.fbs	-	-
+Flix	Flix	programming	.flix	-	-
+Fluent	Fluent	programming	.ftl	-	-
+Formatted	Formatted	data	.for .eam.fs	-	-
+Forth	Forth	programming	.fth .4th .f .for .forth .fr .frt .fs	-	-
+Fortran	Fortran	programming	.f .f77 .for .fpp	-	-
+Fortran Free Form	Fortran	programming	.f90 .f03 .f08 .f95	-	-
+FreeBASIC	FreeBASIC	programming	.bi .bas	-	-
+FreeMarker	FreeMarker	programming	.ftl .ftlh	-	-
+Frege	Frege	programming	.fr	-	-
+Futhark	Futhark	programming	.fut	-	-
+G-code	G-code	programming	.g .cnc .gco .gcode	-	-
+GAML	GAML	programming	.gaml	-	-
+GAMS	GAMS	programming	.gms	-	-
+GAP	GAP	programming	.g .gap .gd .gi .tst	-	-
+GCC Machine Description	GCC Machine Description	programming	.md	-	-
+GDB	GDB	programming	.gdb .gdbinit	-	-
+GDScript	GDScript	programming	.gd	-	-
+GDShader	GDShader	programming	.gdshader .gdshaderinc	-	-
+GEDCOM	GEDCOM	data	.ged	-	-
+GLSL	GLSL	programming	.glsl .fp .frag .frg .fs .fsh .fshader .geo .geom .glslf .glslv .gs .gshader .rchit .rmiss .shader .tesc .tese .vert .vrx .vs .vsh .vshader	-	-
+GN	GN	data	.gn .gni	.gn	gn
+GSC	GSC	programming	.gsc .csc .gsh	-	-
+Game Maker Language	Game Maker Language	programming	.gml	-	-
+Gemfile.lock	Gemfile.lock	data	-	Gemfile.lock	-
+Gemini	Gemini	prose	.gmi	-	-
+Genero 4gl	Genero 4gl	programming	.4gl	-	-
+Genero per	Genero per	markup	.per	-	-
+Genie	Genie	programming	.gs	-	-
+Genshi	Genshi	programming	.kid	-	-
+Gentoo Ebuild	Shell	programming	.ebuild	-	-
+Gentoo Eclass	Shell	programming	.eclass	-	-
+Gerber Image	Gerber Image	data	.gbr .cmp .gbl .gbo .gbp .gbs .gko .gml .gpb .gpt .gtl .gto .gtp .gts .ncl .sol	-	gerbv gerbview
+Gettext Catalog	Gettext Catalog	prose	.po .pot	-	-
+Gherkin	Gherkin	programming	.feature .story	-	-
+Git Attributes	Git Attributes	data	-	.gitattributes	-
+Git Commit	Git Commit	data	-	.gitmessage COMMIT_EDITMSG	-
+Git Config	INI	data	.gitconfig	.gitconfig .gitmodules .tgitconfig config.worktree	-
+Git Revision List	Git Revision List	data	-	.git-blame-ignore-revs	-
+Gleam	Gleam	programming	.gleam	-	-
+Glimmer JS	JavaScript	programming	.gjs	-	-
+Glimmer TS	TypeScript	programming	.gts	-	-
+Glyph	Glyph	programming	.glf	-	-
+Glyph Bitmap Distribution Format	Glyph Bitmap Distribution Format	data	.bdf	-	-
+Gno	Gno	programming	.gno	-	-
+Gnuplot	Gnuplot	programming	.gp .gnu .gnuplot .p .plot .plt	-	gnuplot
+Go	Go	programming	.go	-	-
+Go Checksums	Go Checksums	data	-	go.sum go.work.sum	-
+Go Module	Go Module	data	-	go.mod	-
+Go Template	Go Template	markup	.gohtml .gotmpl .html.tmpl .tmpl .tpl	_helpers.tpl	-
+Go Workspace	Go Workspace	data	-	go.work	-
+Godot Resource	Godot Resource	data	.gdnlib .gdns .tres .tscn	project.godot	-
+Golo	Golo	programming	.golo	-	-
+Gosu	Gosu	programming	.gs .gst .gsx .vark	-	-
+Grace	Grace	programming	.grace	-	-
+Gradle	Gradle	data	.gradle	-	-
+Gradle Kotlin DSL	Gradle	data	.gradle.kts	-	-
+Grammatical Framework	Grammatical Framework	programming	.gf	-	-
+Graph Modeling Language	Graph Modeling Language	data	.gml	-	-
+GraphQL	GraphQL	data	.graphql .gql .graphqls	-	-
+Graphviz (DOT)	Graphviz (DOT)	data	.dot .gv	-	-
+Groovy	Groovy	programming	.groovy .grt .gtpl .gvy	Jenkinsfile	groovy
+Groovy Server Pages	Groovy	programming	.gsp	-	-
+GtkRC	GtkRC	data	.gtkrc	gtkrc gtkrc-2.0	-
+HAProxy	HAProxy	data	.cfg	haproxy.cfg	-
+HCL	HCL	programming	.hcl .nomad .tf .tfvars .tofu .workflow	-	-
+HIP	HIP	programming	.hip	-	-
+HLSL	HLSL	programming	.hlsl .cginc .fx .fxh .hlsli	-	-
+HOCON	HOCON	data	.hocon	.scalafix.conf .scalafmt.conf	-
+HTML	HTML	markup	.html .hta .htm .html.hl .inc .xht .xhtml	-	-
+HTML+ECR	HTML	markup	.ecr	-	-
+HTML+EEX	HTML	markup	.html.eex .heex .leex	-	-
+HTML+ERB	HTML	markup	.erb .erb.deface .rhtml	-	-
+HTML+PHP	HTML	markup	.phtml	-	-
+HTML+Razor	HTML	markup	.cshtml .razor	-	-
+HTTP	HTTP	data	.http	-	-
+HXML	HXML	data	.hxml	-	-
+Hack	Hack	programming	.hack .hh .hhi .php	-	-
+Haml	Haml	markup	.haml .haml.deface	-	-
+Handlebars	Handlebars	markup	.handlebars .hbs	-	-
+Harbour	Harbour	programming	.hb	-	-
+Hare	Hare	programming	.ha	-	-
+Haskell	Haskell	programming	.hs .hs-boot .hsc	-	runghc runhaskell runhugs
+Haxe	Haxe	programming	.hx .hxsl	-	-
+HiveQL	HiveQL	programming	.q .hql	-	-
+HolyC	HolyC	programming	.hc	-	-
+Hosts File	Hosts File	data	-	HOSTS hosts hosts.txt	-
+Hurl	Hurl	programming	.hurl	-	-
+Hy	Hy	programming	.hy	-	hy
+HyPhy	HyPhy	programming	.bf	-	-
+IDL	IDL	programming	.pro .dlm	-	-
+IGOR Pro	IGOR Pro	programming	.ipf	-	-
+IL Assembly	IL Assembly	programming	.il	-	-
+INI	INI	data	.ini .cfg .cnf .container .dof .frm .lektorproject .mount .network .prefs .pro .properties .service .socket .target .timer .url	.buckconfig .coveragerc .flake8 .gitreview .pylintrc HOSTS buildozer.spec hosts pylintrc vlcrc	-
+IRC log	IRC log	data	.irclog .weechatlog	-	-
+ISPC	ISPC	programming	.ispc	-	-
+Idris	Idris	programming	.idr .lidr	-	-
+Ignore List	Ignore List	data	.gitignore	.agignore .atomignore .babelignore .bzrignore .ckignore .coffeelintignore .cvsignore .dockerignore .easignore .eleventyignore .eslint-ignore .eslintignore .gitignore .ignore .markdownlintignore .nodemonignore .npmignore .prettierignore .rgignore .stylelintignore .vercelignore .vscodeignore gitignore-global gitignore_global	-
+ImHex Pattern Language	ImHex Pattern Language	programming	.hexpat	-	-
+ImageJ Macro	ImageJ Macro	programming	.ijm	-	-
+Imba	Imba	programming	.imba	-	-
+Inform 7	Inform 7	programming	.ni .i7x	-	-
+Ink	Ink	programming	.ink	-	-
+Inno Setup	Inno Setup	programming	.iss .isl	-	-
+Io	Io	programming	.io	-	io
+Ioke	Ioke	programming	.ik	-	ioke
+Isabelle	Isabelle	programming	.thy	-	-
+Isabelle ROOT	Isabelle	programming	-	ROOT	-
+J	J	programming	.ijs	-	jconsole
+JAR Manifest	JAR Manifest	data	-	MANIFEST.MF	-
+JASS	JASS	programming	.j	-	-
+JCL	JCL	programming	.jcl	-	-
+JFlex	Lex	programming	.flex .jflex	-	-
+JSON	JSON	data	.json .4DForm .4DProject .avsc .geojson .gltf .har .ice .JSON-tmLanguage .json.example .jsonl .mcmeta .sarif .slnlaunch .tact .tfstate .tfstate.backup .topojson .webapp .webmanifest .yy .yyp	.all-contributorsrc .arcconfig .auto-changelog .c8rc .htmlhintrc .imgbotconfig .nycrc .releaserc .secrets.baseline .tern-config .tern-project .watchmanconfig MODULE.bazel.lock Package.resolved Pipfile.lock bun.lock composer.lock deno.lock flake.lock mcmod.info	-
+JSON with Comments	JSON	data	.jsonc .code-snippets .code-workspace .hujson .sublime-build .sublime-color-scheme .sublime-commands .sublime-completions .sublime-keymap .sublime-macro .sublime-menu .sublime-mousemap .sublime-project .sublime-settings .sublime-theme .sublime-workspace .sublime_metrics .sublime_session .tsconfig.json	.babelrc .devcontainer.json .eslintrc .eslintrc.json .jscsrc .jshintrc .jslintrc .oxlintrc.json .swcrc api-extractor.json devcontainer.json jsconfig.json language-configuration.json tsconfig.json tslint.json	-
+JSON5	JSON5	data	.json5	-	-
+JSONLD	JSONLD	data	.jsonld	-	-
+JSONiq	JSONiq	programming	.jq	-	-
+Jac	Jac	programming	.jac	-	-
+Jai	Jai	programming	.jai	-	-
+Janet	Janet	programming	.janet	-	janet
+Jasmin	Jasmin	programming	.j	-	-
+Java	Java	programming	.java .jav .jsh	-	-
+Java Properties	Java Properties	data	.properties	-	-
+Java Server Pages	Java	programming	.jsp .tag	-	-
+Java Template Engine	Java	programming	.jte	-	-
+JavaScript	JavaScript	programming	.js ._js .bones .cjs .es .es6 .frag .gs .jake .javascript .jsb .jscad .jsfl .jslib .jsm .jspre .jss .jsx .mjs .njs .pac .sjs .ssjs .xsjs .xsjslib	Jakefile	bun chakra d8 deno gjs js node nodejs qjs rhino v8 v8-shell
+JavaScript+ERB	JavaScript	programming	.js.erb	-	-
+Jest Snapshot	Jest Snapshot	data	.snap	-	-
+JetBrains MPS	JetBrains MPS	programming	.mps .mpl .msd	-	-
+Jinja	Jinja	markup	.jinja .j2 .jinja2	-	-
+Jison	Yacc	programming	.jison	-	-
+Jison Lex	Lex	programming	.jisonlex	-	-
+Jolie	Jolie	programming	.ol .iol	-	jolie
+Jsonnet	Jsonnet	programming	.jsonnet .libsonnet	-	-
+Julia	Julia	programming	.jl	-	julia
+Julia REPL	Julia	programming	-	-	-
+Jupyter Notebook	Jupyter Notebook	markup	.ipynb	Notebook	-
+Just	Just	programming	.just	.JUSTFILE .Justfile .justfile JUSTFILE Justfile justfile	-
+KCL	KCL	programming	.k	kcl.mod kcl.mod.lock	-
+KDL	KDL	data	.kdl	-	-
+KFramework	KFramework	programming	.k	-	-
+KRL	KRL	programming	.krl	-	-
+Kaitai Struct	Kaitai Struct	programming	.ksy	-	-
+KakouneScript	KakouneScript	programming	.kak	kakrc	-
+KerboScript	KerboScript	programming	.ks	-	-
+KiCad Layout	KiCad Layout	data	.kicad_pcb .kicad_mod .kicad_wks	fp-lib-table	-
+KiCad Legacy Layout	KiCad Legacy Layout	data	.brd	-	-
+KiCad Schematic	KiCad Schematic	data	.kicad_sch .kicad_sym .sch	-	-
+Kickstart	Kickstart	data	.ks	-	-
+Kit	Kit	markup	.kit	-	-
+KoLmafia ASH	KoLmafia ASH	programming	.ash	-	-
+Koka	Koka	programming	.kk	-	koka
+Kotlin	Kotlin	programming	.kt .ktm .kts	-	-
+Kusto	Kusto	data	.csl .kql	-	-
+LFE	LFE	programming	.lfe	-	-
+LLVM	LLVM	programming	.ll	-	-
+LLVM TableGen	LLVM TableGen	programming	.td	-	-
+LOLCODE	LOLCODE	programming	.lol	-	-
+LSL	LSL	programming	.lsl .lslp	-	lsl
+LTspice Symbol	LTspice Symbol	data	.asy	-	-
+LabVIEW	LabVIEW	programming	.lvproj .lvclass .lvlib	-	-
+Lambdapi	Lambdapi	programming	.lp	-	-
+Langium	Langium	programming	.langium	-	-
+Lark	Lark	data	.lark	-	-
+Lasso	Lasso	programming	.lasso .las .lasso8 .lasso9	-	-
+Latte	Latte	markup	.latte	-	-
+Lean	Lean	programming	.lean .hlean	-	-
+Lean 4	Lean	programming	.lean	-	-
+Leo	Leo	programming	.leo	-	-
+Less	Less	markup	.less	-	-
+Lex	Lex	programming	.l .lex	Lexer.x lexer.x	-
+LigoLANG	LigoLANG	programming	.ligo	-	-
+LilyPond	LilyPond	programming	.ly .ily	-	-
+Limbo	Limbo	programming	.b .m	-	-
+Linear Programming	Linear Programming	programming	.lp	-	-
+Linker Script	Linker Script	programming	.ld .lds .x	ld.script	-
+Linux Kernel Module	Linux Kernel Module	data	.mod	-	-
+Liquid	Liquid	markup	.liquid	-	-
+Liquidsoap	Liquidsoap	programming	.liq	-	-
+Literate Agda	Agda	programming	.lagda	-	-
+Literate CoffeeScript	CoffeeScript	programming	.litcoffee .coffee.md	-	-
+Literate Haskell	Haskell	programming	.lhs	-	-
+LiveCode Script	LiveCode Script	programming	.livecodescript	-	-
+LiveScript	LiveScript	programming	.ls ._ls	Slakefile	-
+Lobster	Lobster	programming	.lobster	-	-
+Logos	Logos	programming	.xm .x .xi	-	-
+Logtalk	Logtalk	programming	.lgt .logtalk	-	-
+LookML	LookML	programming	.lkml .lookml	-	-
+LoomScript	LoomScript	programming	.ls	-	-
+Lua	Lua	programming	.lua .fcgi .nse .p8 .pd_lua .rbxs .rockspec .wlua	.luacheckrc	lua luajit
+Luau	Luau	programming	.luau	-	luau
+M	M	programming	.mumps .m	-	-
+M3U	M3U	data	.m3u .m3u8	-	-
+M4	M4	programming	.m4 .mc	-	-
+M4Sugar	M4	programming	.m4	configure.ac	-
+MATLAB	MATLAB	programming	.matlab .m	-	-
+MAXScript	MAXScript	programming	.ms .mcr	-	-
+MDX	MDX	markup	.mdx	-	-
+MLIR	MLIR	programming	.mlir	-	-
+MQL4	MQL4	programming	.mq4 .mqh	-	-
+MQL5	MQL5	programming	.mq5 .mqh	-	-
+MTML	MTML	markup	.mtml	-	-
+MUF	Forth	programming	.muf .m	-	-
+Macaulay2	Macaulay2	programming	.m2	-	M2
+Makefile	Makefile	programming	.mak .d .make .makefile .mk .mkfile	BSDmakefile GNUmakefile Kbuild Makefile Makefile.am Makefile.boot Makefile.frag Makefile.in Makefile.inc Makefile.pc Makefile.wat makefile makefile.sco mkfile	make
+Mako	Mako	programming	.mako .mao	-	-
+Markdown	Markdown	prose	.md .livemd .markdown .mdown .mdwn .mkd .mkdn .mkdown .ronn .scd .workbook	contents.lr	-
+Marko	Marko	markup	.marko	-	-
+Mask	Mask	markup	.mask	-	-
+Mathematical Programming System	Mathematical Programming System	programming	.mps	-	-
+Maven POM	XML	data	-	pom.xml	-
+Max	Max	programming	.maxpat .maxhelp .maxproj .mxt .pat	-	-
+MeTTa	MeTTa	programming	.metta	-	-
+Mercury	Mercury	programming	.m .moo	-	mmi
+Mermaid	Mermaid	markup	.mmd .mermaid	-	-
+Meson	Meson	programming	-	meson.build meson_options.txt	-
+Metal	Metal	programming	.metal	-	-
+Microsoft Developer Studio Project	Microsoft Developer Studio Project	data	.dsp	-	-
+Microsoft Visual Studio Solution	Microsoft Visual Studio Solution	data	.sln	-	-
+MiniD	MiniD	programming	.minid	-	-
+MiniScript	MiniScript	programming	.ms	-	-
+MiniYAML	MiniYAML	data	.yaml .yml	-	-
+MiniZinc	MiniZinc	programming	.mzn	-	-
+MiniZinc Data	MiniZinc Data	data	.dzn	-	-
+Mint	Mint	programming	.mint	-	-
+Mirah	Mirah	programming	.druby .duby .mirah	-	-
+Modelica	Modelica	programming	.mo	-	-
+Modula-2	Modula-2	programming	.mod	-	-
+Modula-3	Modula-3	programming	.i3 .ig .m3 .mg	-	-
+Module Management System	Module Management System	programming	.mms .mmk	descrip.mmk descrip.mms	-
+Mojo	Mojo	programming	.mojo	-	-
+Monkey	Monkey	programming	.monkey .monkey2	-	-
+Monkey C	Monkey C	programming	.mc	-	-
+Moocode	Moocode	programming	.moo	-	-
+MoonBit	MoonBit	programming	.mbt	moon.mod moon.pkg	-
+MoonScript	MoonScript	programming	.moon	-	moon
+Motoko	Motoko	programming	.mo	-	-
+Motorola 68K Assembly	Assembly	programming	.asm .i .inc .s .x68	-	-
+Move	Move	programming	.move	-	-
+Muse	Muse	prose	.muse	-	-
+Mustache	Mustache	markup	.mustache	-	-
+Myghty	Myghty	programming	.myt	-	-
+NASL	NASL	programming	.nasl .inc	-	-
+NCL	NCL	programming	.ncl	-	-
+NEON	NEON	data	.neon	-	-
+NL	NL	data	.nl	-	-
+NMODL	NMODL	programming	.mod	-	-
+NPM Config	INI	data	-	.npmrc	-
+NSIS	NSIS	programming	.nsi .nsh	-	-
+NWScript	NWScript	programming	.nss	-	-
+Nasal	Nasal	programming	.nas	-	-
+Nearley	Nearley	programming	.ne .nearley	-	-
+Nemerle	Nemerle	programming	.n	-	-
+NetLinx	NetLinx	programming	.axs .axi	-	-
+NetLinx+ERB	NetLinx+ERB	programming	.axs.erb .axi.erb	-	-
+NetLogo	NetLogo	programming	.nlogo	-	-
+NewLisp	NewLisp	programming	.nl .lisp .lsp	-	newlisp
+Nextflow	Nextflow	programming	.nf	nextflow.config	nextflow
+Nginx	Nginx	data	.nginx .nginxconf .vhost	nginx.conf	-
+Nickel	Nickel	programming	.ncl	-	-
+Nim	Nim	programming	.nim .nim.cfg .nimble .nimrod .nims	nim.cfg	-
+Ninja	Ninja	data	.ninja	-	-
+Nit	Nit	programming	.nit	-	-
+Nix	Nix	programming	.nix	-	-
+Noir	Noir	programming	.nr	-	-
+Nu	Nu	programming	.nu	Nukefile	nush
+NumPy	Python	programming	.numpy .numpyw .numsc	-	-
+Nunjucks	Nunjucks	markup	.njk	-	-
+Nushell	Nushell	programming	.nu	-	nu
+OASv2-json	OpenAPI Specification v2	data	.json	-	-
+OASv2-yaml	OpenAPI Specification v2	data	.yaml .yml	-	-
+OASv3-json	OpenAPI Specification v3	data	.json	-	-
+OASv3-yaml	OpenAPI Specification v3	data	.yaml .yml	-	-
+OCaml	OCaml	programming	.ml .eliom .eliomi .ml4 .mli .mll .mly	-	ocaml ocamlrun ocamlscript
+OMNeT++ MSG	OMNeT++ MSG	programming	.msg	-	-
+OMNeT++ NED	OMNeT++ NED	programming	.ned	-	-
+Oberon	Oberon	programming	.ob2	-	-
+ObjDump	ObjDump	data	.objdump	-	-
+Object Data Instance Notation	Object Data Instance Notation	data	.odin	-	-
+ObjectScript	ObjectScript	programming	.cls	-	-
+Objective-C	Objective-C	programming	.m .h	-	-
+Objective-C++	Objective-C++	programming	.mm	-	-
+Objective-J	Objective-J	programming	.j .sj	-	-
+Odin	Odin	programming	.odin	-	-
+Omgrofl	Omgrofl	programming	.omgrofl	-	-
+Opa	Opa	programming	.opa	-	-
+Opal	Opal	programming	.opal	-	-
+Open Policy Agent	Open Policy Agent	programming	.rego	-	-
+OpenAPI Specification v2	OpenAPI Specification v2	data	-	-	-
+OpenAPI Specification v3	OpenAPI Specification v3	data	-	-	-
+OpenCL	C	programming	.cl .opencl	-	-
+OpenEdge ABL	OpenEdge ABL	programming	.p .cls .w	-	-
+OpenQASM	OpenQASM	programming	.qasm	-	-
+OpenRC runscript	Shell	programming	-	-	openrc-run
+OpenSCAD	OpenSCAD	programming	.scad	-	-
+OpenStep Property List	OpenStep Property List	data	.plist .glyphs	-	-
+OpenType Feature File	OpenType Feature File	data	.fea	-	-
+Option List	Option List	data	-	.ackrc .rspec .yardopts ackrc mocha.opts	-
+Org	Org	prose	.org	-	-
+OverPy	OverPy	programming	.opy	-	-
+OverpassQL	OverpassQL	programming	.overpassql	-	-
+Ox	Ox	programming	.ox .oxh .oxo	-	-
+Oxygene	Oxygene	programming	.oxygene	-	-
+Oz	Oz	programming	.oz	-	-
+P4	P4	programming	.p4	-	-
+PDDL	PDDL	programming	.pddl	-	-
+PEG.js	PEG.js	programming	.pegjs .peggy	-	-
+PHP	PHP	programming	.php .aw .ctp .fcgi .inc .php3 .php4 .php5 .phps .phpt	.php .php_cs .php_cs.dist Phakefile	php
+PLSQL	PLSQL	programming	.pls .bdy .ddl .fnc .pck .pkb .pks .plb .plsql .prc .spc .sql .tpb .tps .trg .vw	-	-
+PLpgSQL	PLpgSQL	programming	.pgsql .sql	-	-
+POV-Ray SDL	POV-Ray SDL	programming	.pov .inc	-	-
+Pact	Pact	programming	.pact	-	-
+Pan	Pan	programming	.pan	-	-
+Papyrus	Papyrus	programming	.psc	-	-
+Parrot	Parrot	programming	.parrot	-	-
+Parrot Assembly	Parrot	programming	.pasm	-	parrot
+Parrot Internal Representation	Parrot	programming	.pir	-	parrot
+Pascal	Pascal	programming	.pas .dfm .dpr .inc .lpr .pascal .pp	-	instantfpc
+Pawn	Pawn	programming	.pwn .inc .sma	-	-
+Pep8	Pep8	programming	.pep	-	-
+Perl	Perl	programming	.pl .al .cgi .fcgi .perl .ph .plx .pm .psgi .t	.latexmkrc Makefile.PL Rexfile ack cpanfile latexmkrc	cperl perl
+Pic	Roff	markup	.pic .chem	-	-
+Pickle	Pickle	data	.pkl	-	-
+PicoLisp	PicoLisp	programming	.l	-	picolisp pil
+PigLatin	PigLatin	programming	.pig	-	-
+Pike	Pike	programming	.pike .pmod	-	pike
+Pip Requirements	Pip Requirements	data	-	dev-requirements.txt requirements-dev.txt requirements.lock.txt requirements.txt	-
+Pkl	Pkl	programming	.pkl	-	pkl
+PlantUML	PlantUML	data	.puml .iuml .plantuml	-	-
+Pod	Pod	prose	.pod	-	perl
+Pod 6	Pod 6	prose	.pod .pod6	-	perl6
+PogoScript	PogoScript	programming	.pogo	-	-
+Polar	Polar	programming	.polar	-	-
+Pony	Pony	programming	.pony	-	-
+Portugol	Portugol	programming	.por	-	-
+PostCSS	CSS	markup	.pcss .postcss	-	-
+PostScript	PostScript	markup	.ps .eps .epsi .pfa	-	-
+Power Query	Power Query	programming	.pq	-	-
+PowerBuilder	PowerBuilder	programming	.pbt .sra .sru .srw	-	-
+PowerShell	PowerShell	programming	.ps1 .psd1 .psm1	-	pwsh
+Praat	Praat	programming	.praat	-	-
+Prisma	Prisma	data	.prisma	-	-
+Pro*C	Pro*C	programming	.pc	-	-
+Processing	Processing	programming	.pde	-	-
+Procfile	Procfile	programming	-	Procfile	-
+Proguard	Proguard	data	.pro	-	-
+Prolog	Prolog	programming	.pl .plt .pro .prolog .yap	-	swipl yap
+Promela	Promela	programming	.pml	-	-
+Propeller Spin	Propeller Spin	programming	.spin	-	-
+Protocol Buffer	Protocol Buffer	data	.proto	-	-
+Protocol Buffer Text Format	Protocol Buffer Text Format	data	.textproto .pbt .pbtxt .txtpb	-	-
+Public Key	Public Key	data	.asc .pub	-	-
+Pug	Pug	markup	.jade .pug	-	-
+Puppet	Puppet	programming	.pp	Modulefile	-
+Pure Data	Pure Data	data	.pd	-	-
+PureBasic	PureBasic	programming	.pb .pbi	-	-
+PureScript	PureScript	programming	.purs	-	-
+Pyret	Pyret	programming	.arr	-	-
+Python	Python	programming	.py .cgi .fcgi .gyp .gypi .lmi .py3 .pyde .pyi .pyp .pyt .pyw .rpy .spec .tac .wsgi .xpy	.gclient DEPS SConscript SConstruct wscript	python python2 python3 py pypy pypy3 uv
+Python console	Python	programming	-	-	-
+Python traceback	Python	data	.pytb	-	-
+Q#	Q#	programming	.qs	-	-
+QML	QML	programming	.qml .qbs	-	-
+QMake	QMake	programming	.pro .pri	-	qmake
+Qt Script	Qt Script	programming	.qs	installscript.qs toolchain_installscript.qs	-
+Quake	Quake	programming	-	m3makefile m3overrides	-
+QuakeC	QuakeC	programming	.qc	-	-
+Quartus Simulation IP	Quartus Simulation IP	data	.sip	-	-
+QuickBASIC	QuickBASIC	programming	.bas .bi	-	-
+Quint	Quint	programming	.qnt	-	-
+R	R	programming	.r .rd .rhistory .rsx	.Rapp.history .Rhistory .Rprofile expr-dist	Rscript
+RAML	RAML	markup	.raml	-	-
+RAScript	RAScript	programming	.rascript	-	-
+RBS	Ruby	data	.rbs	-	-
+RDoc	RDoc	prose	.rdoc	-	-
+REALbasic	REALbasic	programming	.rbbas .rbfrm .rbmnu .rbres .rbtbar .rbuistate	-	-
+REXX	REXX	programming	.rexx .pprx .rex	-	regina rexx
+RMarkdown	RMarkdown	prose	.qmd .rmd	-	-
+RON	RON	data	.ron	-	-
+ROS Interface	ROS Interface	data	.msg .action .srv	-	-
+RPC	RPC	programming	.x	-	-
+RPGLE	RPGLE	programming	.rpgle .sqlrpgle	-	-
+RPM Spec	RPM Spec	data	.spec	-	-
+RUNOFF	RUNOFF	markup	.rnh .rno	-	-
+Racket	Racket	programming	.rkt .rktd .rktl .scrbl	-	racket
+Ragel	Ragel	programming	.rl	-	-
+Raku	Raku	programming	.6pl .6pm .nqp .p6 .p6l .p6m .pl .pl6 .pm .pm6 .raku .rakumod .t	-	perl6 raku rakudo
+Rascal	Rascal	programming	.rsc	-	-
+Raw token data	Raw token data	data	.raw	-	-
+ReScript	ReScript	programming	.res .resi	-	ocaml
+Readline Config	INI	data	-	.inputrc inputrc	-
+Reason	Reason	programming	.re .rei	-	-
+ReasonLIGO	LigoLANG	programming	.religo	-	-
+Rebol	Rebol	programming	.reb .r .r2 .r3 .rebol	-	-
+Record Jar	Record Jar	data	-	language-subtag-registry.txt	-
+Red	Red	programming	.red .reds	-	-
+Redcode	Redcode	programming	.cw	-	-
+Redirect Rules	Redirect Rules	data	-	_redirects	-
+Redscript	Redscript	programming	.reds	-	-
+Regular Expression	Regular Expression	data	.regexp .regex	-	-
+Ren'Py	Ren'Py	programming	.rpy	-	-
+RenderScript	RenderScript	programming	.rs .rsh	-	-
+Rez	Rez	programming	.r	-	-
+Rhai	Rhai	programming	.rhai	-	-
+Rich Text Format	Rich Text Format	markup	.rtf	-	-
+Ring	Ring	programming	.ring	-	-
+Riot	Riot	markup	.riot	-	-
+RobotFramework	RobotFramework	programming	.robot .resource	-	-
+Robots Exclusion Rules	Robots Exclusion Rules	data	-	robots.txt	-
+Roc	Roc	programming	.roc	-	-
+Rocq Prover	Rocq Prover	programming	.v .coq	-	-
+Roff	Roff	markup	.roff .1 .1in .1m .1x .2 .3 .3in .3m .3p .3pm .3qt .3x .4 .5 .6 .7 .8 .9 .l .man .mdoc .me .ms .n .nr .rno .tmac	eqnrc mmn mmt troffrc troffrc-end	-
+Roff Manpage	Roff	markup	.1 .1in .1m .1x .2 .3 .3in .3m .3p .3pm .3qt .3x .4 .5 .6 .7 .8 .9 .man .mdoc	-	-
+Rouge	Rouge	programming	.rg	-	-
+RouterOS Script	RouterOS Script	programming	.rsc	-	RouterOS
+Ruby	Ruby	programming	.rb .builder .eye .fcgi .gemspec .god .jbuilder .mspec .pluginspec .podspec .prawn .rabl .rake .rbi .rbuild .rbw .rbx .ru .ruby .spec .thor .watchr	.irbrc .pryrc .simplecov Appraisals Berksfile Brewfile Buildfile Capfile Dangerfile Deliverfile Fastfile Gemfile Guardfile Jarfile Mavenfile Podfile Puppetfile Rakefile Snapfile Steepfile Thorfile Vagrantfile buildfile	ruby macruby rake jruby rbx
+Rust	Rust	programming	.rs .rs.in	-	rust-script
+SAS	SAS	programming	.sas	-	-
+SCSS	SCSS	markup	.scss	-	-
+SELinux Policy	SELinux Policy	data	.te	file_contexts genfs_contexts initial_sids port_contexts security_classes	-
+SIP	SIP	programming	.sip	-	-
+SMT	SMT	programming	.smt2 .smt .z3	-	boolector cvc4 mathsat5 opensmt smtinterpol smt-rat stp verit yices2 z3
+SPARQL	SPARQL	data	.sparql .rq	-	-
+SQF	SQF	programming	.sqf .hqf	-	-
+SQL	SQL	data	.sql .ddl .inc .mysql .prc .tab .udf .viw	-	-
+SQLPL	SQLPL	programming	.sql .db2	-	-
+SRecode Template	SRecode Template	markup	.srt	-	-
+SSH Config	INI	data	-	ssh-config ssh_config sshconfig sshconfig.snip sshd-config sshd_config	-
+STAR	STAR	data	.star	-	-
+STL	STL	data	.stl	-	-
+STON	Smalltalk	data	.ston	-	-
+SVG	SVG	data	.svg	-	-
+SWIG	SWIG	programming	.i .swg .swig	-	-
+Sage	Sage	programming	.sage .sagews	-	-
+Sail	Sail	programming	.sail	-	-
+Salt	Salt	programming	.sls	-	-
+Sass	Sass	markup	.sass	-	-
+Scala	Scala	programming	.scala .kojo .sbt .sc	-	scala
+Scaml	Scaml	markup	.scaml	-	-
+Scenic	Scenic	programming	.scenic	-	scenic
+Scheme	Scheme	programming	.scm .sch .sld .sls .sps .ss	-	scheme guile bigloo chicken csi gosh r6rs
+Scilab	Scilab	programming	.sci .sce .tst	-	-
+Self	Self	programming	.self	-	-
+ShaderLab	ShaderLab	programming	.shader	-	-
+Shell	Shell	programming	.sh .bash .bats .cgi .command .fcgi .ksh .pacscript .sbatch .sh.in .slurm .tmux .tool .trigger .zsh .zsh-theme	.bash_aliases .bash_functions .bash_history .bash_logout .bash_profile .bashrc .cshrc .envrc .flaskenv .kshrc .login .profile .tmux.conf .xinitrc .xsession .zlogin .zlogout .zprofile .zshenv .zshrc 9fs PKGBUILD bash_aliases bash_logout bash_profile bashrc cshrc gradlew kshrc login man mvnw profile tmux.conf xinitrc xsession zlogin zlogout zprofile zshenv zshrc	ash bash dash ksh mksh pdksh rc sh zsh
+ShellCheck Config	ShellCheck Config	data	-	.shellcheckrc	-
+ShellSession	ShellSession	programming	.sh-session	-	-
+Shen	Shen	programming	.shen	-	-
+Sieve	Sieve	programming	.sieve	-	-
+Simple File Verification	Checksums	data	.sfv	-	-
+Singularity	Singularity	programming	-	Singularity	-
+Slang	Slang	programming	.slang	-	-
+Slash	Slash	programming	.sl	-	-
+Slice	Slice	programming	.ice	-	-
+Slim	Slim	markup	.slim	-	-
+Slint	Slint	markup	.slint	-	-
+SmPL	SmPL	programming	.cocci	-	-
+Smali	Smali	programming	.smali	-	-
+Smalltalk	Smalltalk	programming	.st .cs	-	-
+Smarty	Smarty	programming	.tpl	-	-
+Smithy	Smithy	programming	.smithy	-	-
+Snakemake	Python	programming	.smk .snakefile	Snakefile	-
+Solidity	Solidity	programming	.sol	-	-
+Soong	Soong	data	-	Android.bp	-
+SourcePawn	SourcePawn	programming	.sp .inc	-	-
+SpiceDB Schema	SpiceDB Schema	data	.zed	-	-
+Spline Font Database	Spline Font Database	data	.sfd	-	-
+Squirrel	Squirrel	programming	.nut	-	-
+Stan	Stan	programming	.stan	-	-
+Standard ML	Standard ML	programming	.ml .fun .sig .sml	-	-
+Starlark	Starlark	programming	.bzl .star	BUCK BUILD BUILD.bazel MODULE.bazel Tiltfile WORKSPACE WORKSPACE.bazel WORKSPACE.bzlmod	-
+Stata	Stata	programming	.do .ado .doh .ihlp .mata .matah .sthlp	-	-
+StringTemplate	StringTemplate	markup	.st	-	-
+Stylus	Stylus	markup	.styl	-	-
+SubRip Text	SubRip Text	data	.srt	-	-
+SugarSS	SugarSS	markup	.sss	-	-
+SuperCollider	SuperCollider	programming	.sc .scd	-	sclang scsynth
+SurrealQL	SurrealQL	programming	.surql	-	-
+Survex data	Survex data	data	.svx	-	-
+Svelte	Svelte	markup	.svelte	-	-
+Sway	Sway	programming	.sw	-	-
+Sweave	Sweave	prose	.rnw	-	-
+Swift	Swift	programming	.swift	-	-
+SystemVerilog	SystemVerilog	programming	.sv .svh .vh	-	-
+TI Program	TI Program	programming	.8xp .8xp.txt	-	-
+TL-Verilog	TL-Verilog	programming	.tlv	-	-
+TLA	TLA	programming	.tla	-	-
+TMDL	TMDL	data	.tmdl	-	-
+TOML	TOML	data	.toml .toml.example	Cargo.lock Cargo.toml.orig Gopkg.lock Pipfile mise.local.lock mise.lock pdm.lock poetry.lock uv.lock	-
+TSPLIB data	TSPLIB data	data	.tsp	-	-
+TSQL	TSQL	programming	.sql	-	-
+TSV	TSV	data	.tsv .vcf	-	-
+TSX	TypeScript	programming	.tsx	-	-
+TXL	TXL	programming	.txl	-	-
+Tact	Tact	programming	.tact	-	-
+Talon	Talon	programming	.talon	-	-
+Tape	Tape	programming	.tape	-	-
+Tcl	Tcl	programming	.tcl .adp .sdc .tcl.in .tm .xdc	owh starfield	tclsh wish
+Tcsh	Shell	programming	.tcsh .csh	-	tcsh csh
+TeX	TeX	markup	.tex .aux .bbx .cbx .cls .dtx .ins .lbx .ltx .mkii .mkiv .mkvi .sty .toc	-	-
+Tea	Tea	markup	.tea	-	-
+Teal	Teal	programming	.tl	-	tl
+Terra	Terra	programming	.t	-	lua
+Terraform Template	HCL	markup	.tftpl	-	-
+Texinfo	Texinfo	prose	.texinfo .texi .txi	-	makeinfo
+Text	Text	prose	.txt .fr .nb .ncl .no	CITATION CITATIONS COPYING COPYING.regex COPYRIGHT.regex FONTLOG INSTALL INSTALL.mysql LICENSE LICENSE.mysql NEWS README.me README.mysql README.nss README.pc click.me delete.me keep.me package.mask package.use.mask package.use.stable.mask read.me readme.1st test.me use.mask use.stable.mask	-
+TextGrid	TextGrid	data	.TextGrid	-	-
+TextMate Properties	TextMate Properties	data	-	.tm_properties	-
+Textile	Textile	prose	.textile	-	-
+Thrift	Thrift	programming	.thrift	-	-
+Toit	Toit	programming	.toit	-	-
+Tolk	Tolk	programming	.tolk	-	-
+Tor Config	Tor Config	data	-	torrc	-
+Tree-sitter Query	Tree-sitter Query	programming	.scm	-	-
+Turing	Turing	programming	.t .tu	-	-
+Turtle	Turtle	data	.ttl	-	-
+Twig	Twig	markup	.twig	-	-
+Type Language	Type Language	data	.tl	-	-
+TypeScript	TypeScript	programming	.ts .cts .mts	-	bun deno ts-node tsx node
+TypeSpec	TypeSpec	programming	.tsp	-	-
+Typst	Typst	programming	.typ	-	-
+Unified Parallel C	C	programming	.upc	-	-
+Unity3D Asset	Unity3D Asset	data	.anim .asset .mask .mat .meta .prefab .unity	-	-
+Unix Assembly	Assembly	programming	.s .ms	-	-
+Uno	Uno	programming	.uno	-	-
+UnrealScript	UnrealScript	programming	.uc	-	-
+Untyped Plutus Core	Untyped Plutus Core	programming	.uplc	-	-
+UrWeb	UrWeb	programming	.ur .urs	-	-
+V	V	programming	.v	-	-
+VBA	VBA	programming	.bas .cls .frm .vba	-	-
+VBScript	VBScript	programming	.vbs	-	-
+VCL	VCL	programming	.vcl	-	-
+VHDL	VHDL	programming	.vhdl .vhd .vhf .vhi .vho .vhs .vht .vhw	-	-
+Vala	Vala	programming	.vala .vapi	-	-
+Valve Data Format	Valve Data Format	data	.vdf .vmf	-	-
+Velocity Template Language	Velocity Template Language	markup	.vtl	-	-
+Vento	Vento	markup	.vto	-	-
+Verilog	Verilog	programming	.v .veo	-	-
+Verse	Verse	programming	.verse	-	-
+Vespa Schema Definition	Vespa Schema Definition	data	.sd	-	-
+Vim Help File	Vim Help File	prose	.txt	-	-
+Vim Snippet	Vim Snippet	markup	.snip .snippet .snippets	-	-
+Vim script	Vim script	programming	.vim .vba .vimrc .vmb	.exrc .gvimrc .nvimrc .vimrc _vimrc gvimrc nvimrc vimrc	-
+Visual Basic .NET	Visual Basic .NET	programming	.vb .vbhtml	-	-
+Visual Basic 6.0	Visual Basic 6.0	programming	.bas .cls .ctl .Dsr .frm	-	-
+Volt	Volt	programming	.volt	-	-
+Vue	Vue	markup	.vue	-	-
+Vyper	Vyper	programming	.vy	-	-
+WDL	WDL	programming	.wdl	-	-
+WGSL	WGSL	programming	.wgsl	-	-
+Wavefront Material	Wavefront Material	data	.mtl	-	-
+Wavefront Object	Wavefront Object	data	.obj	-	-
+Web Ontology Language	Web Ontology Language	data	.owl	-	-
+WebAssembly	WebAssembly	programming	.wast .wat	-	-
+WebAssembly Interface Type	WebAssembly Interface Type	data	.wit	-	-
+WebIDL	WebIDL	programming	.webidl	-	-
+WebVTT	WebVTT	data	.vtt	-	-
+Wget Config	INI	data	-	.wgetrc	-
+Whiley	Whiley	programming	.whiley	-	-
+Wikitext	Wikitext	prose	.mediawiki .wiki .wikitext	-	-
+Win32 Message File	Win32 Message File	data	.mc	-	-
+Windows Registry Entries	Windows Registry Entries	data	.reg	-	-
+Witcher Script	Witcher Script	programming	.ws	-	-
+Wolfram Language	Wolfram Language	programming	.mathematica .cdf .m .ma .mt .nb .nbp .wl .wls .wlt	-	wolfram WolframKernel wolframscript math MathKernel MathematicaScript WolframNB Mathematica
+Wollok	Wollok	programming	.wlk	-	-
+World of Warcraft Addon Data	World of Warcraft Addon Data	data	.toc	-	-
+Wren	Wren	programming	.wren	-	-
+X BitMap	C	data	.xbm	-	-
+X Font Directory Index	X Font Directory Index	data	-	encodings.dir fonts.alias fonts.dir fonts.scale	-
+X PixMap	C	data	.xpm .pm	-	-
+X10	X10	programming	.x10	-	-
+XC	XC	programming	.xc	-	-
+XCompose	XCompose	data	-	.XCompose XCompose xcompose	-
+XML	XML	data	.xml .adml .admx .ant .axaml .axml .builds .ccproj .ccxml .clixml .cproject .cscfg .csdef .csl .csproj .ct .depproj .dita .ditamap .ditaval .dll.config .dotsettings .filters .fsproj .fxml .glade .gml .gmx .gpx .grxml .gst .hzp .icls .iml .ivy .jelly .jsproj .kml .launch .mdpolicy .meta4 .mjml .mm .mod .mojo .mxml .natvis .ncl .ndproj .nproj .nuspec .odd .osm .pkgproj .pluginspec .proj .props .ps1xml .psc1 .pt .pubxml .qhelp .rbxmx .rdf .res .resx .rs .rss .sch .scxml .sfproj .shproj .slnx .srdf .storyboard .sublime-snippet .sw .targets .tml .ts .tsx .typ .ui .urdf .ux .vbproj .vcxproj .vsixmanifest .vssettings .vstemplate .vxml .wixproj .workflow .wsdl .wsf .wxi .wxl .wxs .x3d .xacro .xaml .xib .xlf .xliff .xmi .xml.dist .xmp .xproj .xsd .xspec .xul .zcml	.classpath .cproject .project App.config NuGet.config Settings.StyleCop Web.Debug.config Web.Release.config Web.config packages.config	-
+XML Property List	XML	data	.plist .stTheme .tmCommand .tmLanguage .tmPreferences .tmSnippet .tmTheme	-	-
+XPages	XPages	data	.xsp-config .xsp.metadata	-	-
+XProc	XProc	programming	.xpl .xproc	-	-
+XQuery	XQuery	programming	.xquery .xq .xql .xqm .xqy	-	-
+XS	XS	programming	.xs	-	-
+XSLT	XSLT	programming	.xslt .xsl	-	-
+Xmake	Xmake	programming	-	xmake.lua	-
+Xojo	Xojo	programming	.xojo_code .xojo_menu .xojo_report .xojo_script .xojo_toolbar .xojo_window	-	-
+Xonsh	Xonsh	programming	.xsh	-	-
+Xtend	Xtend	programming	.xtend	-	-
+YAML	YAML	data	.yml .mir .reek .rviz .sublime-syntax .syntax .yaml .yaml-tmlanguage .yaml.sed .yml.mysql	.clang-format .clang-tidy .clangd .eslintrc .gemrc .releaserc CITATION.cff glide.lock pixi.lock yarn.lock	-
+YANG	YANG	data	.yang	-	-
+YARA	YARA	programming	.yar .yara	-	-
+YASnippet	YASnippet	markup	.yasnippet	-	-
+Yacc	Yacc	programming	.y .yacc .yy	-	-
+Yul	Yul	programming	.yul	-	-
+ZAP	ZAP	programming	.zap .xzap	-	-
+ZIL	ZIL	programming	.zil .mud	-	-
+Zeek	Zeek	programming	.zeek .bro	-	-
+ZenScript	ZenScript	programming	.zs	-	-
+Zephir	Zephir	programming	.zep	-	-
+Zig	Zig	programming	.zig .zig.zon	-	-
+Zimpl	Zimpl	programming	.zimpl .zmpl .zpl	-	-
+Zmodel	Zmodel	data	.zmodel	-	-
+cURL Config	INI	data	-	.curlrc _curlrc	-
+crontab	crontab	data	-	crontab	-
+desktop	INI	data	.desktop .desktop.in	-	-
+dircolors	dircolors	data	.dircolors	.dir_colors .dircolors DIR_COLORS _dir_colors _dircolors dir_colors	-
+eC	eC	programming	.ec .eh	-	-
+edn	edn	data	.edn	-	-
+fish	Shell	programming	.fish	-	fish
+hoon	hoon	programming	.hoon	-	-
+iCalendar	iCalendar	data	.ics .ical	-	-
+jq	jq	programming	.jq	-	gojq jaq jq jqjq jqq query-json
+kvlang	kvlang	markup	.kv	-	-
+mIRC Script	mIRC Script	programming	.mrc	-	-
+mcfunction	mcfunction	programming	.mcfunction	-	-
+mdsvex	mdsvex	markup	.svx	-	-
+mupad	mupad	programming	.mu	-	-
+nanorc	INI	data	.nanorc	.nanorc nanorc	-
+nesC	nesC	programming	.nc	-	-
+ooc	ooc	programming	.ooc	-	-
+pkg-config	pkg-config	data	.pc .pc.in	-	-
+q	q	programming	.q	-	-
+reStructuredText	reStructuredText	prose	.rst .rest .rest.txt .rst.txt	-	-
+sed	sed	programming	.sed	-	gsed minised sed ssed
+templ	templ	markup	.templ	-	-
+ucode	ucode	programming	.uc	-	ucode
+vCard	vCard	data	.vcf	-	-
+wisp	wisp	programming	.wisp	-	-
+xBase	xBase	programming	.prg .ch .prw	-	-

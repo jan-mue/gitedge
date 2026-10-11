@@ -8,12 +8,14 @@ import logging
 import re
 import stat
 import time
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, cast
 
+from dulwich.annotate import annotate_lines
 from dulwich.objects import Blob, Commit, ObjectID, Tag, Tree
 from dulwich.patch import write_commit_diff, write_tree_diff
-from dulwich.refs import SYMREF, Ref
-from fastapi import HTTPException
+from dulwich.refs import SYMREF, Ref, check_ref_format
+from fastapi import HTTPException, status
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, TypeAdapter
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
@@ -24,6 +26,8 @@ from app.config import settings
 from app.entities.repositories import Repository as RepositoryEntity
 from app.schemas.releases import TagInfo, TagsPublic
 from app.schemas.repositories import (
+    BlameContent,
+    BlameLine,
     BranchInfo,
     CommitChangeType,
     CommitDetail,
@@ -33,16 +37,21 @@ from app.schemas.repositories import (
     CommitsPublic,
     CompareResult,
     FileContent,
+    FileIndex,
+    LanguageStatistic,
     ReadmeContent,
     RepositoriesPublic,
     Repository,
     RepositoryInfo,
+    RepositoryStatistics,
+    RepositoryUpdate,
     TreeEntry,
     TreeEntryType,
     TreeListing,
 )
 from app.schemas.repository_activity import GitActivityHistory
 from app.services.blob_backend import load_repository_from_storage, save_repository_changes_to_storage
+from app.services.languages import source_language
 from app.services.markdown import render_markdown
 from app.services.repository_activity import collect_git_activity
 from app.utils.cache_headers import (
@@ -54,13 +63,14 @@ from app.utils.cache_headers import (
 
 if TYPE_CHECKING:
     import uuid
-    from collections.abc import Awaitable, Callable
+    from collections.abc import Awaitable, Callable, Iterator
 
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.cache import AbstractCacheClient
     from app.clients.redis import AbstractRedisClient
     from app.clients.repositories import RepositoryStore
     from app.clients.stars import StarStore
+    from app.entities.users import User
     from app.services.blob_backend import BlobBackend
     from app.services.blob_repository import BlobRepository
 
@@ -293,6 +303,7 @@ class RepositoryService:
             description=entity.description,
             default_branch=entity.default_branch,
             is_private=entity.is_private,
+            fork_of=f"{entity.fork_of.owner.name}/{entity.fork_of.name}" if entity.fork_of is not None else None,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -398,6 +409,218 @@ class RepositoryService:
         entity = await self.repository_store.get_by_owner_and_name(owner, name)
         return await self._to_schema(entity)
 
+    async def _editable_repository(self, owner: str, name: str, user: User) -> RepositoryEntity:
+        """Resolve a repository and require its owner or an administrator."""
+        entity = await self.repository_store.get_by_owner_and_name(owner, name)
+        if entity.owner_id != user.id and not user.is_superuser:
+            raise HTTPException(status_code=403, detail="Only the repository owner can change settings")
+        return entity
+
+    async def update_repository(self, owner: str, name: str, body: RepositoryUpdate, user: User) -> Repository:
+        """Save settings, keeping Git storage and the default HEAD in sync."""
+        entity = await self._editable_repository(owner, name, user)
+        owner = entity.owner.name
+        repo = await self.load_repository(owner, name)
+        new_name = body.name or name
+        if new_name in (".", "..") or new_name.endswith(".git"):
+            raise HTTPException(status_code=400, detail="Invalid repository name")
+        if new_name != name and await self.repository_store.find_by_owner_and_name(owner, new_name) is not None:
+            raise HTTPException(status_code=409, detail="A repository with that name already exists")
+        if body.default_branch is not None and body.default_branch != entity.default_branch:
+            branch = Ref(f"refs/heads/{body.default_branch}".encode())
+            if not check_ref_format(branch):
+                raise HTTPException(status_code=400, detail="Invalid branch name")
+            if repo.refs.allkeys() - {Ref(b"HEAD")} and branch not in repo.refs.allkeys():
+                raise HTTPException(status_code=400, detail="Default branch must exist")
+            repo.refs.set_symbolic_ref(Ref(b"HEAD"), branch)
+            await self.save_changes(owner, name)
+        if new_name != name:
+            await self._copy_storage(repo_key(owner, name), repo_key(owner, new_name))
+        changes = body.model_dump(exclude_unset=True)
+        changes = {key: value for key, value in changes.items() if value is not None or key == "description"}
+        await self.repository_store.update(entity, changes)
+        entity = await self.repository_store.get_by_owner_and_name(owner, new_name)
+        if new_name != name:
+            await self._delete_storage(repo_key(owner, name))
+            self.backend.remove_repository(repo_key(owner, name))
+        await self.cache_client.invalidate(self._cache_group(owner, name))
+        await self.cache_client.invalidate(self._cache_group(owner, new_name))
+        if entity.fork_of is not None:
+            await self.cache_client.invalidate(self._cache_group(entity.fork_of.owner.name, entity.fork_of.name))
+        return await self._to_schema(entity)
+
+    async def _copy_storage(self, source: str, destination: str) -> None:
+        """Copy all Git objects and refs before renaming a repository."""
+        for key in await self.blob_client.list_keys(f"{source}/"):
+            data = await self.blob_client.get(key)
+            if data is not None:
+                await self.blob_client.put(destination + key[len(source) :], data)
+        for key in await self.redis_client.scan_keys(f"{source}/refs/*"):
+            value = await self.redis_client.get(key)
+            if value is not None:
+                await self.redis_client.set(destination + key[len(source) :], value)
+
+    async def copy_repository(self, owner: str, name: str, target_owner: str, target_name: str) -> None:
+        """Copy persisted Git objects and refs into a newly created fork."""
+        await self._copy_storage(repo_key(owner, name), repo_key(target_owner, target_name))
+        self.backend.remove_repository(repo_key(target_owner, target_name))
+        await self.load_repository(target_owner, target_name)
+        await self.cache_client.invalidate(self._cache_group(target_owner, target_name))
+        await self.cache_client.invalidate(self._cache_group(owner, name))
+
+    async def _delete_storage(self, key: str) -> None:
+        """Remove a repository's objects and refs without touching similarly named repositories."""
+        for blob_key in await self.blob_client.list_keys(f"{key}/"):
+            await self.blob_client.delete(blob_key)
+        for ref_key in await self.redis_client.scan_keys(f"{key}/refs/*"):
+            await self.redis_client.delete(ref_key)
+
+    async def delete_repository(self, owner: str, name: str, user: User) -> None:
+        """Delete repository data and metadata, retaining independent forks."""
+        entity = await self._editable_repository(owner, name, user)
+        owner = entity.owner.name
+        forks = await self.repository_store.list_by_fork_of(entity.id, limit=10000)
+        await self._delete_storage(repo_key(owner, name))
+        await self.repository_store.delete(entity)
+        self.backend.remove_repository(repo_key(owner, name))
+        await self.cache_client.invalidate(self._cache_group(owner, name))
+        for fork in forks:
+            await self.cache_client.invalidate(self._cache_group(fork.owner.name, fork.name))
+        if entity.fork_of is not None:
+            await self.cache_client.invalidate(self._cache_group(entity.fork_of.owner.name, entity.fork_of.name))
+
+    @staticmethod
+    def _revision_files(repo: BlobRepository, sha: bytes) -> Iterator[tuple[str, ObjectID]]:
+        """Iterate file paths and object IDs, skipping submodules and symlinks."""
+        root = RepositoryService._get_tree_at_path(repo, sha, "")
+        pending = [("", root)]
+        while pending:
+            prefix, tree = pending.pop()
+            for entry in tree.items():
+                path = prefix + entry.path.decode("utf-8", errors="replace")
+                if stat.S_ISDIR(entry.mode):
+                    child = repo.object_store[entry.sha]
+                    if isinstance(child, Tree):
+                        pending.append((path + "/", child))
+                elif stat.S_ISREG(entry.mode):
+                    yield path, entry.sha
+
+    async def get_file_index(self, owner: str, name: str, ref: str) -> FileIndex:
+        """Return all searchable file paths at a revision."""
+
+        async def compute() -> FileIndex:
+            repo = await self.load_repository(owner, name)
+            sha = self._try_resolve_ref(repo, ref)
+            if sha is None:
+                return FileIndex(paths=[])
+            return await run_in_threadpool(
+                lambda: FileIndex(paths=sorted(path for path, _ in self._revision_files(repo, sha)))
+            )
+
+        return await self._cached_model(
+            key=f"files:{ref}",
+            group=self._cache_group(owner, name),
+            ttl=self._ttl_for_ref(ref),
+            model=FileIndex,
+            compute=compute,
+        )
+
+    @staticmethod
+    def _compute_statistics(repo: BlobRepository, sha: bytes) -> RepositoryStatistics:
+        """Compute source language shares, total bytes, and reachable commit count."""
+        sizes: dict[str, int] = {}
+        total = 0
+        for path, blob_sha in RepositoryService._revision_files(repo, sha):
+            blob = repo.object_store[blob_sha]
+            if not isinstance(blob, Blob):
+                continue
+            total += len(blob.data)
+            language = source_language(path, blob.data)
+            if language:
+                sizes[language] = sizes.get(language, 0) + len(blob.data)
+        pending = [ObjectID(sha)]
+        commits: set[ObjectID] = set()
+        while pending:
+            commit_sha = pending.pop()
+            if commit_sha in commits:
+                continue
+            commit = repo.object_store[commit_sha]
+            if isinstance(commit, Commit):
+                commits.add(commit_sha)
+                pending.extend(commit.parents)
+        source_size = sum(sizes.values())
+        return RepositoryStatistics(
+            commit_count=len(commits),
+            size=total,
+            languages=[
+                LanguageStatistic(name=language, size=size, percentage=round(size / source_size * 100, 2))
+                for language, size in sorted(sizes.items(), key=lambda item: (-item[1], item[0]))
+                if size
+            ],
+        )
+
+    async def get_statistics(self, owner: str, name: str, ref: str) -> RepositoryStatistics:
+        """Return cached statistics without slowing the source listing."""
+        repo = await self.load_repository(owner, name)
+        sha = self._try_resolve_ref(repo, ref)
+        if sha is None:
+            return RepositoryStatistics()
+
+        async def compute() -> RepositoryStatistics:
+            return await run_in_threadpool(self._compute_statistics, repo, sha)
+
+        return await self._cached_model(
+            key=f"statistics:v2:{sha.decode()}",
+            group=self._cache_group(owner, name),
+            ttl=settings.CACHE_IMMUTABLE_TTL,
+            model=RepositoryStatistics,
+            compute=compute,
+        )
+
+    async def get_blame(self, owner: str, name: str, ref: str, file_path: str) -> BlameContent:
+        """Attribute every file line to its original commit, following renames."""
+
+        async def compute() -> BlameContent:
+            repo = await self.load_repository(owner, name)
+            sha = self._resolve_ref(repo, ref)
+            blob, _ = self._get_blob_at_path(repo, sha, file_path)
+            if len(blob.data) > 1024 * 1024:
+                raise HTTPException(status_code=413, detail="File is too large for blame (maximum 1 MiB)")
+            try:
+                blob.data.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise HTTPException(status_code=400, detail="Blame is unavailable for binary files") from exc
+            if b"\0" in blob.data:
+                raise HTTPException(status_code=400, detail="Blame is unavailable for binary files")
+            annotations = await run_in_threadpool(annotate_lines, repo.object_store, ObjectID(sha), file_path.encode())
+            return BlameContent(
+                path=file_path,
+                revision=sha.decode(),
+                lines=[
+                    BlameLine(
+                        number=number,
+                        content=line.decode("utf-8", errors="replace").rstrip("\r\n"),
+                        commit=self._get_commit_info(repo, commit.id),
+                    )
+                    for number, ((commit, _), line) in enumerate(annotations, 1)
+                ],
+            )
+
+        return await self._cached_model(
+            key=f"blame:{ref}:{file_path}",
+            group=self._cache_group(owner, name),
+            ttl=self._ttl_for_ref(ref),
+            model=BlameContent,
+            compute=compute,
+        )
+
+    async def get_raw(self, owner: str, name: str, ref: str, file_path: str) -> bytes:
+        """Return a file's original bytes."""
+        repo = await self.load_repository(owner, name)
+        sha = self._resolve_ref(repo, ref)
+        blob, _ = self._get_blob_at_path(repo, sha, file_path)
+        return blob.data
+
     async def ensure_loaded(self, owner: str, name: str) -> None:
         """Ensure a repository is loaded into the backend, creating it if absent.
 
@@ -465,6 +688,15 @@ class RepositoryService:
         if await self.repository_store.find_by_owner_and_name(owner, name) is not None:
             return self.backend.create_repository(key)
         raise HTTPException(status_code=404, detail="Repository not found")
+
+    async def get_source(self, owner: str, name: str, ref: str, path: str) -> TreeListing | FileContent:
+        """Resolve a source path in one request, avoiding a failed tree request in the browser."""
+        try:
+            return await self.get_tree(owner, name, ref, path)
+        except HTTPException as exc:
+            if exc.status_code != status.HTTP_400_BAD_REQUEST:
+                raise
+            return await self.get_blob(owner, name, ref, path)
 
     async def get_tree(self, owner: str, name: str, ref: str, tree_path: str) -> TreeListing:
         """Get the directory listing for a repository path.
@@ -566,7 +798,7 @@ class RepositoryService:
                 cssclass="highlight",
             )
 
-            highlighted_html = highlight(content, lexer, formatter)
+            highlighted_html = cast(str, await run_in_threadpool(highlight, content, lexer, formatter))
             css = _get_style_defs(formatter, ".highlight")
 
             # Scope all dark CSS rules under .dark to prevent them from leaking into
@@ -800,7 +1032,7 @@ class RepositoryService:
         )
 
     async def list_commits(
-        self, owner: str, name: str, ref: str = "main", offset: int = 0, limit: int = 50
+        self, owner: str, name: str, ref: str = "main", offset: int = 0, limit: int = 50, file_path: str = ""
     ) -> CommitsPublic:
         """List commits reachable from a ref, newest first.
 
@@ -810,6 +1042,7 @@ class RepositoryService:
             ref: Git ref to start the history from.
             offset: Number of commits to skip.
             limit: Maximum number of commits to return.
+            file_path: Optional path whose history to return.
 
         Returns:
             CommitsPublic with the requested page of commits.
@@ -823,7 +1056,9 @@ class RepositoryService:
 
             data: list[CommitListItem] = []
             skipped = 0
-            for entry in repo.get_walker(include=[ObjectID(commit_sha)]):
+            for entry in repo.get_walker(
+                include=[ObjectID(commit_sha)], paths=[file_path.encode()] if file_path else None
+            ):
                 if skipped < offset:
                     skipped += 1
                     continue
@@ -846,7 +1081,7 @@ class RepositoryService:
             return CommitsPublic(data=data, count=len(data), ref=ref)
 
         return await self._cached_model(
-            key=f"commits:{ref}:{offset}:{limit}",
+            key=f"commits:{ref}:{offset}:{limit}:{file_path}",
             group=self._cache_group(owner, name),
             ttl=self._ttl_for_ref(ref),
             model=CommitsPublic,

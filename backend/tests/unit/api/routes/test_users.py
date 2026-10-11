@@ -4,10 +4,14 @@ import uuid
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
+import jwt
+import pytest
+
 from app.api.dependencies import get_email_client
 from app.config import settings
 from app.index import app
 from app.schemas.users import UserCreate
+from app.utils import security
 from app.utils.security import create_access_token, verify_password
 from tests.unit.utils.fakes import FakeEmailClient
 from tests.unit.utils.utils import random_email, random_lower_string
@@ -41,6 +45,21 @@ def test_get_users_me_with_unknown_user_returns_401(client: TestClient) -> None:
     token = create_access_token(uuid.uuid4(), expires_delta=timedelta(minutes=5))
     r = client.get(f"{settings.API_V1_STR}/users/me", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 401
+
+
+@pytest.mark.parametrize("token_kind", ["malformed", "expired", "missing_subject", "invalid_subject"])
+def test_get_users_me_with_invalid_token_returns_401(client: TestClient, token_kind: str) -> None:
+    if token_kind == "expired":
+        token = create_access_token(uuid.uuid4(), expires_delta=timedelta(minutes=-5))
+    elif token_kind in {"missing_subject", "invalid_subject"}:
+        payload = {} if token_kind == "missing_subject" else {"sub": "not-a-uuid"}
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm=security.ALGORITHM)
+    else:
+        token = "invalid_token"
+    response = client.get(f"{settings.API_V1_STR}/users/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Could not validate credentials"}
+    assert response.headers["WWW-Authenticate"] == "Bearer"
 
 
 async def test_create_user_new_email(

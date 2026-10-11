@@ -61,6 +61,11 @@ class ForkService:
         dest_owner = body.owner or current_user.name
         dest_name = body.name or source.name
 
+        if source.is_private and source.owner_id != current_user.id and not current_user.is_superuser:
+            raise HTTPException(status_code=404, detail="Repository not found")
+        if dest_owner.lower() != current_user.name.lower() and not current_user.is_superuser:
+            raise HTTPException(status_code=403, detail="You can only fork into your own account")
+
         if dest_owner.lower() == source.owner.name.lower():
             raise HTTPException(status_code=400, detail="Cannot fork a repository into the same owner")
 
@@ -74,11 +79,13 @@ class ForkService:
             owner_id=owner_id,
             description=body.description or source.description,
             default_branch=source.default_branch,
+            is_private=source.is_private,
             fork_of_id=source.id,
         )
         await self.repository_store.add(fork)
 
         await self.repository_service.create_repository(dest_owner, dest_name)
+        await self.repository_service.copy_repository(source.owner.name, source.name, dest_owner, dest_name)
 
         await self.activity_service.record(
             actor=current_user,

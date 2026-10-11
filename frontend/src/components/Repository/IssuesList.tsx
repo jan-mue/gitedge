@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link as RouterLink } from "@tanstack/react-router"
-import { CircleDot, MessageSquare, Search } from "lucide-react"
-
+import { CircleDot, MessageSquare } from "lucide-react"
 import { repositoriesListIssuesOptions } from "@/client/@tanstack/react-query.gen"
+import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
+import TrackerFilters, { useTrackerFilters } from "@/components/Repository/TrackerFilters"
 
 interface IssuesListProps {
   owner: string
@@ -10,80 +11,36 @@ interface IssuesListProps {
 }
 
 const IssuesList = ({ owner, repo }: IssuesListProps) => {
-  const { data: issuesData } = useQuery({
+  const {
+    data: issuesData,
+    isPending,
+    isError,
+    refetch,
+  } = useQuery({
     ...repositoriesListIssuesOptions({ path: { owner, repo } }),
   })
 
-  const issues = issuesData?.data ?? []
+  const filters = useTrackerFilters(issuesData?.data ?? [])
+  const issues = filters.filtered
   const openCount = issuesData?.open_count ?? 0
   const closedCount = issuesData?.closed_count ?? 0
 
+  if (isPending) return <RepositoryLoading label="Loading issues" />
+  if (isError) return <RepositoryError message="Unable to load issues." retry={() => refetch()} />
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className="px-3 py-1.5 text-sm rounded border border-border bg-secondary text-foreground hover:bg-accent transition-colors"
-        >
-          Labels
-        </button>
-        <button
-          type="button"
-          className="px-3 py-1.5 text-sm rounded border border-border bg-secondary text-foreground hover:bg-accent transition-colors"
-        >
-          Milestones
-        </button>
-        <div className="flex-1 flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="Search issues..."
-            className="flex-1 px-3 py-1.5 text-sm bg-secondary border border-border rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          <button
-            type="button"
-            className="p-1.5 rounded border border-border bg-secondary hover:bg-accent transition-colors"
-          >
-            <Search className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
+      <TrackerFilters filters={filters} label="issues" openCount={openCount} closedCount={closedCount}>
         <RouterLink
           to="/$owner/$repo/issues/new"
           params={{ owner, repo }}
-          className="px-4 py-1.5 text-sm rounded bg-success text-success-foreground font-medium hover:opacity-90 transition-opacity"
+          className="rounded bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:opacity-90"
           data-testid="new-issue-btn"
         >
           New issue
         </RouterLink>
-      </div>
-
-      <div className="border border-border rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2.5 bg-secondary border-b border-border">
-          <div className="flex items-center gap-4 text-sm">
-            <span className="flex items-center gap-1.5 text-foreground font-medium">
-              <CircleDot className="w-4 h-4" />
-              {openCount} Open
-            </span>
-            <span className="flex items-center gap-1.5 text-muted-foreground">
-              <CircleDot className="w-4 h-4" />
-              {closedCount} Closed
-            </span>
-          </div>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <button type="button" className="hover:text-foreground transition-colors">
-              Label
-            </button>
-            <button type="button" className="hover:text-foreground transition-colors">
-              Author
-            </button>
-            <button type="button" className="hover:text-foreground transition-colors">
-              Assignee
-            </button>
-            <button type="button" className="hover:text-foreground transition-colors">
-              Sort
-            </button>
-          </div>
-        </div>
-
+      </TrackerFilters>
+      <div className="overflow-hidden rounded-lg border">
         {issues.length > 0 ? (
           <div>
             {issues.map((issue) => (
@@ -117,7 +74,9 @@ const IssuesList = ({ owner, repo }: IssuesListProps) => {
             data-testid="issues-empty-state"
           >
             <MessageSquare className="w-12 h-12 mb-3 opacity-50" />
-            <p className="text-sm font-medium">No issues yet</p>
+            <p className="text-sm font-medium">
+              {filters.search || filters.state !== "all" || filters.author ? "No matching issues" : "No issues yet"}
+            </p>
             <p className="text-xs mt-1">Issues are used to track bugs, enhancements, and tasks.</p>
           </div>
         )}

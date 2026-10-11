@@ -123,6 +123,7 @@ class ActivityService:
         title: str | None = None,
         target_type: ActivityTargetType | None = None,
         target_number: int | None = None,
+        comment_id: uuid.UUID | None = None,
     ) -> Activity:
         """Record an activity event.
 
@@ -133,6 +134,7 @@ class ActivityService:
             title: Optional human readable title.
             target_type: Optional target type.
             target_number: Optional target number within the repository.
+            comment_id: The specific comment referenced by a comment event.
 
         Returns:
             The persisted activity entity.
@@ -144,6 +146,7 @@ class ActivityService:
             title=title,
             target_type=target_type,
             target_number=target_number,
+            comment_id=comment_id,
         )
         await self.activity_store.add(activity)
         return activity
@@ -181,16 +184,17 @@ class ActivityService:
         Returns:
             ActivitiesPublic with the feed events, newest first.
         """
-        repo_ids: set[uuid.UUID] = set()
-        owned = await self.repository_store.get_by_owner(user.id, 0, 1000)
-        repo_ids.update(repository.id for repository in owned)
-        stars = await self.star_store.list_by_user(user.id, 0, 1000)
-        repo_ids.update(star.repo_id for star in stars)
-
-        activities = await self.activity_store.list_by_repos(list(repo_ids), offset, limit) if repo_ids else []
+        activities = await self.activity_store.list_feed(user.id, offset, limit)
         if not activities:
+            if offset and await self.activity_store.list_feed(user.id, 0, 1):
+                return ActivitiesPublic(data=[], count=0)
             activities = await self.activity_store.list_recent(offset, limit)
-        return ActivitiesPublic(data=self._to_public_list(activities), count=len(activities))
+        previews = await self.activity_store.get_target_previews(activities)
+        public = [
+            self._to_public(activity).model_copy(update={"preview": previews.get(activity.id)})
+            for activity in activities
+        ]
+        return ActivitiesPublic(data=public, count=len(activities))
 
     @staticmethod
     def _to_public_list(activities: list[Activity]) -> list[ActivityPublic]:

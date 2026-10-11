@@ -120,6 +120,29 @@ describe("RepositoryActivity", () => {
     expect(await screen.findByText("Overview")).toBeInTheDocument()
   })
 
+  test("matches the selected activity view while statistics are loading", async () => {
+    let finish: (value: { data: RepositoryActivityStatistics }) => void = () => {}
+    getStatistics.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+    )
+    const { user } = render(<RepositoryActivity owner="owner" repo="repo" />)
+    expect(screen.getByRole("status")).toHaveAttribute("data-loading-view", "pulse")
+    for (const [label, view] of [
+      ["Contributors", "contributors"],
+      ["Code frequency", "code-frequency"],
+      ["Recent commits", "recent-commits"],
+    ]) {
+      await user.click(screen.getByRole("button", { name: label }))
+      expect(screen.getByRole("status")).toHaveAttribute("data-loading-view", view)
+    }
+    expect(screen.queryByText("No contributions yet.")).not.toBeInTheDocument()
+    finish({ data: statistics })
+    expect(await screen.findByText("Number of commits in the past year")).toBeInTheDocument()
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
+  })
+
   test("renders empty states without fabricated activity", async () => {
     getStatistics.mockResolvedValue({
       data: { ...statistics, merged_prs: [], contributors: [], code_frequency: [], recent_commits: [] },

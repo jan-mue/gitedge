@@ -102,6 +102,7 @@ class CommentService:
             title=issue.title,
             target_type=ActivityTargetType(issue.kind),
             target_number=issue.number,
+            comment_id=comment.id,
         )
 
         return self._to_public(comment)

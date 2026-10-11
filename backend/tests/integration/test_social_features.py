@@ -11,9 +11,11 @@ from __future__ import annotations
 import subprocess
 import tempfile
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
 from playwright.sync_api import expect
 
 from tests.integration.conftest import (
@@ -170,15 +172,16 @@ class TestStarAndWatch:
 class TestFork:
     """Test forking a repository through the UI."""
 
-    def test_fork_creates_empty_repository(self, app_url: str, page: Page) -> None:
-        """Forking a repository navigates to the new, empty fork.
+    def test_fork_copies_repository_content_and_refs(self, app_url: str, page: Page) -> None:
+        """Forking copies source files, history, branches and tags into a usable Git repository.
 
         Args:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
         foreign_owner = _create_foreign_owner(app_url)
-        _push_repo(app_url, f"{foreign_owner}/forkrepo.git")
+        source_url = f"{app_url}/{foreign_owner}/forkrepo.git"
+        _push_repo(app_url, f"{foreign_owner}/forkrepo.git", extra_branches=("develop",), tag="v1.0.0")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         page.goto(f"{app_url}/{foreign_owner}/forkrepo")
 
@@ -191,7 +194,21 @@ class TestFork:
         page.get_by_test_id("fork-repo-submit").click()
 
         page.wait_for_url(f"{app_url}/{SUPERUSER_USERNAME}/{fork_name}")
-        expect(page.get_by_test_id("empty-repository")).to_be_visible(timeout=15000)
+        expect(page.get_by_role("heading", name="Test Repository", exact=True)).to_be_visible(timeout=15000)
+        expect(page.get_by_role("button", name="README.md")).to_be_visible()
+        expect(page.get_by_role("button", name="src", exact=True)).to_be_visible()
+
+        fork_url = f"{app_url}/{SUPERUSER_USERNAME}/{fork_name}.git"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            clone_dir = Path(tmpdir) / "fork"
+            _run_git(Path(tmpdir), ["clone", fork_url, str(clone_dir)])
+            assert (clone_dir / "README.md").read_text() == "# Test Repository\n\nA test repository.\n"
+            assert (clone_dir / "src" / "main.py").read_text() == 'print("Hello, World!")\n'
+            source_refs = _run_git(clone_dir, ["ls-remote", source_url])
+            fork_refs = _run_git(clone_dir, ["ls-remote", fork_url])
+            assert source_refs == fork_refs
+            assert "refs/heads/develop" in fork_refs
+            assert "refs/tags/v1.0.0" in fork_refs
 
 
 class TestBranchesPage:
@@ -489,6 +506,85 @@ class TestPullRequestCommentsAndMerge:
 
 class TestActivityAndFeed:
     """Test the repository activity page and the dashboard feed."""
+
+    @pytest.mark.parametrize("target", ["issues", "pulls"])
+    def test_comment_feed_previews_show_each_reply(self, app_url: str, page: Page, target: str) -> None:
+        """Refresh cached reply previews after UI mutations without reloading the application."""
+        _push_repo(app_url, f"{SUPERUSER_USERNAME}/commentfeed.git", extra_branches=("feature",))
+        log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
+        token = page.evaluate("() => localStorage.getItem('access_token')")
+        headers = {"Authorization": f"Bearer {token}"}
+        base = f"{app_url}/api/v1"
+        repo_url = f"{base}/repositories/{SUPERUSER_USERNAME}/commentfeed"
+        created = page.request.post(
+            f"{repo_url}/{target}",
+            headers=headers,
+            data={
+                "title": "Comment preview target",
+                "body": "Original discussion description",
+                "head_branch": "feature",
+            },
+        )
+        assert created.status == 201
+        comments_url = f"{repo_url}/issues/{created.json()['number']}/comments"
+        second = page.request.post(comments_url, headers=headers, data={"body": "Second actual reply"})
+        assert second.status == 201
+
+        # Prevent cache expiry from masking missing mutation invalidation.
+        page.clock.set_fixed_time(datetime.now(UTC))
+        page.goto(f"{app_url}/")
+        page.evaluate("window.commentFeedNavigationMarker = 'same-document'")
+        feed = page.get_by_test_id("dashboard-feed")
+        comments = feed.locator("article").filter(has_text="commented on")
+        expect(comments).to_have_count(1)
+        expect(comments.get_by_text("Second actual reply", exact=True)).to_have_count(1)
+        discussion = feed.locator("article").filter(
+            has_text=f"opened {'issue' if target == 'issues' else 'pull request'}"
+        )
+        expect(discussion).to_contain_text("Original discussion description")
+        discussion.get_by_role("link", name="Comment preview target #1", exact=True).click()
+        page.get_by_test_id("comment-input").fill("First actual reply")
+        with page.expect_response(
+            lambda response: response.url.endswith("/comments") and response.request.method == "POST"
+        ) as first:
+            page.get_by_test_id("comment-submit").click()
+        assert first.value.status == 201
+        comment_id = first.value.json()["id"]
+        expect(page.get_by_test_id("comments-section")).to_contain_text("First actual reply")
+        page.get_by_role("link", name="GitEdge", exact=True).click()
+        expect(comments).to_have_count(2)
+        expect(comments.get_by_text("First actual reply", exact=True)).to_have_count(1)
+        expect(comments.get_by_text("Second actual reply", exact=True)).to_have_count(1)
+        expect(discussion.get_by_role("link", name="2 comments", exact=True)).to_be_visible()
+
+        comments.filter(has_text="First actual reply").get_by_role(
+            "link", name="Comment preview target #1", exact=True
+        ).click()
+        page.get_by_test_id(f"edit-comment-{comment_id}").click()
+        page.get_by_test_id(f"edit-comment-input-{comment_id}").fill("Edited actual reply")
+        page.get_by_test_id(f"edit-comment-submit-{comment_id}").click()
+        expect(page.get_by_test_id(f"edit-comment-input-{comment_id}")).to_have_count(0)
+        expect(page.get_by_test_id(f"comment-{comment_id}")).to_contain_text("Edited actual reply")
+        page.get_by_role("link", name="GitEdge", exact=True).click()
+        expect(comments.get_by_text("Edited actual reply", exact=True)).to_have_count(1)
+        expect(comments.get_by_text("Second actual reply", exact=True)).to_have_count(1)
+        expect(comments.get_by_text("First actual reply", exact=True)).to_have_count(0)
+
+        comments.filter(has_text="Edited actual reply").get_by_role(
+            "link", name="Comment preview target #1", exact=True
+        ).click()
+        page.once("dialog", lambda dialog: dialog.accept())
+        page.get_by_test_id(f"delete-comment-{comment_id}").click()
+        expect(page.get_by_test_id(f"comment-{comment_id}")).to_have_count(0)
+        page.get_by_role("link", name="GitEdge", exact=True).click()
+        expect(comments).to_have_count(2)
+        expect(comments.get_by_text("Second actual reply", exact=True)).to_have_count(1)
+        expect(comments.get_by_text("Edited actual reply", exact=True)).to_have_count(0)
+        expect(discussion.get_by_role("link", name="1 comment", exact=True)).to_be_visible()
+        expect(discussion).to_contain_text("Original discussion description")
+        for card in comments.all():
+            expect(card).not_to_contain_text("Original discussion description")
+        assert page.evaluate("window.commentFeedNavigationMarker") == "same-document"
 
     def test_activity_statistics_and_dashboard_star_feed(self, app_url: str, page: Page) -> None:
         """Show pushed Git data in analytics and star events in the dashboard.

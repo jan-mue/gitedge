@@ -36,7 +36,10 @@ async def get_repository_activity(
 
 @user_router.get("/me/feed")
 async def get_feed(
-    activity_service: ActivityServiceDep, current_user: CurrentUser, offset: int = 0, limit: int = 50
+    activity_service: ActivityServiceDep,
+    current_user: CurrentUser,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> ActivitiesPublic:
     """Get the current user's activity feed."""
     return await activity_service.feed(current_user, offset, limit)

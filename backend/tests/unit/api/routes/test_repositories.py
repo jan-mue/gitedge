@@ -20,6 +20,52 @@ PULLS_URL = f"{REPO_URL}/pulls"
 REPOSITORIES_URL = f"{settings.API_V1_STR}/repositories/"
 
 
+def test_repository_settings_and_deletion(
+    client: TestClient, superuser_token_headers: dict[str, str], fake_stores: FakeStores
+) -> None:
+    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME})
+    client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Tracked issue"})
+    assert client.patch(REPO_URL, json={"description": "Anonymous"}).status_code == 401
+    response = client.patch(
+        REPO_URL, headers=superuser_token_headers, json={"name": "renamed", "description": "Updated"}
+    )
+    assert response.status_code == 200
+    assert response.json()["description"] == "Updated"
+    assert response.json()["name"] == "renamed"
+    assert client.get(REPO_URL).status_code == 404
+    renamed = f"{settings.API_V1_STR}/repositories/{REPO_OWNER}/renamed"
+    assert client.get(f"{renamed}/issues").json()["count"] == 1
+    assert client.delete(renamed).status_code == 401
+    assert client.delete(renamed, headers=superuser_token_headers).status_code == 204
+    assert client.get(renamed).status_code == 404
+    assert not fake_stores.issues.items
+
+
+def test_repository_settings_require_owner(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+) -> None:
+    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME})
+    assert client.delete(REPO_URL, headers=normal_user_token_headers).status_code == 403
+    response = client.patch(REPO_URL, headers=normal_user_token_headers, json={"description": "Denied"})
+    assert response.status_code == 403
+    assert client.patch(REPO_URL, headers=superuser_token_headers, json={"name": "../invalid"}).status_code == 422
+    assert client.patch(REPO_URL, headers=superuser_token_headers, json={"name": ".git"}).status_code == 400
+
+
+def test_empty_repository_statistics_and_missing_content(client: TestClient) -> None:
+    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME})
+    response = client.get(f"{REPO_URL}/statistics")
+    assert response.status_code == 200
+    assert response.json() == {"commit_count": 0, "size": 0, "languages": []}
+    assert response.headers["cache-control"] == CACHE_CONTROL_REVALIDATE
+    assert client.get(f"{REPO_URL}/files").json() == {"paths": []}
+    for endpoint in ("source", "blame", "raw"):
+        response = client.get(f"{REPO_URL}/{endpoint}", params={"file_path": "missing.txt"})
+        assert response.status_code == 404
+
+
 @pytest.mark.parametrize("url", [ISSUES_URL, PULLS_URL])
 def test_description_markdown_is_rendered(
     client: TestClient, superuser_token_headers: dict[str, str], url: str
