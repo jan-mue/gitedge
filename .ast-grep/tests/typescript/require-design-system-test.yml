@@ -9,3 +9,4 @@ invalid:
   - '<input placeholder="Name" />'
   - '<textarea />'
   - '<select><option>main</option></select>'
+  - '<a href="#repository" className="text-primary">Repository</a>'

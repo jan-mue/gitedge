@@ -3,7 +3,7 @@ import { useState } from "react"
 import { repositoriesGetBlameOptions } from "@/client/@tanstack/react-query.gen"
 import RepoBreadcrumbs from "@/components/Repositories/RepoBreadcrumbs"
 import SourceLink from "@/components/Repositories/SourceLink"
-import { Button, Link } from "@/design-system"
+import { Button, ExternalLink, Link } from "@/design-system"
 import RepositoryLoading, { RepositoryError } from "./RepositoryLoading"
 
 const BlameView = ({
@@ -102,7 +102,9 @@ const BlameView = ({
                       </td>
                     )}
                     <td className="w-14 select-none border-r px-3 text-right font-mono leading-6 text-muted-foreground">
-                      <a href={`#L${line.number}`}>{line.number}</a>
+                      <ExternalLink href={`#L${line.number}`} appearance="inherited">
+                        {line.number}
+                      </ExternalLink>
                     </td>
                     <td className="whitespace-pre px-4 font-mono leading-6">
                       {escapedTabs ? line.content.replace(/\t/g, "\\t") : line.content}

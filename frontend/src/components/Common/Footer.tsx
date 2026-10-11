@@ -1,4 +1,5 @@
 import { FaGithub } from "react-icons/fa"
+import { ExternalLink } from "@/design-system"
 
 const socialLinks = [
   {
@@ -17,16 +18,16 @@ export function Footer() {
         <p className="text-muted-foreground text-sm">GitEdge - {currentYear}</p>
         <div className="flex items-center gap-4">
           {socialLinks.map(({ icon: Icon, href, label }) => (
-            <a
+            <ExternalLink
               key={label}
               href={href}
               target="_blank"
               rel="noopener noreferrer"
               aria-label={label}
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              appearance="social"
             >
               <Icon className="h-5 w-5" />
-            </a>
+            </ExternalLink>
           ))}
         </div>
       </div>

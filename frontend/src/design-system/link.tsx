@@ -19,6 +19,11 @@ const appearances = {
   tabMobile:
     "flex items-center gap-1 whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground data-[active=true]:border-primary data-[active=true]:font-medium data-[active=true]:text-foreground md:hidden",
   menu: "flex items-center gap-2 rounded px-3 py-2 text-sm text-foreground hover:bg-accent",
+  social: "text-muted-foreground transition-colors hover:text-foreground",
+  settings:
+    "flex shrink-0 items-center gap-2 whitespace-nowrap rounded bg-accent/50 px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent md:rounded-none md:border-b md:bg-transparent md:px-4 md:py-3",
+  settingsDanger:
+    "flex shrink-0 items-center gap-2 whitespace-nowrap rounded bg-accent/50 px-3 py-2 text-sm text-destructive transition-colors hover:bg-accent md:rounded-none md:bg-transparent md:px-4 md:py-3",
   inherited: "",
 }
 const Anchor = ({
@@ -32,6 +37,7 @@ const Anchor = ({
     className={cn(
       "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       appearances[appearance],
+      (props as ComponentProps<"a">).className,
     )}
   />
 )
@@ -50,3 +56,5 @@ export const Link = (({
     )}
   />
 )) as LinkComponent<typeof Anchor>
+
+export const ExternalLink = Anchor

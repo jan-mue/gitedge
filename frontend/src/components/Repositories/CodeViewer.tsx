@@ -3,7 +3,7 @@ import { useState } from "react"
 import type { FileContent } from "@/client"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
 import SourceLink from "@/components/Repositories/SourceLink"
-import { Button, Link } from "@/design-system"
+import { Button, ExternalLink, Link } from "@/design-system"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import { useSyntaxHighlightCSS } from "@/hooks/useSyntaxHighlightCSS"
 import { formatSize } from "@/utils"
@@ -30,9 +30,9 @@ const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
     <div className="file-viewer border rounded-lg overflow-hidden" data-testid="file-viewer">
       <FileHeader file={file} backLink={backLink} />
       <div className="flex flex-wrap items-center justify-end gap-1 border-b bg-secondary/50 px-4 py-2">
-        <a href={rawUrl} className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent">
+        <ExternalLink href={rawUrl} appearance="action">
           Raw
-        </a>
+        </ExternalLink>
         <Link
           to="/$owner/$repo/blame/$"
           params={{ owner: backLink.owner, repo: backLink.repo, _splat: file.path }}
