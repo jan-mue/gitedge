@@ -1,0 +1,87 @@
+id: require-msw-api-mocks
+valid:
+  - |
+    import { handleRepositoriesListIssues } from "@/client/msw.gen"
+    import { server } from "@/test/server"
+    server.use(handleRepositoriesListIssues({ body: { data: [], count: 0 } }))
+  - |
+    import { HttpResponse } from "msw"
+    server.use(handleRepositoriesCreateIssue(async ({ request }) => {
+      captureRequest(await request.json())
+      return HttpResponse.json(issue, { status: 201 })
+    }))
+  - 'vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }))'
+  - 'vi.mock("@/hooks/useAuth", () => ({ default: () => ({ user }) }))'
+  - 'vi.mock("sonner")'
+  - 'vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined)'
+  - 'vi.stubGlobal("ResizeObserver", ResizeObserverMock)'
+  - 'vi.stubGlobal("label", "fetch")'
+  - 'global.ResizeObserver = ResizeObserverMock'
+  - 'const fetch = vi.fn()'
+  - 'const captureRequest = vi.fn()'
+  - 'await fetch("http://localhost:3000/api/v1/users/me")'
+  - |
+    import { client } from "@/client/client.gen"
+    client.setConfig({ baseUrl: window.location.origin })
+  - |
+    import { vi as mocker } from "vitest"
+    mocker.mock("@tanstack/react-router")
+  - |
+    import { client } from "./other-client"
+    vi.spyOn(client, "get")
+invalid:
+  - 'vi.mock("@/client/sdk.gen", () => ({ RepositoriesService: { listIssues: vi.fn() } }))'
+  - 'vi.mock("@/client")'
+  - 'vi.doMock("@/client/client.gen", () => ({ client }))'
+  - 'vitest.mock("@/client/@tanstack/react-query.gen", () => ({ usersReadUserMeOptions }))'
+  - 'vi.mock("@tanstack/react-query")'
+  - 'vi.mock("../../client/sdk.gen")'
+  - 'vi.mock("../../client/index.ts")'
+  - 'vi.mock("../feature/client/sdk.gen")'
+  - 'vi.mock("../client")'
+  - 'vi.mock(import("@/client/sdk.gen"), () => ({ RepositoriesService }))'
+  - 'vi.doMock(import("@/client"))'
+  - |
+    import { vi as mocker } from "vitest"
+    mocker.mock("@/client/sdk.gen")
+  - |
+    import * as testing from "vitest"
+    testing.doMock("@/client/sdk.gen")
+  - |
+    import * as testing from "vitest"
+    testing.vi.mock("@/client/sdk.gen")
+  - |
+    import { RepositoriesService } from "@/client/sdk.gen"
+    vi.spyOn(RepositoriesService, "listIssues").mockResolvedValue({ data: [] })
+  - |
+    import { RepositoriesService as repositories } from "@/client"
+    vi.spyOn(repositories, "listIssues")
+  - |
+    import * as sdk from "@/client/sdk.gen"
+    vi.spyOn(sdk.RepositoriesService, "listIssues")
+  - |
+    import { client } from "@/client/client.gen"
+    vi.spyOn(client, "get")
+  - |
+    import { vi as mocker } from "vitest"
+    import { client } from "@/client/client.gen"
+    mocker.spyOn(client, "post")
+  - |
+    import * as queries from "@/client/@tanstack/react-query.gen"
+    vi.spyOn(queries, "usersReadUserMeOptions")
+  - |
+    import { RepositoriesService } from "@/client"
+    RepositoriesService.listIssues = vi.fn()
+  - 'vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response())'
+  - 'vi.spyOn(window, "fetch")'
+  - 'vi.spyOn(global, "fetch")'
+  - 'vi.spyOn(self, "fetch")'
+  - 'vi.stubGlobal("fetch", vi.fn())'
+  - |
+    import { vi as mocker } from "vitest"
+    mocker.stubGlobal("fetch", mocker.fn())
+  - 'globalThis.fetch = vi.fn()'
+  - 'window.fetch = fakeFetch'
+  - 'global["fetch"] = fakeFetch'
+  - 'window["fetch"] = fakeFetch'
+  - 'fetch = vi.fn()'

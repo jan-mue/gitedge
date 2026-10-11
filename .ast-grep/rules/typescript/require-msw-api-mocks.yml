@@ -1,0 +1,168 @@
+id: require-msw-api-mocks
+language: tsx
+severity: error
+message: Mock API requests with MSW handlers from @/client/msw.gen and server.use() from @/test/server.
+note: |
+  Keep the generated SDK, TanStack Query, and fetch running in frontend tests so
+  request serialization and response handling are exercised. Use server.use()
+  with generated MSW handlers to return responses or capture requests. Module
+  mocks and spies for non-API dependencies, such as navigation, remain allowed.
+files:
+  - frontend/src/**/*.test.ts
+  - frontend/src/**/*.test.tsx
+  - frontend/src/test/**/*.ts
+  - frontend/src/test/**/*.tsx
+rule:
+  any:
+    - all:
+        - any:
+            - pattern: $VITEST.mock($MODULE)
+            - pattern: $VITEST.mock($MODULE, $$$ARGS)
+            - pattern: $VITEST.doMock($MODULE)
+            - pattern: $VITEST.doMock($MODULE, $$$ARGS)
+        - has:
+            field: function
+            has:
+              field: object
+              matches: vitest-object
+        - has:
+            field: arguments
+            has:
+              all:
+                - matches: api-module-argument
+                - not:
+                    follows:
+                      stopBy: end
+                      pattern: $PREVIOUS
+    - all:
+        - any:
+            - pattern: $VITEST.spyOn($TARGET, $METHOD)
+            - pattern: $VITEST.spyOn($TARGET, $METHOD, $$$ARGS)
+        - has:
+            field: function
+            has:
+              field: object
+              matches: vitest-object
+        - any:
+            - has:
+                field: arguments
+                has:
+                  all:
+                    - matches: api-object
+                    - not:
+                        follows:
+                          stopBy: end
+                          pattern: $PREVIOUS
+            - all:
+                - has:
+                    field: arguments
+                    has:
+                      regex: '^(globalThis|global|window|self)$'
+                - has:
+                    field: arguments
+                    has:
+                      regex: '^[''"]fetch[''"]$'
+    - all:
+        - pattern: $VITEST.stubGlobal($NAME, $VALUE)
+        - has:
+            field: function
+            has:
+              field: object
+              matches: vitest-object
+        - has:
+            field: arguments
+            has:
+              all:
+                - regex: '^[''"]fetch[''"]$'
+                - not:
+                    follows:
+                      stopBy: end
+                      pattern: $PREVIOUS
+    - kind: assignment_expression
+      has:
+        field: left
+        any:
+          - regex: '^fetch$'
+          - regex: '^(globalThis|global|window|self)\s*(\.\s*fetch|\[\s*[''"]fetch[''"]\s*\])$'
+          - kind: member_expression
+            has:
+              field: object
+              matches: api-object
+utils:
+  api-module:
+    regex: '^[''"](?:@/client(?:/[^''"]*)?|(?:\.\.?/)+(?:[^''"]*/)?client(?:/[^''"]*)?|@tanstack/react-query)[''"]$'
+  api-module-argument:
+    any:
+      - matches: api-module
+      - pattern: import($SOURCE)
+        has:
+          field: arguments
+          has:
+            matches: api-module
+  vitest-object:
+    any:
+      - regex: '^(vi|vitest)$'
+      - kind: identifier
+        pattern: $MOCKER
+        inside:
+          stopBy: end
+          kind: program
+          has:
+            kind: import_statement
+            all:
+              - has:
+                  field: source
+                  regex: '^[''"]vitest[''"]$'
+              - any:
+                  - has:
+                      stopBy: end
+                      kind: import_specifier
+                      all:
+                        - has:
+                            field: name
+                            regex: '^(vi|vitest)$'
+                        - has:
+                            field: alias
+                            pattern: $MOCKER
+                  - pattern: import * as $MOCKER from "vitest"
+      - kind: member_expression
+        all:
+          - has:
+              field: property
+              regex: '^(vi|vitest)$'
+          - has:
+              field: object
+              pattern: $TESTING
+          - inside:
+              stopBy: end
+              kind: program
+              has:
+                pattern: import * as $TESTING from "vitest"
+  api-object:
+    any:
+      - kind: identifier
+        pattern: $API
+        inside:
+          stopBy: end
+          kind: program
+          has:
+            kind: import_statement
+            all:
+              - has:
+                  field: source
+                  matches: api-module
+              - any:
+                  - has:
+                      stopBy: end
+                      kind: import_specifier
+                      any:
+                        - pattern: $API
+                        - has:
+                            field: alias
+                            pattern: $API
+                  - pattern: import * as $API from $SOURCE
+                  - pattern: import $API from $SOURCE
+      - kind: member_expression
+        has:
+          field: object
+          matches: api-object
