@@ -1,0 +1,11 @@
+id: require-design-system
+valid:
+  - 'import { Button } from "@/design-system"'
+  - '<Button variant="success">Create repository</Button>'
+  - '<div className="flex gap-2"><Button /></div>'
+invalid:
+  - 'import { Button } from "@/components/ui/button"'
+  - '<button className="bg-primary">Create repository</button>'
+  - '<input placeholder="Name" />'
+  - '<textarea />'
+  - '<select><option>main</option></select>'

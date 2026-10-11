@@ -5,14 +5,15 @@ import { repositoriesGetFileIndexOptions } from "@/client/@tanstack/react-query.
 import type { SourceMode } from "@/components/Repositories/SourceLink"
 import SourceLink from "@/components/Repositories/SourceLink"
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
+  Input,
+} from "@/design-system"
 import RepositoryLoading, { RepositoryError } from "./RepositoryLoading"
 
 const FileFinder = ({
@@ -37,13 +38,10 @@ const FileFinder = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button
-          type="button"
-          className="flex items-center gap-1.5 rounded border bg-secondary px-3 py-1.5 text-sm hover:bg-accent"
-        >
+        <Button type="button" variant="outline" size="sm">
           <Search className="size-3.5" />
           Find a file
-        </button>
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -72,7 +70,7 @@ const FileFinder = ({
                   refName={revision}
                   path={path}
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-accent"
+                  appearance="menu"
                 >
                   <FileText className="size-4 shrink-0 text-muted-foreground" />
                   <span className="break-all">{path}</span>

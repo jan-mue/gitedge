@@ -1,15 +1,13 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
-import { Link as RouterLink } from "@tanstack/react-router"
 import { Filter, TrendingUp, X } from "lucide-react"
 import { useMemo, useState } from "react"
-
 import type { Repository } from "@/client"
 import { activityGetFeedInfiniteOptions, repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
 import ActivityCard, { activityActions as kindAction } from "@/components/Dashboard/ActivityCard"
 import FeedLoading, { FeedListLoading } from "@/components/Dashboard/FeedLoading"
 import { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import StarButton from "@/components/Repository/StarButton"
-import { LoadingButton } from "@/components/ui/loading-button"
+import { Button, LoadingButton, Link as RouterLink } from "@/design-system"
 import useAuth from "@/hooks/useAuth"
 
 const Feed = () => {
@@ -73,7 +71,7 @@ const Feed = () => {
                     key={`${repo.owner}/${repo.name}`}
                     to="/$owner/$repo"
                     params={{ owner: repo.owner, repo: repo.name }}
-                    className="block rounded px-2 py-2 transition-colors hover:bg-accent/50"
+                    appearance="default"
                   >
                     <p className="truncate text-sm font-medium text-foreground">
                       {repo.owner}/{repo.name}
@@ -106,7 +104,7 @@ const Feed = () => {
                       repo: activity.repo_name ?? "",
                       number: String(activity.target_number ?? 0),
                     }}
-                    className="block rounded px-2 py-2 transition-colors hover:bg-accent/50"
+                    appearance="default"
                   >
                     <p className="text-xs text-muted-foreground">{kindAction[activity.kind] ?? activity.kind}</p>
                     <p className="line-clamp-2 text-sm text-foreground">
@@ -130,20 +128,16 @@ const Feed = () => {
           <header className="flex items-center justify-between gap-3">
             <h1 className="text-xl font-semibold text-foreground">Feed</h1>
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowFilter(!showFilter)}
-                className="flex items-center gap-1.5 rounded border border-border bg-secondary px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
-              >
+              <Button type="button" onClick={() => setShowFilter(!showFilter)} variant="outline" size="sm">
                 <Filter className="h-3.5 w-3.5" /> Filter
-              </button>
+              </Button>
               {showFilter && (
                 <div className="absolute right-0 top-full z-50 mt-1 w-72 space-y-3 rounded-lg border border-border bg-popover p-4 shadow-lg">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-foreground">Filter</span>
-                    <button type="button" onClick={() => setShowFilter(false)}>
+                    <Button variant="ghost" size="sm" type="button" onClick={() => setShowFilter(false)}>
                       <X className="h-4 w-4 text-muted-foreground" />
-                    </button>
+                    </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {user ? `Showing activity for ${user.name}` : "Showing activity"}
@@ -177,12 +171,7 @@ const Feed = () => {
               />
             )}
             {hasNextPage && (
-              <LoadingButton
-                className="w-full"
-                variant="outline"
-                loading={isFetchingNextPage}
-                onClick={() => fetchNextPage()}
-              >
+              <LoadingButton fullWidth variant="outline" loading={isFetchingNextPage} onClick={() => fetchNextPage()}>
                 Load more activity
               </LoadingButton>
             )}
@@ -193,7 +182,7 @@ const Feed = () => {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium text-foreground">Trending repositories</span>
               <span className="text-muted-foreground">·</span>
-              <RouterLink to="/explore" className="text-sm text-primary hover:underline">
+              <RouterLink to="/explore" appearance="default">
                 See more
               </RouterLink>
             </div>
@@ -215,7 +204,7 @@ const Feed = () => {
                       <RouterLink
                         to="/$owner/$repo"
                         params={{ owner: repo.owner, repo: repo.name }}
-                        className="text-sm font-semibold text-primary hover:underline"
+                        appearance="default"
                       >
                         {repo.owner}/{repo.name}
                       </RouterLink>

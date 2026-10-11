@@ -1,11 +1,9 @@
-import { Link } from "@tanstack/react-router"
 import { ArrowLeft, File } from "lucide-react"
 import { useState } from "react"
-
 import type { FileContent } from "@/client"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
 import SourceLink from "@/components/Repositories/SourceLink"
-import { Button } from "@/components/ui/button"
+import { Button, Link } from "@/design-system"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import { useSyntaxHighlightCSS } from "@/hooks/useSyntaxHighlightCSS"
 import { formatSize } from "@/utils"
@@ -39,7 +37,7 @@ const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
           to="/$owner/$repo/blame/$"
           params={{ owner: backLink.owner, repo: backLink.repo, _splat: file.path }}
           search={{ ref: backLink.refName }}
-          className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent"
+          appearance="default"
         >
           Blame
         </Link>
@@ -47,7 +45,7 @@ const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
           to="/$owner/$repo/commits/branch/$branch"
           params={{ owner: backLink.owner, repo: backLink.repo, branch: backLink.refName }}
           search={{ path: file.path }}
-          className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent"
+          appearance="default"
         >
           History
         </Link>
@@ -58,25 +56,17 @@ const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
             mode="commit"
             refName={commitSha}
             path={file.path}
-            className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent"
+            appearance="action"
           >
             Permalink
           </SourceLink>
         )}
-        <button
-          type="button"
-          onClick={() => copy(file.content)}
-          className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent"
-        >
+        <Button type="button" onClick={() => copy(file.content)} variant="outline" size="xs">
           Copy content
-        </button>
-        <button
-          type="button"
-          onClick={() => setEscapedTabs((value) => !value)}
-          className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent"
-        >
+        </Button>
+        <Button type="button" onClick={() => setEscapedTabs((value) => !value)} variant="outline" size="xs">
           {escapedTabs ? "Unescape tabs" : "Escape tabs"}
-        </button>
+        </Button>
       </div>
       <HighlightedContent html={escapedTabs ? file.highlighted_html.replace(/\t/g, "\\t") : file.highlighted_html} />
     </div>

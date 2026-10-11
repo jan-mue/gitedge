@@ -1,6 +1,7 @@
 import { Search } from "lucide-react"
 import type { ReactNode } from "react"
 import { useState } from "react"
+import { Button, Input, NativeSelect } from "@/design-system"
 
 interface TrackerItem {
   title: string
@@ -38,13 +39,13 @@ const TrackerFilters = ({ filters, label, openCount, closedCount, children }: Tr
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative min-w-40 flex-1">
         <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
-        <input
+        <Input
           type="search"
           aria-label={`Search ${label}`}
           placeholder={`Search ${label}…`}
           value={filters.search}
           onChange={(event) => filters.setSearch(event.target.value)}
-          className="w-full rounded border bg-secondary py-2 pl-9 pr-3 text-sm outline-none focus:ring-1 focus:ring-primary"
+          appearance="search"
         />
       </div>
       {children}
@@ -55,23 +56,22 @@ const TrackerFilters = ({ filters, label, openCount, closedCount, children }: Tr
         ["open", `${openCount} Open`],
         ["closed", `${closedCount} Closed`],
       ].map(([value, text]) => (
-        <button
+        <Button
           key={value}
           type="button"
           aria-pressed={filters.state === value}
           onClick={() => filters.setState(value)}
-          className={
-            filters.state === value ? "font-medium text-foreground" : "text-muted-foreground hover:text-foreground"
-          }
+          variant="quiet"
+          size="sm"
         >
           {text}
-        </button>
+        </Button>
       ))}
-      <select
+      <NativeSelect
         aria-label="Filter by author"
         value={filters.author}
         onChange={(event) => filters.setAuthor(event.target.value)}
-        className="rounded border bg-background px-2 py-1 sm:ml-auto"
+        compact
       >
         <option value="">All authors</option>
         {filters.authors.map((author) => (
@@ -79,16 +79,16 @@ const TrackerFilters = ({ filters, label, openCount, closedCount, children }: Tr
             {author}
           </option>
         ))}
-      </select>
-      <select
+      </NativeSelect>
+      <NativeSelect
         aria-label="Sort order"
         value={filters.sort}
         onChange={(event) => filters.setSort(event.target.value)}
-        className="rounded border bg-background px-2 py-1"
+        compact
       >
         <option value="newest">Newest</option>
         <option value="oldest">Oldest</option>
-      </select>
+      </NativeSelect>
     </div>
   </>
 )

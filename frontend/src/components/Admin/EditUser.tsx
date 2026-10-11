@@ -4,12 +4,11 @@ import { Pencil } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-
 import type { UserPublic } from "@/client"
 import { usersReadUsersQueryKey, usersUpdateUserMutation } from "@/client/@tanstack/react-query.gen"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
+  Button,
+  Checkbox,
   Dialog,
   DialogClose,
   DialogContent,
@@ -17,11 +16,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { LoadingButton } from "@/components/ui/loading-button"
+  DropdownMenuItem,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  LoadingButton,
+} from "@/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -91,7 +95,7 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
         <Pencil />
         Edit User
       </DropdownMenuItem>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent appearance="compact">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <DialogHeader>
@@ -161,11 +165,11 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                 control={form.control}
                 name="is_superuser"
                 render={({ field }) => (
-                  <FormItem className="flex items-center gap-3 space-y-0">
+                  <FormItem appearance="inline">
                     <FormControl>
                       <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
-                    <FormLabel className="font-normal">Is superuser?</FormLabel>
+                    <FormLabel appearance="regular">Is superuser?</FormLabel>
                   </FormItem>
                 )}
               />
@@ -174,11 +178,11 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                 control={form.control}
                 name="is_active"
                 render={({ field }) => (
-                  <FormItem className="flex items-center gap-3 space-y-0">
+                  <FormItem appearance="inline">
                     <FormControl>
                       <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
-                    <FormLabel className="font-normal">Is active?</FormLabel>
+                    <FormLabel appearance="regular">Is active?</FormLabel>
                   </FormItem>
                 )}
               />

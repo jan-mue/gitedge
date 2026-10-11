@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query"
-import { Link as RouterLink } from "@tanstack/react-router"
 import { GitBranch, Search } from "lucide-react"
 import { useMemo, useState } from "react"
-
 import { repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
 import StarButton from "@/components/Repository/StarButton"
+import { Input, Link as RouterLink } from "@/design-system"
 
 const RepoExplorer = () => {
   const [query, setQuery] = useState("")
@@ -31,13 +30,13 @@ const RepoExplorer = () => {
         </div>
         <div className="relative w-72 max-w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
+          <Input
             type="text"
             placeholder="Search repositories..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             data-testid="explore-search"
-            className="w-full pl-9 pr-3 py-2 text-sm bg-secondary border border-border rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            appearance="search"
           />
         </div>
       </div>
@@ -52,11 +51,7 @@ const RepoExplorer = () => {
             >
               <GitBranch className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
               <div className="min-w-0 flex-1">
-                <RouterLink
-                  to="/$owner/$repo"
-                  params={{ owner: repo.owner, repo: repo.name }}
-                  className="text-sm font-medium text-primary hover:underline"
-                >
+                <RouterLink to="/$owner/$repo" params={{ owner: repo.owner, repo: repo.name }} appearance="default">
                   {repo.owner}/{repo.name}
                 </RouterLink>
                 {repo.description && <p className="text-xs text-muted-foreground mt-1">{repo.description}</p>}

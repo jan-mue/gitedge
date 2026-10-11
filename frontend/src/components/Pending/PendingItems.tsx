@@ -1,5 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/design-system"
 
 const PendingItems = () => (
   <Table>
@@ -17,17 +16,17 @@ const PendingItems = () => (
       {Array.from({ length: 5 }).map((_, index) => (
         <TableRow key={index}>
           <TableCell>
-            <Skeleton className="h-4 w-64 font-mono" />
+            <Skeleton appearance="title" />
           </TableCell>
           <TableCell>
-            <Skeleton className="h-4 w-32" />
+            <Skeleton appearance="medium" />
           </TableCell>
           <TableCell>
-            <Skeleton className="h-4 w-48" />
+            <Skeleton appearance="long" />
           </TableCell>
           <TableCell>
             <div className="flex justify-end">
-              <Skeleton className="size-8 rounded-md" />
+              <Skeleton appearance="action" />
             </div>
           </TableCell>
         </TableRow>

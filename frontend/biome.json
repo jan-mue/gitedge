@@ -1,6 +1,12 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.9/schema.json",
-  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
   "files": {
     "includes": [
       "**",
@@ -10,7 +16,10 @@
       "!**/openapi.json",
       "!**/src/routeTree.gen.ts",
       "!**/src/client/**/*",
-      "!**/src/components/ui/**/*"
+      "!**/src/components/ui/**/*",
+      "!**/storybook-static/**/*",
+      "!**/playwright-report/**/*",
+      "!**/test-results/**/*"
     ]
   },
   "linter": {
@@ -26,6 +35,9 @@
         "noParameterAssign": "error",
         "useSelfClosingElements": "error",
         "noUselessElse": "error"
+      },
+      "nursery": {
+        "noTailwindRawColors": "error"
       }
     }
   },

@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query"
-import { Link as RouterLink } from "@tanstack/react-router"
 import { CircleDot, MessageSquare } from "lucide-react"
 import { repositoriesListIssuesOptions } from "@/client/@tanstack/react-query.gen"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import TrackerFilters, { useTrackerFilters } from "@/components/Repository/TrackerFilters"
+import { Link as RouterLink } from "@/design-system"
 
 interface IssuesListProps {
   owner: string
@@ -34,7 +34,7 @@ const IssuesList = ({ owner, repo }: IssuesListProps) => {
         <RouterLink
           to="/$owner/$repo/issues/new"
           params={{ owner, repo }}
-          className="rounded bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:opacity-90"
+          appearance="default"
           data-testid="new-issue-btn"
         >
           New issue
@@ -56,7 +56,7 @@ const IssuesList = ({ owner, repo }: IssuesListProps) => {
                   <RouterLink
                     to="/$owner/$repo/issues/$number"
                     params={{ owner, repo, number: String(issue.number) }}
-                    className="text-sm font-medium text-foreground hover:text-primary"
+                    appearance="default"
                   >
                     {issue.title}
                   </RouterLink>

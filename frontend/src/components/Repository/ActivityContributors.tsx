@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
-
 import type { ActivitySeriesPoint, ContributorActivity } from "@/client"
 import ActivityChart, { type ActivityMetric } from "@/components/Repository/ActivityChart"
+import { NativeSelect } from "@/design-system"
 
 interface ActivityContributorsProps {
   contributors: ContributorActivity[]
@@ -33,16 +33,16 @@ const ActivityContributors = ({ contributors, series }: ActivityContributorsProp
             ? `${dateLabel(series[0].date)} - ${dateLabel(series[series.length - 1].date)}`
             : "Contributors"}
         </h2>
-        <select
+        <NativeSelect
           aria-label="Contribution metric"
           value={metric}
           onChange={(event) => setMetric(event.target.value as ActivityMetric)}
-          className="rounded border border-border bg-secondary px-3 py-1.5 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          compact
         >
           <option value="commits">Commits</option>
           <option value="additions">Additions</option>
           <option value="deletions">Deletions</option>
-        </select>
+        </NativeSelect>
       </div>
       <div className="rounded-lg border border-border p-4">
         {series.length ? (

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link as RouterLink, useParams } from "@tanstack/react-router"
+import { useParams } from "@tanstack/react-router"
 import { ArrowLeft, CircleCheck, CircleDot } from "lucide-react"
 import { useState } from "react"
 import {
@@ -11,8 +11,7 @@ import {
 import MarkdownContent from "@/components/Common/MarkdownContent"
 import CommentsSection from "@/components/Repository/CommentsSection"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Badge, Button, Input, Link as RouterLink, Textarea } from "@/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -62,29 +61,24 @@ const IssueDetail = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6" data-testid="issue-detail">
-      <RouterLink
-        to="/$owner/$repo/issues"
-        params={{ owner, repo }}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
+      <RouterLink to="/$owner/$repo/issues" params={{ owner, repo }} appearance="muted">
         <ArrowLeft className="w-4 h-4" />
         Back to issues
       </RouterLink>
 
       {editing ? (
         <div className="space-y-3">
-          <input
+          <Input
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
             data-testid="edit-issue-title"
-            className="w-full rounded border border-border bg-card px-3 py-2 text-lg font-bold text-foreground focus:outline-none"
+            appearance="title"
           />
-          <textarea
+          <Textarea
             value={editBody}
             onChange={(e) => setEditBody(e.target.value)}
             rows={5}
             data-testid="edit-issue-body"
-            className="w-full rounded border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none resize-y"
           />
           <div className="flex justify-end gap-2">
             <Button size="sm" variant="outline" onClick={() => setEditing(false)} data-testid="edit-issue-cancel">

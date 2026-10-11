@@ -1,7 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link as RouterLink } from "@tanstack/react-router"
 import { Eye, EyeOff } from "lucide-react"
-
 import {
   watchersGetWatchStateOptions,
   watchersGetWatchStateQueryKey,
@@ -9,6 +7,7 @@ import {
   watchersUnwatchRepositoryMutation,
   watchersWatchRepositoryMutation,
 } from "@/client/@tanstack/react-query.gen"
+import { Button, Link as RouterLink } from "@/design-system"
 
 interface WatchButtonProps {
   owner: string
@@ -36,21 +35,19 @@ const WatchButton = ({ owner, repo }: WatchButtonProps) => {
 
   return (
     <div className="flex items-stretch" data-testid="watch-button">
-      <button
+      <Button
         type="button"
         onClick={() => mutation.mutate({ path: { owner, repo } })}
         disabled={mutation.isPending}
-        className="flex items-center gap-1.5 rounded-l border border-r-0 border-border bg-secondary px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+        aria-pressed={isWatching}
+        variant="outline"
+        size="sm"
+        shape="start"
       >
         <Icon className="h-3.5 w-3.5" />
         <span>{isWatching ? "Unwatch" : "Watch"}</span>
-      </button>
-      <RouterLink
-        to="/$owner/$repo/watchers"
-        params={{ owner, repo }}
-        data-testid="watch-count"
-        className="flex items-center justify-center rounded-r border border-border bg-secondary px-2.5 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-      >
+      </Button>
+      <RouterLink to="/$owner/$repo/watchers" params={{ owner, repo }} data-testid="watch-count" appearance="count">
         {count}
       </RouterLink>
     </div>

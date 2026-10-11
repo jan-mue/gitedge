@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
-
 import GlobalNav from "@/components/GlobalNav"
+import { AppShell } from "@/design-system"
 import { isLoggedIn } from "@/hooks/useAuth"
 
 export const Route = createFileRoute("/_layout")({
@@ -16,9 +16,9 @@ export const Route = createFileRoute("/_layout")({
 
 function Layout() {
   return (
-    <div className="min-h-screen bg-background">
+    <AppShell>
       <GlobalNav />
       <Outlet />
-    </div>
+    </AppShell>
   )
 }

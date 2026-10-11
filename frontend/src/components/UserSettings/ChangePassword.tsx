@@ -2,11 +2,17 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-
 import { usersUpdatePasswordMeMutation } from "@/client/@tanstack/react-query.gen"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { LoadingButton } from "@/components/ui/loading-button"
-import { PasswordInput } from "@/components/ui/password-input"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  LoadingButton,
+  PasswordInput,
+} from "@/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -117,9 +123,11 @@ const ChangePassword = () => {
             )}
           />
 
-          <LoadingButton type="submit" loading={mutation.isPending} className="self-start">
-            Update Password
-          </LoadingButton>
+          <div className="self-start">
+            <LoadingButton type="submit" loading={mutation.isPending}>
+              Update Password
+            </LoadingButton>
+          </div>
         </form>
       </Form>
     </div>

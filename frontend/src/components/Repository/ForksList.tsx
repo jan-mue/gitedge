@@ -1,7 +1,6 @@
-import { Link as RouterLink } from "@tanstack/react-router"
 import { GitFork } from "lucide-react"
-
 import type { ForkPublic } from "@/client"
+import { Link as RouterLink } from "@/design-system"
 
 interface ForksListProps {
   forks: ForkPublic[]
@@ -19,11 +18,7 @@ const ForksList = ({ forks }: ForksListProps) => {
           <GitFork className="w-4 h-4 text-muted-foreground" />
           <div className="min-w-0">
             {fork.owner ? (
-              <RouterLink
-                to="/$owner/$repo"
-                params={{ owner: fork.owner, repo: fork.name }}
-                className="text-sm font-medium text-primary hover:underline"
-              >
+              <RouterLink to="/$owner/$repo" params={{ owner: fork.owner, repo: fork.name }} appearance="default">
                 {fork.owner}/{fork.name}
               </RouterLink>
             ) : (

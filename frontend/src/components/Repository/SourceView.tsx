@@ -12,7 +12,7 @@ import ReadmeViewer from "@/components/Repository/ReadmeViewer"
 import RepoStats from "@/components/Repository/RepoStats"
 import { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import SourceLoading from "@/components/Repository/SourceLoading"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@/design-system"
 
 interface SourceViewProps {
   owner: string
@@ -112,9 +112,9 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
             readmePending &&
             readmeFetching && (
               <div role="status" aria-label="Loading README" className="space-y-3 rounded-lg border p-6">
-                <Skeleton className="h-6 w-1/3" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
+                <Skeleton appearance="heading" />
+                <Skeleton appearance="line" />
+                <Skeleton appearance="paragraph" />
               </div>
             )
           )}

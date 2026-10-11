@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
 import { useState } from "react"
 import { repositoriesGetBlameOptions } from "@/client/@tanstack/react-query.gen"
 import RepoBreadcrumbs from "@/components/Repositories/RepoBreadcrumbs"
 import SourceLink from "@/components/Repositories/SourceLink"
+import { Button, Link } from "@/design-system"
 import RepositoryLoading, { RepositoryError } from "./RepositoryLoading"
 
 const BlameView = ({
@@ -47,31 +47,20 @@ const BlameView = ({
             {data.lines.length} lines · Blame at {revision.slice(0, 12)}
           </span>
           <div className="flex items-center gap-2">
-            <SourceLink
-              owner={owner}
-              repo={repo}
-              mode={mode}
-              refName={revision}
-              path={path}
-              className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent"
-            >
+            <SourceLink owner={owner} repo={repo} mode={mode} refName={revision} path={path} appearance="action">
               Normal view
             </SourceLink>
             <Link
               to="/$owner/$repo/blame/$"
               params={{ owner, repo, _splat: path }}
               search={{ ref: data.revision }}
-              className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent"
+              appearance="action"
             >
               Permalink
             </Link>
-            <button
-              type="button"
-              onClick={() => setEscapedTabs((value) => !value)}
-              className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent"
-            >
+            <Button type="button" onClick={() => setEscapedTabs((value) => !value)} variant="outline" size="xs">
               {escapedTabs ? "Unescape tabs" : "Escape tabs"}
-            </button>
+            </Button>
           </div>
         </div>
         {data.lines.length ? (
@@ -93,7 +82,7 @@ const BlameView = ({
                             <Link
                               to="/$owner/$repo/commit/$hash"
                               params={{ owner, repo, hash: line.commit.sha }}
-                              className="block max-w-60 truncate text-xs hover:text-primary hover:underline"
+                              appearance="default"
                               title={line.commit.message}
                             >
                               {line.commit.message.split("\n")[0]}
@@ -104,7 +93,7 @@ const BlameView = ({
                             <Link
                               to="/$owner/$repo/commit/$hash"
                               params={{ owner, repo, hash: line.commit.sha }}
-                              className="font-mono text-xs text-primary hover:underline"
+                              appearance="code"
                             >
                               {line.commit.sha.slice(0, 10)}
                             </Link>

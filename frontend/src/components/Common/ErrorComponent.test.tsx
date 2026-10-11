@@ -33,7 +33,7 @@ describe("ErrorComponent", () => {
   test("renders Go Home button", () => {
     render(<ErrorComponent />)
 
-    expect(screen.getByRole("button", { name: "Go Home" })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Go Home" })).toBeInTheDocument()
   })
 
   test("Go Home button links to home page", () => {

@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query"
-import { Link as RouterLink } from "@tanstack/react-router"
 import { GitPullRequest } from "lucide-react"
 import { repositoriesListPullRequestsOptions } from "@/client/@tanstack/react-query.gen"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import TrackerFilters, { useTrackerFilters } from "@/components/Repository/TrackerFilters"
+import { Link as RouterLink } from "@/design-system"
 
 interface PullRequestsListProps {
   owner: string
@@ -31,12 +31,7 @@ const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
   return (
     <div className="space-y-4">
       <TrackerFilters filters={filters} label="pull requests" openCount={openCount} closedCount={closedCount}>
-        <RouterLink
-          to="/$owner/$repo/pulls/new"
-          params={{ owner, repo }}
-          className="rounded bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:opacity-90"
-          data-testid="new-pr-btn"
-        >
+        <RouterLink to="/$owner/$repo/pulls/new" params={{ owner, repo }} appearance="default" data-testid="new-pr-btn">
           New pull request
         </RouterLink>
       </TrackerFilters>
@@ -50,13 +45,13 @@ const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
                 data-testid={`pr-${pr.number}`}
               >
                 <GitPullRequest
-                  className={`w-4 h-4 flex-shrink-0 ${pr.state === "open" ? "text-success" : pr.state === "merged" ? "text-purple-500" : "text-muted-foreground"}`}
+                  className={`w-4 h-4 flex-shrink-0 ${pr.state === "open" ? "text-success" : pr.state === "merged" ? "text-merged" : "text-muted-foreground"}`}
                 />
                 <div className="flex-1 min-w-0">
                   <RouterLink
                     to="/$owner/$repo/pulls/$number"
                     params={{ owner, repo, number: String(pr.number) }}
-                    className="text-sm font-medium text-foreground hover:text-primary"
+                    appearance="default"
                   >
                     {pr.title}
                   </RouterLink>

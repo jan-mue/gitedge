@@ -12,3 +12,7 @@ frontend/test-results/
 /playwright/.cache/
 .DS_Store
 openapi.json
+
+frontend/storybook-static/
+frontend/playwright-report/
+.vercel/

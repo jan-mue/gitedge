@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
-import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
+import { useNavigate } from "@tanstack/react-router"
 import { Check, Copy, GitBranch, GitCommitHorizontal, HardDrive, Lock, Tag } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-
 import {
   repositoriesGetRepositoryInfoOptions,
   repositoriesGetStatisticsOptions,
@@ -11,7 +10,7 @@ import {
 import FileFinder from "@/components/Repository/FileFinder"
 import LanguageBar from "@/components/Repository/LanguageBar"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Button, Input, Link as RouterLink, Skeleton } from "@/design-system"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import { formatSize } from "@/utils"
 
@@ -80,33 +79,21 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
 
       {showStatistics && repoInfo && (
         <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
-          <RouterLink
-            to="/$owner/$repo/commits/branch/$branch"
-            params={{ owner, repo, branch: ref }}
-            className="flex items-center gap-1.5 hover:text-primary"
-          >
+          <RouterLink to="/$owner/$repo/commits/branch/$branch" params={{ owner, repo, branch: ref }} appearance="stat">
             <GitCommitHorizontal className="size-4" />
             {statisticsPending ? (
-              <Skeleton className="h-4 w-12" />
+              <Skeleton appearance="short" />
             ) : (
               <span className="font-medium text-foreground">{statistics?.commit_count ?? "—"}</span>
             )}{" "}
             commits
           </RouterLink>
-          <RouterLink
-            to="/$owner/$repo/branches"
-            params={{ owner, repo }}
-            className="flex items-center gap-1.5 hover:text-primary"
-          >
+          <RouterLink to="/$owner/$repo/branches" params={{ owner, repo }} appearance="stat">
             <GitBranch className="h-4 w-4" />
             <span className="font-medium text-foreground">{repoInfo.branch_count}</span>
             <span>{repoInfo.branch_count === 1 ? "branch" : "branches"}</span>
           </RouterLink>
-          <RouterLink
-            to="/$owner/$repo/releases"
-            params={{ owner, repo }}
-            className="flex items-center gap-1.5 hover:text-primary"
-          >
+          <RouterLink to="/$owner/$repo/releases" params={{ owner, repo }} appearance="stat">
             <Tag className="h-4 w-4" />
             <span className="font-medium text-foreground">{repoInfo.tag_count}</span>
             <span>{repoInfo.tag_count === 1 ? "tag" : "tags"}</span>
@@ -122,16 +109,17 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
 
       {showStatistics &&
         (statisticsPending ? (
-          <Skeleton className="h-2 w-full" />
+          <Skeleton appearance="bar" />
         ) : (
           statistics && <LanguageBar languages={statistics.languages ?? []} />
         ))}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative" ref={dropdownRef}>
-          <button
+          <Button
             type="button"
             onClick={() => setBranchDropdownOpen((prev) => !prev)}
-            className="flex items-center gap-1.5 rounded border border-border bg-secondary px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
+            variant="outline"
+            size="sm"
             aria-expanded={branchDropdownOpen}
             aria-label="Switch branch"
             onKeyDown={(event) => {
@@ -142,7 +130,7 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
             <GitBranch className="h-3.5 w-3.5" />
             <span>{gitRef}</span>
             <span className="text-muted-foreground">&#9662;</span>
-          </button>
+          </Button>
 
           {branchDropdownOpen && (
             <div
@@ -154,11 +142,12 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
               </div>
               <div className="max-h-64 overflow-y-auto py-1">
                 {branches?.map((branch) => (
-                  <button
+                  <Button
                     key={branch.name}
                     type="button"
                     onClick={() => handleBranchSelect(branch.name)}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
+                    variant="menu"
+                    size="sm"
                     data-testid={`branch-option-${branch.name}`}
                   >
                     {branch.name === gitRef ? (
@@ -168,7 +157,7 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
                     )}
                     <span className="truncate">{branch.name}</span>
                     {branch.is_default && <span className="ml-auto text-xs text-muted-foreground">default</span>}
-                  </button>
+                  </Button>
                 ))}
                 {branchesError ? (
                   <RepositoryError message="Unable to load branches." retry={() => refetchBranches()} />
@@ -185,33 +174,36 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
         <FileFinder owner={owner} repo={repo} revision={ref} mode={/^[0-9a-f]{40}$/.test(ref) ? "commit" : "branch"} />
 
         <div className="flex w-full min-w-0 items-center gap-2 sm:ml-auto sm:w-auto">
-          <span className="flex h-8 items-center gap-1.5 rounded bg-success px-2.5 text-xs font-bold text-success-foreground">
+          <span className="flex h-8 items-center gap-1.5 rounded bg-success-emphasis px-2.5 text-xs font-bold text-success-foreground">
             <Lock className="h-3 w-3" />
             HTTPS
           </span>
           <div className="flex h-8 min-w-0 flex-1 items-stretch">
-            <input
+            <Input
               type="text"
               readOnly
               value={cloneUrl}
               data-testid="clone-url"
+              aria-label="HTTPS clone URL"
               onFocus={(e) => e.currentTarget.select()}
-              className="h-8 min-w-0 w-full sm:w-72 rounded-l border border-border bg-secondary px-2.5 font-mono text-xs text-muted-foreground focus:outline-none"
+              appearance="clone"
             />
             <div className="relative flex">
-              <button
+              <Button
                 type="button"
                 onClick={() => copy(cloneUrl)}
                 aria-label="Copy clone URL"
                 data-testid="copy-clone-url"
-                className="flex h-8 w-9 items-center justify-center rounded-r border border-l-0 border-border bg-secondary transition-colors hover:bg-accent"
+                variant="outline"
+                size="icon-sm"
+                shape="end"
               >
                 {isCopied ? (
                   <Check className="h-3.5 w-3.5 text-success" />
                 ) : (
                   <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                 )}
-              </button>
+              </Button>
               {isCopied && (
                 <span
                   role="status"

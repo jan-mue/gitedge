@@ -1,14 +1,27 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { createFileRoute, Link as RouterLink, redirect } from "@tanstack/react-router"
+import { createFileRoute, redirect } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-
 import type { Body_login_login_access_token as AccessToken } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { LoadingButton } from "@/components/ui/loading-button"
-import { PasswordInput } from "@/components/ui/password-input"
+import {
+  AuthFooter,
+  AuthForm,
+  AuthHeading,
+  AuthTitle,
+  FieldStack,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Inline,
+  Input,
+  LoadingButton,
+  PasswordInput,
+  Link as RouterLink,
+} from "@/design-system"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
 import { signupsEnabled } from "@/utils"
 
@@ -60,12 +73,12 @@ function Login() {
   return (
     <AuthLayout>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-2xl font-bold">Login to your account</h1>
-          </div>
+        <AuthForm onSubmit={form.handleSubmit(onSubmit)}>
+          <AuthHeading>
+            <AuthTitle>Login to your account</AuthTitle>
+          </AuthHeading>
 
-          <div className="grid gap-4">
+          <FieldStack>
             <FormField
               control={form.control}
               name="username"
@@ -75,7 +88,7 @@ function Login() {
                   <FormControl>
                     <Input data-testid="email-input" placeholder="user@example.com" type="email" {...field} />
                   </FormControl>
-                  <FormMessage className="text-xs" />
+                  <FormMessage appearance="compact" />
                 </FormItem>
               )}
             />
@@ -85,16 +98,16 @@ function Login() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <div className="flex items-center">
+                  <Inline>
                     <FormLabel>Password</FormLabel>
-                    <RouterLink to="/recover-password" className="ml-auto text-sm underline-offset-4 hover:underline">
+                    <RouterLink to="/recover-password" appearance="recovery">
                       Forgot your password?
                     </RouterLink>
-                  </div>
+                  </Inline>
                   <FormControl>
                     <PasswordInput data-testid="password-input" placeholder="Password" {...field} />
                   </FormControl>
-                  <FormMessage className="text-xs" />
+                  <FormMessage appearance="compact" />
                 </FormItem>
               )}
             />
@@ -102,21 +115,21 @@ function Login() {
             <LoadingButton type="submit" loading={loginMutation.isPending}>
               Log In
             </LoadingButton>
-          </div>
+          </FieldStack>
 
-          <div className="text-center text-sm">
+          <AuthFooter>
             {signupsEnabled ? (
               <>
                 Don't have an account yet?{" "}
-                <RouterLink to="/signup" className="underline underline-offset-4">
+                <RouterLink to="/signup" appearance="underline">
                   Sign up
                 </RouterLink>
               </>
             ) : (
               "Sign-ups are disabled."
             )}
-          </div>
-        </form>
+          </AuthFooter>
+        </AuthForm>
       </Form>
     </AuthLayout>
   )

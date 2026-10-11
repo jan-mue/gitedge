@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
-
 import { activityGetRepositoryActivityStatisticsOptions } from "@/client/@tanstack/react-query.gen"
 import ActivityChart from "@/components/Repository/ActivityChart"
 import ActivityContributors from "@/components/Repository/ActivityContributors"
 import ActivityLoading, { type ActivityView } from "@/components/Repository/ActivityLoading"
 import ActivityPulse from "@/components/Repository/ActivityPulse"
 import ActivityRecentCommits from "@/components/Repository/ActivityRecentCommits"
+import { Button } from "@/design-system"
 
 interface RepositoryActivityProps {
   owner: string
@@ -33,20 +33,17 @@ const RepositoryActivity = ({ owner, repo }: RepositoryActivityProps) => {
       <nav className="w-full shrink-0 md:w-48" aria-label="Repository activity">
         <div className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
           {views.map((item) => (
-            <button
+            <Button
               key={item.key}
               type="button"
               aria-pressed={view === item.key}
               aria-controls="activity-content"
               onClick={() => setView(item.key)}
-              className={`whitespace-nowrap rounded px-3 py-2 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-ring ${
-                view === item.key
-                  ? "bg-accent font-medium text-foreground"
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-              }`}
+              variant="quiet"
+              size="sm"
             >
               {item.label}
-            </button>
+            </Button>
           ))}
         </div>
       </nav>
@@ -55,13 +52,9 @@ const RepositoryActivity = ({ owner, repo }: RepositoryActivityProps) => {
         {isError && (
           <div role="alert" className="space-y-3 rounded-lg border border-border p-6 text-center">
             <p className="text-sm text-muted-foreground">Could not load repository activity.</p>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="rounded border border-border bg-secondary px-3 py-1.5 text-sm"
-            >
+            <Button type="button" onClick={() => refetch()} variant="outline" size="sm">
               Try again
-            </button>
+            </Button>
           </div>
         )}
         {data && !isError && (

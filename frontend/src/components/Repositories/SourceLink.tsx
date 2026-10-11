@@ -1,5 +1,5 @@
-import { Link as RouterLink } from "@tanstack/react-router"
 import type { ReactNode } from "react"
+import { Link as RouterLink } from "@/design-system"
 
 export type SourceMode = "branch" | "commit"
 
@@ -12,7 +12,7 @@ interface SourceLinkProps {
   /** Path within the repository, relative to the repo root. */
   path: string
   onClick?: () => void
-  className?: string
+  appearance?: "default" | "action" | "menu"
   "data-testid"?: string
   children: ReactNode
 }
@@ -23,7 +23,7 @@ const SourceLink = ({
   mode,
   refName,
   path,
-  className,
+  appearance = "default",
   onClick,
   "data-testid": testId,
   children,
@@ -34,7 +34,7 @@ const SourceLink = ({
         to={path ? "/$owner/$repo/src/commit/$sha/$" : "/$owner/$repo/src/commit/$sha"}
         params={{ owner, repo, sha: refName, _splat: path }}
         onClick={onClick}
-        className={className}
+        appearance={appearance}
         data-testid={testId}
       >
         {children}
@@ -47,7 +47,7 @@ const SourceLink = ({
       to={path ? "/$owner/$repo/src/branch/$branch/$" : "/$owner/$repo/src/branch/$branch"}
       params={{ owner, repo, branch: refName, _splat: path }}
       onClick={onClick}
-      className={className}
+      appearance={appearance}
       data-testid={testId}
     >
       {children}

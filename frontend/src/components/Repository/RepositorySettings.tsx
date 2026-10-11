@@ -11,8 +11,8 @@ import {
   repositoriesListBranchesOptions,
   repositoriesUpdateRepositoryMutation,
 } from "@/client/@tanstack/react-query.gen"
-import { Button } from "@/components/ui/button"
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -20,9 +20,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { LoadingButton } from "@/components/ui/loading-button"
+  Input,
+  Label,
+  LoadingButton,
+  NativeSelect,
+  Textarea,
+} from "@/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -123,39 +126,31 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
             className="space-y-4 p-4"
           >
             <div>
-              <label htmlFor="repository-name" className="mb-1 block text-sm font-medium">
+              <Label htmlFor="repository-name" appearance="field">
                 Repository name *
-              </label>
+              </Label>
               <Input id="repository-name" {...register("name")} aria-invalid={Boolean(errors.name)} />
               {errors.name && <p className="mt-1 text-sm text-destructive">{errors.name.message}</p>}
             </div>
             <div>
-              <label htmlFor="repository-description" className="mb-1 block text-sm font-medium">
+              <Label htmlFor="repository-description" appearance="field">
                 Description
-              </label>
-              <textarea
-                id="repository-description"
-                {...register("description")}
-                className="min-h-24 w-full rounded border bg-background px-3 py-2 text-sm"
-              />
+              </Label>
+              <Textarea id="repository-description" {...register("description")} />
               {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
             </div>
             <div>
-              <label htmlFor="default-branch" className="mb-1 block text-sm font-medium">
+              <Label htmlFor="default-branch" appearance="field">
                 Default branch
-              </label>
+              </Label>
               {branches?.length ? (
-                <select
-                  id="default-branch"
-                  {...register("default_branch")}
-                  className="w-full rounded border bg-background px-3 py-2 text-sm"
-                >
+                <NativeSelect id="default-branch" {...register("default_branch")}>
                   {branches.map((branch) => (
                     <option key={branch.name} value={branch.name}>
                       {branch.name}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               ) : (
                 <Input id="default-branch" {...register("default_branch")} />
               )}
@@ -201,9 +196,9 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
                     This is permanent. All code and repository records will be deleted. Type {fullName} to confirm.
                   </DialogDescription>
                 </DialogHeader>
-                <label htmlFor="delete-confirmation" className="text-sm font-medium">
+                <Label htmlFor="delete-confirmation" appearance="field">
                   Repository full name
-                </label>
+                </Label>
                 <Input
                   id="delete-confirmation"
                   value={confirmation}

@@ -1,0 +1,9 @@
+id: no-design-system-overrides
+valid:
+  - 'import { Button } from "@/design-system"; const element = <Button variant="success" />'
+  - 'import { Button } from "@/design-system"; const element = <div className="mt-4"><Button /></div>'
+  - 'import { Custom } from "./custom"; const element = <Custom className="mt-4" />'
+invalid:
+  - 'import { Button } from "@/design-system"; const element = <Button className="bg-primary" />'
+  - 'import { Input } from "@/design-system/fields"; const element = <Input style={{color: "red"}} />'
+  - 'import { Button as Action } from "@/design-system"; const element = <Action className="mt-4" />'

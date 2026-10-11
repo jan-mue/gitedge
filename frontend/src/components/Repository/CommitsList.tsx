@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query"
-import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
+import { useNavigate } from "@tanstack/react-router"
 import { Check, GitBranch } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { repositoriesListBranchesOptions, repositoriesListCommitsOptions } from "@/client/@tanstack/react-query.gen"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
+import { Button, Link as RouterLink } from "@/design-system"
 
 interface CommitsListProps {
   owner: string
@@ -66,16 +67,17 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
       )}
       <div className="flex items-center gap-2">
         <div className="relative" ref={dropdownRef}>
-          <button
+          <Button
             type="button"
             onClick={() => setOpen((prev) => !prev)}
-            className="flex items-center gap-1.5 rounded border border-border bg-secondary px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
+            variant="outline"
+            size="sm"
             data-testid="commits-branch-selector"
           >
             <GitBranch className="h-3.5 w-3.5" />
             <span>{ref}</span>
             <span className="text-muted-foreground">&#9662;</span>
-          </button>
+          </Button>
           {open && (
             <div
               className="absolute left-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-lg border border-border bg-card shadow-lg"
@@ -83,11 +85,12 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
             >
               <div className="max-h-64 overflow-y-auto py-1">
                 {branches?.map((branch) => (
-                  <button
+                  <Button
                     key={branch.name}
                     type="button"
                     onClick={() => selectBranch(branch.name)}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
+                    variant="menu"
+                    size="sm"
                   >
                     {branch.name === ref ? (
                       <Check className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
@@ -95,7 +98,7 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
                       <span className="h-3.5 w-3.5 flex-shrink-0" />
                     )}
                     <span className="truncate">{branch.name}</span>
-                  </button>
+                  </Button>
                 ))}
                 {!branches && <div className="px-3 py-2 text-sm text-muted-foreground">Loading...</div>}
               </div>
@@ -121,7 +124,7 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
               <RouterLink
                 to="/$owner/$repo/commit/$hash"
                 params={{ owner, repo, hash: commit.sha }}
-                className="text-sm font-medium text-foreground hover:text-primary"
+                appearance="default"
               >
                 {commit.message.split("\n")[0]}
               </RouterLink>
@@ -130,11 +133,7 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
                 {formatDate(commit.timestamp)}
               </p>
             </div>
-            <RouterLink
-              to="/$owner/$repo/commit/$hash"
-              params={{ owner, repo, hash: commit.sha }}
-              className="flex-shrink-0 font-mono text-xs text-primary hover:underline"
-            >
+            <RouterLink to="/$owner/$repo/commit/$hash" params={{ owner, repo, hash: commit.sha }} appearance="code">
               {commit.sha.slice(0, 10)}
             </RouterLink>
           </div>

@@ -51,18 +51,18 @@ describe("Logo", () => {
     expect(screen.getByText("GitEdge")).toBeInTheDocument()
   })
 
-  test("applies custom className to full variant", () => {
-    render(<Logo variant="full" className="custom-class" asLink={false} />)
+  test("supports the hero size for the full variant", () => {
+    render(<Logo variant="full" size="hero" asLink={false} />)
 
     const container = screen.getByText("GitEdge").parentElement
-    expect(container).toHaveClass("custom-class")
+    expect(container).toHaveClass("h-16")
   })
 
-  test("applies custom className to icon variant", () => {
-    render(<Logo variant="icon" className="custom-icon-class" asLink={false} />)
+  test("supports the hero size for the icon variant", () => {
+    render(<Logo variant="icon" size="hero" asLink={false} />)
 
     const svg = document.querySelector("svg")
-    expect(svg).toHaveClass("custom-icon-class")
+    expect(svg).toHaveClass("size-16")
   })
 
   test("full variant has correct flex layout", () => {

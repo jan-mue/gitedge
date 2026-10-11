@@ -1,8 +1,8 @@
-import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
+import { useNavigate } from "@tanstack/react-router"
 import { FileText, Folder } from "lucide-react"
-
 import type { CommitInfo, TreeEntry } from "@/client"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
+import { Button, Link as RouterLink } from "@/design-system"
 import { formatSize } from "@/utils"
 
 interface FileBrowserProps {
@@ -70,7 +70,7 @@ const FileBrowser = ({
             to="/$owner/$repo/commit/$hash"
             params={{ owner, repo, hash: lastCommit.sha }}
             data-testid="last-commit-sha"
-            className="rounded bg-accent px-1.5 py-0.5 font-mono text-xs text-primary hover:underline"
+            appearance="code"
           >
             {lastCommit.sha.slice(0, 10)}
           </RouterLink>
@@ -82,25 +82,19 @@ const FileBrowser = ({
       )}
 
       {treePath && (
-        <button
-          type="button"
-          onClick={handleParentClick}
-          className="flex items-center gap-3 px-4 py-2 hover:bg-accent/50 border-b border-border text-sm text-primary transition-colors w-full text-left"
-          data-testid="tree-entry-parent"
-        >
+        <Button type="button" onClick={handleParentClick} variant="row" size="sm" data-testid="tree-entry-parent">
           <Folder className="w-4 h-4 text-primary flex-shrink-0" />
           <span>..</span>
-        </button>
+        </Button>
       )}
 
-      {entries.map((entry, index) => (
-        <button
+      {entries.map((entry) => (
+        <Button
           key={entry.path}
           type="button"
           onClick={() => handleEntryClick(entry)}
-          className={`flex items-center gap-3 px-4 py-2 hover:bg-accent/50 text-sm transition-colors w-full text-left ${
-            index < entries.length - 1 || treePath ? "border-b border-border" : ""
-          }`}
+          variant="row"
+          size="sm"
           data-testid={`tree-entry-${entry.name}`}
         >
           {entry.type === "tree" ? (
@@ -112,7 +106,7 @@ const FileBrowser = ({
           {entry.size != null && (
             <span className="ml-auto text-xs text-muted-foreground">{formatSize(entry.size)}</span>
           )}
-        </button>
+        </Button>
       ))}
 
       {entries.length === 0 && !treePath && (

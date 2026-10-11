@@ -1,0 +1,19 @@
+.story-canvas {
+  color: var(--foreground);
+  background: var(--background);
+  min-height: 120px;
+}
+.sbdocs.sbdocs-wrapper {
+  background: var(--background);
+  color: var(--foreground);
+}
+.sbdocs.sbdocs-content {
+  max-width: 1120px;
+}
+.sbdocs h1,
+.sbdocs h2,
+.sbdocs h3,
+.sbdocs p,
+.sbdocs li {
+  color: var(--foreground);
+}

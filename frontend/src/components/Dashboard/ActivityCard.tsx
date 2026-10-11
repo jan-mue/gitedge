@@ -1,9 +1,7 @@
-import { Link } from "@tanstack/react-router"
 import { CircleDot, GitMerge, GitPullRequest, MessageSquare, MoreHorizontal } from "lucide-react"
-import { type ComponentPropsWithRef, useState } from "react"
-
+import { type ComponentProps, useState } from "react"
 import type { ActivityPublic } from "@/client"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Link } from "@/design-system"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import useCustomToast from "@/hooks/useCustomToast"
 
@@ -32,10 +30,16 @@ const formatTime = (date: string) => {
   return new Date(date).toLocaleDateString()
 }
 
-const TargetLink = ({ activity, ...props }: ComponentPropsWithRef<"a"> & { activity: ActivityPublic }) => {
+const TargetLink = ({
+  activity,
+  ...props
+}: Omit<ComponentProps<"a">, "className" | "style"> & {
+  activity: ActivityPublic
+  appearance?: "default" | "muted" | "inherited"
+}) => {
   const owner = activity.repo_owner
   const repo = activity.repo_name
-  if (!owner || !repo) return <span className={props.className}>{props.children}</span>
+  if (!owner || !repo) return <span>{props.children}</span>
   if (activity.target_number != null && activity.target_type === "pull_request")
     return (
       <Link
@@ -131,26 +135,18 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
             to="/profile/$username"
             params={{ username: activity.actor_username }}
             aria-label={`View ${activity.actor_username}'s profile`}
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-foreground"
+            appearance="stat"
           >
             {activity.actor_username.slice(0, 1).toUpperCase()}
           </Link>
           <div className="min-w-0 [overflow-wrap:anywhere]">
             <p className="text-sm leading-5 text-foreground">
-              <Link
-                to="/profile/$username"
-                params={{ username: activity.actor_username }}
-                className="font-semibold hover:text-primary"
-              >
+              <Link to="/profile/$username" params={{ username: activity.actor_username }} appearance="default">
                 {activity.actor_username}
               </Link>{" "}
               {activityActions[activity.kind] ?? activity.kind}{" "}
               {owner && repo && (
-                <Link
-                  to="/$owner/$repo"
-                  params={{ owner, repo }}
-                  className="font-semibold text-primary hover:underline"
-                >
+                <Link to="/$owner/$repo" params={{ owner, repo }} appearance="default">
                   {owner}/{repo}
                 </Link>
               )}
@@ -169,13 +165,9 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
         {owner && repo && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Activity options"
-                className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
+              <Button type="button" aria-label="Activity options" variant="quiet" size="sm">
                 <MoreHorizontal className="size-4" />
-              </button>
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
@@ -189,7 +181,7 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
       {activity.title && (
         <div className="px-4 pb-4">
           <h3 className="mb-2 break-words text-base font-semibold [overflow-wrap:anywhere]">
-            <TargetLink activity={activity} className="hover:text-primary">
+            <TargetLink activity={activity} appearance="default">
               {activity.title}
               {activity.target_number != null && (
                 <>
@@ -202,7 +194,7 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
           {isDiscussion && state && (
             <div className="mb-3 flex items-center gap-2">
               <span
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${state === "merged" ? "bg-[hsl(280_60%_35%)] text-white" : state === "closed" ? "bg-destructive/15 text-destructive" : "bg-success/15 text-success"}`}
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${state === "merged" ? "bg-merged text-merged-foreground" : state === "closed" ? "bg-destructive/15 text-destructive" : "bg-success/15 text-success"}`}
               >
                 <StatusIcon className="size-3" aria-hidden="true" />
                 {state === "merged" ? "Merged" : state === "closed" ? "Closed" : "Open"}
@@ -217,7 +209,7 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
               {activity.kind === "comment" && <p className="mb-2 text-xs text-muted-foreground">Comment</p>}
               <Description text={expanded || !isLong ? body : `${body.slice(0, 200).trimEnd()}…`} />
               {expanded && activity.preview?.body_truncated && (
-                <TargetLink activity={activity} className="mt-2 inline-block text-sm text-primary hover:underline">
+                <TargetLink activity={activity} appearance="default">
                   {activity.kind === "comment" ? "View full comment" : "View full description"}
                 </TargetLink>
               )}
@@ -227,19 +219,20 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
             <p className="rounded-lg bg-secondary p-4 text-sm text-muted-foreground">Comment preview unavailable.</p>
           )}
           {isLong && (
-            <button
+            <Button
               type="button"
               aria-expanded={expanded}
               aria-controls={bodyId}
               onClick={() => setExpanded((value) => !value)}
-              className="mt-2 text-sm font-medium underline underline-offset-2 hover:text-primary"
+              variant="link"
+              size="sm"
             >
               {expanded ? "Show less" : "Read more"}
-            </button>
+            </Button>
           )}
           {isDiscussion && (
             <footer className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-              <TargetLink activity={activity} className="inline-flex items-center gap-1.5 hover:text-foreground">
+              <TargetLink activity={activity} appearance="muted">
                 <MessageSquare className="size-3.5" aria-hidden="true" />
                 {activity.preview?.comments_count
                   ? `${activity.preview.comments_count} ${activity.preview.comments_count === 1 ? "comment" : "comments"}`

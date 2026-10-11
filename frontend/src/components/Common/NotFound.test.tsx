@@ -33,7 +33,7 @@ describe("NotFound", () => {
   test("renders Go Back button", () => {
     render(<NotFound />)
 
-    expect(screen.getByRole("button", { name: "Go Back" })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Go Back" })).toBeInTheDocument()
   })
 
   test("Go Back button links to home page", () => {

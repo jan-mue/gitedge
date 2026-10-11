@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src", ".storybook", "vercel.ts", "playwright.storybook.config.ts", "storybook-tests"],
+  "compilerOptions": { "types": ["node", "vitest/globals", "msw-storybook-addon/csf3"] }
+}
