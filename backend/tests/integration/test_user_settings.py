@@ -210,20 +210,18 @@ class TestAppearanceSettings:
         page.goto(f"{app_url}/settings")
 
         page.get_by_test_id("theme-button").click()
-        if page.evaluate("() => document.documentElement.classList.contains('dark')"):
-            page.get_by_test_id("light-mode").click()
-            page.get_by_test_id("theme-button").click()
-
-        is_light_mode = page.evaluate("() => document.documentElement.classList.contains('light')")
-        assert is_light_mode is True
+        page.get_by_test_id("light-mode").click()
+        expect(page.locator("html")).to_have_class("light")
+        expect(page.get_by_test_id("light-mode")).not_to_be_visible()
 
         page.get_by_test_id("theme-button").click()
         page.get_by_test_id("dark-mode").click()
-        is_dark_mode = page.evaluate("() => document.documentElement.classList.contains('dark')")
-        assert is_dark_mode is True
+        expect(page.locator("html")).to_have_class("dark")
+        expect(page.get_by_test_id("dark-mode")).not_to_be_visible()
 
         log_out_user(page, app_url)
         log_in_user(page, app_url, FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD)
 
-        is_dark_mode = page.evaluate("() => document.documentElement.classList.contains('dark')")
-        assert is_dark_mode is True
+        expect(page.locator("html")).to_have_class("dark")
+        page.reload()
+        expect(page.locator("html")).to_have_class("dark")
