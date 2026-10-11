@@ -170,15 +170,16 @@ class TestStarAndWatch:
 class TestFork:
     """Test forking a repository through the UI."""
 
-    def test_fork_creates_empty_repository(self, app_url: str, page: Page) -> None:
-        """Forking a repository navigates to the new, empty fork.
+    def test_fork_copies_repository_content_and_refs(self, app_url: str, page: Page) -> None:
+        """Forking copies source files, history, branches and tags into a usable Git repository.
 
         Args:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
         foreign_owner = _create_foreign_owner(app_url)
-        _push_repo(app_url, f"{foreign_owner}/forkrepo.git")
+        source_url = f"{app_url}/{foreign_owner}/forkrepo.git"
+        _push_repo(app_url, f"{foreign_owner}/forkrepo.git", extra_branches=("develop",), tag="v1.0.0")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         page.goto(f"{app_url}/{foreign_owner}/forkrepo")
 
@@ -191,7 +192,21 @@ class TestFork:
         page.get_by_test_id("fork-repo-submit").click()
 
         page.wait_for_url(f"{app_url}/{SUPERUSER_USERNAME}/{fork_name}")
-        expect(page.get_by_test_id("empty-repository")).to_be_visible(timeout=15000)
+        expect(page.get_by_role("heading", name="Test Repository", exact=True)).to_be_visible(timeout=15000)
+        expect(page.get_by_role("button", name="README.md")).to_be_visible()
+        expect(page.get_by_role("button", name="src", exact=True)).to_be_visible()
+
+        fork_url = f"{app_url}/{SUPERUSER_USERNAME}/{fork_name}.git"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            clone_dir = Path(tmpdir) / "fork"
+            _run_git(Path(tmpdir), ["clone", fork_url, str(clone_dir)])
+            assert (clone_dir / "README.md").read_text() == "# Test Repository\n\nA test repository.\n"
+            assert (clone_dir / "src" / "main.py").read_text() == 'print("Hello, World!")\n'
+            source_refs = _run_git(clone_dir, ["ls-remote", source_url])
+            fork_refs = _run_git(clone_dir, ["ls-remote", fork_url])
+            assert source_refs == fork_refs
+            assert "refs/heads/develop" in fork_refs
+            assert "refs/tags/v1.0.0" in fork_refs
 
 
 class TestBranchesPage:

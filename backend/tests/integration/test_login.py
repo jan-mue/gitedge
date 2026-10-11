@@ -124,8 +124,11 @@ class TestLogout:
 
     def test_redirects_to_login_when_token_is_wrong(self, page: Page, app_url: str) -> None:
         """User with invalid token should be redirected to login."""
-        page.goto(f"{app_url}/settings")
+        page.goto(f"{app_url}/login")
+        expect(page.get_by_role("button", name="Log In", exact=True)).to_be_visible()
         page.evaluate("() => localStorage.setItem('access_token', 'invalid_token')")
         page.goto(f"{app_url}/settings")
         page.wait_for_url(f"{app_url}/login")
         expect(page).to_have_url(f"{app_url}/login")
+        expect(page.get_by_role("button", name="Log In", exact=True)).to_be_visible()
+        assert page.evaluate("() => localStorage.getItem('access_token')") is None

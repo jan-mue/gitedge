@@ -126,7 +126,7 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
   return (
     <article className="overflow-hidden rounded-lg border border-border bg-card">
       <header className="flex items-start justify-between gap-3 px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-start gap-2">
           <Link
             to="/profile/$username"
             params={{ username: activity.actor_username }}
@@ -136,7 +136,7 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
             {activity.actor_username.slice(0, 1).toUpperCase()}
           </Link>
           <div className="min-w-0 [overflow-wrap:anywhere]">
-            <p className="text-sm text-foreground">
+            <p className="text-sm leading-5 text-foreground">
               <Link
                 to="/profile/$username"
                 params={{ username: activity.actor_username }}
@@ -159,7 +159,7 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
               <time
                 dateTime={activity.created_at}
                 title={new Date(activity.created_at).toLocaleString()}
-                className="text-xs text-muted-foreground"
+                className="block text-xs leading-4 text-muted-foreground"
               >
                 {formatTime(activity.created_at)}
               </time>

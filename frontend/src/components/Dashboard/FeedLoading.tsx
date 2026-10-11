@@ -10,13 +10,17 @@ const FeedLoading = () => (
           className="feed-loading-card overflow-hidden rounded-lg border bg-card"
           style={{ animationDelay: `${card * 100}ms` }}
         >
-          <div className="flex items-center gap-3 px-4 py-3">
-            <div className="feed-loading-avatar flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary/60">
+          <div className="flex items-start gap-2 px-4 py-3">
+            <div className="feed-loading-avatar flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary/60">
               <GitBranch className="size-4" />
             </div>
-            <div className="flex-1 space-y-2">
-              <div className="feed-loading-line h-3 w-2/3 rounded-full bg-muted" />
-              <div className="feed-loading-line h-2 w-24 rounded-full bg-muted" />
+            <div className="flex-1">
+              <div className="flex h-5 items-center">
+                <div className="feed-loading-line h-3 w-2/3 rounded-full bg-muted" />
+              </div>
+              <div className="flex h-4 items-center">
+                <div className="feed-loading-line h-2 w-24 rounded-full bg-muted" />
+              </div>
             </div>
             <div className="feed-loading-line size-5 rounded bg-muted" />
           </div>
