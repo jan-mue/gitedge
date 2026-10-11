@@ -38,7 +38,6 @@ const Feed = () => {
     refetch: refetchRepos,
   } = useQuery({
     ...repositoriesListRepositoriesOptions(),
-    // Let the first activity page paint before loading secondary repository data.
     enabled: Boolean(feed) || feedError,
   })
 

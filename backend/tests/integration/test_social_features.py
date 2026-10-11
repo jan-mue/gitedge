@@ -530,8 +530,7 @@ class TestActivityAndFeed:
         second = page.request.post(comments_url, headers=headers, data={"body": "Second actual reply"})
         assert second.status == 201
 
-        # Keep Date.now fixed so the feed cannot become stale naturally during the test.
-        # Timers still run normally; a new request must come from mutation invalidation.
+        # Prevent cache expiry from masking missing mutation invalidation.
         page.clock.set_fixed_time(datetime.now(UTC))
         page.goto(f"{app_url}/")
         page.evaluate("window.commentFeedNavigationMarker = 'same-document'")

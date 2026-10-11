@@ -156,11 +156,7 @@ class BlobBackend(Backend):
         return self._normalize_path(path) in self._repos
 
     def remove_repository(self, path: str) -> None:
-        """Evict a repository after deletion or rename.
-
-        Args:
-            path: Repository path.
-        """
+        """Evict a repository after deletion or rename."""
         self._repos.pop(self._normalize_path(path), None)
 
 

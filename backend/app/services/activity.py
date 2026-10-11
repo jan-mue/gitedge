@@ -186,7 +186,6 @@ class ActivityService:
         """
         activities = await self.activity_store.list_feed(user.id, offset, limit)
         if not activities:
-            # An exhausted personalized feed must not switch to global activity.
             if offset and await self.activity_store.list_feed(user.id, 0, 1):
                 return ActivitiesPublic(data=[], count=0)
             activities = await self.activity_store.list_recent(offset, limit)

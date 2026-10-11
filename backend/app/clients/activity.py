@@ -90,16 +90,7 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
         return list(result.all())
 
     async def list_feed(self, user_id: uuid.UUID, offset: int = 0, limit: int = 50) -> list[Activity]:
-        """Select a personalized feed page using ownership and star subqueries.
-
-        Args:
-            user_id: Authenticated user.
-            offset: Number of events to skip.
-            limit: Maximum number of events.
-
-        Returns:
-            Events with actor and repository metadata loaded.
-        """
+        """Select a personalized feed page using ownership and star subqueries."""
         owned = select(Repository.id).where(Repository.owner_id == user_id)
         starred = select(Star.repo_id).where(Star.user_id == user_id)
         result = await self.db.scalars(

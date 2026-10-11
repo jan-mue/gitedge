@@ -85,11 +85,7 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         return tuple(options)
 
     async def delete(self, obj: Repository) -> None:
-        """Delete dependent records in one transaction and detach surviving forks.
-
-        Args:
-            obj: Repository to delete.
-        """
+        """Delete dependent records in one transaction and detach surviving forks."""
         related_prs = select(PullRequest.id).where(
             or_(PullRequest.head_repo_id == obj.id, PullRequest.base_repo_id == obj.id)
         )
@@ -97,7 +93,6 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
             await self.db.scalars(select(Issue.id).where(or_(Issue.repo_id == obj.id, Issue.id.in_(related_prs))))
         )
         await self.db.execute(delete(Comment).where(Comment.issue_id.in_(issue_ids)))
-        # Delete the joined subclass table before its issue records.
         await self.db.execute(
             delete(cast(Table, PullRequest.__table__)).where(PullRequest.__table__.c.id.in_(issue_ids))
         )

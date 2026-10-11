@@ -37,8 +37,6 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
   const tree = source && "entries" in source ? source : undefined
   const blob = source && "content" in source ? source : undefined
   const parentPath = path.split("/").slice(0, -1).join("/")
-  // Warm directory listings identify files immediately; direct links resolve the
-  // parent in parallel so extensionless files get the same code-shaped skeleton.
   const { data: parent } = useQuery({
     ...repositoriesGetSourceOptions({ path: { owner, repo }, query: { ref: refName, source_path: parentPath } }),
     enabled: Boolean(path) && isPending,

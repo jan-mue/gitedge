@@ -482,7 +482,6 @@
   background: var(--accent);
 }
 
-/* Honor reduced-motion preferences for loading and page transitions. */
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse,
   .animate-spin,
@@ -500,7 +499,6 @@ tr:target {
   overflow: hidden;
 }
 
-/* One moving highlight per card keeps the feed animation light on the GPU. */
 .feed-loading-card {
   position: relative;
   animation: feed-reveal 420ms ease-out both;

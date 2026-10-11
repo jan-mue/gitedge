@@ -37,7 +37,6 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
   const invalidate = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: commentsListCommentsQueryKey({ path: { owner, repo, number } }) }),
-      // Match regular and paginated feeds, including every cached page size.
       queryClient.invalidateQueries({ queryKey: activityGetFeedQueryKey() }),
     ])
 

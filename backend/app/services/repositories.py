@@ -409,39 +409,14 @@ class RepositoryService:
         return await self._to_schema(entity)
 
     async def _editable_repository(self, owner: str, name: str, user: User) -> RepositoryEntity:
-        """Resolve a repository and require its owner or an administrator.
-
-        Args:
-            owner: Owner name.
-            name: Repository name.
-            user: Authenticated user.
-
-        Returns:
-            The editable repository.
-
-        Raises:
-            HTTPException: If the user cannot manage this repository.
-        """
+        """Resolve a repository and require its owner or an administrator."""
         entity = await self.repository_store.get_by_owner_and_name(owner, name)
         if entity.owner_id != user.id and not user.is_superuser:
             raise HTTPException(status_code=403, detail="Only the repository owner can change settings")
         return entity
 
     async def update_repository(self, owner: str, name: str, body: RepositoryUpdate, user: User) -> Repository:
-        """Save settings, keeping Git storage and the default HEAD in sync.
-
-        Args:
-            owner: Owner name.
-            name: Repository name.
-            body: Settings to change.
-            user: Authenticated owner or administrator.
-
-        Returns:
-            The updated repository.
-
-        Raises:
-            HTTPException: If the new name or default branch is invalid or already taken.
-        """
+        """Save settings, keeping Git storage and the default HEAD in sync."""
         entity = await self._editable_repository(owner, name, user)
         owner = entity.owner.name
         repo = await self.load_repository(owner, name)
@@ -463,7 +438,6 @@ class RepositoryService:
         changes = body.model_dump(exclude_unset=True)
         changes = {key: value for key, value in changes.items() if value is not None or key == "description"}
         await self.repository_store.update(entity, changes)
-        # Reload server-generated timestamps and eager relationships after commit.
         entity = await self.repository_store.get_by_owner_and_name(owner, new_name)
         if new_name != name:
             await self._delete_storage(repo_key(owner, name))
@@ -475,12 +449,7 @@ class RepositoryService:
         return await self._to_schema(entity)
 
     async def _copy_storage(self, source: str, destination: str) -> None:
-        """Copy all Git objects and refs before renaming a repository.
-
-        Args:
-            source: Existing storage key.
-            destination: New storage key.
-        """
+        """Copy all Git objects and refs before renaming a repository."""
         for key in await self.blob_client.list_keys(f"{source}/"):
             data = await self.blob_client.get(key)
             if data is not None:
@@ -491,14 +460,7 @@ class RepositoryService:
                 await self.redis_client.set(destination + key[len(source) :], value)
 
     async def copy_repository(self, owner: str, name: str, target_owner: str, target_name: str) -> None:
-        """Copy persisted Git objects and refs into a newly created fork.
-
-        Args:
-            owner: Source owner name.
-            name: Source repository name.
-            target_owner: Destination owner name.
-            target_name: Destination repository name.
-        """
+        """Copy persisted Git objects and refs into a newly created fork."""
         await self._copy_storage(repo_key(owner, name), repo_key(target_owner, target_name))
         self.backend.remove_repository(repo_key(target_owner, target_name))
         await self.load_repository(target_owner, target_name)
@@ -506,24 +468,14 @@ class RepositoryService:
         await self.cache_client.invalidate(self._cache_group(owner, name))
 
     async def _delete_storage(self, key: str) -> None:
-        """Remove a repository's objects and refs without touching similarly named repositories.
-
-        Args:
-            key: Repository storage key.
-        """
+        """Remove a repository's objects and refs without touching similarly named repositories."""
         for blob_key in await self.blob_client.list_keys(f"{key}/"):
             await self.blob_client.delete(blob_key)
         for ref_key in await self.redis_client.scan_keys(f"{key}/refs/*"):
             await self.redis_client.delete(ref_key)
 
     async def delete_repository(self, owner: str, name: str, user: User) -> None:
-        """Delete repository data and metadata, retaining independent forks.
-
-        Args:
-            owner: Owner name.
-            name: Repository name.
-            user: Authenticated owner or administrator.
-        """
+        """Delete repository data and metadata, retaining independent forks."""
         entity = await self._editable_repository(owner, name, user)
         owner = entity.owner.name
         forks = await self.repository_store.list_by_fork_of(entity.id, limit=10000)
@@ -538,15 +490,7 @@ class RepositoryService:
 
     @staticmethod
     def _revision_files(repo: BlobRepository, sha: bytes) -> list[tuple[str, Blob]]:
-        """Collect blobs from a revision, skipping submodules and symlinks.
-
-        Args:
-            repo: Loaded Git repository.
-            sha: Commit identifier.
-
-        Returns:
-            Paths and their file blobs.
-        """
+        """Collect blobs from a revision, skipping submodules and symlinks."""
         root = RepositoryService._get_tree_at_path(repo, sha, "")
         pending = [("", root)]
         files: list[tuple[str, Blob]] = []
@@ -565,16 +509,7 @@ class RepositoryService:
         return files
 
     async def get_file_index(self, owner: str, name: str, ref: str) -> FileIndex:
-        """Return all searchable file paths at a revision.
-
-        Args:
-            owner: Owner name.
-            name: Repository name.
-            ref: Branch, tag, or commit.
-
-        Returns:
-            Sorted file paths.
-        """
+        """Return all searchable file paths at a revision."""
 
         async def compute() -> FileIndex:
             repo = await self.load_repository(owner, name)
@@ -594,15 +529,7 @@ class RepositoryService:
 
     @staticmethod
     def _compute_statistics(repo: BlobRepository, sha: bytes) -> RepositoryStatistics:
-        """Compute byte-weighted language shares and reachable commit count.
-
-        Args:
-            repo: Loaded Git repository.
-            sha: Selected commit.
-
-        Returns:
-            Source statistics; binary data contributes to size but not languages.
-        """
+        """Compute language shares for text files, total bytes, and reachable commit count."""
         sizes: dict[str, int] = {}
         total = 0
         for path, blob in RepositoryService._revision_files(repo, sha):
@@ -630,16 +557,7 @@ class RepositoryService:
         )
 
     async def get_statistics(self, owner: str, name: str, ref: str) -> RepositoryStatistics:
-        """Return cached statistics without slowing the source listing.
-
-        Args:
-            owner: Owner name.
-            name: Repository name.
-            ref: Branch, tag, or commit.
-
-        Returns:
-            Statistics for the selected revision.
-        """
+        """Return cached statistics without slowing the source listing."""
 
         async def compute() -> RepositoryStatistics:
             repo = await self.load_repository(owner, name)
@@ -657,20 +575,7 @@ class RepositoryService:
         )
 
     async def get_blame(self, owner: str, name: str, ref: str, file_path: str) -> BlameContent:
-        """Attribute every file line to its original commit, following renames.
-
-        Args:
-            owner: Owner name.
-            name: Repository name.
-            ref: Branch, tag, or commit.
-            file_path: File path within the revision.
-
-        Returns:
-            Attributed file lines.
-
-        Raises:
-            HTTPException: If the file is binary or too large for inline attribution.
-        """
+        """Attribute every file line to its original commit, following renames."""
 
         async def compute() -> BlameContent:
             repo = await self.load_repository(owner, name)
@@ -707,17 +612,7 @@ class RepositoryService:
         )
 
     async def get_raw(self, owner: str, name: str, ref: str, file_path: str) -> bytes:
-        """Return a file's original bytes.
-
-        Args:
-            owner: Owner name.
-            name: Repository name.
-            ref: Branch, tag, or commit.
-            file_path: File path within the revision.
-
-        Returns:
-            The unmodified file data.
-        """
+        """Return a file's original bytes."""
         repo = await self.load_repository(owner, name)
         sha = self._resolve_ref(repo, ref)
         blob, _ = self._get_blob_at_path(repo, sha, file_path)
@@ -792,17 +687,7 @@ class RepositoryService:
         raise HTTPException(status_code=404, detail="Repository not found")
 
     async def get_source(self, owner: str, name: str, ref: str, path: str) -> TreeListing | FileContent:
-        """Resolve a source path in one request, avoiding a failed tree request in the browser.
-
-        Args:
-            owner: Owner name.
-            name: Repository name.
-            ref: Branch, tag, or commit.
-            path: Source path.
-
-        Returns:
-            A directory listing or highlighted file.
-        """
+        """Resolve a source path in one request, avoiding a failed tree request in the browser."""
         try:
             return await self.get_tree(owner, name, ref, path)
         except HTTPException as exc:
