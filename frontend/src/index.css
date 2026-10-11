@@ -41,107 +41,6 @@
   background: var(--muted-foreground);
 }
 
-/* File viewer — GitHub/Gitea-style code display */
-.file-viewer .highlight {
-  margin: 0;
-  border-radius: 0;
-}
-
-.file-viewer .highlight pre {
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 0.8125rem;
-  line-height: 1.45;
-}
-
-.file-viewer .highlight code {
-  font-family: inherit;
-}
-
-.file-viewer .highlight table.highlighttable,
-.file-viewer .highlight table {
-  width: 100%;
-  border-spacing: 0;
-  border-collapse: collapse;
-  table-layout: auto;
-}
-
-.file-viewer .highlight td.linenos {
-  width: 1%;
-  min-width: 50px;
-  padding: 0;
-  vertical-align: top;
-  user-select: none;
-  text-align: right;
-}
-
-.file-viewer .highlight td.linenos .linenodiv pre {
-  margin: 0;
-  padding: 8px 12px 8px 16px;
-  background: transparent;
-}
-
-.file-viewer .highlight td.linenos a,
-.file-viewer .highlight td.linenos .linenodiv pre span {
-  color: var(--muted-foreground);
-  text-decoration: none;
-  font-size: 0.75rem;
-  line-height: 1.45;
-}
-
-.file-viewer .highlight td.linenos a:hover {
-  color: var(--foreground);
-}
-
-.file-viewer .highlight td.code {
-  padding: 0;
-  vertical-align: top;
-}
-
-.file-viewer .highlight td.code .highlight pre {
-  margin: 0;
-  padding: 8px 16px;
-  overflow-x: auto;
-}
-
-/* Light mode: GitHub-style background */
-.file-viewer .highlight {
-  background: var(--card);
-  color: var(--foreground);
-}
-
-.file-viewer .highlight td.linenos {
-  border-right: 1px solid var(--border);
-}
-
-/* Dark mode overrides */
-.dark .file-viewer .highlight {
-  background: var(--card);
-  color: var(--foreground);
-}
-
-/* Pygments colors namespaces like keywords and leaves light-theme bold active. */
-.file-viewer .highlight .nn {
-  @variant dark {
-    @apply text-foreground font-normal;
-  }
-}
-
-.dark .file-viewer .highlight td.linenos {
-  border-right: 1px solid var(--border);
-}
-
-.dark .file-viewer .highlight td.linenos a,
-.dark .file-viewer .highlight td.linenos .linenodiv pre span {
-  color: var(--muted-foreground);
-}
-
-.dark .file-viewer .highlight td.linenos a:hover {
-  color: var(--foreground);
-}
-
 .markdown-body {
   font-size: 0.9375rem;
   line-height: 1.7;
@@ -353,6 +252,107 @@
   background: var(--accent);
 }
 
+/* File viewer — GitHub/Gitea-style code display */
+.file-viewer .highlight {
+  margin: 0;
+  border-radius: 0;
+}
+
+.file-viewer .highlight pre {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.file-viewer .highlight code {
+  font-family: inherit;
+}
+
+.file-viewer .highlight table.highlighttable,
+.file-viewer .highlight table {
+  width: 100%;
+  border-spacing: 0;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.file-viewer .highlight td.linenos {
+  width: 1%;
+  min-width: 50px;
+  padding: 0;
+  vertical-align: top;
+  user-select: none;
+  text-align: right;
+}
+
+.file-viewer .highlight td.linenos .linenodiv pre {
+  margin: 0;
+  padding: 8px 12px 8px 16px;
+  background: transparent;
+}
+
+.file-viewer .highlight td.linenos a,
+.file-viewer .highlight td.linenos .linenodiv pre span {
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.file-viewer .highlight td.linenos a:hover {
+  color: var(--foreground);
+}
+
+.file-viewer .highlight td.code {
+  padding: 0;
+  vertical-align: top;
+}
+
+.file-viewer .highlight td.code .highlight pre {
+  margin: 0;
+  padding: 8px 16px;
+  overflow-x: auto;
+}
+
+/* Light mode: GitHub-style background */
+.file-viewer .highlight {
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.file-viewer .highlight td.linenos {
+  border-right: 1px solid var(--border);
+}
+
+/* Dark mode overrides */
+.dark .file-viewer .highlight {
+  background: var(--card);
+  color: var(--foreground);
+}
+
+/* Pygments colors namespaces like keywords and leaves light-theme bold active. */
+.file-viewer .highlight .nn {
+  @variant dark {
+    @apply text-foreground font-normal;
+  }
+}
+
+.dark .file-viewer .highlight td.linenos {
+  border-right: 1px solid var(--border);
+}
+
+.dark .file-viewer .highlight td.linenos a,
+.dark .file-viewer .highlight td.linenos .linenodiv pre span {
+  color: var(--muted-foreground);
+}
+
+.dark .file-viewer .highlight td.linenos a:hover {
+  color: var(--foreground);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse,
   .animate-spin,
@@ -430,4 +430,9 @@ tr:target {
   .repository-skeleton::after {
     animation: none;
   }
+}
+
+.markdown-body pre:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }

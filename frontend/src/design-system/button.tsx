@@ -70,6 +70,9 @@ export const Button = ({
       data-slot="button"
       aria-busy={loading || undefined}
       disabled={loading || disabled}
+      aria-disabled={asChild && (loading || disabled) ? true : undefined}
+      tabIndex={asChild && (loading || disabled) ? -1 : props.tabIndex}
+      onClick={asChild && (loading || disabled) ? (event) => event.preventDefault() : props.onClick}
       className={cn(buttonVariants({ variant, size, shape, fullWidth, reveal, visibility }))}
     >
       {loading && <Loader2 aria-hidden="true" className="size-4 animate-spin" />}

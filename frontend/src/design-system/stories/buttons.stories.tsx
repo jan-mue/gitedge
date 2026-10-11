@@ -131,3 +131,8 @@ export const RepositoryActions: Story = {
     </div>
   ),
 }
+
+export const AnchorAction: Story = { args: { asChild: true, children: <a href="#repository">View repository</a> } }
+export const DisabledAnchor: Story = {
+  args: { asChild: true, disabled: true, children: <a href="#repository">View repository</a> },
+}

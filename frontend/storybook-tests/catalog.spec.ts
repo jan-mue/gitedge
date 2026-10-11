@@ -12,6 +12,20 @@ const test = baseTest.extend<object, { catalogPage: Page }>({
         baseURL: workerInfo.project.use.baseURL,
         viewport: workerInfo.project.use.viewport,
       })
+      const theme = workerInfo.project.name.startsWith("dark") ? "dark" : "light"
+      await context.addInitScript((theme) => {
+        const apply = () => document.documentElement?.classList.add(theme)
+        if (document.documentElement) apply()
+        else {
+          const observer = new MutationObserver(() => {
+            if (document.documentElement) {
+              apply()
+              observer.disconnect()
+            }
+          })
+          observer.observe(document, { childList: true })
+        }
+      }, theme)
       const page = await context.newPage()
       await use(page)
       await context.close()
@@ -37,6 +51,12 @@ for (const story of Object.values(index.entries).filter((entry) => entry.type ==
     await page.goto(`/iframe.html?id=${story.id}&viewMode=story&globals=theme:${theme}`)
     await expect(page.locator("#storybook-root .story-canvas")).toBeAttached()
     await expect(page.locator(".sb-errordisplay")).not.toBeVisible()
+    if (/components-overlays--(dialog-open|compact-dialog|sheet-(right|left|top|bottom))$/.test(story.id)) {
+      await expect(page.getByRole("dialog")).toBeVisible()
+    }
+    if (story.id === "components-overlays--menu-open") await expect(page.getByRole("menu")).toBeVisible()
+    if (story.id === "components-navigation-and-data--select-open")
+      await expect(page.getByRole("listbox")).toBeVisible()
     await page.evaluate(async () => {
       await document.fonts.ready
       // Theme decorators and overlays can start a transition after the first render.
@@ -44,10 +64,27 @@ for (const story of Object.values(index.entries).filter((entry) => entry.type ==
       await Promise.all(
         document
           .getAnimations()
-          .filter((animation) => Number.isFinite(animation.effect?.getComputedTiming().iterations))
+          .filter(
+            (animation) =>
+              animation.playState === "running" && Number.isFinite(animation.effect?.getComputedTiming().iterations),
+          )
           .map((animation) => animation.finished.catch(() => {})),
       )
     })
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document
+              .getAnimations()
+              .filter(
+                (animation) =>
+                  animation.playState === "running" &&
+                  Number.isFinite(animation.effect?.getComputedTiming().iterations),
+              ).length,
+        ),
+      )
+      .toBe(0)
     // Wait for async patterns to settle; loading stories deliberately never resolve.
     if (story.id === "patterns-repository--header" || story.id === "patterns-repository--selected-actions") {
       await expect(page.getByTestId("star-count")).toHaveText(/128|129/)

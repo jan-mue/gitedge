@@ -177,7 +177,7 @@ import {
 export const Sheet = component(PrimitiveSheet, {})
 export const SheetTrigger = component(PrimitiveSheetTrigger, {})
 export const SheetClose = component(PrimitiveSheetClose, {})
-export const SheetContent = component(PrimitiveSheetContent, {})
+export const SheetContent = component(PrimitiveSheetContent, {}, "transition-transform")
 export const SheetHeader = component(PrimitiveSheetHeader, {})
 export const SheetFooter = component(PrimitiveSheetFooter, {})
 export const SheetTitle = component(PrimitiveSheetTitle, {})
@@ -215,7 +215,6 @@ import { Toaster as PrimitiveToaster } from "@/components/ui/sonner"
 export const Toaster = component(PrimitiveToaster, {})
 
 import {
-  Table as PrimitiveTable,
   TableBody as PrimitiveTableBody,
   TableCaption as PrimitiveTableCaption,
   TableCell as PrimitiveTableCell,
@@ -224,7 +223,7 @@ import {
   TableHeader as PrimitiveTableHeader,
   TableRow as PrimitiveTableRow,
 } from "@/components/ui/table"
-export const Table = component(PrimitiveTable, {})
+
 export const TableHeader = component(PrimitiveTableHeader, {})
 export const TableBody = component(PrimitiveTableBody, {})
 export const TableFooter = component(PrimitiveTableFooter, {})
