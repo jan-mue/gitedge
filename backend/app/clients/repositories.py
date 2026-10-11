@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import Table, delete, func, or_, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.clients.database import CrudStore, SQLStore
@@ -24,7 +25,6 @@ if TYPE_CHECKING:
     import uuid
     from collections.abc import Sequence
 
-    from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.sql.base import ExecutableOption
 
 
@@ -86,22 +86,22 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
 
     async def delete(self, obj: Repository) -> None:
         """Delete dependent records in one transaction and detach surviving forks."""
-        related_prs = select(PullRequest.id).where(
-            or_(PullRequest.head_repo_id == obj.id, PullRequest.base_repo_id == obj.id)
-        )
-        issue_ids = list(
-            await self.db.scalars(select(Issue.id).where(or_(Issue.repo_id == obj.id, Issue.id.in_(related_prs))))
-        )
-        await self.db.execute(delete(Comment).where(Comment.issue_id.in_(issue_ids)))
-        await self.db.execute(
-            delete(cast(Table, PullRequest.__table__)).where(PullRequest.__table__.c.id.in_(issue_ids))
-        )
-        await self.db.execute(delete(cast(Table, Issue.__table__)).where(Issue.__table__.c.id.in_(issue_ids)))
-        for entity in (Star, Watcher, Activity, Release):
-            await self.db.execute(delete(entity).where(entity.repo_id == obj.id))
-        await self.db.execute(update(Repository).where(Repository.fork_of_id == obj.id).values(fork_of_id=None))
-        await self.db.execute(delete(Repository).where(Repository.id == obj.id))
-        await self.db.commit()
+        async with AsyncSession(self.db.bind) as session, session.begin():
+            related_prs = select(PullRequest.id).where(
+                or_(PullRequest.head_repo_id == obj.id, PullRequest.base_repo_id == obj.id)
+            )
+            issue_ids = list(
+                await session.scalars(select(Issue.id).where(or_(Issue.repo_id == obj.id, Issue.id.in_(related_prs))))
+            )
+            await session.execute(delete(Comment).where(Comment.issue_id.in_(issue_ids)))
+            await session.execute(
+                delete(cast(Table, PullRequest.__table__)).where(PullRequest.__table__.c.id.in_(issue_ids))
+            )
+            await session.execute(delete(cast(Table, Issue.__table__)).where(Issue.__table__.c.id.in_(issue_ids)))
+            for entity in (Star, Watcher, Activity, Release):
+                await session.execute(delete(entity).where(entity.repo_id == obj.id))
+            await session.execute(update(Repository).where(Repository.fork_of_id == obj.id).values(fork_of_id=None))
+            await session.execute(delete(Repository).where(Repository.id == obj.id))
 
     async def find(self, primary_key: uuid.UUID) -> Repository | None:
         """Find a repository by primary key with its owner loaded.
