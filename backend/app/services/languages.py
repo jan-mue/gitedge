@@ -63,7 +63,7 @@ def source_language(path: str, data: bytes) -> str | None:
     if not any(_GROUPS[name] for name in candidates):
         return None
     if filename.endswith((".ts", ".tsx")):
-        return None if data.lstrip().startswith((b"<?xml", b"<TS")) else "TypeScript"
+        return None if data.lstrip().startswith((b"<?xml", b"<!DOCTYPE TS", b"<TS ", b"<TS>")) else "TypeScript"
     if filename.endswith(".md"):
         return "GCC Machine Description" if re.search(rb"\(define_(?:insn|expand|split|attr)\b", data) else None
     if len(candidates) > 1:

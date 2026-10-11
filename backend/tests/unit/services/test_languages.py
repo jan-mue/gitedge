@@ -8,6 +8,7 @@ from app.services.languages import source_language
     [
         ("app.ts", b"const answer = 42", "TypeScript"),
         ("app.tsx", b"export const App = () => <p>Hello</p>", "TypeScript"),
+        ("view.tsx", b"<TSProvider />;", "TypeScript"),
         ("app.jsx", b"export const App = () => <p>Hello</p>", "JavaScript"),
         ("app.mjs", b"export const answer = 42", "JavaScript"),
         ("app.py", b"print('hello')", "Python"),
