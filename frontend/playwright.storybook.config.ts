@@ -26,7 +26,7 @@ export default defineConfig({
   webServer: remote
     ? undefined
     : {
-        command: "python -m http.server 6006 --directory storybook-static",
+        command: "python -m http.server 6006 --directory storybook-static 2>/tmp/gitedge-storybook-server.log",
         url: "http://localhost:6006",
         reuseExistingServer: true,
       },

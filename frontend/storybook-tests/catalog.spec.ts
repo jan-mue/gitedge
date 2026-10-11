@@ -8,12 +8,13 @@ import { test as baseTest, expect, type Page } from "@playwright/test"
 const test = baseTest.extend<object, { catalogPage: Page }>({
   catalogPage: [
     async ({ browser }, use, workerInfo) => {
-      const page = await browser.newPage({
+      const context = await browser.newContext({
         baseURL: workerInfo.project.use.baseURL,
         viewport: workerInfo.project.use.viewport,
       })
+      const page = await context.newPage()
       await use(page)
-      await page.close()
+      await context.close()
     },
     { scope: "worker" },
   ],
@@ -36,7 +37,17 @@ for (const story of Object.values(index.entries).filter((entry) => entry.type ==
     await page.goto(`/iframe.html?id=${story.id}&viewMode=story&globals=theme:${theme}`)
     await expect(page.locator("#storybook-root .story-canvas")).toBeAttached()
     await expect(page.locator(".sb-errordisplay")).not.toBeVisible()
-    await page.evaluate(() => document.fonts.ready)
+    await page.evaluate(async () => {
+      await document.fonts.ready
+      // Theme decorators and overlays can start a transition after the first render.
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+      await Promise.all(
+        document
+          .getAnimations()
+          .filter((animation) => Number.isFinite(animation.effect?.getComputedTiming().iterations))
+          .map((animation) => animation.finished.catch(() => {})),
+      )
+    })
     // Wait for async patterns to settle; loading stories deliberately never resolve.
     if (story.id === "patterns-repository--header" || story.id === "patterns-repository--selected-actions") {
       await expect(page.getByTestId("star-count")).toHaveText(/128|129/)
@@ -57,7 +68,11 @@ for (const story of Object.values(index.entries).filter((entry) => entry.type ==
       .disableRules(["region"])
       .analyze()
     expect(
-      results.violations.map((v) => ({ id: v.id, impact: v.impact, nodes: v.nodes.map((n) => n.target) })),
+      results.violations.map((v) => ({
+        id: v.id,
+        impact: v.impact,
+        nodes: v.nodes.map((n) => ({ target: n.target, reason: n.failureSummary })),
+      })),
     ).toEqual([])
   })
 }

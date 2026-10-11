@@ -43,3 +43,5 @@ Patterns show the actual application components with generated MSW handlers and 
 ## Development and deployment
 
 Run `bun run storybook` in `frontend/` for the catalog, and `bun run build-storybook` for the static build. `frontend/vercel.ts` selects the static build when `DEPLOY_TARGET=storybook`; the default retains the app's backend relationship, Git HTTP rewrite, and SPA fallback. Storybook uses its own Vercel project rooted at `frontend/`, with the deployment target set in that project for preview and production.
+
+If a frontend preview lacks Vercel related-project metadata, set a branch-scoped `VITE_API_URL` to the matching backend preview. The build prefers the related deployment and fails when neither source is available.

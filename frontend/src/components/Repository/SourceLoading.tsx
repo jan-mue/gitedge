@@ -29,7 +29,7 @@ const SourceLoading = ({ kind }: { kind?: "tree" | "blob" }) => {
         <div className="overflow-hidden py-4">
           {Array.from({ length: 14 }, (_, index) => (
             <div key={index} className="flex h-6 items-center gap-4">
-              <span className="w-12 shrink-0 border-r pr-3 text-right font-mono text-xs text-muted-foreground/50">
+              <span className="w-12 shrink-0 border-r pr-3 text-right font-mono text-xs text-muted-foreground">
                 {index + 1}
               </span>
               <Skeleton appearance={index % 3 === 0 ? "codeShort" : index % 3 === 1 ? "codeMedium" : "codeLong"} />

@@ -107,7 +107,13 @@ const GlobalNav = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button type="button" variant="ghost" size="sm" title="Notifications">
+            <Button
+              type="button"
+              variant="notification"
+              size="icon-sm"
+              title="Notifications"
+              aria-label="Notifications, 0 unread"
+            >
               <Inbox className="h-5 w-5" />
               <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
                 0
@@ -120,7 +126,7 @@ const GlobalNav = () => {
                   type="button"
                   data-testid="user-menu"
                   aria-label="Open user menu"
-                  variant="default"
+                  variant="avatar"
                   size="icon-sm"
                 >
                   {(user?.display_name || username || "U").slice(0, 1).toUpperCase()}
