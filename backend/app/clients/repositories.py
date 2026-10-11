@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
-from contextlib import AsyncExitStack
 from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import Table, delete, func, or_, select, update
@@ -27,6 +27,8 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.sql.base import ExecutableOption
+
+logger = logging.getLogger(__name__)
 
 
 class RepositoryStore(CrudStore[Repository], ABC):
@@ -87,12 +89,7 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
 
     async def delete(self, obj: Repository) -> None:
         """Delete dependent records in one transaction and detach surviving forks."""
-        async with AsyncExitStack() as stack:
-            transaction = self.db.get_transaction()
-            if transaction is None:
-                await stack.enter_async_context(self.db.begin())
-            else:
-                stack.push_async_exit(transaction)
+        try:
             related_prs = select(PullRequest.id).where(
                 or_(PullRequest.head_repo_id == obj.id, PullRequest.base_repo_id == obj.id)
             )
@@ -108,6 +105,11 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
                 await self.db.execute(delete(entity).where(entity.repo_id == obj.id))
             await self.db.execute(update(Repository).where(Repository.fork_of_id == obj.id).values(fork_of_id=None))
             await self.db.execute(delete(Repository).where(Repository.id == obj.id))
+            await self.db.commit()
+        except BaseException:
+            logger.exception("Failed to delete repository")
+            await self.db.rollback()
+            raise
 
     async def find(self, primary_key: uuid.UUID) -> Repository | None:
         """Find a repository by primary key with its owner loaded.

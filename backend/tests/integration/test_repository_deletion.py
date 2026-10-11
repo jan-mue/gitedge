@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import event
+from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.clients.activity import SQLActivityStore
@@ -17,13 +17,17 @@ from app.entities.repositories import Repository
 from tests.integration.conftest import _run_async
 
 
-@pytest.mark.parametrize("fail", [False, True])
+@pytest.mark.parametrize("failure", [None, "delete", "commit"])
 @pytest.mark.parametrize("active_transaction", [False, True])
-def test_repository_deletion_transaction(infrastructure: dict[str, str], fail: bool, active_transaction: bool) -> None:
-    _run_async(_check_repository_deletion(infrastructure, fail, active_transaction))
+def test_repository_deletion_transaction(
+    infrastructure: dict[str, str], failure: str | None, active_transaction: bool
+) -> None:
+    _run_async(_check_repository_deletion(infrastructure, failure, active_transaction))
 
 
-async def _check_repository_deletion(infrastructure: dict[str, str], fail: bool, active_transaction: bool) -> None:
+async def _check_repository_deletion(
+    infrastructure: dict[str, str], failure: str | None, active_transaction: bool
+) -> None:
     engine = create_async_engine(infrastructure["DATABASE_URL"])
     factory = create_session_factory(engine)
     try:
@@ -52,6 +56,7 @@ async def _check_repository_deletion(infrastructure: dict[str, str], fail: bool,
             else:
                 await db.reset()
                 assert not db.in_transaction()
+            error = RuntimeError("Deletion failed")
 
             def fail_delete(
                 _connection: object,
@@ -62,26 +67,37 @@ async def _check_repository_deletion(infrastructure: dict[str, str], fail: bool,
                 _executemany: bool,
             ) -> None:
                 if statement.startswith("DELETE FROM repository"):
-                    raise RuntimeError("Deletion failed")
+                    raise error
 
-            if fail:
-                event.listen(engine.sync_engine, "before_cursor_execute", fail_delete)
+            def fail_commit(_session: object) -> None:
+                raise error
+
+            if failure is not None:
+                if failure == "delete":
+                    target, name, handler = engine.sync_engine, "before_cursor_execute", fail_delete
+                else:
+                    target, name, handler = db.sync_session, "before_commit", fail_commit
+                event.listen(target, name, handler)
                 try:
-                    with pytest.raises(RuntimeError, match="Deletion failed"):
+                    with pytest.raises(RuntimeError, match="Deletion failed") as exc_info:
                         await store.delete(repository)
+                    assert exc_info.value is error
                 finally:
-                    event.remove(engine.sync_engine, "before_cursor_execute", fail_delete)
+                    event.remove(target, name, handler)
             else:
                 await store.delete(repository)
                 assert repository.owner.name == "admin"
             assert not db.in_transaction()
+            assert await db.scalar(select(1)) == 1
 
             async with factory() as observer:
                 for entity_type, entity_id in entities:
-                    assert (await observer.get(entity_type, entity_id) is not None) == fail
+                    assert (await observer.get(entity_type, entity_id) is not None) == (failure is not None)
                 surviving_fork = await observer.get(Repository, fork_id)
                 assert surviving_fork is not None
-                assert surviving_fork.fork_of_id == (repository_id if fail else None)
-                assert surviving_fork.description == ("Pending update" if active_transaction and not fail else None)
+                assert surviving_fork.fork_of_id == (repository_id if failure is not None else None)
+                assert surviving_fork.description == (
+                    "Pending update" if active_transaction and failure is None else None
+                )
     finally:
         await engine.dispose()
