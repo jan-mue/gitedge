@@ -28,6 +28,10 @@ export const StoryRouter = ({ children }: { children: ReactNode }) => {
       "src/branch/$branch/$",
       "src/commit/$sha",
       "src/commit/$sha/$",
+      "src/tag/$tag",
+      "src/tag/$tag/$",
+      "commits/branch/$branch",
+      "commits/tag/$tag",
       "commit/$hash",
       "blame/$",
     ] as const

@@ -147,6 +147,8 @@ for (const story of Object.values(index.entries).filter((entry) => entry.type ==
     expect(errors).toEqual([])
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
     expect(overflow, "The story should fit the viewport without page-level horizontal scrolling").toBe(false)
+    if (story.id.startsWith("components-branch-selector--"))
+      await page.screenshot({ path: `visual-review/${story.id}-${testInfo.project.name}.png`, fullPage: true })
     const results = await new AxeBuilder({ page })
       .include(".story-canvas, [role=dialog], [role=menu], [role=listbox]")
       .withTags(["wcag2a", "wcag2aa", "wcag21aa"])

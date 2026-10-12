@@ -7,9 +7,7 @@ import {
   repositoriesListBranchesOptions,
   repositoriesListPullRequestsQueryKey,
 } from "@/client/@tanstack/react-query.gen"
-import { Button, Input, Label, Link as RouterLink, Textarea } from "@/components/design-system"
-
-import BranchSelector from "./BranchSelector"
+import { Button, Input, Label, Link as RouterLink, SelectField, Textarea } from "@/components/design-system"
 
 interface NewPullRequestFormProps {
   owner: string
@@ -70,16 +68,14 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
             <Label htmlFor="head-branch" appearance="field">
               Source branch
             </Label>
-            <BranchSelector
+            <SelectField
               id="head-branch"
-              label="Source branch"
+              aria-label="Source branch"
               value={headBranch}
               onValueChange={setHeadBranch}
-              branches={branches ?? []}
-              loading={branchesPending}
-              error={branchesError}
-              onRetry={() => refetchBranches()}
-              appearance="field"
+              options={(branches ?? []).map((branch) => ({ value: branch.name, label: branch.name }))}
+              placeholder="Select a branch"
+              disabled={branchesPending || branchesError}
               data-testid="pr-source-branch"
             />
           </div>
@@ -88,20 +84,26 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
             <Label htmlFor="base-branch" appearance="field">
               Target branch
             </Label>
-            <BranchSelector
+            <SelectField
               id="base-branch"
-              label="Target branch"
+              aria-label="Target branch"
               value={baseBranch}
               onValueChange={setBaseBranch}
-              branches={branches ?? []}
-              loading={branchesPending}
-              error={branchesError}
-              onRetry={() => refetchBranches()}
-              appearance="field"
+              options={(branches ?? []).map((branch) => ({ value: branch.name, label: branch.name }))}
+              disabled={branchesPending || branchesError}
               data-testid="pr-target-branch"
             />
           </div>
         </div>
+
+        {branchesError && (
+          <div role="alert" className="flex items-center gap-2 text-sm text-destructive">
+            Unable to load branches.
+            <Button variant="text" size="text" onClick={() => refetchBranches()}>
+              Try again
+            </Button>
+          </div>
+        )}
 
         <div>
           <Label htmlFor="pr-title" appearance="field">

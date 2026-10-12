@@ -41,6 +41,8 @@ const FileBrowser = ({
   const navigateToPath = (targetPath: string) => {
     if (mode === "commit") {
       navigate({ to: "/$owner/$repo/src/commit/$sha/$", params: { owner, repo, sha: refName, _splat: targetPath } })
+    } else if (mode === "tag") {
+      navigate({ to: "/$owner/$repo/src/tag/$tag/$", params: { owner, repo, tag: refName, _splat: targetPath } })
     } else {
       navigate({
         to: "/$owner/$repo/src/branch/$branch/$",

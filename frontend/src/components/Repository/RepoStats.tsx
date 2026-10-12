@@ -3,11 +3,13 @@ import { useNavigate } from "@tanstack/react-router"
 import { Check, Copy, GitBranch, GitCommitHorizontal, HardDrive, Lock, Tag } from "lucide-react"
 import { useState } from "react"
 import {
+  releasesListTagsOptions,
   repositoriesGetRepositoryInfoOptions,
   repositoriesGetStatisticsOptions,
   repositoriesListBranchesOptions,
 } from "@/client/@tanstack/react-query.gen"
 import { Button, Input, Link as RouterLink, Skeleton } from "@/components/design-system"
+import type { SourceMode } from "@/components/Repositories/SourceLink"
 import BranchSelector from "@/components/Repository/BranchSelector"
 import FileFinder from "@/components/Repository/FileFinder"
 import LanguageBar from "@/components/Repository/LanguageBar"
@@ -21,9 +23,10 @@ interface RepoStatsProps {
   /** Ref used for API calls (branch name or commit SHA). Defaults to gitRef. */
   revision?: string
   showStatistics?: boolean
+  mode?: SourceMode
 }
 
-const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: RepoStatsProps) => {
+const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true, mode = "branch" }: RepoStatsProps) => {
   const ref = revision ?? gitRef
   const [copiedText, copy] = useCopyToClipboard()
   const navigate = useNavigate()
@@ -51,12 +54,24 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
     enabled: branchDropdownOpen,
   })
 
-  const handleBranchSelect = (branchName: string) => {
+  const {
+    data: tags,
+    isPending: tagsPending,
+    isError: tagsError,
+    refetch: refetchTags,
+  } = useQuery({
+    ...releasesListTagsOptions({ path: { owner, repo } }),
+    enabled: branchDropdownOpen,
+  })
+
+  const handleBranchSelect = (branchName: string, kind: "branch" | "tag") => {
     setBranchDropdownOpen(false)
-    navigate({
-      to: "/$owner/$repo/src/branch/$branch",
-      params: { owner, repo, branch: branchName },
-    })
+    if (kind === "tag") navigate({ to: "/$owner/$repo/src/tag/$tag", params: { owner, repo, tag: branchName } })
+    else
+      navigate({
+        to: "/$owner/$repo/src/branch/$branch",
+        params: { owner, repo, branch: branchName },
+      })
   }
 
   return (
@@ -65,15 +80,32 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
 
       {showStatistics && repoInfo && (
         <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
-          <RouterLink to="/$owner/$repo/commits/branch/$branch" params={{ owner, repo, branch: ref }} appearance="stat">
-            <GitCommitHorizontal className="size-4" />
-            {statisticsPending ? (
-              <Skeleton appearance="short" />
-            ) : (
-              <span className="font-medium text-foreground">{statistics?.commit_count ?? "—"}</span>
-            )}{" "}
-            commits
-          </RouterLink>
+          {mode === "tag" ? (
+            <RouterLink to="/$owner/$repo/commits/tag/$tag" params={{ owner, repo, tag: gitRef }} appearance="stat">
+              <GitCommitHorizontal className="size-4" />
+              {statisticsPending ? (
+                <Skeleton appearance="short" />
+              ) : (
+                <span className="font-medium text-foreground">{statistics?.commit_count ?? "—"}</span>
+              )}{" "}
+              commits
+            </RouterLink>
+          ) : (
+            <RouterLink
+              to="/$owner/$repo/commits/branch/$branch"
+              params={{ owner, repo, branch: ref }}
+              appearance="stat"
+            >
+              <GitCommitHorizontal className="size-4" />
+              {statisticsPending ? (
+                <Skeleton appearance="short" />
+              ) : (
+                <span className="font-medium text-foreground">{statistics?.commit_count ?? "—"}</span>
+              )}{" "}
+              commits
+            </RouterLink>
+          )}
+
           <RouterLink to="/$owner/$repo/branches" params={{ owner, repo }} appearance="stat">
             <GitBranch className="h-4 w-4" />
             <span className="font-medium text-foreground">{repoInfo.branch_count}</span>
@@ -102,6 +134,8 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
       <div className="flex flex-wrap items-center gap-2">
         <BranchSelector
           branches={branches ?? []}
+          tags={tags?.data ?? []}
+          kind={mode === "tag" ? "tag" : "branch"}
           value={gitRef}
           onValueChange={handleBranchSelect}
           open={branchDropdownOpen}
@@ -109,10 +143,13 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
           loading={branchDropdownOpen && !branches && !branchesError}
           error={branchesError}
           onRetry={() => refetchBranches()}
+          tagsLoading={tagsPending}
+          tagsError={tagsError}
+          onRetryTags={() => refetchTags()}
           data-testid="branch-selector"
         />
 
-        <FileFinder owner={owner} repo={repo} revision={ref} mode={/^[0-9a-f]{40}$/.test(ref) ? "commit" : "branch"} />
+        <FileFinder owner={owner} repo={repo} revision={ref} mode={mode} />
 
         <div className="flex w-full min-w-0 items-center gap-2 sm:ml-auto sm:w-auto">
           <span className="flex h-8 items-center gap-1.5 rounded bg-success-emphasis px-2.5 text-xs font-bold text-success-foreground">

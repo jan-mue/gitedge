@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
-import { repositoriesListBranchesOptions, repositoriesListCommitsOptions } from "@/client/@tanstack/react-query.gen"
+import {
+  releasesListTagsOptions,
+  repositoriesListBranchesOptions,
+  repositoriesListCommitsOptions,
+} from "@/client/@tanstack/react-query.gen"
 import { Link as RouterLink } from "@/components/design-system"
 import BranchSelector from "@/components/Repository/BranchSelector"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
@@ -11,12 +15,13 @@ interface CommitsListProps {
   repo: string
   branch?: string
   filePath?: string
+  tag?: string
 }
 
 const formatDate = (timestamp: number) => new Date(timestamp * 1000).toLocaleString()
 
-const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
-  const ref = branch ?? "main"
+const CommitsList = ({ owner, repo, branch, tag, filePath }: CommitsListProps) => {
+  const ref = tag ? `refs/tags/${tag}` : (branch ?? "main")
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
 
@@ -40,9 +45,30 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
 
   const commits = commitsData?.data ?? []
 
-  const selectBranch = (branchName: string) => {
+  const {
+    data: tags,
+    isPending: tagsPending,
+    isError: tagsError,
+    refetch: refetchTags,
+  } = useQuery({
+    ...releasesListTagsOptions({ path: { owner, repo } }),
+    enabled: open,
+  })
+
+  const selectBranch = (branchName: string, kind: "branch" | "tag") => {
     setOpen(false)
-    navigate({ to: "/$owner/$repo/commits/branch/$branch", params: { owner, repo, branch: branchName } })
+    if (kind === "tag")
+      navigate({
+        to: "/$owner/$repo/commits/tag/$tag",
+        params: { owner, repo, tag: branchName },
+        search: { path: filePath },
+      })
+    else
+      navigate({
+        to: "/$owner/$repo/commits/branch/$branch",
+        params: { owner, repo, branch: branchName },
+        search: { path: filePath },
+      })
   }
 
   if (isPending) return <RepositoryLoading label="Loading commits" />
@@ -58,13 +84,18 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
       <div className="flex items-center gap-2">
         <BranchSelector
           branches={branches ?? []}
-          value={ref}
+          tags={tags?.data ?? []}
+          value={tag ?? ref}
+          kind={tag ? "tag" : "branch"}
           onValueChange={selectBranch}
           open={open}
           onOpenChange={setOpen}
           loading={open && !branches && !branchesError}
           error={branchesError}
           onRetry={() => refetchBranches()}
+          tagsLoading={tagsPending}
+          tagsError={tagsError}
+          onRetryTags={() => refetchTags()}
           data-testid="commits-branch-selector"
           dropdownTestId="commits-branch-dropdown"
         />

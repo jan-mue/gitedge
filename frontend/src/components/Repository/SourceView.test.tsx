@@ -108,4 +108,36 @@ describe("Source loading", () => {
     await waitFor(() => expect(screen.getByText("File content")).toBeInTheDocument())
     expect(getReadme).not.toHaveBeenCalled()
   })
+  test("uses the tag namespace for source, metadata and README requests", async () => {
+    const refs: string[] = []
+    const record = (request: Request) => refs.push(new URL(request.url).searchParams.get("ref") ?? "")
+    server.use(
+      handleRepositoriesGetSource(({ request }) => {
+        record(request)
+        return HttpResponse.json({
+          entries: [{ name: "README.md", path: "README.md", type: "blob", size: 5 }],
+          tree_path: "",
+          ref: "refs/tags/main",
+        })
+      }),
+      handleRepositoriesGetRepositoryInfo(({ request }) => {
+        record(request)
+        return HttpResponse.json({
+          owner: "owner",
+          name: "repo",
+          default_branch: "main",
+          branch_count: 1,
+          tag_count: 1,
+        })
+      }),
+      handleRepositoriesGetReadme(({ request }) => {
+        record(request)
+        return HttpResponse.json({ filename: "README.md", content: "Hello", html: "<p>Hello</p>" })
+      }),
+    )
+    render(<SourceView {...props} mode="tag" refName="main" />)
+    expect(await screen.findByText("README content")).toBeInTheDocument()
+    expect(refs).toHaveLength(3)
+    expect(refs.every((ref) => ref === "refs/tags/main")).toBe(true)
+  })
 })

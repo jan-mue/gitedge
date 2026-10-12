@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { type LinkAppearance, Link as RouterLink } from "@/components/design-system"
 
-export type SourceMode = "branch" | "commit"
+export type SourceMode = "branch" | "commit" | "tag"
 
 interface SourceLinkProps {
   owner: string
@@ -28,6 +28,18 @@ const SourceLink = ({
   "data-testid": testId,
   children,
 }: SourceLinkProps) => {
+  if (mode === "tag")
+    return (
+      <RouterLink
+        to={path ? "/$owner/$repo/src/tag/$tag/$" : "/$owner/$repo/src/tag/$tag"}
+        params={{ owner, repo, tag: refName.replace(/^refs\/tags\//, ""), _splat: path }}
+        onClick={onClick}
+        appearance={appearance}
+        data-testid={testId}
+      >
+        {children}
+      </RouterLink>
+    )
   if (mode === "commit") {
     return (
       <RouterLink

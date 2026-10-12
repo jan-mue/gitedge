@@ -1,6 +1,7 @@
 import type { Meta } from "@storybook/react-vite"
 import {
   handleForksListForks,
+  handleReleasesListTags,
   handleRepositoriesGetRepositoryInfo,
   handleRepositoriesGetStatistics,
   handleRepositoriesListBranches,
@@ -13,6 +14,15 @@ import {
 } from "@/client/msw.gen"
 import { StoryRouter } from "@/components/Storybook/StoryRouter"
 export const handlers = [
+  handleReleasesListTags({
+    body: {
+      data: [
+        { name: "v1.0.0", commit_sha: "abcdef1234567890" },
+        { name: "v0.9.0", commit_sha: "1234567890abcdef" },
+      ],
+      count: 2,
+    },
+  }),
   handleStarsGetStarState({ body: { is_starred: false, stars_count: 128 } }),
   handleWatchersGetWatchState({ body: { is_watching: false, watchers_count: 32 } }),
   handleForksListForks({ body: { data: [], count: 24 } }),

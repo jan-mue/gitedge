@@ -4,6 +4,7 @@ import type { ReactNode } from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 
 import {
+  handleReleasesListTags,
   handleRepositoriesGetRepositoryInfo,
   handleRepositoriesGetStatistics,
   handleRepositoriesListBranches,
@@ -26,6 +27,15 @@ vi.mock("@tanstack/react-router", () => ({
 describe("RepoStats", () => {
   beforeEach(() => {
     server.use(
+      handleReleasesListTags({
+        body: {
+          data: [
+            { name: "develop", commit_sha: "abc123" },
+            { name: "v1.0.0", commit_sha: "def456" },
+          ],
+          count: 2,
+        },
+      }),
       handleRepositoriesGetRepositoryInfo({
         body: {
           name: "repo",
@@ -135,13 +145,27 @@ describe("RepoStats", () => {
   test("retries a failed branch request and keeps the picker usable", async () => {
     server.use(handleRepositoriesListBranches(() => new HttpResponse(null, { status: 503 }), { once: true }))
     const { user } = render(<RepoStats owner="owner" repo="repo" gitRef="main" />)
-    await user.click(screen.getByRole("combobox", { name: "Switch branch" }))
-    expect(await screen.findByRole("option", { name: "Unable to load branches." })).toBeInTheDocument()
-    await user.keyboard("{Escape}")
-    expect(screen.getByRole("alert")).toHaveTextContent("Unable to load branches")
+    await user.click(screen.getByRole("button", { name: "Switch branch" }))
+    expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load branches")
     await user.click(screen.getByRole("button", { name: "Try again" }))
     await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument())
-    await user.click(screen.getByRole("combobox", { name: "Switch branch" }))
     expect(await screen.findByRole("option", { name: "develop" })).toBeInTheDocument()
+  })
+
+  test("searches branches and tags and navigates to the tag namespace", async () => {
+    const { user } = render(<RepoStats owner="owner" repo="repo" gitRef="main" />)
+    await user.click(screen.getByTestId("branch-selector"))
+    const filter = screen.getByRole("textbox", { name: "Filter branch or tag" })
+    await user.type(filter, "DEVELOP")
+    expect(await screen.findByRole("option", { name: "develop" })).toBeInTheDocument()
+    expect(screen.queryByRole("option", { name: "main" })).not.toBeInTheDocument()
+    await user.click(screen.getByRole("tab", { name: "Tags" }))
+    await user.click(await screen.findByRole("option", { name: "develop" }))
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/$owner/$repo/src/tag/$tag",
+      params: { owner: "owner", repo: "repo", tag: "develop" },
+    })
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(screen.getByTestId("branch-selector")).toHaveFocus()
   })
 })

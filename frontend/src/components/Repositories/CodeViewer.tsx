@@ -24,7 +24,8 @@ const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
   useSyntaxHighlightCSS(file.css, file.css_dark)
   const [escapedTabs, setEscapedTabs] = useState(false)
   const [, copy] = useCopyToClipboard()
-  const rawUrl = `${import.meta.env.VITE_API_URL ?? ""}/api/v1/repositories/${encodeURIComponent(backLink.owner)}/${encodeURIComponent(backLink.repo)}/raw?${new URLSearchParams({ ref: backLink.refName, file_path: file.path })}`
+  const revision = backLink.mode === "tag" ? `refs/tags/${backLink.refName}` : backLink.refName
+  const rawUrl = `${import.meta.env.VITE_API_URL ?? ""}/api/v1/repositories/${encodeURIComponent(backLink.owner)}/${encodeURIComponent(backLink.repo)}/raw?${new URLSearchParams({ ref: revision, file_path: file.path })}`
 
   return (
     <div className="file-viewer border rounded-lg overflow-hidden" data-testid="file-viewer">
@@ -36,19 +37,31 @@ const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
         <Link
           to="/$owner/$repo/blame/$"
           params={{ owner: backLink.owner, repo: backLink.repo, _splat: file.path }}
-          search={{ ref: backLink.refName }}
+          search={{ ref: revision }}
           appearance="codeAction"
         >
           Blame
         </Link>
-        <Link
-          to="/$owner/$repo/commits/branch/$branch"
-          params={{ owner: backLink.owner, repo: backLink.repo, branch: backLink.refName }}
-          search={{ path: file.path }}
-          appearance="codeAction"
-        >
-          History
-        </Link>
+        {backLink.mode === "tag" ? (
+          <Link
+            to="/$owner/$repo/commits/tag/$tag"
+            params={{ owner: backLink.owner, repo: backLink.repo, tag: backLink.refName }}
+            search={{ path: file.path }}
+            appearance="codeAction"
+          >
+            History
+          </Link>
+        ) : (
+          <Link
+            to="/$owner/$repo/commits/branch/$branch"
+            params={{ owner: backLink.owner, repo: backLink.repo, branch: backLink.refName }}
+            search={{ path: file.path }}
+            appearance="codeAction"
+          >
+            History
+          </Link>
+        )}
+
         {commitSha && (
           <SourceLink
             owner={backLink.owner}

@@ -1,6 +1,7 @@
 export * from "./alert"
 export * from "./avatar"
 export * from "./badge"
+export * from "./branch-picker"
 export * from "./button"
 export * from "./button-group"
 export * from "./card"

@@ -26,12 +26,12 @@ import {
   Input,
   Label,
   LoadingButton,
+  SelectField,
   Textarea,
 } from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
-import BranchSelector from "./BranchSelector"
 import RepositoryLoading, { RepositoryError } from "./RepositoryLoading"
 
 const schema = z.object({
@@ -145,16 +145,17 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
                 control={control}
                 name="default_branch"
                 render={({ field }) => (
-                  <BranchSelector
+                  <SelectField
                     id="default-branch"
-                    label="Default branch"
+                    aria-label="Default branch"
                     name={field.name}
                     ref={field.ref}
                     value={field.value ?? ""}
                     onValueChange={field.onChange}
                     onBlur={field.onBlur}
-                    branches={branches?.length ? branches : [{ name: data.default_branch ?? "main", is_default: true }]}
-                    appearance="field"
+                    options={(branches?.length ? branches : [{ name: data.default_branch ?? "main" }]).map(
+                      (branch) => ({ value: branch.name, label: branch.name }),
+                    )}
                     aria-invalid={Boolean(errors.default_branch)}
                   />
                 )}
