@@ -1,12 +1,31 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { handleRepositoriesGetRepository, handleUsersReadUserMe } from "@/client/msw.gen"
+import { HttpResponse } from "msw"
+import type { Repository } from "@/client"
+import {
+  handleRepositoriesDeleteRepository,
+  handleRepositoriesGetRepository,
+  handleRepositoriesUpdateRepository,
+  handleUsersReadUserMe,
+} from "@/client/msw.gen"
 import { handlers, repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
 import RepositorySettings from "./RepositorySettings"
+
+const initialRepository: Repository = {
+  name: "gitedge",
+  owner: "jan-mue",
+  description: "Git hosting at the edge",
+  default_branch: "main",
+  is_private: false,
+  created_at: "2026-10-01T12:00:00Z",
+  updated_at: "2026-10-12T12:00:00Z",
+}
+let repository = initialRepository
 
 const meta = {
   ...repositoryStoryMeta,
   title: "Patterns/Repository/Settings",
   beforeEach: () => {
+    repository = initialRepository
     const previous = localStorage.getItem("access_token")
     localStorage.setItem("access_token", "storybook-session")
     return () => {
@@ -26,17 +45,18 @@ const meta = {
             is_active: true,
           },
         }),
-        handleRepositoriesGetRepository({
-          body: {
-            name: "gitedge",
-            owner: "jan-mue",
-            description: "Git hosting at the edge",
-            default_branch: "main",
-            is_private: false,
-            created_at: "2026-10-01T12:00:00Z",
-            updated_at: "2026-10-12T12:00:00Z",
-          },
+        handleRepositoriesGetRepository(() => HttpResponse.json(repository)),
+        handleRepositoriesUpdateRepository(async ({ request }) => {
+          const update = await request.json()
+          repository = {
+            ...repository,
+            ...update,
+            name: update.name ?? repository.name,
+            default_branch: update.default_branch ?? repository.default_branch,
+          }
+          return HttpResponse.json(repository)
         }),
+        handleRepositoriesDeleteRepository(() => new HttpResponse(null, { status: 204 })),
       ],
     },
   },

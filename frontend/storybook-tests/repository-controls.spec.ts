@@ -16,6 +16,7 @@ test("repository filters combine, reset, sort, and support keyboard menus", asyn
   await page.keyboard.press("Enter")
   await expect(page.getByRole("menuitemradio", { name: "All authors" })).toBeFocused()
   await page.keyboard.press("ArrowDown")
+  await expect(page.getByRole("menuitemradio", { name: "alice", exact: true })).toBeFocused()
   await page.keyboard.press("Enter")
   await expect(issues).toHaveCount(1)
   await expect(issues.first()).toHaveAttribute("data-testid", "issue-1")
@@ -48,6 +49,21 @@ test("repository filters combine, reset, sort, and support keyboard menus", asyn
   await expect(page.getByTestId(/^pr-\d/)).toHaveCount(2)
   await expect(page.getByRole("button", { name: "Branch: All target branches" })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(false)
+})
+
+test("settings stories save through generated API mocks", async ({ page }, testInfo) => {
+  const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"
+  await page.goto(`/iframe.html?id=patterns-repository-settings--settings&viewMode=story&globals=theme:${theme}`)
+  const description = page.getByLabel("Description", { exact: true })
+  await expect(description).toHaveValue("Git hosting at the edge")
+  await description.fill("Updated repository description")
+  const response = page.waitForResponse(
+    (response) => response.request().method() === "PATCH" && response.url().includes("/repositories/"),
+  )
+  await page.getByRole("button", { name: "Save settings", exact: true }).click()
+  expect((await response).status()).toBe(200)
+  await expect(page.getByRole("button", { name: "Save settings", exact: true })).toBeDisabled()
+  await expect(description).toHaveValue("Updated repository description")
 })
 
 test("Activity sidebar switches all views; settings keep delete confirmation", async ({ page }, testInfo) => {
