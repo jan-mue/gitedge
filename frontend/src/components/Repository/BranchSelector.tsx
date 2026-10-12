@@ -81,8 +81,8 @@ const BranchSelector = ({
         appearance={appearance === "compact" ? "branch" : appearance === "filter" ? "filter" : "branchField"}
       >
         {appearance !== "filter" && <GitBranch aria-hidden="true" className="size-3.5" />}
-        <SelectValue appearance="branch" placeholder={placeholder}>
-          {appearance === "filter" ? "Branch" : value || undefined}
+        <SelectValue placeholder={<span className="min-w-0 max-w-48 truncate">{placeholder}</span>}>
+          <span className="min-w-0 max-w-48 truncate">{appearance === "filter" ? "Branch" : value}</span>
         </SelectValue>
       </SelectTrigger>
       <SelectContent align="start" appearance="branch" data-testid={dropdownTestId}>
