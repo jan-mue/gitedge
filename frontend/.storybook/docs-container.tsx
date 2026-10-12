@@ -49,7 +49,9 @@ export const ThemedDocsContainer = (props: PropsWithChildren<DocsContainerProps>
       for (const entry of entries) update(entry.target as HTMLElement)
     })
     const refresh = () => {
-      for (const element of root.querySelectorAll<HTMLElement>(".docs-story, .sbdocs-content table")) {
+      for (const element of root.querySelectorAll<HTMLElement>(
+        ".docs-story, .sbdocs-content table:not(.story-canvas *)",
+      )) {
         if (!observed.has(element)) {
           observed.add(element)
           resize.observe(element)
