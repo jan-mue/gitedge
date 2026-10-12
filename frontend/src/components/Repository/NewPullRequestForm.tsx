@@ -126,7 +126,7 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
         </div>
 
         <div className="flex items-center justify-end gap-3">
-          <RouterLink to="/$owner/$repo/pulls" params={{ owner, repo }} appearance="action">
+          <RouterLink to="/$owner/$repo/pulls" params={{ owner, repo }} appearance="formAction">
             Cancel
           </RouterLink>
           <Button
@@ -135,7 +135,7 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
             disabled={!title.trim() || !headBranch.trim() || createPRMutation.isPending}
             data-testid="submit-pr-btn"
             variant="success"
-            size="compact"
+            size="form"
           >
             {createPRMutation.isPending ? "Creating..." : "Create pull request"}
           </Button>

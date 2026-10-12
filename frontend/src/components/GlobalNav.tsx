@@ -140,13 +140,13 @@ const GlobalNav = () => {
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <RouterLink to="/profile/$username" params={{ username }} appearance="inherited">
+                  <RouterLink to="/profile/$username" params={{ username }} appearance="item">
                     <User className="h-4 w-4" />
                     Profile
                   </RouterLink>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <RouterLink to="/settings" appearance="inherited">
+                  <RouterLink to="/settings" appearance="item">
                     <Settings className="h-4 w-4" />
                     Settings
                   </RouterLink>
@@ -155,7 +155,7 @@ const GlobalNav = () => {
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <RouterLink to="/admin" appearance="inherited">
+                      <RouterLink to="/admin" appearance="item">
                         <ShieldCheck className="h-4 w-4" />
                         Site Administration
                       </RouterLink>

@@ -61,8 +61,8 @@ const TrackerFilters = ({ filters, label, openCount, closedCount, children }: Tr
           type="button"
           aria-pressed={filters.state === value}
           onClick={() => filters.setState(value)}
-          variant="quiet"
-          size="compact"
+          variant="filter"
+          size="text"
         >
           {text}
         </Button>

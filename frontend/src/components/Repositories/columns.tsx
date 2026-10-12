@@ -35,7 +35,7 @@ export const columns: ColumnDef<Repository>[] = [
       <RouterLink
         to="/$owner/$repo"
         params={{ owner: row.original.owner, repo: row.original.name }}
-        appearance="default"
+        appearance="repositoryEntry"
         data-testid={`repo-link-${row.original.name}`}
       >
         <GitBranch className="h-4 w-4 text-muted-foreground" />

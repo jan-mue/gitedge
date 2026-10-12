@@ -3,6 +3,33 @@ import type { ComponentProps } from "react"
 import { cn } from "@/lib/utils"
 
 const appearances = {
+  avatar:
+    "flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-foreground",
+  author: "font-semibold hover:text-primary",
+  strong: "font-semibold text-primary hover:underline",
+  target: "hover:text-primary",
+  preview: "mt-2 inline-block text-sm text-primary hover:underline",
+  comments: "inline-flex items-center gap-1.5 hover:text-foreground",
+  listRow: "block rounded px-2 py-2 transition-colors hover:bg-accent/50",
+  body: "text-sm text-primary hover:underline",
+  repositoryStrong: "text-sm font-semibold text-primary hover:underline",
+  repository: "text-sm font-medium text-primary hover:underline",
+  codeAction: "rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent",
+  repositoryEntry: "flex items-center gap-2 font-medium text-primary hover:underline",
+  truncated: "min-w-0 truncate text-primary hover:underline",
+  commitPreview: "block max-w-60 truncate text-xs hover:text-primary hover:underline",
+  hash: "font-mono text-xs text-primary hover:underline",
+  branch: "font-mono text-sm text-primary hover:underline",
+  revision: "font-mono text-primary hover:underline",
+  title: "text-sm font-medium text-foreground hover:text-primary",
+  commitHash: "flex-shrink-0 font-mono text-xs text-primary hover:underline",
+  successAction: "rounded bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:opacity-90",
+  formAction:
+    "px-4 py-2 text-sm rounded border border-border bg-secondary text-foreground hover:bg-accent transition-colors",
+  caption: "text-xs text-primary hover:underline",
+  icon: "shrink-0",
+  row: "flex items-center gap-2",
+  item: "flex cursor-pointer items-center gap-2",
   default: "text-primary hover:underline",
   repositoryOwner: "text-foreground hover:text-primary hover:underline",
   repositoryName: "font-bold text-foreground hover:text-primary hover:underline",
@@ -29,6 +56,8 @@ const appearances = {
     "flex shrink-0 items-center gap-2 whitespace-nowrap rounded bg-accent/50 px-3 py-2 text-sm text-destructive transition-colors hover:bg-accent md:rounded-none md:bg-transparent md:px-4 md:py-3",
   inherited: "",
 }
+export type LinkAppearance = keyof typeof appearances
+
 const Anchor = ({
   appearance = "default",
   active,

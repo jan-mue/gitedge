@@ -27,7 +27,23 @@ const meta = {
         "menu",
       ],
     },
-    size: { control: "select", options: ["default", "sm", "xs", "lg", "icon", "icon-sm", "icon-xs", "icon-lg"] },
+    size: {
+      control: "select",
+      options: [
+        "default",
+        "sm",
+        "compact",
+        "form",
+        "create",
+        "file-row",
+        "xs",
+        "lg",
+        "icon",
+        "icon-sm",
+        "icon-xs",
+        "icon-lg",
+      ],
+    },
     children: { control: "text" },
   },
   parameters: {
@@ -51,7 +67,7 @@ export const Link: Story = { args: { variant: "link", children: "View repository
 export const Quiet: Story = { args: { variant: "quiet", children: "All issues" } }
 export const Selected: Story = { args: { variant: "tab", "aria-pressed": true, children: "Repositories" } }
 export const Unselected: Story = { args: { variant: "tab", "aria-pressed": false, children: "Starred" } }
-export const Row: Story = { args: { variant: "row", children: "README.md" } }
+export const Row: Story = { args: { variant: "row", size: "file-row", children: "README.md" } }
 export const Menu: Story = { args: { variant: "menu", children: "Switch to main" } }
 export const Disabled: Story = { args: { disabled: true } }
 export const Loading: Story = { args: { loading: true, children: "Creating repository…" } }

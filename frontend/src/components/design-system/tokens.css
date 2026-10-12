@@ -82,7 +82,7 @@
   --success-foreground: hsl(0 0% 100%);
   --warning: hsl(38 90% 50%);
   --warning-foreground: hsl(0 0% 10%);
-  --merged: hsl(280 55% 42%);
+  --merged: hsl(280 60% 35%);
   --merged-foreground: hsl(0 0% 100%);
   --info: hsl(210 70% 50%);
   --info-foreground: hsl(0 0% 100%);
@@ -150,7 +150,7 @@
   --success-foreground: hsl(0 0% 100%);
   --warning: hsl(38 90% 55%);
   --warning-foreground: hsl(0 0% 10%);
-  --merged: hsl(280 55% 48%);
+  --merged: hsl(280 60% 35%);
   --merged-foreground: hsl(0 0% 100%);
   --info: hsl(210 70% 55%);
   --info-foreground: hsl(0 0% 100%);

@@ -121,11 +121,7 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
               {commit.author.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <RouterLink
-                to="/$owner/$repo/commit/$hash"
-                params={{ owner, repo, hash: commit.sha }}
-                appearance="default"
-              >
+              <RouterLink to="/$owner/$repo/commit/$hash" params={{ owner, repo, hash: commit.sha }} appearance="title">
                 {commit.message.split("\n")[0]}
               </RouterLink>
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -133,7 +129,11 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
                 {formatDate(commit.timestamp)}
               </p>
             </div>
-            <RouterLink to="/$owner/$repo/commit/$hash" params={{ owner, repo, hash: commit.sha }} appearance="code">
+            <RouterLink
+              to="/$owner/$repo/commit/$hash"
+              params={{ owner, repo, hash: commit.sha }}
+              appearance="commitHash"
+            >
               {commit.sha.slice(0, 10)}
             </RouterLink>
           </div>

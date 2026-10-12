@@ -18,7 +18,7 @@ const ForksList = ({ forks }: ForksListProps) => {
           <GitFork className="w-4 h-4 text-muted-foreground" />
           <div className="min-w-0">
             {fork.owner ? (
-              <RouterLink to="/$owner/$repo" params={{ owner: fork.owner, repo: fork.name }} appearance="default">
+              <RouterLink to="/$owner/$repo" params={{ owner: fork.owner, repo: fork.name }} appearance="repository">
                 {fork.owner}/{fork.name}
               </RouterLink>
             ) : (

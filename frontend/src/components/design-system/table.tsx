@@ -26,10 +26,10 @@ import {
 } from "@/components/ui/table"
 import { component } from "./component"
 
-export const TableHeader = component(PrimitiveTableHeader, {})
+export const TableHeader = component(PrimitiveTableHeader, {}, "bg-transparent")
 export const TableBody = component(PrimitiveTableBody, {})
 export const TableFooter = component(PrimitiveTableFooter, {})
-export const TableHead = component(PrimitiveTableHead, {})
+export const TableHead = component(PrimitiveTableHead, {}, "h-12 px-4 text-muted-foreground")
 export const TableRow = component(PrimitiveTableRow, { static: "hover:bg-transparent" })
-export const TableCell = component(PrimitiveTableCell, { empty: "h-32 text-center text-muted-foreground" })
+export const TableCell = component(PrimitiveTableCell, { empty: "h-32 text-center text-muted-foreground" }, "p-4")
 export const TableCaption = component(PrimitiveTableCaption, {})

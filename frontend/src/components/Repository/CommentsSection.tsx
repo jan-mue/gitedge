@@ -88,8 +88,8 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                   <div className="ml-auto flex items-center gap-2">
                     <Button
                       type="button"
-                      variant="quiet"
-                      size="xs"
+                      variant="text"
+                      size="text"
                       onClick={() => {
                         setEditingId(comment.id)
                         setEditBody(comment.body)
@@ -100,8 +100,8 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                     </Button>
                     <Button
                       type="button"
-                      variant="quiet"
-                      size="xs"
+                      variant="textDanger"
+                      size="text"
                       disabled={deleteMutation.isPending}
                       onClick={() => {
                         if (window.confirm("Delete this comment?"))
@@ -123,8 +123,8 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                   />
                   <div className="flex justify-end gap-2">
                     <Button
-                      size="compact"
-                      variant="repository"
+                      size="text"
+                      variant="text"
                       onClick={() => {
                         setEditingId(null)
                         setEditBody("")
@@ -134,7 +134,7 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                       Cancel
                     </Button>
                     <Button
-                      size="compact"
+                      size="text"
                       disabled={!editBody.trim() || editMutation.isPending}
                       onClick={() =>
                         editMutation.mutate({ path: { comment_id: comment.id }, body: { body: editBody } })

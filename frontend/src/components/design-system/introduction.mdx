@@ -10,7 +10,7 @@ A compact interface for working with code. The system keeps the repository-first
 
 - **Color:** use role-based tokens from `src/components/design-system/tokens.css`. Every surface has a matching foreground. `success` means open or created, `destructive` means deletion or failure, `warning` means attention, and `merged` identifies merged pull requests. Language identities are centralized `--language-*` visualization tokens.
 - **Typography:** Inter for the interface; JetBrains Mono for paths, SHAs, commands, and code. Page titles use 24px bold, sections 18px semibold, controls 14px, and metadata 12px.
-- **Spacing:** use the 4px scale. Compact repository controls are 32px high; regular form actions are 36px. Page layout uses a shared 1280px container, 16px horizontal padding, and 24px section gaps.
+- **Spacing:** use the 4px scale. Shared buttons and inputs are 40px high; compact repository controls are 32px. Repository form fields use the reference's padding and border sizing. Page layout uses a shared 1280px container, 16px horizontal padding, and 24px section gaps.
 - **Surfaces:** background → card → secondary/accent. Borders separate dense content; shadows belong to floating overlays. The default radius is 6px.
 - **Themes:** dark is the default. Use the toolbar theme selector to inspect the same tokens in light mode. The manager remains dark, inspired by Grafana's component catalog.
 
@@ -34,14 +34,16 @@ The underlying shadcn files are generated/vendor primitives and stay untouched. 
 
 Inspect the individual stories and the state galleries before changing a control. Filled actions, borders, text, and focus indicators use semantic tokens. Busy buttons communicate `aria-busy` and prevent duplicate actions. Icon-only actions need an accessible label. Use labels, invalid state, and error descriptions for forms. Radix handles focus trapping and keyboard navigation for overlays, selects, menus, and tabs.
 
-Motion respects `prefers-reduced-motion`. Storybook's accessibility panel evaluates each story. Browser verification visits every story in both themes and at desktop and mobile widths, then exercises hover, keyboard focus, password visibility, menus, dialogs, tabs, and form validation.
+Storybook's accessibility panel evaluates each story. Browser verification visits every story and documentation page in both themes and at desktop and mobile widths, then exercises hover, keyboard focus, password visibility, menus, dialogs, tabs, and form validation. The palette preserves the reference exactly; its existing color contrast limitations are attached to the browser report separately from the enforced accessibility checks.
 
 ## Patterns
 
-Patterns show the actual application components with generated MSW handlers and a real TanStack router/query context. Fixtures remain local to Storybook and do not depend on a live backend. Loading, error, and empty stories preserve the behavior added in recent GitEdge work.
+Components live under `src/components`; their `.stories.tsx` files sit beside the corresponding component. Patterns show the actual application components with generated MSW handlers and a real TanStack router/query context. Fixtures remain local to Storybook and do not depend on a live backend. Loading, error, and empty stories preserve the behavior added in recent GitEdge work.
 
 ## Development and deployment
 
 Run `bun run storybook` in `frontend/` for the catalog, and `bun run build-storybook` for the static build. `frontend/vercel.ts` selects the static build when `DEPLOY_TARGET=storybook`; the default retains the app's backend relationship, Git HTTP rewrite, and SPA fallback. Storybook uses its own Vercel project rooted at `frontend/`, with the deployment target set in that project for preview and production.
+
+MSW 3's Vite plugin serves and emits its worker directly from the installed package. No generated worker is committed, and the application's production build does not include the mocking integration.
 
 If a frontend preview lacks Vercel related-project metadata, set a branch-scoped `VITE_API_URL` to the matching backend preview. The build prefers the related deployment and fails when neither source is available.

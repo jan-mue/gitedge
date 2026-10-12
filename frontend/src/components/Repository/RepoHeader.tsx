@@ -67,7 +67,7 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
             <RouterLink
               to="/$owner/$repo"
               params={{ owner, repo }}
-              appearance="inherited"
+              appearance="icon"
               aria-label={`${owner}/${repo} repository`}
             >
               <div className="flex h-8 w-8 items-center justify-center rounded bg-primary">
@@ -141,8 +141,8 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
                 type="button"
                 aria-label="More repository tabs"
                 visibility="mobile"
-                variant="repository"
-                size="compact"
+                variant="mobileTabMenu"
+                size="tab"
               >
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
@@ -150,7 +150,7 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
             <DropdownMenuContent align="end">
               {overflowTabs.map((tab) => (
                 <DropdownMenuItem key={tab.label} asChild>
-                  <RouterLink to={tab.path} params={{ owner, repo }} appearance="inherited">
+                  <RouterLink to={tab.path} params={{ owner, repo }} appearance="row">
                     <tab.icon className="h-4 w-4" />
                     {tab.label}
                   </RouterLink>

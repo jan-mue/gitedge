@@ -82,8 +82,8 @@ const ReleaseCard = ({
         {canEdit && (
           <Button
             type="button"
-            variant="quiet"
-            size="xs"
+            variant="text"
+            size="text"
             onClick={() => onEdit(release)}
             data-testid={`edit-release-${release.tag_name}`}
           >

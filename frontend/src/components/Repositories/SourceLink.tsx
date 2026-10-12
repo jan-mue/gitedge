@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { Link as RouterLink } from "@/components/design-system"
+import { type LinkAppearance, Link as RouterLink } from "@/components/design-system"
 
 export type SourceMode = "branch" | "commit"
 
@@ -12,7 +12,7 @@ interface SourceLinkProps {
   /** Path within the repository, relative to the repo root. */
   path: string
   onClick?: () => void
-  appearance?: "default" | "action" | "menu"
+  appearance?: LinkAppearance
   "data-testid"?: string
   children: ReactNode
 }

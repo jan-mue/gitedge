@@ -18,7 +18,7 @@ const RepoCard = ({ repo }: { repo: Repository }) => (
   <div className="border border-border rounded-lg bg-card px-4 py-3" data-testid={`profile-repo-${repo.name}`}>
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <RouterLink to="/$owner/$repo" params={{ owner: repo.owner, repo: repo.name }} appearance="default">
+        <RouterLink to="/$owner/$repo" params={{ owner: repo.owner, repo: repo.name }} appearance="repository">
           {repo.owner}/{repo.name}
         </RouterLink>
         {repo.description && <p className="text-xs text-muted-foreground mt-1">{repo.description}</p>}

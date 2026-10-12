@@ -74,7 +74,7 @@ const NewIssueForm = ({ owner, repo }: NewIssueFormProps) => {
         </div>
 
         <div className="flex items-center justify-end gap-3">
-          <RouterLink to="/$owner/$repo/issues" params={{ owner, repo }} appearance="action">
+          <RouterLink to="/$owner/$repo/issues" params={{ owner, repo }} appearance="formAction">
             Cancel
           </RouterLink>
           <Button
@@ -83,7 +83,7 @@ const NewIssueForm = ({ owner, repo }: NewIssueFormProps) => {
             disabled={!title.trim() || createIssueMutation.isPending}
             data-testid="submit-issue-btn"
             variant="success"
-            size="compact"
+            size="form"
           >
             {createIssueMutation.isPending ? "Submitting..." : "Submit new issue"}
           </Button>

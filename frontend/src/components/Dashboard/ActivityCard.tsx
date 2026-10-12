@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Link,
+  type LinkAppearance,
 } from "@/components/design-system"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import useCustomToast from "@/hooks/useCustomToast"
@@ -42,7 +43,7 @@ const TargetLink = ({
   ...props
 }: Omit<ComponentProps<"a">, "className" | "style"> & {
   activity: ActivityPublic
-  appearance?: "default" | "muted" | "inherited"
+  appearance?: LinkAppearance
 }) => {
   const owner = activity.repo_owner
   const repo = activity.repo_name
@@ -142,18 +143,18 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
             to="/profile/$username"
             params={{ username: activity.actor_username }}
             aria-label={`View ${activity.actor_username}'s profile`}
-            appearance="stat"
+            appearance="avatar"
           >
             {activity.actor_username.slice(0, 1).toUpperCase()}
           </Link>
           <div className="min-w-0 [overflow-wrap:anywhere]">
             <p className="text-sm leading-5 text-foreground">
-              <Link to="/profile/$username" params={{ username: activity.actor_username }} appearance="default">
+              <Link to="/profile/$username" params={{ username: activity.actor_username }} appearance="author">
                 {activity.actor_username}
               </Link>{" "}
               {activityActions[activity.kind] ?? activity.kind}{" "}
               {owner && repo && (
-                <Link to="/$owner/$repo" params={{ owner, repo }} appearance="default">
+                <Link to="/$owner/$repo" params={{ owner, repo }} appearance="strong">
                   {owner}/{repo}
                 </Link>
               )}
@@ -188,7 +189,7 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
       {activity.title && (
         <div className="px-4 pb-4">
           <h3 className="mb-2 break-words text-base font-semibold [overflow-wrap:anywhere]">
-            <TargetLink activity={activity} appearance="default">
+            <TargetLink activity={activity} appearance="target">
               {activity.title}
               {activity.target_number != null && (
                 <>
@@ -216,7 +217,7 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
               {activity.kind === "comment" && <p className="mb-2 text-xs text-muted-foreground">Comment</p>}
               <Description text={expanded || !isLong ? body : `${body.slice(0, 200).trimEnd()}…`} />
               {expanded && activity.preview?.body_truncated && (
-                <TargetLink activity={activity} appearance="default">
+                <TargetLink activity={activity} appearance="preview">
                   {activity.kind === "comment" ? "View full comment" : "View full description"}
                 </TargetLink>
               )}
@@ -231,15 +232,15 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
               aria-expanded={expanded}
               aria-controls={bodyId}
               onClick={() => setExpanded((value) => !value)}
-              variant="link"
-              size="compact"
+              variant="readMore"
+              size="text"
             >
               {expanded ? "Show less" : "Read more"}
             </Button>
           )}
           {isDiscussion && (
             <footer className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-              <TargetLink activity={activity} appearance="muted">
+              <TargetLink activity={activity} appearance="comments">
                 <MessageSquare className="size-3.5" aria-hidden="true" />
                 {activity.preview?.comments_count
                   ? `${activity.preview.comments_count} ${activity.preview.comments_count === 1 ? "comment" : "comments"}`

@@ -31,7 +31,12 @@ const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
   return (
     <div className="space-y-4">
       <TrackerFilters filters={filters} label="pull requests" openCount={openCount} closedCount={closedCount}>
-        <RouterLink to="/$owner/$repo/pulls/new" params={{ owner, repo }} appearance="default" data-testid="new-pr-btn">
+        <RouterLink
+          to="/$owner/$repo/pulls/new"
+          params={{ owner, repo }}
+          appearance="successAction"
+          data-testid="new-pr-btn"
+        >
           New pull request
         </RouterLink>
       </TrackerFilters>
@@ -51,7 +56,7 @@ const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
                   <RouterLink
                     to="/$owner/$repo/pulls/$number"
                     params={{ owner, repo, number: String(pr.number) }}
-                    appearance="default"
+                    appearance="title"
                   >
                     {pr.title}
                   </RouterLink>

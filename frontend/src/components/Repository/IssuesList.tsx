@@ -34,7 +34,7 @@ const IssuesList = ({ owner, repo }: IssuesListProps) => {
         <RouterLink
           to="/$owner/$repo/issues/new"
           params={{ owner, repo }}
-          appearance="default"
+          appearance="successAction"
           data-testid="new-issue-btn"
         >
           New issue
@@ -56,7 +56,7 @@ const IssuesList = ({ owner, repo }: IssuesListProps) => {
                   <RouterLink
                     to="/$owner/$repo/issues/$number"
                     params={{ owner, repo, number: String(issue.number) }}
-                    appearance="default"
+                    appearance="title"
                   >
                     {issue.title}
                   </RouterLink>

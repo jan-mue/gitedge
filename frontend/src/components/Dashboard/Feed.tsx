@@ -71,7 +71,7 @@ const Feed = () => {
                     key={`${repo.owner}/${repo.name}`}
                     to="/$owner/$repo"
                     params={{ owner: repo.owner, repo: repo.name }}
-                    appearance="default"
+                    appearance="listRow"
                   >
                     <p className="truncate text-sm font-medium text-foreground">
                       {repo.owner}/{repo.name}
@@ -104,7 +104,7 @@ const Feed = () => {
                       repo: activity.repo_name ?? "",
                       number: String(activity.target_number ?? 0),
                     }}
-                    appearance="default"
+                    appearance="listRow"
                   >
                     <p className="text-xs text-muted-foreground">{kindAction[activity.kind] ?? activity.kind}</p>
                     <p className="line-clamp-2 text-sm text-foreground">
@@ -182,7 +182,7 @@ const Feed = () => {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium text-foreground">Trending repositories</span>
               <span className="text-muted-foreground">·</span>
-              <RouterLink to="/explore" appearance="default">
+              <RouterLink to="/explore" appearance="body">
                 See more
               </RouterLink>
             </div>
@@ -204,7 +204,7 @@ const Feed = () => {
                       <RouterLink
                         to="/$owner/$repo"
                         params={{ owner: repo.owner, repo: repo.name }}
-                        appearance="default"
+                        appearance="repositoryStrong"
                       >
                         {repo.owner}/{repo.name}
                       </RouterLink>

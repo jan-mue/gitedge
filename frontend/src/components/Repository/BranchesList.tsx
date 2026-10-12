@@ -60,7 +60,7 @@ const BranchesList = ({ owner, repo }: BranchesListProps) => {
               <Link
                 to="/$owner/$repo/src/branch/$branch"
                 params={{ owner, repo, branch: branch.name }}
-                appearance="code"
+                appearance="branch"
               >
                 {branch.name}
               </Link>
@@ -87,7 +87,11 @@ const BranchesList = ({ owner, repo }: BranchesListProps) => {
               key={tag.name}
               className="flex items-center justify-between px-4 py-3 border-b border-border last:border-b-0"
             >
-              <Link to="/$owner/$repo/src/commit/$sha" params={{ owner, repo, sha: tag.commit_sha }} appearance="code">
+              <Link
+                to="/$owner/$repo/src/commit/$sha"
+                params={{ owner, repo, sha: tag.commit_sha }}
+                appearance="branch"
+              >
                 {tag.name}
               </Link>
               <span className="font-mono text-xs text-muted-foreground">{tag.commit_sha.slice(0, 10)}</span>

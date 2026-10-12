@@ -117,7 +117,7 @@ const CommitDetail = () => {
                 key={parent}
                 to="/$owner/$repo/commit/$hash"
                 params={{ owner, repo, hash: parent }}
-                appearance="code"
+                appearance="revision"
               >
                 {parent.slice(0, 10)}
               </RouterLink>

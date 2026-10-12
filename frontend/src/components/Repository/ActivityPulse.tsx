@@ -137,7 +137,7 @@ const ActivityPulse = ({ data, owner, repo, days, setDays }: ActivityPulseProps)
                 <Link
                   to="/$owner/$repo/pulls/$number"
                   params={{ owner, repo, number: String(pr.target_number) }}
-                  appearance="default"
+                  appearance="truncated"
                 >
                   {pr.title || `Pull request #${pr.target_number}`}
                 </Link>

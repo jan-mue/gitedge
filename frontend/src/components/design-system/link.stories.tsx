@@ -10,6 +10,48 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 export const Default: Story = {}
+export const Contexts: Story = {
+  render: () => (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {(
+        [
+          "avatar",
+          "author",
+          "strong",
+          "target",
+          "preview",
+          "comments",
+          "listRow",
+          "body",
+          "repositoryStrong",
+          "repository",
+          "codeAction",
+          "repositoryEntry",
+          "truncated",
+          "commitPreview",
+          "hash",
+          "branch",
+          "revision",
+          "title",
+          "commitHash",
+          "successAction",
+          "formAction",
+          "caption",
+          "icon",
+          "row",
+          "item",
+        ] as const
+      ).map((appearance) => (
+        <div key={appearance} className="space-y-2">
+          <p className="text-xs text-muted-foreground">{appearance}</p>
+          <ExternalLink href="#repository" appearance={appearance}>
+            {appearance === "avatar" ? "JM" : "GitEdge repository"}
+          </ExternalLink>
+        </div>
+      ))}
+    </div>
+  ),
+}
 export const Muted: Story = { args: { appearance: "muted" } }
 export const Action: Story = { args: { appearance: "action" } }
 export const CommitHash: Story = { args: { appearance: "code", children: "7e877ad" } }

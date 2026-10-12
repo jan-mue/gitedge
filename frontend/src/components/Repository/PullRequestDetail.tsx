@@ -215,7 +215,7 @@ const PullRequestDetail = () => {
                   <RouterLink
                     to="/$owner/$repo/src/commit/$sha/$"
                     params={{ owner, repo, sha: changes.head_commit, _splat: file.path }}
-                    appearance="default"
+                    appearance="caption"
                     data-testid={`view-file-${file.path}`}
                   >
                     View file

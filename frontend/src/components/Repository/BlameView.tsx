@@ -47,18 +47,18 @@ const BlameView = ({
             {data.lines.length} lines · Blame at {revision.slice(0, 12)}
           </span>
           <div className="flex items-center gap-2">
-            <SourceLink owner={owner} repo={repo} mode={mode} refName={revision} path={path} appearance="action">
+            <SourceLink owner={owner} repo={repo} mode={mode} refName={revision} path={path} appearance="codeAction">
               Normal view
             </SourceLink>
             <Link
               to="/$owner/$repo/blame/$"
               params={{ owner, repo, _splat: path }}
               search={{ ref: data.revision }}
-              appearance="action"
+              appearance="codeAction"
             >
               Permalink
             </Link>
-            <Button type="button" onClick={() => setEscapedTabs((value) => !value)} variant="repository" size="xs">
+            <Button type="button" onClick={() => setEscapedTabs((value) => !value)} variant="codeAction" size="code">
               {escapedTabs ? "Unescape tabs" : "Escape tabs"}
             </Button>
           </div>
@@ -82,7 +82,7 @@ const BlameView = ({
                             <Link
                               to="/$owner/$repo/commit/$hash"
                               params={{ owner, repo, hash: line.commit.sha }}
-                              appearance="default"
+                              appearance="commitPreview"
                               title={line.commit.message}
                             >
                               {line.commit.message.split("\n")[0]}
@@ -93,7 +93,7 @@ const BlameView = ({
                             <Link
                               to="/$owner/$repo/commit/$hash"
                               params={{ owner, repo, hash: line.commit.sha }}
-                              appearance="code"
+                              appearance="hash"
                             >
                               {line.commit.sha.slice(0, 10)}
                             </Link>

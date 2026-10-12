@@ -30,14 +30,14 @@ const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
     <div className="file-viewer border rounded-lg overflow-hidden" data-testid="file-viewer">
       <FileHeader file={file} backLink={backLink} />
       <div className="flex flex-wrap items-center justify-end gap-1 border-b bg-secondary/50 px-4 py-2">
-        <ExternalLink href={rawUrl} appearance="action">
+        <ExternalLink href={rawUrl} appearance="codeAction">
           Raw
         </ExternalLink>
         <Link
           to="/$owner/$repo/blame/$"
           params={{ owner: backLink.owner, repo: backLink.repo, _splat: file.path }}
           search={{ ref: backLink.refName }}
-          appearance="default"
+          appearance="codeAction"
         >
           Blame
         </Link>
@@ -45,7 +45,7 @@ const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
           to="/$owner/$repo/commits/branch/$branch"
           params={{ owner: backLink.owner, repo: backLink.repo, branch: backLink.refName }}
           search={{ path: file.path }}
-          appearance="default"
+          appearance="codeAction"
         >
           History
         </Link>
@@ -56,15 +56,15 @@ const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
             mode="commit"
             refName={commitSha}
             path={file.path}
-            appearance="action"
+            appearance="codeAction"
           >
             Permalink
           </SourceLink>
         )}
-        <Button type="button" onClick={() => copy(file.content)} variant="repository" size="xs">
+        <Button type="button" onClick={() => copy(file.content)} variant="codeAction" size="code">
           Copy content
         </Button>
-        <Button type="button" onClick={() => setEscapedTabs((value) => !value)} variant="repository" size="xs">
+        <Button type="button" onClick={() => setEscapedTabs((value) => !value)} variant="codeAction" size="code">
           {escapedTabs ? "Unescape tabs" : "Escape tabs"}
         </Button>
       </div>
