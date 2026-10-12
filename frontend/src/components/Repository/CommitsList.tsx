@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { Check, GitBranch } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { repositoriesListBranchesOptions, repositoriesListCommitsOptions } from "@/client/@tanstack/react-query.gen"
-import { Button, Link as RouterLink } from "@/components/design-system"
+import { Link as RouterLink } from "@/components/design-system"
+import BranchSelector from "@/components/Repository/BranchSelector"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 
 interface CommitsListProps {
@@ -19,7 +19,6 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
   const ref = branch ?? "main"
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const {
     data: commitsData,
@@ -30,23 +29,14 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
     ...repositoriesListCommitsOptions({ path: { owner, repo }, query: { ref, limit: 50, file_path: filePath } }),
   })
 
-  const { data: branches } = useQuery({
+  const {
+    data: branches,
+    isError: branchesError,
+    refetch: refetchBranches,
+  } = useQuery({
     ...repositoriesListBranchesOptions({ path: { owner, repo } }),
     enabled: open,
   })
-
-  const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-      setOpen(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside)
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [open, handleClickOutside])
 
   const commits = commitsData?.data ?? []
 
@@ -66,45 +56,18 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
         </h2>
       )}
       <div className="flex items-center gap-2">
-        <div className="relative" ref={dropdownRef}>
-          <Button
-            type="button"
-            onClick={() => setOpen((prev) => !prev)}
-            variant="repository"
-            size="compact"
-            data-testid="commits-branch-selector"
-          >
-            <GitBranch className="h-3.5 w-3.5" />
-            <span>{ref}</span>
-            <span className="text-muted-foreground">&#9662;</span>
-          </Button>
-          {open && (
-            <div
-              className="absolute left-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-lg border border-border bg-card shadow-lg"
-              data-testid="commits-branch-dropdown"
-            >
-              <div className="max-h-64 overflow-y-auto py-1">
-                {branches?.map((branch) => (
-                  <Button
-                    key={branch.name}
-                    type="button"
-                    onClick={() => selectBranch(branch.name)}
-                    variant="menu"
-                    size="compact"
-                  >
-                    {branch.name === ref ? (
-                      <Check className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
-                    ) : (
-                      <span className="h-3.5 w-3.5 flex-shrink-0" />
-                    )}
-                    <span className="truncate">{branch.name}</span>
-                  </Button>
-                ))}
-                {!branches && <div className="px-3 py-2 text-sm text-muted-foreground">Loading...</div>}
-              </div>
-            </div>
-          )}
-        </div>
+        <BranchSelector
+          branches={branches ?? []}
+          value={ref}
+          onValueChange={selectBranch}
+          open={open}
+          onOpenChange={setOpen}
+          loading={open && !branches && !branchesError}
+          error={branchesError}
+          onRetry={() => refetchBranches()}
+          data-testid="commits-branch-selector"
+          dropdownTestId="commits-branch-dropdown"
+        />
         <span className="text-sm text-muted-foreground">
           {commits.length} {commits.length === 1 ? "commit" : "commits"}
         </span>

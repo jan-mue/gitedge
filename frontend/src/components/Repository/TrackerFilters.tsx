@@ -2,6 +2,7 @@ import { CircleDot, Eye, GitMerge, GitPullRequest, HelpCircle, Search } from "lu
 import type { ReactNode } from "react"
 import { useRef, useState } from "react"
 import { Button, FilterDropdown, Input, Tooltip, TooltipContent, TooltipTrigger } from "@/components/design-system"
+import BranchSelector from "./BranchSelector"
 
 interface TrackerItem {
   title: string
@@ -170,14 +171,12 @@ const TrackerFilters = ({
           ]}
         />
         {kind === "pulls" && (
-          <FilterDropdown
-            label="Branch"
+          <BranchSelector
+            appearance="filter"
+            allLabel="All target branches"
             value={filters.branch}
-            onChange={filters.setBranch}
-            options={[
-              { value: "", label: "All target branches" },
-              ...filters.branches.map((branch) => ({ value: branch, label: branch })),
-            ]}
+            onValueChange={filters.setBranch}
+            branches={filters.branches.map((name) => ({ name }))}
           />
         )}
         <FilterDropdown

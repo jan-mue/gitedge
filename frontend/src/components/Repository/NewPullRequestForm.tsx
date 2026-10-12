@@ -7,7 +7,9 @@ import {
   repositoriesListBranchesOptions,
   repositoriesListPullRequestsQueryKey,
 } from "@/client/@tanstack/react-query.gen"
-import { Button, Input, Label, NativeSelect, Link as RouterLink, Textarea } from "@/components/design-system"
+import { Button, Input, Label, Link as RouterLink, Textarea } from "@/components/design-system"
+
+import BranchSelector from "./BranchSelector"
 
 interface NewPullRequestFormProps {
   owner: string
@@ -23,7 +25,12 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
   const [headBranch, setHeadBranch] = useState("")
   const [baseBranch, setBaseBranch] = useState("main")
 
-  const { data: branches } = useQuery({
+  const {
+    data: branches,
+    isPending: branchesPending,
+    isError: branchesError,
+    refetch: refetchBranches,
+  } = useQuery({
     ...repositoriesListBranchesOptions({ path: { owner, repo } }),
   })
 
@@ -59,41 +66,40 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
 
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <Label htmlFor="head-branch" appearance="field">
               Source branch
             </Label>
-            <NativeSelect
+            <BranchSelector
               id="head-branch"
+              label="Source branch"
               value={headBranch}
-              onChange={(e) => setHeadBranch(e.target.value)}
+              onValueChange={setHeadBranch}
+              branches={branches ?? []}
+              loading={branchesPending}
+              error={branchesError}
+              onRetry={() => refetchBranches()}
+              appearance="field"
               data-testid="pr-source-branch"
-            >
-              <option value="">Select a branch</option>
-              {branches?.map((branch) => (
-                <option key={branch.name} value={branch.name}>
-                  {branch.name}
-                </option>
-              ))}
-            </NativeSelect>
+            />
           </div>
           <span className="mt-6 text-muted-foreground">&rarr;</span>
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <Label htmlFor="base-branch" appearance="field">
               Target branch
             </Label>
-            <NativeSelect
+            <BranchSelector
               id="base-branch"
+              label="Target branch"
               value={baseBranch}
-              onChange={(e) => setBaseBranch(e.target.value)}
+              onValueChange={setBaseBranch}
+              branches={branches ?? []}
+              loading={branchesPending}
+              error={branchesError}
+              onRetry={() => refetchBranches()}
+              appearance="field"
               data-testid="pr-target-branch"
-            >
-              {branches?.map((branch) => (
-                <option key={branch.name} value={branch.name}>
-                  {branch.name}
-                </option>
-              ))}
-            </NativeSelect>
+            />
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 import { CircleDot, GitPullRequest } from "lucide-react"
 import type { RepositoryActivityStatistics } from "@/client"
-import { Link, NativeSelect } from "@/components/design-system"
+import { Link, SelectField } from "@/components/design-system"
 import ActivityChart from "@/components/Repository/ActivityChart"
 
 const formatDate = (value: string) =>
@@ -53,20 +53,21 @@ const ActivityPulse = ({ data, owner, repo, days, setDays }: ActivityPulseProps)
         <h2 className="text-lg font-medium text-foreground sm:text-xl">
           {formatDate(data.start)} - {formatDate(data.end)}
         </h2>
-        <NativeSelect
+        <SelectField
           aria-label="Activity period"
-          value={days}
-          onChange={(event) => setDays(Number(event.target.value))}
-          compact
-        >
-          <option value={1}>1 day</option>
-          <option value={3}>3 days</option>
-          <option value={7}>1 week</option>
-          <option value={30}>1 month</option>
-          <option value={90}>3 months</option>
-          <option value={180}>6 months</option>
-          <option value={365}>1 year</option>
-        </NativeSelect>
+          value={String(days)}
+          onValueChange={(value) => setDays(Number(value))}
+          appearance="compact"
+          options={[
+            { value: "1", label: "1 day" },
+            { value: "3", label: "3 days" },
+            { value: "7", label: "1 week" },
+            { value: "30", label: "1 month" },
+            { value: "90", label: "3 months" },
+            { value: "180", label: "6 months" },
+            { value: "365", label: "1 year" },
+          ]}
+        />
       </div>
       <div className="overflow-hidden rounded-lg border border-border">
         <div className="border-b border-border bg-secondary px-4 py-3 text-sm font-medium text-foreground">

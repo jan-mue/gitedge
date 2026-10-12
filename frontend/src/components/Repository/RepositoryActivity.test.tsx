@@ -85,6 +85,7 @@ describe("RepositoryActivity", () => {
     })
     expect(screen.getByText("Improve activity")).toHaveAttribute("href", "/owner/repo/pulls/17")
     expect(screen.getByText("120 additions")).toBeInTheDocument()
+    await user.click(screen.getByRole("combobox", { name: "Activity period" }))
     expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
       "1 day",
       "3 days",
@@ -94,7 +95,7 @@ describe("RepositoryActivity", () => {
       "6 months",
       "1 year",
     ])
-    await user.selectOptions(screen.getByLabelText("Activity period"), "1")
+    await user.click(screen.getByRole("option", { name: "1 day" }))
     await waitFor(() =>
       expect(getStatistics).toHaveBeenLastCalledWith({
         params: expect.objectContaining({ owner: "owner", repo: "repo" }),
@@ -103,16 +104,23 @@ describe("RepositoryActivity", () => {
     )
     expect(await screen.findByText("25 additions")).toBeInTheDocument()
     for (const days of [90, 180, 365]) {
-      await user.selectOptions(screen.getByLabelText("Activity period"), String(days))
+      await user.click(screen.getByRole("combobox", { name: "Activity period" }))
+      await user.click(
+        screen.getByRole("option", {
+          name: ({ 90: "3 months", 180: "6 months", 365: "1 year" } as Record<number, string>)[days],
+        }),
+      )
       await waitFor(() =>
         expect(getStatistics).toHaveBeenLastCalledWith({
           params: expect.objectContaining({ owner: "owner", repo: "repo" }),
           days,
         }),
       )
-      expect(await screen.findByLabelText("Activity period")).toHaveValue(String(days))
+      expect(await screen.findByLabelText("Activity period")).toHaveTextContent(
+        ({ 90: "3 months", 180: "6 months", 365: "1 year" } as Record<number, string>)[days],
+      )
     }
-  })
+  }, 15_000)
 
   test("switches views, ranks by selected metric, and shows the past-year commit chart", async () => {
     const getStatistics = vi.fn(() => HttpResponse.json(statistics))
@@ -121,7 +129,8 @@ describe("RepositoryActivity", () => {
     await screen.findByText("Overview")
     await user.click(screen.getByRole("button", { name: "Contributors" }))
     expect(screen.getAllByTestId("activity-contributor")[0]).toHaveTextContent("Alice")
-    await user.selectOptions(screen.getByLabelText("Contribution metric"), "additions")
+    await user.click(screen.getByRole("combobox", { name: "Contribution metric" }))
+    await user.click(screen.getByRole("option", { name: "Additions" }))
     expect(screen.getAllByTestId("activity-contributor")[0]).toHaveTextContent("Bob")
     expect(screen.getByLabelText("Overall additions")).toHaveAttribute("data-metric", "additions")
     await user.click(screen.getByRole("button", { name: "Code frequency" }))

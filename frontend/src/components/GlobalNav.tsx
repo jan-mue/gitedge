@@ -24,8 +24,8 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  NativeSelect,
   Link as RouterLink,
+  SelectField,
   Textarea,
 } from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
@@ -188,19 +188,17 @@ const GlobalNav = () => {
               <Label htmlFor="new-repo-owner" appearance="field">
                 Owner
               </Label>
-              <NativeSelect
+              <SelectField
                 appearance="owner"
                 id="new-repo-owner"
+                aria-label="Owner"
                 data-testid="new-repo-owner"
                 value={selectedOwner}
-                onChange={(e) => setRepoOwner(e.target.value)}
-              >
-                {ownerOptions.map((owner) => (
-                  <option key={owner} value={owner}>
-                    {owner}
-                  </option>
-                ))}
-              </NativeSelect>
+                onValueChange={setRepoOwner}
+                placeholder="Select an owner"
+                disabled={!ownerOptions.length}
+                options={ownerOptions.map((owner) => ({ value: owner, label: owner }))}
+              />
             </div>
             <div>
               <Label htmlFor="new-repo-name" appearance="field">

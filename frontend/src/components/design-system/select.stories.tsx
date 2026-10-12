@@ -13,28 +13,29 @@ import {
 const meta = { title: "Components/Select" } satisfies Meta
 export default meta
 type Story = StoryObj
-const BranchSelect = ({ open = false, disabled = false }: { open?: boolean; disabled?: boolean }) => (
-  <Select defaultValue="main" defaultOpen={open} disabled={disabled}>
-    <SelectTrigger aria-label="Branch">
-      <SelectValue placeholder="Select a branch" />
+const NotificationSelect = ({ open = false, disabled = false }: { open?: boolean; disabled?: boolean }) => (
+  <Select defaultValue="participating" defaultOpen={open} disabled={disabled}>
+    <SelectTrigger aria-label="Notifications">
+      <SelectValue placeholder="Choose notifications" />
     </SelectTrigger>
     <SelectContent>
       <SelectGroup>
-        <SelectLabel>Branches</SelectLabel>
-        <SelectItem value="main">main</SelectItem>
-        <SelectItem value="develop">develop</SelectItem>
-        <SelectItem value="archived" disabled>
-          archived
+        <SelectLabel>Notifications</SelectLabel>
+        <SelectItem value="all">All activity</SelectItem>
+        <SelectItem value="participating">Participating and mentions</SelectItem>
+        <SelectItem value="mentions">Mentions only</SelectItem>
+        <SelectItem value="custom" disabled>
+          Custom notifications
         </SelectItem>
       </SelectGroup>
       <SelectSeparator />
       <SelectGroup>
-        <SelectLabel>Tags</SelectLabel>
-        <SelectItem value="v1">v1.0.0</SelectItem>
+        <SelectLabel>Quiet mode</SelectLabel>
+        <SelectItem value="none">No notifications</SelectItem>
       </SelectGroup>
     </SelectContent>
   </Select>
 )
-export const SelectClosed: Story = { render: () => <BranchSelect /> }
-export const SelectOpen: Story = { render: () => <BranchSelect open /> }
-export const SelectDisabled: Story = { render: () => <BranchSelect disabled /> }
+export const SelectClosed: Story = { render: () => <NotificationSelect /> }
+export const SelectOpen: Story = { render: () => <NotificationSelect open /> }
+export const SelectDisabled: Story = { render: () => <NotificationSelect disabled /> }

@@ -34,6 +34,12 @@ beforeAll(() => {
     disconnect = vi.fn()
   }
 
+  // jsdom lacks the pointer-capture and scrolling APIs used by Radix Select.
+  HTMLElement.prototype.hasPointerCapture ??= vi.fn(() => false)
+  HTMLElement.prototype.setPointerCapture ??= vi.fn()
+  HTMLElement.prototype.releasePointerCapture ??= vi.fn()
+  HTMLElement.prototype.scrollIntoView ??= vi.fn()
+
   global.IntersectionObserver = class {
     observe = vi.fn()
     unobserve = vi.fn()

@@ -1,7 +1,7 @@
 import type { ColumnDef } from "@tanstack/react-table"
-import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, test } from "vitest"
+import { render, screen } from "@/test/test-utils"
 
 import { DataTable } from "./DataTable"
 
@@ -88,10 +88,13 @@ describe("DataTable", () => {
     expect(cells).toHaveLength(9)
   })
 
-  test("does not show pagination when data fits on one page", () => {
-    render(<DataTable columns={columns} data={testData} />)
-
-    expect(screen.queryByRole("button", { name: /go to first page/i })).not.toBeInTheDocument()
+  test("keeps the page-size control available when data fits on one page", async () => {
+    const { user } = render(<DataTable columns={columns} data={testData} />)
+    const select = screen.getByRole("combobox", { name: "Rows per page" })
+    await user.click(select)
+    await user.click(screen.getByRole("option", { name: "5" }))
+    expect(select).toHaveTextContent("5")
+    expect(screen.getByRole("button", { name: /go to next page/i })).toBeDisabled()
   })
 
   test("shows pagination when data exceeds page size", () => {

@@ -1,16 +1,16 @@
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { Check, Copy, GitBranch, GitCommitHorizontal, HardDrive, Lock, Tag } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import {
   repositoriesGetRepositoryInfoOptions,
   repositoriesGetStatisticsOptions,
   repositoriesListBranchesOptions,
 } from "@/client/@tanstack/react-query.gen"
 import { Button, Input, Link as RouterLink, Skeleton } from "@/components/design-system"
+import BranchSelector from "@/components/Repository/BranchSelector"
 import FileFinder from "@/components/Repository/FileFinder"
 import LanguageBar from "@/components/Repository/LanguageBar"
-import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import { formatSize } from "@/utils"
 
@@ -31,7 +31,6 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
   const isCopied = copiedText === cloneUrl
 
   const [branchDropdownOpen, setBranchDropdownOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const { data: repoInfo } = useQuery({
     ...repositoriesGetRepositoryInfoOptions({ path: { owner, repo }, query: { ref } }),
@@ -51,19 +50,6 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
     ...repositoriesListBranchesOptions({ path: { owner, repo } }),
     enabled: branchDropdownOpen,
   })
-
-  const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-      setBranchDropdownOpen(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (branchDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside)
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [branchDropdownOpen, handleClickOutside])
 
   const handleBranchSelect = (branchName: string) => {
     setBranchDropdownOpen(false)
@@ -114,62 +100,17 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
           statistics && <LanguageBar languages={statistics.languages ?? []} />
         ))}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative" ref={dropdownRef}>
-          <Button
-            type="button"
-            onClick={() => setBranchDropdownOpen((prev) => !prev)}
-            variant="repository"
-            size="compact"
-            aria-expanded={branchDropdownOpen}
-            aria-label="Switch branch"
-            onKeyDown={(event) => {
-              if (event.key === "Escape") setBranchDropdownOpen(false)
-            }}
-            data-testid="branch-selector"
-          >
-            <GitBranch className="h-3.5 w-3.5" />
-            <span>{gitRef}</span>
-            <span className="text-muted-foreground">&#9662;</span>
-          </Button>
-
-          {branchDropdownOpen && (
-            <div
-              className="absolute left-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-lg border border-border bg-card shadow-lg"
-              data-testid="branch-dropdown"
-            >
-              <div className="border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground">
-                Switch branch
-              </div>
-              <div className="max-h-64 overflow-y-auto py-1">
-                {branches?.map((branch) => (
-                  <Button
-                    key={branch.name}
-                    type="button"
-                    onClick={() => handleBranchSelect(branch.name)}
-                    variant="menu"
-                    size="compact"
-                    data-testid={`branch-option-${branch.name}`}
-                  >
-                    {branch.name === gitRef ? (
-                      <Check className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
-                    ) : (
-                      <span className="h-3.5 w-3.5 flex-shrink-0" />
-                    )}
-                    <span className="truncate">{branch.name}</span>
-                    {branch.is_default && <span className="ml-auto text-xs text-muted-foreground">default</span>}
-                  </Button>
-                ))}
-                {branchesError ? (
-                  <RepositoryError message="Unable to load branches." retry={() => refetchBranches()} />
-                ) : !branches ? (
-                  <RepositoryLoading label="Loading branches" rows={3} />
-                ) : (
-                  branches.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">No branches yet.</p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+        <BranchSelector
+          branches={branches ?? []}
+          value={gitRef}
+          onValueChange={handleBranchSelect}
+          open={branchDropdownOpen}
+          onOpenChange={setBranchDropdownOpen}
+          loading={branchDropdownOpen && !branches && !branchesError}
+          error={branchesError}
+          onRetry={() => refetchBranches()}
+          data-testid="branch-selector"
+        />
 
         <FileFinder owner={owner} repo={repo} revision={ref} mode={/^[0-9a-f]{40}$/.test(ref) ? "commit" : "branch"} />
 

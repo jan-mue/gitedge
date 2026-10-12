@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { Settings, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
 import {
   repositoriesDeleteRepositoryMutation,
@@ -26,12 +26,12 @@ import {
   Input,
   Label,
   LoadingButton,
-  NativeSelect,
   Textarea,
 } from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
+import BranchSelector from "./BranchSelector"
 import RepositoryLoading, { RepositoryError } from "./RepositoryLoading"
 
 const schema = z.object({
@@ -56,6 +56,7 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
   const { data: branches } = useQuery(repositoriesListBranchesOptions({ path: { owner, repo } }))
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isDirty },
@@ -65,7 +66,7 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
       reset({
         name: data.name,
         description: data.description ?? "",
-        default_branch: data.default_branch,
+        default_branch: data.default_branch ?? "main",
       })
   }, [data, reset])
   const update = useMutation({
@@ -75,7 +76,7 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
       reset({
         name: updated.name,
         description: updated.description ?? "",
-        default_branch: updated.default_branch,
+        default_branch: updated.default_branch ?? "main",
       })
       showSuccessToast("Repository settings saved")
       if (updated.name !== repo)
@@ -140,17 +141,24 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
               <Label htmlFor="default-branch" appearance="field">
                 Default branch
               </Label>
-              {branches?.length ? (
-                <NativeSelect id="default-branch" {...register("default_branch")}>
-                  {branches.map((branch) => (
-                    <option key={branch.name} value={branch.name}>
-                      {branch.name}
-                    </option>
-                  ))}
-                </NativeSelect>
-              ) : (
-                <Input id="default-branch" {...register("default_branch")} />
-              )}
+              <Controller
+                control={control}
+                name="default_branch"
+                render={({ field }) => (
+                  <BranchSelector
+                    id="default-branch"
+                    label="Default branch"
+                    name={field.name}
+                    ref={field.ref}
+                    value={field.value ?? ""}
+                    onValueChange={field.onChange}
+                    onBlur={field.onBlur}
+                    branches={branches?.length ? branches : [{ name: data.default_branch ?? "main", is_default: true }]}
+                    appearance="field"
+                    aria-invalid={Boolean(errors.default_branch)}
+                  />
+                )}
+              />
               {errors.default_branch && <p className="text-sm text-destructive">{errors.default_branch.message}</p>}
               <p className="mt-1 text-xs text-muted-foreground">The branch shown when visitors open the repository.</p>
             </div>

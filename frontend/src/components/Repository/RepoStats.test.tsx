@@ -131,4 +131,17 @@ describe("RepoStats", () => {
       }),
     )
   })
+
+  test("retries a failed branch request and keeps the picker usable", async () => {
+    server.use(handleRepositoriesListBranches(() => new HttpResponse(null, { status: 503 }), { once: true }))
+    const { user } = render(<RepoStats owner="owner" repo="repo" gitRef="main" />)
+    await user.click(screen.getByRole("combobox", { name: "Switch branch" }))
+    expect(await screen.findByRole("option", { name: "Unable to load branches." })).toBeInTheDocument()
+    await user.keyboard("{Escape}")
+    expect(screen.getByRole("alert")).toHaveTextContent("Unable to load branches")
+    await user.click(screen.getByRole("button", { name: "Try again" }))
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument())
+    await user.click(screen.getByRole("combobox", { name: "Switch branch" }))
+    expect(await screen.findByRole("option", { name: "develop" })).toBeInTheDocument()
+  })
 })
