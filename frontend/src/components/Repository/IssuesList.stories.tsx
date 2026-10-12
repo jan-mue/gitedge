@@ -3,6 +3,7 @@ import { HttpResponse } from "msw"
 import { handleRepositoriesListIssues } from "@/client/msw.gen"
 import IssuesList from "@/components/Repository/IssuesList"
 import { repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
+import { trackerIssues } from "./tracker-story-fixtures"
 
 const meta = { ...repositoryStoryMeta, title: "Patterns/Repository/Issues" } satisfies Meta
 export default meta
@@ -19,6 +20,17 @@ export const IssuesError: Story = {
   parameters: {
     msw: {
       handlers: [handleRepositoriesListIssues(() => HttpResponse.json({ detail: "Unavailable" }, { status: 503 }))],
+    },
+  },
+}
+
+export const PopulatedIssues: Story = {
+  render: () => <IssuesList owner="jan-mue" repo="gitedge" />,
+  parameters: {
+    msw: {
+      handlers: [
+        handleRepositoriesListIssues({ body: { data: trackerIssues, count: 3, open_count: 2, closed_count: 1 } }),
+      ],
     },
   },
 }

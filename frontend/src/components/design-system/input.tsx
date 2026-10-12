@@ -4,6 +4,8 @@ export const Input = component(
   PrimitiveInput,
   {
     search: "h-auto rounded border-border bg-secondary py-2 pl-9 text-sm",
+    trackerSearch:
+      "h-auto rounded border-border bg-secondary dark:bg-secondary px-3 py-1.5 text-sm focus-visible:border-border focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
     title: "h-10 text-lg font-bold md:text-lg",
     clone: "h-8 rounded-r-none bg-secondary font-mono text-xs text-muted-foreground sm:w-72 md:text-xs",
     compact: "h-8 text-xs md:text-xs",

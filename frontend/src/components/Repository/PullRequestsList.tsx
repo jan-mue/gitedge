@@ -3,7 +3,7 @@ import { GitPullRequest } from "lucide-react"
 import { repositoriesListPullRequestsOptions } from "@/client/@tanstack/react-query.gen"
 import { Link as RouterLink } from "@/components/design-system"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
-import TrackerFilters, { useTrackerFilters } from "@/components/Repository/TrackerFilters"
+import TrackerFilters, { TrackerSearch, useTrackerFilters } from "@/components/Repository/TrackerFilters"
 
 interface PullRequestsListProps {
   owner: string
@@ -17,7 +17,7 @@ const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
     isError,
     refetch,
   } = useQuery({
-    ...repositoriesListPullRequestsOptions({ path: { owner, repo } }),
+    ...repositoriesListPullRequestsOptions({ path: { owner, repo }, query: { state: "all" } }),
   })
 
   const filters = useTrackerFilters(pullsData?.data ?? [])
@@ -30,27 +30,35 @@ const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
 
   return (
     <div className="space-y-4">
-      <TrackerFilters filters={filters} label="pull requests" openCount={openCount} closedCount={closedCount}>
+      <TrackerSearch filters={filters} label="pull requests">
         <RouterLink
           to="/$owner/$repo/pulls/new"
           params={{ owner, repo }}
-          appearance="successAction"
+          appearance="trackerAction"
           data-testid="new-pr-btn"
         >
           New pull request
         </RouterLink>
-      </TrackerFilters>
-      <div className="overflow-hidden rounded-lg border">
+      </TrackerSearch>
+      <div className="overflow-hidden rounded-lg border border-border">
+        <TrackerFilters
+          filters={filters}
+          kind="pulls"
+          openCount={openCount}
+          closedCount={closedCount}
+          totalCount={pullsData?.count ?? 0}
+          mergedCount={pullsData?.data.filter((pr) => pr.state === "merged").length ?? 0}
+        />
         {pulls.length > 0 ? (
           <div>
             {pulls.map((pr) => (
               <div
                 key={pr.id}
-                className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 hover:bg-accent/50 transition-colors"
+                className="flex items-start gap-3 px-4 py-3 border-b border-border last:border-b-0 hover:bg-accent/30 transition-colors"
                 data-testid={`pr-${pr.number}`}
               >
                 <GitPullRequest
-                  className={`w-4 h-4 flex-shrink-0 ${pr.state === "open" ? "text-success" : pr.state === "merged" ? "text-merged" : "text-muted-foreground"}`}
+                  className={`w-4 h-4 mt-0.5 flex-shrink-0 ${pr.state === "open" ? "text-success" : pr.state === "merged" ? "text-merged" : "text-muted-foreground"}`}
                 />
                 <div className="flex-1 min-w-0">
                   <RouterLink
@@ -60,9 +68,12 @@ const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
                   >
                     {pr.title}
                   </RouterLink>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    #{pr.number} {pr.head_branch} &rarr; {pr.base_branch}
-                    {pr.created_at && ` opened ${new Date(pr.created_at).toLocaleDateString()}`}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    #{pr.number}
+                    {pr.created_at && ` opened ${new Date(pr.created_at).toLocaleDateString()}`} by {pr.author_username}
+                    <span className="ml-2">
+                      {pr.head_branch} &rarr; {pr.base_branch}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -75,9 +86,7 @@ const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
           >
             <GitPullRequest className="w-12 h-12 mb-3 opacity-50" />
             <p className="text-sm font-medium">
-              {filters.search || filters.state !== "all" || filters.author
-                ? "No matching pull requests"
-                : "No pull requests yet"}
+              {pullsData?.count ? "No matching pull requests" : "No pull requests yet"}
             </p>
             <p className="text-xs mt-1">Pull requests help you collaborate on code with others.</p>
           </div>

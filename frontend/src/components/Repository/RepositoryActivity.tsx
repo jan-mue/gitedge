@@ -39,8 +39,8 @@ const RepositoryActivity = ({ owner, repo }: RepositoryActivityProps) => {
               aria-pressed={view === item.key}
               aria-controls="activity-content"
               onClick={() => setView(item.key)}
-              variant="quiet"
-              size="compact"
+              variant="activity"
+              size="activity"
             >
               {item.label}
             </Button>

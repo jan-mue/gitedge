@@ -12,6 +12,11 @@ export const buttonVariants = cva(
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
         success: "bg-success text-success-foreground hover:opacity-90",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        dangerOutline: "rounded border border-destructive text-destructive font-normal hover:bg-destructive/10",
+        activity:
+          "justify-start rounded text-left font-normal text-muted-foreground hover:text-foreground hover:bg-accent/50 aria-pressed:bg-accent aria-pressed:font-medium aria-pressed:text-foreground",
+        filterMenu:
+          "gap-1 font-normal text-muted-foreground hover:text-foreground data-[active=true]:font-medium data-[active=true]:text-foreground",
         outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         repository: "gap-1.5 rounded border border-border bg-secondary text-foreground font-normal hover:bg-accent",
         create: "gap-1 rounded border border-border bg-background text-foreground font-normal hover:bg-accent",
@@ -40,6 +45,8 @@ export const buttonVariants = cva(
         compact: "h-8 px-3 text-sm",
         create: "h-auto px-2 py-1",
         form: "h-auto px-4 py-2",
+        activity: "h-auto px-3 py-2",
+        danger: "h-auto px-3 py-2",
         code: "h-auto px-2.5 py-1 text-xs",
         text: "h-auto p-0",
         tab: "h-auto px-3 py-2.5",

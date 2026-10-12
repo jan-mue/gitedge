@@ -24,6 +24,8 @@ const appearances = {
   title: "text-sm font-medium text-foreground hover:text-primary",
   commitHash: "flex-shrink-0 font-mono text-xs text-primary hover:underline",
   successAction: "rounded bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:opacity-90",
+  trackerAction:
+    "shrink-0 rounded bg-success px-4 py-1.5 text-sm font-medium text-success-foreground transition-opacity hover:opacity-90",
   formAction:
     "px-4 py-2 text-sm rounded border border-border bg-secondary text-foreground hover:bg-accent transition-colors",
   caption: "text-xs text-primary hover:underline",

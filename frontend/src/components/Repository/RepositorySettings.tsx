@@ -13,6 +13,8 @@ import {
 } from "@/client/@tanstack/react-query.gen"
 import {
   Button,
+  DangerZone,
+  DangerZoneAction,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -158,65 +160,64 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
             </LoadingButton>
           </form>
         </section>
-        <section id="danger-zone" className="overflow-hidden rounded border border-destructive bg-card">
-          <h3 className="border-b border-destructive bg-destructive/10 px-4 py-3 text-xl font-semibold text-destructive">
-            Danger zone
-          </h3>
-          <div className="flex flex-wrap items-center justify-between gap-4 p-4">
-            <div>
-              <p className="font-medium">Delete this repository</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Permanently delete code, issues, pull requests, releases, and repository activity.
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">Independent forks will be preserved.</p>
-            </div>
-            <Dialog
-              open={deleteOpen}
-              onOpenChange={(open) => {
-                if (!remove.isPending) {
-                  setDeleteOpen(open)
-                  setConfirmation("")
-                }
-              }}
-            >
-              <DialogTrigger asChild>
-                <Button variant="destructive" disabled={update.isPending}>
-                  Delete this repository
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Delete {fullName}?</DialogTitle>
-                  <DialogDescription>
-                    This is permanent. All code and repository records will be deleted. Type {fullName} to confirm.
-                  </DialogDescription>
-                </DialogHeader>
-                <Label htmlFor="delete-confirmation" appearance="field">
-                  Repository full name
-                </Label>
-                <Input
-                  id="delete-confirmation"
-                  value={confirmation}
-                  onChange={(event) => setConfirmation(event.target.value)}
-                  autoComplete="off"
-                />
-                <DialogFooter>
-                  <Button variant="repository" disabled={remove.isPending} onClick={() => setDeleteOpen(false)}>
-                    Cancel
+        <DangerZone id="danger-zone">
+          <DangerZoneAction
+            title="Delete this repository"
+            description={
+              <>
+                <p>Permanently delete code, issues, pull requests, releases, and repository activity.</p>
+                <p className="mt-1 text-xs">Independent forks will be preserved.</p>
+              </>
+            }
+            action={
+              <Dialog
+                open={deleteOpen}
+                onOpenChange={(open) => {
+                  if (!remove.isPending) {
+                    setDeleteOpen(open)
+                    setConfirmation("")
+                  }
+                }}
+              >
+                <DialogTrigger asChild>
+                  <Button variant="dangerOutline" size="danger" disabled={update.isPending}>
+                    Delete this repository
                   </Button>
-                  <LoadingButton
-                    variant="destructive"
-                    loading={remove.isPending}
-                    disabled={confirmation !== fullName}
-                    onClick={() => remove.mutate({ path: { owner, repo } })}
-                  >
-                    Delete repository
-                  </LoadingButton>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </section>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Delete {fullName}?</DialogTitle>
+                    <DialogDescription>
+                      This is permanent. All code and repository records will be deleted. Type {fullName} to confirm.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <Label htmlFor="delete-confirmation" appearance="field">
+                    Repository full name
+                  </Label>
+                  <Input
+                    id="delete-confirmation"
+                    value={confirmation}
+                    onChange={(event) => setConfirmation(event.target.value)}
+                    autoComplete="off"
+                  />
+                  <DialogFooter>
+                    <Button variant="repository" disabled={remove.isPending} onClick={() => setDeleteOpen(false)}>
+                      Cancel
+                    </Button>
+                    <LoadingButton
+                      variant="destructive"
+                      loading={remove.isPending}
+                      disabled={confirmation !== fullName}
+                      onClick={() => remove.mutate({ path: { owner, repo } })}
+                    >
+                      Delete repository
+                    </LoadingButton>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            }
+          />
+        </DangerZone>
       </div>
     </div>
   )

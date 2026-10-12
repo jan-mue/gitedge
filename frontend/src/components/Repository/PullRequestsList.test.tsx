@@ -41,3 +41,53 @@ describe("PullRequestsList", () => {
     expect(screen.getByTestId("new-pr-btn")).toBeInTheDocument()
   })
 })
+
+test("combines target branch and author filters, includes merged PRs in closed, and resets", async () => {
+  server.use(
+    handleRepositoriesListPullRequests({
+      body: {
+        data: [
+          pullRequest,
+          {
+            ...pullRequest,
+            id: "2",
+            number: 2,
+            title: "Develop feature",
+            base_branch: "develop",
+            author_username: "alice",
+          },
+          {
+            ...pullRequest,
+            id: "3",
+            number: 3,
+            title: "Merged feature",
+            base_branch: "develop",
+            author_username: "alice",
+            state: "merged",
+          },
+        ],
+        count: 3,
+        open_count: 2,
+        closed_count: 1,
+      },
+    }),
+  )
+  const { user } = render(<PullRequestsList owner="owner" repo="repo" />)
+  await screen.findByTestId("pr-1")
+  await user.click(screen.getByRole("button", { name: "Branch: All target branches" }))
+  await user.click(screen.getByRole("menuitemradio", { name: "develop" }))
+  expect(screen.queryByTestId("pr-1")).not.toBeInTheDocument()
+  expect(screen.getByTestId("pr-2")).toBeInTheDocument()
+  await user.click(screen.getByRole("button", { name: "Author: All authors" }))
+  await user.click(screen.getByRole("menuitemradio", { name: "alice" }))
+  await user.click(screen.getByRole("button", { name: "1 Closed" }))
+  expect(screen.getByTestId("pr-3")).toBeInTheDocument()
+  expect(screen.queryByTestId("pr-2")).not.toBeInTheDocument()
+  await user.click(screen.getByRole("button", { name: "1 Merged" }))
+  expect(screen.getByTestId("pr-3")).toBeInTheDocument()
+  await user.click(screen.getByRole("button", { name: "Clear filters" }))
+  expect(screen.getByTestId("pr-1")).toBeInTheDocument()
+  expect(screen.getByTestId("pr-2")).toBeInTheDocument()
+  expect(screen.queryByTestId("pr-3")).not.toBeInTheDocument()
+  expect(screen.getByRole("button", { name: "Branch: All target branches" })).toBeInTheDocument()
+})

@@ -19,7 +19,11 @@ import { component } from "./component"
 export const DropdownMenu = component(PrimitiveDropdownMenu, {})
 export const DropdownMenuPortal = component(PrimitiveDropdownMenuPortal, {})
 export const DropdownMenuTrigger = component(PrimitiveDropdownMenuTrigger, {})
-export const DropdownMenuContent = component(PrimitiveDropdownMenuContent, { create: "w-48", account: "w-52" })
+export const DropdownMenuContent = component(PrimitiveDropdownMenuContent, {
+  create: "w-48",
+  account: "w-52",
+  filter: "w-56 max-h-72 overflow-y-auto rounded-lg",
+})
 export const DropdownMenuGroup = component(PrimitiveDropdownMenuGroup, {})
 export const DropdownMenuItem = component(PrimitiveDropdownMenuItem, {
   destructive: "text-destructive focus:text-destructive",
