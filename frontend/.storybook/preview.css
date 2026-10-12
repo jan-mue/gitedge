@@ -17,3 +17,20 @@
 .sbdocs li {
   color: var(--foreground);
 }
+.sbdocs a {
+  color: var(--primary);
+}
+.sbdocs :not(pre) > code {
+  background: var(--muted);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.sbdocs-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.sbdocs [tabindex="0"]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}

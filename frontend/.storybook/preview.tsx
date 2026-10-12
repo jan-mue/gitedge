@@ -6,10 +6,10 @@ import { withThemeByClassName } from "@storybook/addon-themes"
 import type { Preview } from "@storybook/react-vite"
 import { mswLoader } from "msw-storybook-addon/csf3"
 import { TooltipProvider } from "@/design-system"
-import { theme } from "./theme"
+import { ThemedDocsContainer } from "./docs-container"
 
 const preview: Preview = {
-  initialGlobals: { a11y: { manual: true } },
+  initialGlobals: { theme: "dark", a11y: { manual: true } },
   decorators: [
     withThemeByClassName({ themes: { dark: "dark", light: "light" }, defaultTheme: "dark" }),
     (Story) => (
@@ -25,7 +25,7 @@ const preview: Preview = {
   parameters: {
     layout: "padded",
     backgrounds: { disable: true },
-    docs: { theme },
+    docs: { container: ThemedDocsContainer },
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
     a11y: { test: "error" },
     options: { storySort: { order: ["Foundations", "Components", "Patterns"] } },

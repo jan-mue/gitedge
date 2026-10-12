@@ -43,6 +43,33 @@ const index = JSON.parse(
 ) as {
   entries: Record<string, { id: string; type: string; name: string; title: string }>
 }
+for (const docs of Object.values(index.entries).filter((entry) => entry.type === "docs")) {
+  test(`Documentation / ${docs.title}`, async ({ page }, testInfo) => {
+    const errors: string[] = []
+    page.on("pageerror", (error) => errors.push(error.message))
+    const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"
+    await page.goto(`/iframe.html?id=${docs.id}&viewMode=docs&globals=theme:${theme}`)
+    await expect(page.locator(".sbdocs-content h1").first()).toBeVisible()
+    await expect(page.locator("html")).toHaveClass(new RegExp(theme))
+    await expect(page.locator(".sb-errordisplay")).not.toBeVisible()
+    await page.evaluate(async () => {
+      await document.fonts.ready
+    })
+    expect(errors).toEqual([])
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)).toBe(false)
+    const results = await new AxeBuilder({ page })
+      .include(".sbdocs-content")
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+      .analyze()
+    expect(
+      results.violations.map((violation) => ({
+        id: violation.id,
+        nodes: violation.nodes.map((node) => ({ target: node.target, reason: node.failureSummary })),
+      })),
+    ).toEqual([])
+  })
+}
+
 for (const story of Object.values(index.entries).filter((entry) => entry.type === "story")) {
   test(`${story.title} / ${story.name}`, async ({ page }, testInfo) => {
     const errors: string[] = []
