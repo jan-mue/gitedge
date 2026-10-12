@@ -1,6 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from "@tanstack/react-router"
-import { type ReactNode, useState } from "react"
+import { createContext, type ReactNode, useContext, useState } from "react"
+
+const StoryContent = createContext<ReactNode>(null)
+const CurrentStory = () => <>{useContext(StoryContent)}</>
 /** A fresh query cache per story keeps API state isolated. */
 export const StoryRouter = ({ children }: { children: ReactNode }) => {
   const [queryClient] = useState(
@@ -8,7 +11,7 @@ export const StoryRouter = ({ children }: { children: ReactNode }) => {
   )
   const [router] = useState(() => {
     // Keep the pattern visible while real navigation updates route match state.
-    const root = createRootRoute({ component: () => children })
+    const root = createRootRoute({ component: CurrentStory })
     const repository = createRoute({ getParentRoute: () => root, path: "/$owner/$repo" })
     const pages = [
       "/",
@@ -36,8 +39,10 @@ export const StoryRouter = ({ children }: { children: ReactNode }) => {
     })
   })
   return (
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <StoryContent value={children}>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </StoryContent>
   )
 }
