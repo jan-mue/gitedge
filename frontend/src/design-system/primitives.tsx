@@ -212,7 +212,7 @@ export const Skeleton = component(PrimitiveSkeleton, {
 })
 
 import { Toaster as PrimitiveToaster } from "@/components/ui/sonner"
-export const Toaster = component(PrimitiveToaster, {})
+export const Toaster = component(PrimitiveToaster, {}, "toaster group")
 
 import {
   TableBody as PrimitiveTableBody,

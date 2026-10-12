@@ -168,3 +168,28 @@ test("repository actions and navigation use real API and router state", async ({
   await page.getByRole("link", { name: "Issues", exact: true }).click()
   await expect(page.getByRole("link", { name: "Issues", exact: true })).toHaveAttribute("data-active", "true")
 })
+
+test("notification variants render with the shared theme", async ({ page }, testInfo) => {
+  const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"
+  await page.goto(`/iframe.html?id=components-notifications--toast-states&viewMode=story&globals=theme:${theme}`)
+  for (const [button, message] of [
+    ["Success", "Repository created"],
+    ["Error", "Unable to save changes"],
+    ["Information", "Copied clone URL"],
+    ["Warning", "This action cannot be undone"],
+    ["Loading", "Creating repository…"],
+  ]) {
+    await page.getByRole("button", { name: button, exact: true }).click()
+    await expect(page.getByText(message, { exact: true })).toBeVisible()
+  }
+  const results = await new AxeBuilder({ page })
+    .include("[data-sonner-toaster]")
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze()
+  expect(
+    results.violations.map((violation) => ({
+      id: violation.id,
+      nodes: violation.nodes.map((node) => node.failureSummary),
+    })),
+  ).toEqual([])
+})
