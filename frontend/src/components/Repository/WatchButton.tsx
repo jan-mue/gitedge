@@ -7,7 +7,7 @@ import {
   watchersUnwatchRepositoryMutation,
   watchersWatchRepositoryMutation,
 } from "@/client/@tanstack/react-query.gen"
-import { Button, Link as RouterLink } from "@/design-system"
+import { Button, Link as RouterLink } from "@/components/design-system"
 
 interface WatchButtonProps {
   owner: string
@@ -40,8 +40,8 @@ const WatchButton = ({ owner, repo }: WatchButtonProps) => {
         onClick={() => mutation.mutate({ path: { owner, repo } })}
         disabled={mutation.isPending}
         aria-pressed={isWatching}
-        variant="outline"
-        size="sm"
+        variant="repository"
+        size="compact"
         shape="start"
       >
         <Icon className="h-3.5 w-3.5" />

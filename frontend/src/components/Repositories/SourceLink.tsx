@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { Link as RouterLink } from "@/design-system"
+import { Link as RouterLink } from "@/components/design-system"
 
 export type SourceMode = "branch" | "commit"
 

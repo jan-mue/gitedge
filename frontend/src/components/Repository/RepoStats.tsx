@@ -7,10 +7,10 @@ import {
   repositoriesGetStatisticsOptions,
   repositoriesListBranchesOptions,
 } from "@/client/@tanstack/react-query.gen"
+import { Button, Input, Link as RouterLink, Skeleton } from "@/components/design-system"
 import FileFinder from "@/components/Repository/FileFinder"
 import LanguageBar from "@/components/Repository/LanguageBar"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
-import { Button, Input, Link as RouterLink, Skeleton } from "@/design-system"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import { formatSize } from "@/utils"
 
@@ -118,8 +118,8 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
           <Button
             type="button"
             onClick={() => setBranchDropdownOpen((prev) => !prev)}
-            variant="outline"
-            size="sm"
+            variant="repository"
+            size="compact"
             aria-expanded={branchDropdownOpen}
             aria-label="Switch branch"
             onKeyDown={(event) => {
@@ -147,7 +147,7 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
                     type="button"
                     onClick={() => handleBranchSelect(branch.name)}
                     variant="menu"
-                    size="sm"
+                    size="compact"
                     data-testid={`branch-option-${branch.name}`}
                   >
                     {branch.name === gitRef ? (
@@ -194,7 +194,7 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true }: Rep
                 onClick={() => copy(cloneUrl)}
                 aria-label="Copy clone URL"
                 data-testid="copy-clone-url"
-                variant="outline"
+                variant="repository"
                 size="icon-sm"
                 shape="end"
               >

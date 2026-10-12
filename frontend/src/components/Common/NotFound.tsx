@@ -1,4 +1,4 @@
-import { Button, Link } from "@/design-system"
+import { Button, Link } from "@/components/design-system"
 
 const NotFound = () => {
   return (

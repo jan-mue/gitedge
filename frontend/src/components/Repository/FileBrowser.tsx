@@ -1,8 +1,8 @@
 import { useNavigate } from "@tanstack/react-router"
 import { FileText, Folder } from "lucide-react"
 import type { CommitInfo, TreeEntry } from "@/client"
+import { Button, Link as RouterLink } from "@/components/design-system"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
-import { Button, Link as RouterLink } from "@/design-system"
 import { formatSize } from "@/utils"
 
 interface FileBrowserProps {
@@ -82,7 +82,7 @@ const FileBrowser = ({
       )}
 
       {treePath && (
-        <Button type="button" onClick={handleParentClick} variant="row" size="sm" data-testid="tree-entry-parent">
+        <Button type="button" onClick={handleParentClick} variant="row" size="file-row" data-testid="tree-entry-parent">
           <Folder className="w-4 h-4 text-primary flex-shrink-0" />
           <span>..</span>
         </Button>
@@ -94,7 +94,7 @@ const FileBrowser = ({
           type="button"
           onClick={() => handleEntryClick(entry)}
           variant="row"
-          size="sm"
+          size="file-row"
           data-testid={`tree-entry-${entry.name}`}
         >
           {entry.type === "tree" ? (
@@ -102,7 +102,9 @@ const FileBrowser = ({
           ) : (
             <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           )}
-          <span className={entry.type === "tree" ? "text-primary font-medium" : "text-foreground"}>{entry.name}</span>
+          <span data-slot="file-name" className="truncate text-left">
+            {entry.name}
+          </span>
           {entry.size != null && (
             <span className="ml-auto text-xs text-muted-foreground">{formatSize(entry.size)}</span>
           )}

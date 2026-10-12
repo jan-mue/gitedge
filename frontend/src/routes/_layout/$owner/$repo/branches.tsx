@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { Section } from "@/components/design-system"
 import RepositoryLayout from "@/components/Repositories/RepositoryLayout"
 import BranchesList from "@/components/Repository/BranchesList"
-import { Section } from "@/design-system"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/branches")({
   component: BranchesPage,

@@ -20,7 +20,7 @@ import {
   Input,
   LoadingButton,
   Link as RouterLink,
-} from "@/design-system"
+} from "@/components/design-system"
 import { isLoggedIn } from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"

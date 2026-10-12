@@ -9,7 +9,7 @@ import {
   starsStarRepositoryMutation,
   starsUnstarRepositoryMutation,
 } from "@/client/@tanstack/react-query.gen"
-import { Button, Link as RouterLink } from "@/design-system"
+import { Button, Link as RouterLink } from "@/components/design-system"
 
 interface StarButtonProps {
   owner: string
@@ -51,15 +51,15 @@ const StarButton = ({ owner, repo }: StarButtonProps) => {
         onClick={handleClick}
         aria-pressed={isStarred}
         disabled={mutation.isPending}
-        variant="outline"
-        size="sm"
+        variant="repository"
+        size="compact"
         shape="start"
       >
         <Star
           className={`h-3.5 w-3.5 transition-all duration-300 ${
-            isStarred ? "fill-warning text-warning" : ""
+            isStarred ? "fill-starred text-starred" : ""
           } ${animating ? "scale-150" : "scale-100"}`}
-          style={animating ? { filter: "drop-shadow(0 0 6px var(--warning))" } : undefined}
+          style={animating ? { filter: "drop-shadow(0 0 6px var(--starred))" } : undefined}
         />
         <span>{isStarred ? "Starred" : "Star"}</span>
       </Button>

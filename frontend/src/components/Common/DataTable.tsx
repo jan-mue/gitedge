@@ -19,7 +19,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/design-system"
+} from "@/components/design-system"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -112,7 +112,7 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
 
             <div className="flex items-center gap-x-1">
               <Button
-                variant="outline"
+                variant="repository"
                 size="icon-sm"
                 onClick={() => table.setPageIndex(0)}
                 disabled={!table.getCanPreviousPage()}
@@ -121,7 +121,7 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
               <Button
-                variant="outline"
+                variant="repository"
                 size="icon-sm"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
@@ -130,7 +130,7 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <Button
-                variant="outline"
+                variant="repository"
                 size="icon-sm"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
@@ -139,7 +139,7 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
                 <ChevronRight className="h-4 w-4" />
               </Button>
               <Button
-                variant="outline"
+                variant="repository"
                 size="icon-sm"
                 onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                 disabled={!table.getCanNextPage()}

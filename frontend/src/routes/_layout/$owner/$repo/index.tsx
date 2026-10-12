@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Navigate } from "@tanstack/react-router"
 import { repositoriesGetRepositoryInfoOptions } from "@/client/@tanstack/react-query.gen"
+import { EmptyState } from "@/components/design-system"
 import RepositoryLoading from "@/components/Repository/RepositoryLoading"
-import { EmptyState } from "@/design-system"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/")({
   component: RepositoryIndexRedirect,

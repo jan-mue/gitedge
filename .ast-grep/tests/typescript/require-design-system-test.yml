@@ -1,6 +1,6 @@
 id: require-design-system
 valid:
-  - 'import { Button } from "@/design-system"'
+  - 'import { Button } from "@/components/design-system"'
   - '<Button variant="success">Create repository</Button>'
   - '<div className="flex gap-2"><Button /></div>'
 invalid:

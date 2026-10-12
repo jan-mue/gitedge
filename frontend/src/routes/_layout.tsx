@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
+import { AppShell } from "@/components/design-system"
 import GlobalNav from "@/components/GlobalNav"
-import { AppShell } from "@/design-system"
 import { isLoggedIn } from "@/hooks/useAuth"
 
 export const Route = createFileRoute("/_layout")({

@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
 import { repositoriesGetBlameOptions } from "@/client/@tanstack/react-query.gen"
+import { Button, ExternalLink, Link } from "@/components/design-system"
 import RepoBreadcrumbs from "@/components/Repositories/RepoBreadcrumbs"
 import SourceLink from "@/components/Repositories/SourceLink"
-import { Button, ExternalLink, Link } from "@/design-system"
 import RepositoryLoading, { RepositoryError } from "./RepositoryLoading"
 
 const BlameView = ({
@@ -58,7 +58,7 @@ const BlameView = ({
             >
               Permalink
             </Link>
-            <Button type="button" onClick={() => setEscapedTabs((value) => !value)} variant="outline" size="xs">
+            <Button type="button" onClick={() => setEscapedTabs((value) => !value)} variant="repository" size="xs">
               {escapedTabs ? "Unescape tabs" : "Escape tabs"}
             </Button>
           </div>

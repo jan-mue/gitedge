@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
   LoadingButton,
-} from "@/design-system"
+} from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -58,7 +58,7 @@ const DeleteConfirmation = () => {
 
           <DialogFooter appearance="spaced">
             <DialogClose asChild>
-              <Button variant="outline" disabled={mutation.isPending}>
+              <Button variant="repository" disabled={mutation.isPending}>
                 Cancel
               </Button>
             </DialogClose>

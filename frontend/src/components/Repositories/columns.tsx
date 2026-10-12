@@ -1,7 +1,7 @@
 import type { ColumnDef } from "@tanstack/react-table"
 import { Check, Copy, GitBranch } from "lucide-react"
 import type { Repository } from "@/client"
-import { Button, Link as RouterLink } from "@/design-system"
+import { Button, Link as RouterLink } from "@/components/design-system"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 
 function CopyPath({ path }: { path: string }) {

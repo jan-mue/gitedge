@@ -19,7 +19,7 @@ import {
   LoadingButton,
   PasswordInput,
   Link as RouterLink,
-} from "@/design-system"
+} from "@/components/design-system"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
 import { signupsEnabled } from "@/utils"
 

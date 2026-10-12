@@ -1,6 +1,6 @@
 import { GitFork } from "lucide-react"
 import type { ForkPublic } from "@/client"
-import { Link as RouterLink } from "@/design-system"
+import { Link as RouterLink } from "@/components/design-system"
 
 interface ForksListProps {
   forks: ForkPublic[]

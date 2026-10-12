@@ -30,7 +30,7 @@ import {
   Input,
   LoadingButton,
   Link as RouterLink,
-} from "@/design-system"
+} from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -86,7 +86,7 @@ const ForkButton = ({ owner, repo }: ForkButtonProps) => {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <div className="flex items-stretch">
         <DialogTrigger asChild>
-          <Button type="button" data-testid="fork-button" variant="outline" size="sm" shape="start">
+          <Button type="button" data-testid="fork-button" variant="repository" size="compact" shape="start">
             <GitFork className="h-3.5 w-3.5" />
             Fork
           </Button>
@@ -121,7 +121,7 @@ const ForkButton = ({ owner, repo }: ForkButtonProps) => {
             </div>
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="outline" disabled={mutation.isPending}>
+                <Button variant="repository" disabled={mutation.isPending}>
                   Cancel
                 </Button>
               </DialogClose>

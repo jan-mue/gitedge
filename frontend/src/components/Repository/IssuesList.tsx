@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query"
 import { CircleDot, MessageSquare } from "lucide-react"
 import { repositoriesListIssuesOptions } from "@/client/@tanstack/react-query.gen"
+import { Link as RouterLink } from "@/components/design-system"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import TrackerFilters, { useTrackerFilters } from "@/components/Repository/TrackerFilters"
-import { Link as RouterLink } from "@/design-system"
 
 interface IssuesListProps {
   owner: string

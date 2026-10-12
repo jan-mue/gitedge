@@ -9,9 +9,9 @@ import {
   repositoriesUpdateIssueMutation,
 } from "@/client/@tanstack/react-query.gen"
 import MarkdownContent from "@/components/Common/MarkdownContent"
+import { Badge, Button, Input, Link as RouterLink, Textarea } from "@/components/design-system"
 import CommentsSection from "@/components/Repository/CommentsSection"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
-import { Badge, Button, Input, Link as RouterLink, Textarea } from "@/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -81,11 +81,16 @@ const IssueDetail = () => {
             data-testid="edit-issue-body"
           />
           <div className="flex justify-end gap-2">
-            <Button size="sm" variant="outline" onClick={() => setEditing(false)} data-testid="edit-issue-cancel">
+            <Button
+              size="compact"
+              variant="repository"
+              onClick={() => setEditing(false)}
+              data-testid="edit-issue-cancel"
+            >
               Cancel
             </Button>
             <Button
-              size="sm"
+              size="compact"
               disabled={!editTitle.trim() || editMutation.isPending}
               onClick={() =>
                 editMutation.mutate({
@@ -109,8 +114,8 @@ const IssueDetail = () => {
               <div className="flex items-center gap-2">
                 {canEdit && (
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="repository"
+                    size="compact"
                     onClick={() => {
                       setEditTitle(issue.title)
                       setEditBody(issue.body ?? "")
@@ -153,7 +158,7 @@ const IssueDetail = () => {
       <div className="flex items-center gap-2">
         <Button
           variant={isOpen ? "outline" : "default"}
-          size="sm"
+          size="compact"
           disabled={mutation.isPending}
           onClick={() =>
             mutation.mutate({ path: { owner, repo, number: issueNumber }, body: { state: isOpen ? "closed" : "open" } })

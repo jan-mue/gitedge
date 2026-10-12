@@ -1,1 +1,1 @@
-export { default } from "@/design-system/language-bar"
+export { default } from "@/components/design-system/language-bar"

@@ -7,8 +7,8 @@ import AddUser from "@/components/Admin/AddUser"
 import { columns, type UserTableData } from "@/components/Admin/columns"
 import { OrganizationsPanel } from "@/components/Admin/OrganizationsPanel"
 import { DataTable } from "@/components/Common/DataTable"
+import { Page, PageHeader, SectionHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/design-system"
 import PendingUsers from "@/components/Pending/PendingUsers"
-import { Page, PageHeader, SectionHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@/design-system"
 import useAuth from "@/hooks/useAuth"
 
 export const Route = createFileRoute("/_layout/admin")({

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { ChevronDown, GitFork, Inbox, LogOut, Plus, Settings, ShieldCheck, User } from "lucide-react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import {
   organizationsCreateOrganizationMutation,
   organizationsListOrganizationsOptions,
@@ -27,7 +27,7 @@ import {
   NativeSelect,
   Link as RouterLink,
   Textarea,
-} from "@/design-system"
+} from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -39,6 +39,7 @@ const GlobalNav = () => {
   const { showErrorToast } = useCustomToast()
 
   const [showNewRepo, setShowNewRepo] = useState(false)
+  const repoNameInput = useRef<HTMLInputElement>(null)
   const [showNewOrg, setShowNewOrg] = useState(false)
   const [repoName, setRepoName] = useState("")
   const [repoDesc, setRepoDesc] = useState("")
@@ -94,8 +95,8 @@ const GlobalNav = () => {
                   type="button"
                   data-testid="create-menu"
                   aria-label="Create repository or organization"
-                  variant="outline"
-                  size="sm"
+                  variant="create"
+                  size="create"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <ChevronDown className="h-3 w-3 text-muted-foreground" />
@@ -173,7 +174,12 @@ const GlobalNav = () => {
       </nav>
 
       <Dialog open={showNewRepo} onOpenChange={setShowNewRepo}>
-        <DialogContent>
+        <DialogContent
+          onOpenAutoFocus={(event) => {
+            event.preventDefault()
+            repoNameInput.current?.focus()
+          }}
+        >
           <DialogHeader>
             <DialogTitle>New Repository</DialogTitle>
           </DialogHeader>
@@ -183,6 +189,7 @@ const GlobalNav = () => {
                 Owner
               </Label>
               <NativeSelect
+                appearance="owner"
                 id="new-repo-owner"
                 data-testid="new-repo-owner"
                 value={selectedOwner}
@@ -200,6 +207,8 @@ const GlobalNav = () => {
                 Repository name *
               </Label>
               <Input
+                appearance="repository"
+                ref={repoNameInput}
                 id="new-repo-name"
                 data-testid="new-repo-name"
                 value={repoName}
@@ -212,6 +221,7 @@ const GlobalNav = () => {
                 Description
               </Label>
               <Textarea
+                appearance="repository"
                 id="new-repo-desc"
                 value={repoDesc}
                 onChange={(e) => setRepoDesc(e.target.value)}
@@ -228,7 +238,7 @@ const GlobalNav = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" onClick={() => setShowNewRepo(false)} variant="outline" size="sm">
+            <Button type="button" onClick={() => setShowNewRepo(false)} variant="repository" size="form">
               Cancel
             </Button>
             <Button
@@ -237,7 +247,7 @@ const GlobalNav = () => {
               disabled={!repoName.trim() || createRepoMutation.isPending}
               onClick={() => createRepoMutation.mutate({ body: { owner: selectedOwner, name: repoName.trim() } })}
               variant="success"
-              size="sm"
+              size="form"
             >
               Create Repository
             </Button>
@@ -256,6 +266,7 @@ const GlobalNav = () => {
                 Organization name *
               </Label>
               <Input
+                appearance="repository"
                 id="new-org-name"
                 data-testid="new-org-name"
                 value={orgName}
@@ -265,7 +276,7 @@ const GlobalNav = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" onClick={() => setShowNewOrg(false)} variant="outline" size="sm">
+            <Button type="button" onClick={() => setShowNewOrg(false)} variant="repository" size="form">
               Cancel
             </Button>
             <Button
@@ -274,7 +285,7 @@ const GlobalNav = () => {
               disabled={!orgName.trim() || createOrgMutation.isPending}
               onClick={() => createOrgMutation.mutate({ body: { name: orgName.trim() } })}
               variant="success"
-              size="sm"
+              size="form"
             >
               Create Organization
             </Button>

@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DropdownMenuItem,
   LoadingButton,
-} from "@/design-system"
+} from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -64,7 +64,7 @@ const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
 
           <DialogFooter appearance="spaced">
             <DialogClose asChild>
-              <Button variant="outline" disabled={mutation.isPending}>
+              <Button variant="repository" disabled={mutation.isPending}>
                 Cancel
               </Button>
             </DialogClose>

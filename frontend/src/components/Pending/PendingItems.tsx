@@ -1,4 +1,4 @@
-import { Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/design-system"
+import { Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/design-system"
 
 const PendingItems = () => (
   <Table>

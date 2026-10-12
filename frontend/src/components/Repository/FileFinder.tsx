@@ -2,8 +2,6 @@ import { useQuery } from "@tanstack/react-query"
 import { FileText, Search } from "lucide-react"
 import { useState } from "react"
 import { repositoriesGetFileIndexOptions } from "@/client/@tanstack/react-query.gen"
-import type { SourceMode } from "@/components/Repositories/SourceLink"
-import SourceLink from "@/components/Repositories/SourceLink"
 import {
   Button,
   Dialog,
@@ -13,7 +11,9 @@ import {
   DialogTitle,
   DialogTrigger,
   Input,
-} from "@/design-system"
+} from "@/components/design-system"
+import type { SourceMode } from "@/components/Repositories/SourceLink"
+import SourceLink from "@/components/Repositories/SourceLink"
 import RepositoryLoading, { RepositoryError } from "./RepositoryLoading"
 
 const FileFinder = ({
@@ -38,7 +38,7 @@ const FileFinder = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm">
+        <Button type="button" variant="repository" size="compact">
           <Search className="size-3.5" />
           Find a file
         </Button>

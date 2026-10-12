@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
 import { activityGetRepositoryActivityStatisticsOptions } from "@/client/@tanstack/react-query.gen"
+import { Button } from "@/components/design-system"
 import ActivityChart from "@/components/Repository/ActivityChart"
 import ActivityContributors from "@/components/Repository/ActivityContributors"
 import ActivityLoading, { type ActivityView } from "@/components/Repository/ActivityLoading"
 import ActivityPulse from "@/components/Repository/ActivityPulse"
 import ActivityRecentCommits from "@/components/Repository/ActivityRecentCommits"
-import { Button } from "@/design-system"
 
 interface RepositoryActivityProps {
   owner: string
@@ -40,7 +40,7 @@ const RepositoryActivity = ({ owner, repo }: RepositoryActivityProps) => {
               aria-controls="activity-content"
               onClick={() => setView(item.key)}
               variant="quiet"
-              size="sm"
+              size="compact"
             >
               {item.label}
             </Button>
@@ -52,7 +52,7 @@ const RepositoryActivity = ({ owner, repo }: RepositoryActivityProps) => {
         {isError && (
           <div role="alert" className="space-y-3 rounded-lg border border-border p-6 text-center">
             <p className="text-sm text-muted-foreground">Could not load repository activity.</p>
-            <Button type="button" onClick={() => refetch()} variant="outline" size="sm">
+            <Button type="button" onClick={() => refetch()} variant="repository" size="compact">
               Try again
             </Button>
           </div>

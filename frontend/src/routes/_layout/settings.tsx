@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Appearance } from "@/components/Common/Appearance"
+import { Page, PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/design-system"
 import ChangePassword from "@/components/UserSettings/ChangePassword"
 import DeleteAccount from "@/components/UserSettings/DeleteAccount"
 import UserInformation from "@/components/UserSettings/UserInformation"
-import { Page, PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@/design-system"
 import useAuth from "@/hooks/useAuth"
 
 const tabsConfig = [

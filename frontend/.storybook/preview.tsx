@@ -5,7 +5,7 @@ import "./preview.css"
 import { withThemeByClassName } from "@storybook/addon-themes"
 import type { Preview } from "@storybook/react-vite"
 import { mswLoader } from "msw-storybook-addon/csf3"
-import { TooltipProvider } from "@/design-system"
+import { TooltipProvider } from "@/components/design-system"
 import { ThemedDocsContainer } from "./docs-container"
 
 const preview: Preview = {

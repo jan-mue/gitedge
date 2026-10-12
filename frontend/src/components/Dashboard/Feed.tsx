@@ -5,9 +5,9 @@ import type { Repository } from "@/client"
 import { activityGetFeedInfiniteOptions, repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
 import ActivityCard, { activityActions as kindAction } from "@/components/Dashboard/ActivityCard"
 import FeedLoading, { FeedListLoading } from "@/components/Dashboard/FeedLoading"
+import { Button, LoadingButton, Link as RouterLink } from "@/components/design-system"
 import { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import StarButton from "@/components/Repository/StarButton"
-import { Button, LoadingButton, Link as RouterLink } from "@/design-system"
 import useAuth from "@/hooks/useAuth"
 
 const Feed = () => {
@@ -128,14 +128,14 @@ const Feed = () => {
           <header className="flex items-center justify-between gap-3">
             <h1 className="text-xl font-semibold text-foreground">Feed</h1>
             <div className="relative">
-              <Button type="button" onClick={() => setShowFilter(!showFilter)} variant="outline" size="sm">
+              <Button type="button" onClick={() => setShowFilter(!showFilter)} variant="repository" size="compact">
                 <Filter className="h-3.5 w-3.5" /> Filter
               </Button>
               {showFilter && (
                 <div className="absolute right-0 top-full z-50 mt-1 w-72 space-y-3 rounded-lg border border-border bg-popover p-4 shadow-lg">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-foreground">Filter</span>
-                    <Button variant="ghost" size="sm" type="button" onClick={() => setShowFilter(false)}>
+                    <Button variant="ghost" size="compact" type="button" onClick={() => setShowFilter(false)}>
                       <X className="h-4 w-4 text-muted-foreground" />
                     </Button>
                   </div>

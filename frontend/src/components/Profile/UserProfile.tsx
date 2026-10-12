@@ -7,8 +7,8 @@ import {
   profilesListUserStarredRepositoriesOptions,
   profilesReadUserByUsernameOptions,
 } from "@/client/@tanstack/react-query.gen"
+import { Avatar, AvatarFallback, Button, Link as RouterLink } from "@/components/design-system"
 import StarButton from "@/components/Repository/StarButton"
-import { Avatar, AvatarFallback, Button, Link as RouterLink } from "@/design-system"
 
 interface UserProfileProps {
   username: string

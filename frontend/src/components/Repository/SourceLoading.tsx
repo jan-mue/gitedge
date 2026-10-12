@@ -1,5 +1,5 @@
 import { FileText, Folder } from "lucide-react"
-import { Skeleton } from "@/design-system"
+import { Skeleton } from "@/components/design-system"
 import RepositoryLoading from "./RepositoryLoading"
 
 const SourceLoading = ({ kind }: { kind?: "tree" | "blob" }) => {

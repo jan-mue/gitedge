@@ -1,7 +1,7 @@
 import { Search } from "lucide-react"
 import type { ReactNode } from "react"
 import { useState } from "react"
-import { Button, Input, NativeSelect } from "@/design-system"
+import { Button, Input, NativeSelect } from "@/components/design-system"
 
 interface TrackerItem {
   title: string
@@ -62,7 +62,7 @@ const TrackerFilters = ({ filters, label, openCount, closedCount, children }: Tr
           aria-pressed={filters.state === value}
           onClick={() => filters.setState(value)}
           variant="quiet"
-          size="sm"
+          size="compact"
         >
           {text}
         </Button>

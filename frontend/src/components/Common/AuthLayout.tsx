@@ -1,5 +1,5 @@
 import { Appearance } from "@/components/Common/Appearance"
-import { Logo } from "@/design-system"
+import { Logo } from "@/components/design-system"
 import { Footer } from "./Footer"
 
 interface AuthLayoutProps {

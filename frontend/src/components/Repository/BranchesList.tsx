@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query"
 import { GitBranch, Tag } from "lucide-react"
 import { releasesListTagsOptions, repositoriesListBranchesOptions } from "@/client/@tanstack/react-query.gen"
+import { Link } from "@/components/design-system"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
-import { Link } from "@/design-system"
 
 interface BranchesListProps {
   owner: string

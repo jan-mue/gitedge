@@ -1,13 +1,15 @@
 id: require-design-system
 language: tsx
 severity: error
-message: Import shared controls from @/design-system; choose named variants and use layout wrappers for spacing.
+message: Import shared controls from @/components/design-system; choose named variants and use layout wrappers for spacing.
 files:
   - frontend/src/**/*.tsx
 ignores:
   - frontend/src/components/ui/**
-  - frontend/src/design-system/**
+  - frontend/src/components/design-system/**
   - frontend/src/**/*.test.tsx
+  - frontend/src/**/*.stories.tsx
+  - frontend/src/components/Storybook/**
 rule:
   any:
     - kind: import_statement

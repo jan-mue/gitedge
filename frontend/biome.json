@@ -19,7 +19,8 @@
       "!**/src/components/ui/**/*",
       "!**/storybook-static/**/*",
       "!**/playwright-report/**/*",
-      "!**/test-results/**/*"
+      "!**/test-results/**/*",
+      "!**/visual-review/**/*"
     ]
   },
   "linter": {

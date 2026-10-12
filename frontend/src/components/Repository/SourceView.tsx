@@ -4,6 +4,7 @@ import {
   repositoriesGetRepositoryInfoOptions,
   repositoriesGetSourceOptions,
 } from "@/client/@tanstack/react-query.gen"
+import { Skeleton } from "@/components/design-system"
 import CodeViewer from "@/components/Repositories/CodeViewer"
 import RepoBreadcrumbs from "@/components/Repositories/RepoBreadcrumbs"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
@@ -12,7 +13,6 @@ import ReadmeViewer from "@/components/Repository/ReadmeViewer"
 import RepoStats from "@/components/Repository/RepoStats"
 import { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import SourceLoading from "@/components/Repository/SourceLoading"
-import { Skeleton } from "@/design-system"
 
 interface SourceViewProps {
   owner: string

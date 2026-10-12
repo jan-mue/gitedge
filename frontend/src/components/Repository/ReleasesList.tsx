@@ -12,7 +12,6 @@ import {
   releasesListTagsOptions,
   releasesUpdateReleaseMutation,
 } from "@/client/@tanstack/react-query.gen"
-import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import {
   Badge,
   Button,
@@ -34,7 +33,8 @@ import {
   Input,
   LoadingButton,
   Textarea,
-} from "@/design-system"
+} from "@/components/design-system"
+import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -192,7 +192,12 @@ const EditReleaseDialog = ({
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
+              <Button
+                type="button"
+                variant="repository"
+                onClick={() => onOpenChange(false)}
+                disabled={mutation.isPending}
+              >
                 Cancel
               </Button>
               <LoadingButton type="submit" loading={mutation.isPending} data-testid="edit-release-submit">
@@ -272,7 +277,7 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
         </h2>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" variant="outline" data-testid="new-release-button">
+            <Button size="compact" variant="repository" data-testid="new-release-button">
               <Plus className="w-3.5 h-3.5" />
               New release
             </Button>
@@ -347,7 +352,7 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
                 </div>
                 <DialogFooter>
                   <DialogClose asChild>
-                    <Button variant="outline" disabled={mutation.isPending}>
+                    <Button variant="repository" disabled={mutation.isPending}>
                       Cancel
                     </Button>
                   </DialogClose>

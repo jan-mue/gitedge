@@ -1,5 +1,5 @@
 import { FaGithub } from "react-icons/fa"
-import { ExternalLink } from "@/design-system"
+import { ExternalLink } from "@/components/design-system"
 
 const socialLinks = [
   {

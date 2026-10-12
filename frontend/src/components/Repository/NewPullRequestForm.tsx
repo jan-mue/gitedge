@@ -7,7 +7,7 @@ import {
   repositoriesListBranchesOptions,
   repositoriesListPullRequestsQueryKey,
 } from "@/client/@tanstack/react-query.gen"
-import { Button, Input, Label, NativeSelect, Link as RouterLink, Textarea } from "@/design-system"
+import { Button, Input, Label, NativeSelect, Link as RouterLink, Textarea } from "@/components/design-system"
 
 interface NewPullRequestFormProps {
   owner: string
@@ -135,7 +135,7 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
             disabled={!title.trim() || !headBranch.trim() || createPRMutation.isPending}
             data-testid="submit-pr-btn"
             variant="success"
-            size="sm"
+            size="compact"
           >
             {createPRMutation.isPending ? "Creating..." : "Create pull request"}
           </Button>

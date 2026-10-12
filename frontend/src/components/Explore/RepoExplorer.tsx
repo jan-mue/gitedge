@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query"
 import { GitBranch, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
+import { Input, Link as RouterLink } from "@/components/design-system"
 import StarButton from "@/components/Repository/StarButton"
-import { Input, Link as RouterLink } from "@/design-system"
 
 const RepoExplorer = () => {
   const [query, setQuery] = useState("")

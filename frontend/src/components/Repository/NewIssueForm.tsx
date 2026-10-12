@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 import { useState } from "react"
 import { repositoriesCreateIssueMutation, repositoriesListIssuesQueryKey } from "@/client/@tanstack/react-query.gen"
-import { Button, Input, Label, Link as RouterLink, Textarea } from "@/design-system"
+import { Button, Input, Label, Link as RouterLink, Textarea } from "@/components/design-system"
 
 interface NewIssueFormProps {
   owner: string
@@ -83,7 +83,7 @@ const NewIssueForm = ({ owner, repo }: NewIssueFormProps) => {
             disabled={!title.trim() || createIssueMutation.isPending}
             data-testid="submit-issue-btn"
             variant="success"
-            size="sm"
+            size="compact"
           >
             {createIssueMutation.isPending ? "Submitting..." : "Submit new issue"}
           </Button>

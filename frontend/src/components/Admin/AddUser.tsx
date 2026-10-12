@@ -24,7 +24,7 @@ import {
   FormMessage,
   Input,
   LoadingButton,
-} from "@/design-system"
+} from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -192,7 +192,7 @@ const AddUser = () => {
 
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="outline" disabled={mutation.isPending}>
+                <Button variant="repository" disabled={mutation.isPending}>
                   Cancel
                 </Button>
               </DialogClose>

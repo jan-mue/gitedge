@@ -3,8 +3,8 @@ import { useNavigate } from "@tanstack/react-router"
 import { Check, GitBranch } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { repositoriesListBranchesOptions, repositoriesListCommitsOptions } from "@/client/@tanstack/react-query.gen"
+import { Button, Link as RouterLink } from "@/components/design-system"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
-import { Button, Link as RouterLink } from "@/design-system"
 
 interface CommitsListProps {
   owner: string
@@ -70,8 +70,8 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
           <Button
             type="button"
             onClick={() => setOpen((prev) => !prev)}
-            variant="outline"
-            size="sm"
+            variant="repository"
+            size="compact"
             data-testid="commits-branch-selector"
           >
             <GitBranch className="h-3.5 w-3.5" />
@@ -90,7 +90,7 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
                     type="button"
                     onClick={() => selectBranch(branch.name)}
                     variant="menu"
-                    size="sm"
+                    size="compact"
                   >
                     {branch.name === ref ? (
                       <Check className="h-3.5 w-3.5 flex-shrink-0 text-primary" />

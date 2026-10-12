@@ -13,7 +13,7 @@ afterEach(() => {
 beforeAll(() => {
   // Node's fetch requires an absolute URL; use the same origin as jsdom.
   client.setConfig({ baseUrl: window.location.origin })
-  server.listen({ onUnhandledRequest: "error" })
+  server.listen({ onUnhandledFrame: "error" })
   Object.defineProperty(window, "matchMedia", {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({

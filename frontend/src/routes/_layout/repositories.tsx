@@ -4,10 +4,10 @@ import { GitBranch } from "lucide-react"
 import { Suspense } from "react"
 import { repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
 import { DataTable } from "@/components/Common/DataTable"
+import { EmptyState, Page, PageHeader } from "@/components/design-system"
 import PendingItems from "@/components/Pending/PendingItems"
 import CreateRepository from "@/components/Repositories/CreateRepository"
 import { columns } from "@/components/Repositories/columns"
-import { EmptyState, Page, PageHeader } from "@/design-system"
 
 export const Route = createFileRoute("/_layout/repositories")({
   component: Repositories,

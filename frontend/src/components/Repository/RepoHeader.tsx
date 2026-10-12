@@ -10,9 +10,6 @@ import {
   Settings,
   Tag,
 } from "lucide-react"
-import ForkButton from "@/components/Repository/ForkButton"
-import StarButton from "@/components/Repository/StarButton"
-import WatchButton from "@/components/Repository/WatchButton"
 import {
   Button,
   DropdownMenu,
@@ -20,7 +17,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Link as RouterLink,
-} from "@/design-system"
+} from "@/components/design-system"
+import ForkButton from "@/components/Repository/ForkButton"
+import StarButton from "@/components/Repository/StarButton"
+import WatchButton from "@/components/Repository/WatchButton"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 
 interface RepoHeaderProps {
@@ -75,11 +75,11 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
               </div>
             </RouterLink>
             <span className="block truncate text-base font-medium text-foreground">
-              <RouterLink to="/profile/$username" params={{ username: owner }} appearance="default">
+              <RouterLink to="/profile/$username" params={{ username: owner }} appearance="repositoryOwner">
                 {owner}
               </RouterLink>
               {" / "}
-              <RouterLink to="/$owner/$repo" params={{ owner, repo }} appearance="default">
+              <RouterLink to="/$owner/$repo" params={{ owner, repo }} appearance="repositoryName">
                 {repo}
               </RouterLink>
             </span>
@@ -91,7 +91,7 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
             <ForkButton owner={owner} repo={repo} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button type="button" aria-label="Repository menu" variant="outline" size="icon-sm">
+                <Button type="button" aria-label="Repository menu" variant="repository" size="icon-sm">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -137,7 +137,13 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
         {overflowTabs.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" aria-label="More repository tabs" visibility="mobile" variant="outline" size="sm">
+              <Button
+                type="button"
+                aria-label="More repository tabs"
+                visibility="mobile"
+                variant="repository"
+                size="compact"
+              >
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>

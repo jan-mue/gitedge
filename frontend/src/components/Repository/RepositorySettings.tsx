@@ -26,7 +26,7 @@ import {
   LoadingButton,
   NativeSelect,
   Textarea,
-} from "@/design-system"
+} from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -201,7 +201,7 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
                   autoComplete="off"
                 />
                 <DialogFooter>
-                  <Button variant="outline" disabled={remove.isPending} onClick={() => setDeleteOpen(false)}>
+                  <Button variant="repository" disabled={remove.isPending} onClick={() => setDeleteOpen(false)}>
                     Cancel
                   </Button>
                   <LoadingButton

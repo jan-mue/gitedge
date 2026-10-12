@@ -1,1 +1,1 @@
-export { default } from "@/design-system/markdown-content"
+export { default } from "@/components/design-system/markdown-content"

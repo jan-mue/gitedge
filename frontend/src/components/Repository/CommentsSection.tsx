@@ -10,7 +10,7 @@ import {
   commentsUpdateCommentMutation,
 } from "@/client/@tanstack/react-query.gen"
 import MarkdownContent from "@/components/Common/MarkdownContent"
-import { Button, Textarea } from "@/design-system"
+import { Button, Textarea } from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -123,8 +123,8 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                   />
                   <div className="flex justify-end gap-2">
                     <Button
-                      size="sm"
-                      variant="outline"
+                      size="compact"
+                      variant="repository"
                       onClick={() => {
                         setEditingId(null)
                         setEditBody("")
@@ -134,7 +134,7 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                       Cancel
                     </Button>
                     <Button
-                      size="sm"
+                      size="compact"
                       disabled={!editBody.trim() || editMutation.isPending}
                       onClick={() =>
                         editMutation.mutate({ path: { comment_id: comment.id }, body: { body: editBody } })
@@ -167,7 +167,7 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
         />
         <div className="flex items-center justify-end px-3 py-2 border-t border-border bg-secondary/50">
           <Button
-            size="sm"
+            size="compact"
             disabled={!body.trim() || mutation.isPending}
             onClick={() => mutation.mutate({ path: { owner, repo, number }, body: { body } })}
             data-testid="comment-submit"

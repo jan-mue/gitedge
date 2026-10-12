@@ -15,7 +15,7 @@ import {
   FormMessage,
   Input,
   LoadingButton,
-} from "@/design-system"
+} from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { cn } from "@/lib/utils"
@@ -134,7 +134,7 @@ const UserInformation = () => {
                 <LoadingButton type="submit" loading={mutation.isPending} disabled={!form.formState.isDirty}>
                   Save
                 </LoadingButton>
-                <Button type="button" variant="outline" onClick={onCancel} disabled={mutation.isPending}>
+                <Button type="button" variant="repository" onClick={onCancel} disabled={mutation.isPending}>
                   Cancel
                 </Button>
               </>

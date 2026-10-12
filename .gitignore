@@ -16,3 +16,5 @@ openapi.json
 frontend/storybook-static/
 frontend/playwright-report/
 .vercel/
+
+/frontend/visual-review/

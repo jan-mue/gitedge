@@ -3,8 +3,8 @@ import { useParams } from "@tanstack/react-router"
 import { ArrowLeft, GitCommitHorizontal } from "lucide-react"
 import type { CommitFileChange } from "@/client"
 import { repositoriesGetCommitOptions } from "@/client/@tanstack/react-query.gen"
+import { Link as RouterLink } from "@/components/design-system"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
-import { Link as RouterLink } from "@/design-system"
 
 const changeBadge: Record<string, string> = {
   add: "bg-success/15 text-success",

@@ -1,4 +1,4 @@
-import { Button, Skeleton } from "@/design-system"
+import { Button, Skeleton } from "@/components/design-system"
 
 const RepositoryLoading = ({ label = "Loading repository", rows = 6 }: { label?: string; rows?: number }) => (
   <div role="status" aria-label={label} className="space-y-4 motion-safe:animate-in motion-safe:fade-in-0">
@@ -29,7 +29,7 @@ export const RepositoryError = ({
   <div role="alert" className="rounded-lg border bg-card p-8 text-center">
     <p className="text-sm text-muted-foreground">{message}</p>
     {retry && (
-      <Button type="button" onClick={retry} variant="outline" size="sm">
+      <Button type="button" onClick={retry} variant="repository" size="compact">
         Try again
       </Button>
     )}

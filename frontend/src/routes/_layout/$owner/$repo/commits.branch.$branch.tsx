@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { Section } from "@/components/design-system"
 import CommitsList from "@/components/Repository/CommitsList"
-import { Section } from "@/design-system"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/commits/branch/$branch")({
   validateSearch: (search: Record<string, unknown>): { path?: string } => ({

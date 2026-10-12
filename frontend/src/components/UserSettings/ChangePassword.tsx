@@ -12,7 +12,7 @@ import {
   FormMessage,
   LoadingButton,
   PasswordInput,
-} from "@/design-system"
+} from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 

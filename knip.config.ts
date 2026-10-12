@@ -12,8 +12,10 @@ const sharedEntryPoints = [
   // shadcn/ui components are a shared component library; all of their exports
   // are public API and must not be reported as dead code.
   "src/components/ui/**/*.{js,jsx,ts,tsx}!",
-  "src/design-system/**/*.{ts,tsx}!",
-  "src/design-system/stories/**/*.mdx!",
+  "src/components/design-system/**/*.{ts,tsx}!",
+  "src/components/**/*.mdx!",
+  "src/components/**/*.stories.tsx!",
+  "src/components/Storybook/**/*.{ts,tsx}!",
   ".storybook/**/*.{ts,tsx}!",
   "storybook-tests/**/*.ts!",
 ]

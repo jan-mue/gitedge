@@ -1,7 +1,14 @@
 import { CircleDot, GitMerge, GitPullRequest, MessageSquare, MoreHorizontal } from "lucide-react"
 import { type ComponentProps, useState } from "react"
 import type { ActivityPublic } from "@/client"
-import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Link } from "@/design-system"
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Link,
+} from "@/components/design-system"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import useCustomToast from "@/hooks/useCustomToast"
 
@@ -165,7 +172,7 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
         {owner && repo && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" aria-label="Activity options" variant="quiet" size="sm">
+              <Button type="button" aria-label="Activity options" variant="quiet" size="compact">
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -225,7 +232,7 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
               aria-controls={bodyId}
               onClick={() => setExpanded((value) => !value)}
               variant="link"
-              size="sm"
+              size="compact"
             >
               {expanded ? "Show less" : "Read more"}
             </Button>

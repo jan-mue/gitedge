@@ -1,9 +1,9 @@
 import { ArrowLeft, File } from "lucide-react"
 import { useState } from "react"
 import type { FileContent } from "@/client"
+import { Button, ExternalLink, Link } from "@/components/design-system"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
 import SourceLink from "@/components/Repositories/SourceLink"
-import { Button, ExternalLink, Link } from "@/design-system"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import { useSyntaxHighlightCSS } from "@/hooks/useSyntaxHighlightCSS"
 import { formatSize } from "@/utils"
@@ -61,10 +61,10 @@ const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
             Permalink
           </SourceLink>
         )}
-        <Button type="button" onClick={() => copy(file.content)} variant="outline" size="xs">
+        <Button type="button" onClick={() => copy(file.content)} variant="repository" size="xs">
           Copy content
         </Button>
-        <Button type="button" onClick={() => setEscapedTabs((value) => !value)} variant="outline" size="xs">
+        <Button type="button" onClick={() => setEscapedTabs((value) => !value)} variant="repository" size="xs">
           {escapedTabs ? "Unescape tabs" : "Escape tabs"}
         </Button>
       </div>
@@ -93,7 +93,7 @@ const FileHeader = ({ file, backLink }: { file: FileContent; backLink: CodeViewe
       refName={backLink.refName}
       path={backLink.path}
     >
-      <Button variant="ghost" size="sm">
+      <Button variant="ghost" size="compact">
         <ArrowLeft className="h-4 w-4 mr-1" />
         Back
       </Button>
