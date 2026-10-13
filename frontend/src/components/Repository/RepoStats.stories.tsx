@@ -18,7 +18,7 @@ export const StatisticsLoading: Story = {
           await delay("infinite")
           return HttpResponse.json({})
         }),
-        ...handlers.filter((_, i) => i !== 4),
+        ...handlers,
       ],
     },
   },

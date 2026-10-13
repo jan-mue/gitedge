@@ -49,9 +49,12 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
       ? parent.entries.find((entry) => entry.path === path)?.type
       : undefined
   const hasReadme = tree?.entries.some((entry) => entry.type === "blob" && readmeNames.has(entry.name)) ?? false
-  const { data: repoInfo, isPending: infoPending } = useQuery(
-    repositoriesGetRepositoryInfoOptions({ path: { owner, repo }, query: { ref: revision } }),
-  )
+  const {
+    data: repoInfo,
+    isPending: infoPending,
+    isError: infoError,
+    refetch: refetchInfo,
+  } = useQuery(repositoriesGetRepositoryInfoOptions({ path: { owner, repo }, query: { ref: revision } }))
   const {
     data: readme,
     isPending: readmePending,
@@ -106,6 +109,9 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
             refName={refName}
             treePath={path}
             lastCommit={repoInfo?.last_commit}
+            lastCommitLoading={infoPending}
+            lastCommitError={infoError}
+            onRetryLastCommit={() => refetchInfo()}
           />
           {hasReadme && readme ? (
             <ReadmeViewer html={readme.html} content={readme.content} filename={readme.filename} />

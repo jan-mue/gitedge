@@ -36,11 +36,11 @@ const CommitsList = ({ owner, repo, branch, tag, filePath }: CommitsListProps) =
 
   const {
     data: branches,
+    isPending: branchesPending,
     isError: branchesError,
     refetch: refetchBranches,
   } = useQuery({
     ...repositoriesListBranchesOptions({ path: { owner, repo } }),
-    enabled: open,
   })
 
   const commits = commitsData?.data ?? []
@@ -90,7 +90,7 @@ const CommitsList = ({ owner, repo, branch, tag, filePath }: CommitsListProps) =
           onValueChange={selectBranch}
           open={open}
           onOpenChange={setOpen}
-          loading={open && !branches && !branchesError}
+          loading={branchesPending}
           error={branchesError}
           onRetry={() => refetchBranches()}
           tagsLoading={tagsPending}

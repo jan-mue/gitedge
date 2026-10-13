@@ -32,6 +32,12 @@ export const NestedTree: Story = {
       owner="jan-mue"
       repo="gitedge"
       treePath="frontend/src"
+      lastCommit={{
+        sha: "77ddec2ecc829b765bef3ee2674b42246d1d6fba",
+        author: "Jan Müller",
+        message: "Fix repository browsing",
+        timestamp: 1791663993,
+      }}
       entries={[
         { name: "components", path: "frontend/src/components", type: "tree" },
         { name: "main.tsx", path: "frontend/src/main.tsx", type: "blob", size: 2048 },

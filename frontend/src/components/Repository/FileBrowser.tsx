@@ -1,9 +1,10 @@
 import { useNavigate } from "@tanstack/react-router"
 import { FileText, Folder } from "lucide-react"
 import type { CommitInfo, TreeEntry } from "@/client"
-import { Button, Link as RouterLink } from "@/components/design-system"
+import { Button } from "@/components/design-system"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
 import { formatSize } from "@/utils"
+import RepositoryCommitHeader from "./RepositoryCommitHeader"
 
 interface FileBrowserProps {
   entries: TreeEntry[]
@@ -14,17 +15,9 @@ interface FileBrowserProps {
   refName?: string
   treePath?: string
   lastCommit?: CommitInfo | null
-}
-
-const formatRelativeDate = (timestamp: number): string => {
-  const now = Date.now() / 1000
-  const diff = now - timestamp
-  if (diff < 60) return "just now"
-  if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`
-  if (diff < 2592000) return `${Math.floor(diff / 86400)} days ago`
-  if (diff < 31536000) return `${Math.floor(diff / 2592000)} months ago`
-  return `${Math.floor(diff / 31536000)} years ago`
+  lastCommitLoading?: boolean
+  lastCommitError?: boolean
+  onRetryLastCommit?: () => void
 }
 
 const FileBrowser = ({
@@ -35,6 +28,9 @@ const FileBrowser = ({
   refName = "main",
   treePath,
   lastCommit,
+  lastCommitLoading,
+  lastCommitError,
+  onRetryLastCommit,
 }: FileBrowserProps) => {
   const navigate = useNavigate()
 
@@ -62,26 +58,14 @@ const FileBrowser = ({
 
   return (
     <div className="border border-border rounded-lg overflow-hidden" data-testid="file-tree">
-      {lastCommit && (
-        <div className="flex items-center gap-3 px-4 py-2.5 bg-secondary border-b border-border">
-          <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-xs font-medium text-accent-foreground">
-            {lastCommit.author.charAt(0).toUpperCase()}
-          </div>
-          <span className="text-sm font-medium text-foreground">{lastCommit.author}</span>
-          <RouterLink
-            to="/$owner/$repo/commit/$hash"
-            params={{ owner, repo, hash: lastCommit.sha }}
-            data-testid="last-commit-sha"
-            appearance="code"
-          >
-            {lastCommit.sha.slice(0, 10)}
-          </RouterLink>
-          <span className="text-sm text-foreground truncate flex-1">{lastCommit.message.split("\n")[0]}</span>
-          <span className="text-sm text-muted-foreground whitespace-nowrap">
-            {formatRelativeDate(lastCommit.timestamp)}
-          </span>
-        </div>
-      )}
+      <RepositoryCommitHeader
+        owner={owner}
+        repo={repo}
+        commit={lastCommit}
+        loading={lastCommitLoading}
+        error={lastCommitError}
+        onRetry={onRetryLastCommit}
+      />
 
       {treePath && (
         <Button type="button" onClick={handleParentClick} variant="row" size="file-row" data-testid="tree-entry-parent">

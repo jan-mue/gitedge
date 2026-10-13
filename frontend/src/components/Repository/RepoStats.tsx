@@ -47,11 +47,11 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true, mode 
 
   const {
     data: branches,
+    isPending: branchesPending,
     isError: branchesError,
     refetch: refetchBranches,
   } = useQuery({
     ...repositoriesListBranchesOptions({ path: { owner, repo } }),
-    enabled: branchDropdownOpen,
   })
 
   const {
@@ -140,7 +140,7 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true, mode 
           onValueChange={handleBranchSelect}
           open={branchDropdownOpen}
           onOpenChange={setBranchDropdownOpen}
-          loading={branchDropdownOpen && !branches && !branchesError}
+          loading={branchesPending}
           error={branchesError}
           onRetry={() => refetchBranches()}
           tagsLoading={tagsPending}

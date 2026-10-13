@@ -68,7 +68,10 @@ const BranchSelector = ({
   const open = controlledOpen ?? localOpen
   const changeOpen = (next: boolean) => {
     setLocalOpen(next)
-    if (next) setTab(kind)
+    if (next) {
+      setTab(kind)
+      setSearch("")
+    }
     onOpenChange?.(next)
   }
   const focusOption = (event: KeyboardEvent, fromSearch = false) => {
