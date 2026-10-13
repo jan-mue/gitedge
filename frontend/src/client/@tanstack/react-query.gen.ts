@@ -398,8 +398,6 @@ export const gitGetInfoRefsQueryKey = (options: Options<gitGetInfoRefsData>) => 
  * request: FastAPI request.
  * owner: Repository owner.
  * repo: Repository name.
- * _authorization: Authorization service used by the permission decorator.
- * _current_user: Git credentials used by the permission decorator.
  * repository_service: Repository service.
  *
  * Returns:
@@ -429,8 +427,6 @@ export const gitGetHeadQueryKey = (options: Options<gitGetHeadData>) => createQu
  * request: FastAPI request.
  * owner: Repository owner.
  * repo: Repository name.
- * _authorization: Authorization service used by the permission decorator.
- * _current_user: Git credentials used by the permission decorator.
  * repository_service: Repository service.
  *
  * Returns:
@@ -460,8 +456,6 @@ export const gitGetInfoPacksQueryKey = (options: Options<gitGetInfoPacksData>) =
  * request: FastAPI request.
  * owner: Repository owner.
  * repo: Repository name.
- * _authorization: Authorization service used by the permission decorator.
- * _current_user: Git credentials used by the permission decorator.
  * repository_service: Repository service.
  *
  * Returns:
@@ -491,8 +485,6 @@ export const gitGetLooseObjectQueryKey = (options: Options<gitGetLooseObjectData
  * request: FastAPI request.
  * owner: Repository owner.
  * repo: Repository name.
- * _authorization: Authorization service used by the permission decorator.
- * _current_user: Git credentials used by the permission decorator.
  * prefix: Object SHA prefix (2 chars).
  * suffix: Object SHA suffix (38 chars).
  * repository_service: Repository service.
@@ -524,8 +516,6 @@ export const gitGetPackFileQueryKey = (options: Options<gitGetPackFileData>) => 
  * request: FastAPI request.
  * owner: Repository owner.
  * repo: Repository name.
- * _authorization: Authorization service used by the permission decorator.
- * _current_user: Git credentials used by the permission decorator.
  * pack_file: Pack file name.
  * repository_service: Repository service.
  *
@@ -554,8 +544,6 @@ export const gitGetPackFileOptions = (options: Options<gitGetPackFileData>) => q
  * request: FastAPI request.
  * owner: Repository owner.
  * repo: Repository name.
- * _authorization: Authorization service used by the permission decorator.
- * _current_user: Git credentials used by the permission decorator.
  * repository_service: Repository service.
  *
  * Returns:
@@ -584,8 +572,6 @@ export const gitGitUploadPackMutation = (options?: Partial<Options<gitGitUploadP
  * request: FastAPI request.
  * owner: Repository owner.
  * repo: Repository name.
- * _authorization: Authorization service used by the permission decorator.
- * _current_user: Git credentials used by the permission decorator.
  * repository_service: Repository service.
  *
  * Returns:

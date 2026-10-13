@@ -305,8 +305,6 @@ export class GitService {
      * request: FastAPI request.
      * owner: Repository owner.
      * repo: Repository name.
-     * _authorization: Authorization service used by the permission decorator.
-     * _current_user: Git credentials used by the permission decorator.
      * repository_service: Repository service.
      *
      * Returns:
@@ -333,8 +331,6 @@ export class GitService {
      * request: FastAPI request.
      * owner: Repository owner.
      * repo: Repository name.
-     * _authorization: Authorization service used by the permission decorator.
-     * _current_user: Git credentials used by the permission decorator.
      * repository_service: Repository service.
      *
      * Returns:
@@ -361,8 +357,6 @@ export class GitService {
      * request: FastAPI request.
      * owner: Repository owner.
      * repo: Repository name.
-     * _authorization: Authorization service used by the permission decorator.
-     * _current_user: Git credentials used by the permission decorator.
      * repository_service: Repository service.
      *
      * Returns:
@@ -389,8 +383,6 @@ export class GitService {
      * request: FastAPI request.
      * owner: Repository owner.
      * repo: Repository name.
-     * _authorization: Authorization service used by the permission decorator.
-     * _current_user: Git credentials used by the permission decorator.
      * prefix: Object SHA prefix (2 chars).
      * suffix: Object SHA suffix (38 chars).
      * repository_service: Repository service.
@@ -419,8 +411,6 @@ export class GitService {
      * request: FastAPI request.
      * owner: Repository owner.
      * repo: Repository name.
-     * _authorization: Authorization service used by the permission decorator.
-     * _current_user: Git credentials used by the permission decorator.
      * pack_file: Pack file name.
      * repository_service: Repository service.
      *
@@ -448,8 +438,6 @@ export class GitService {
      * request: FastAPI request.
      * owner: Repository owner.
      * repo: Repository name.
-     * _authorization: Authorization service used by the permission decorator.
-     * _current_user: Git credentials used by the permission decorator.
      * repository_service: Repository service.
      *
      * Returns:
@@ -476,8 +464,6 @@ export class GitService {
      * request: FastAPI request.
      * owner: Repository owner.
      * repo: Repository name.
-     * _authorization: Authorization service used by the permission decorator.
-     * _current_user: Git credentials used by the permission decorator.
      * repository_service: Repository service.
      *
      * Returns:

@@ -3,45 +3,41 @@
 from __future__ import annotations
 
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Depends, status
 
-from app.api.dependencies import AuthorizationServiceDep, CommentServiceDep, CurrentUser, OptionalUser
+from app.api.dependencies import CommentServiceDep, CurrentUser, OptionalUser
 from app.api.permissions import require_permission
+from app.entities.users import User
 from app.schemas.comments import CommentCreate, CommentPublic, CommentsPublic, CommentUpdate
 
 router = APIRouter(prefix="/repositories", tags=["comments"])
 comment_router = APIRouter(prefix="/comments", tags=["comments"])
 
 
-@router.get("/{owner}/{repo}/issues/{number}/comments")
-@require_permission("repository:read", authorization="_authorization", user="_current_user", response="_response")
+@router.get(
+    "/{owner}/{repo}/issues/{number}/comments",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalUser))],
+)
 async def list_comments(
     owner: str,
     repo: str,
     number: int,
     comment_service: CommentServiceDep,
-    *,
-    _authorization: AuthorizationServiceDep,
-    _current_user: OptionalUser,
-    _response: Response,
 ) -> CommentsPublic:
     """List comments for an issue or pull request."""
     return await comment_service.list_comments(owner, repo, number)
 
 
 @router.post("/{owner}/{repo}/issues/{number}/comments", status_code=201)
-@require_permission("repository:read", authorization="_authorization", response="_response")
 async def create_comment(
     owner: str,
     repo: str,
     number: int,
     body: CommentCreate,
     comment_service: CommentServiceDep,
-    current_user: CurrentUser,
-    *,
-    _authorization: AuthorizationServiceDep,
-    _response: Response,
+    current_user: Annotated[User, Depends(require_permission("repository:read", user_dep=CurrentUser))],
 ) -> CommentPublic:
     """Create a comment on an issue or pull request."""
     return await comment_service.create_comment(owner, repo, number, body, current_user)

@@ -10,9 +10,9 @@ from io import BytesIO
 from typing import TYPE_CHECKING, Any
 
 from dulwich.web import GunzipFilter, HTTPGitApplication, LimitedInputFilter
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 
-from app.api.dependencies import AuthorizationServiceDep, GitUser, RepositoryServiceDep
+from app.api.dependencies import GitUser, RepositoryServiceDep
 from app.api.permissions import require_permission
 from app.utils.cache_headers import CACHE_CONTROL_NO_STORE
 
@@ -162,18 +162,17 @@ async def _handle_git_request(
 # These match the patterns in dulwich.web.HTTPGitApplication.services
 
 
-@router.get("/{owner}/{repo}.git/info/refs")
-@require_permission(
-    git_discovery_permission, authorization="_authorization", user="_current_user", challenge='Basic realm="GitEdge"'
+@router.get(
+    "/{owner}/{repo}.git/info/refs",
+    dependencies=[
+        Depends(require_permission(git_discovery_permission, user_dep=GitUser, challenge='Basic realm="GitEdge"'))
+    ],
 )
 async def get_info_refs(
     request: Request,
     owner: str,
     repo: str,
     repository_service: RepositoryServiceDep,
-    *,
-    _authorization: AuthorizationServiceDep,
-    _current_user: GitUser,
 ) -> Response:
     """Get repository references (used for clone/fetch discovery).
 
@@ -181,8 +180,6 @@ async def get_info_refs(
         request: FastAPI request.
         owner: Repository owner.
         repo: Repository name.
-        _authorization: Authorization service used by the permission decorator.
-        _current_user: Git credentials used by the permission decorator.
         repository_service: Repository service.
 
     Returns:
@@ -191,18 +188,15 @@ async def get_info_refs(
     return await _handle_git_request(request, f"{owner}/{repo}.git", "/info/refs", repository_service)
 
 
-@router.get("/{owner}/{repo}.git/HEAD")
-@require_permission(
-    "repository:read", authorization="_authorization", user="_current_user", challenge='Basic realm="GitEdge"'
+@router.get(
+    "/{owner}/{repo}.git/HEAD",
+    dependencies=[Depends(require_permission("repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
 async def get_head(
     request: Request,
     owner: str,
     repo: str,
     repository_service: RepositoryServiceDep,
-    *,
-    _authorization: AuthorizationServiceDep,
-    _current_user: GitUser,
 ) -> Response:
     """Get repository HEAD.
 
@@ -210,8 +204,6 @@ async def get_head(
         request: FastAPI request.
         owner: Repository owner.
         repo: Repository name.
-        _authorization: Authorization service used by the permission decorator.
-        _current_user: Git credentials used by the permission decorator.
         repository_service: Repository service.
 
     Returns:
@@ -220,18 +212,15 @@ async def get_head(
     return await _handle_git_request(request, f"{owner}/{repo}.git", "/HEAD", repository_service)
 
 
-@router.get("/{owner}/{repo}.git/objects/info/packs")
-@require_permission(
-    "repository:read", authorization="_authorization", user="_current_user", challenge='Basic realm="GitEdge"'
+@router.get(
+    "/{owner}/{repo}.git/objects/info/packs",
+    dependencies=[Depends(require_permission("repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
 async def get_info_packs(
     request: Request,
     owner: str,
     repo: str,
     repository_service: RepositoryServiceDep,
-    *,
-    _authorization: AuthorizationServiceDep,
-    _current_user: GitUser,
 ) -> Response:
     """Get pack file info.
 
@@ -239,8 +228,6 @@ async def get_info_packs(
         request: FastAPI request.
         owner: Repository owner.
         repo: Repository name.
-        _authorization: Authorization service used by the permission decorator.
-        _current_user: Git credentials used by the permission decorator.
         repository_service: Repository service.
 
     Returns:
@@ -249,9 +236,9 @@ async def get_info_packs(
     return await _handle_git_request(request, f"{owner}/{repo}.git", "/objects/info/packs", repository_service)
 
 
-@router.get("/{owner}/{repo}.git/objects/{prefix:path}/{suffix}")
-@require_permission(
-    "repository:read", authorization="_authorization", user="_current_user", challenge='Basic realm="GitEdge"'
+@router.get(
+    "/{owner}/{repo}.git/objects/{prefix:path}/{suffix}",
+    dependencies=[Depends(require_permission("repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
 async def get_loose_object(
     request: Request,
@@ -260,9 +247,6 @@ async def get_loose_object(
     prefix: str,
     suffix: str,
     repository_service: RepositoryServiceDep,
-    *,
-    _authorization: AuthorizationServiceDep,
-    _current_user: GitUser,
 ) -> Response:
     """Get a loose object.
 
@@ -270,8 +254,6 @@ async def get_loose_object(
         request: FastAPI request.
         owner: Repository owner.
         repo: Repository name.
-        _authorization: Authorization service used by the permission decorator.
-        _current_user: Git credentials used by the permission decorator.
         prefix: Object SHA prefix (2 chars).
         suffix: Object SHA suffix (38 chars).
         repository_service: Repository service.
@@ -282,9 +264,9 @@ async def get_loose_object(
     return await _handle_git_request(request, f"{owner}/{repo}.git", f"/objects/{prefix}/{suffix}", repository_service)
 
 
-@router.get("/{owner}/{repo}.git/objects/pack/{pack_file}")
-@require_permission(
-    "repository:read", authorization="_authorization", user="_current_user", challenge='Basic realm="GitEdge"'
+@router.get(
+    "/{owner}/{repo}.git/objects/pack/{pack_file}",
+    dependencies=[Depends(require_permission("repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
 async def get_pack_file(
     request: Request,
@@ -292,9 +274,6 @@ async def get_pack_file(
     repo: str,
     pack_file: str,
     repository_service: RepositoryServiceDep,
-    *,
-    _authorization: AuthorizationServiceDep,
-    _current_user: GitUser,
 ) -> Response:
     """Get a pack or index file.
 
@@ -302,8 +281,6 @@ async def get_pack_file(
         request: FastAPI request.
         owner: Repository owner.
         repo: Repository name.
-        _authorization: Authorization service used by the permission decorator.
-        _current_user: Git credentials used by the permission decorator.
         pack_file: Pack file name.
         repository_service: Repository service.
 
@@ -313,18 +290,15 @@ async def get_pack_file(
     return await _handle_git_request(request, f"{owner}/{repo}.git", f"/objects/pack/{pack_file}", repository_service)
 
 
-@router.post("/{owner}/{repo}.git/git-upload-pack")
-@require_permission(
-    "repository:read", authorization="_authorization", user="_current_user", challenge='Basic realm="GitEdge"'
+@router.post(
+    "/{owner}/{repo}.git/git-upload-pack",
+    dependencies=[Depends(require_permission("repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
 async def git_upload_pack(
     request: Request,
     owner: str,
     repo: str,
     repository_service: RepositoryServiceDep,
-    *,
-    _authorization: AuthorizationServiceDep,
-    _current_user: GitUser,
 ) -> Response:
     """Handle git-upload-pack (clone/fetch).
 
@@ -332,8 +306,6 @@ async def git_upload_pack(
         request: FastAPI request.
         owner: Repository owner.
         repo: Repository name.
-        _authorization: Authorization service used by the permission decorator.
-        _current_user: Git credentials used by the permission decorator.
         repository_service: Repository service.
 
     Returns:
@@ -342,18 +314,15 @@ async def git_upload_pack(
     return await _handle_git_request(request, f"{owner}/{repo}.git", "/git-upload-pack", repository_service)
 
 
-@router.post("/{owner}/{repo}.git/git-receive-pack")
-@require_permission(
-    "repository:write", authorization="_authorization", user="_current_user", challenge='Basic realm="GitEdge"'
+@router.post(
+    "/{owner}/{repo}.git/git-receive-pack",
+    dependencies=[Depends(require_permission("repository:write", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
 async def git_receive_pack(
     request: Request,
     owner: str,
     repo: str,
     repository_service: RepositoryServiceDep,
-    *,
-    _authorization: AuthorizationServiceDep,
-    _current_user: GitUser,
 ) -> Response:
     """Handle git-receive-pack (push).
 
@@ -361,8 +330,6 @@ async def git_receive_pack(
         request: FastAPI request.
         owner: Repository owner.
         repo: Repository name.
-        _authorization: Authorization service used by the permission decorator.
-        _current_user: Git credentials used by the permission decorator.
         repository_service: Repository service.
 
     Returns:

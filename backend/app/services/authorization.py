@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import casbin
+from casbin.persist.adapters.asyncio import AsyncFileAdapter
 from fastapi import HTTPException
 
 from app.entities.authorization import OrganizationMember, RepositoryCollaborator, Team, TeamMember
@@ -27,9 +28,14 @@ if TYPE_CHECKING:
 POLICY_DIRECTORY = Path(__file__).resolve().parents[2] / "resources" / "authorization"
 
 
-def new_enforcer() -> casbin.Enforcer:
+async def new_enforcer() -> casbin.AsyncEnforcer:
     """Create an isolated enforcer; never share mutable request policies."""
-    return casbin.Enforcer(str(POLICY_DIRECTORY / "model.conf"), str(POLICY_DIRECTORY / "policy.csv"))
+    enforcer = casbin.AsyncEnforcer(
+        str(POLICY_DIRECTORY / "model.conf"), AsyncFileAdapter(str(POLICY_DIRECTORY / "policy.csv"))
+    )
+    enforcer.enable_auto_save(False)
+    await enforcer.load_policy()
+    return enforcer
 
 
 class AuthorizationService:
@@ -50,23 +56,23 @@ class AuthorizationService:
 
     async def can(self, repository: Repository, user: User | None, permission: str = "repository:read") -> bool:
         """Evaluate a permission in a repository's UUID domain."""
-        enforcer = new_enforcer()
+        enforcer = await new_enforcer()
         domain = f"repository:{repository.id}"
         subject = f"user:{user.id}" if user else "anonymous"
         if not repository.is_private:
-            enforcer.add_grouping_policy(subject, "read", domain)
+            await enforcer.add_grouping_policy(subject, "read", domain)
         if user is not None:
             if not user.is_active:
                 return False
             if user.is_superuser or repository.owner_id == user.id:
-                enforcer.add_grouping_policy(subject, "owner", domain)
+                await enforcer.add_grouping_policy(subject, "owner", domain)
             members = await self.store.members(repository.owner_id)
             member = next((member for member in members if member.user_id == user.id), None)
             if member is not None and member.is_admin:
-                enforcer.add_grouping_policy(subject, "owner", domain)
+                await enforcer.add_grouping_policy(subject, "owner", domain)
             for collaborator in await self.store.collaborators(repository.id):
                 if collaborator.user_id == user.id:
-                    enforcer.add_grouping_policy(subject, collaborator.role, domain)
+                    await enforcer.add_grouping_policy(subject, collaborator.role, domain)
                 elif collaborator.team_id is not None and member is not None:
                     # Organization membership is required even if a stale team row exists.
                     teams = await self.store.teams(repository.owner_id)
@@ -74,8 +80,8 @@ class AuthorizationService:
                         team_members = await self.store.team_members(collaborator.team_id)
                         if any(team_member.user_id == user.id for team_member in team_members):
                             team_subject = f"team:{collaborator.team_id}"
-                            enforcer.add_grouping_policy(subject, team_subject, domain)
-                            enforcer.add_grouping_policy(team_subject, collaborator.role, domain)
+                            await enforcer.add_grouping_policy(subject, team_subject, domain)
+                            await enforcer.add_grouping_policy(team_subject, collaborator.role, domain)
         return bool(enforcer.enforce(subject, domain, permission))
 
     async def require(self, repository: Repository, user: User | None, permission: str = "repository:read") -> None:
@@ -92,14 +98,14 @@ class AuthorizationService:
         organization = await self.organizations.get_by_name(name)
         if organization is None:
             raise HTTPException(status_code=404, detail="Organization not found")
-        enforcer = new_enforcer()
+        enforcer = await new_enforcer()
         domain = f"organization:{organization.id}"
         subject = f"user:{user.id}"
         if user.is_superuser:
-            enforcer.add_grouping_policy(subject, "org_admin", domain)
+            await enforcer.add_grouping_policy(subject, "org_admin", domain)
         for member in await self.store.members(organization.id):
             if member.user_id == user.id:
-                enforcer.add_grouping_policy(subject, "org_admin" if member.is_admin else "org_member", domain)
+                await enforcer.add_grouping_policy(subject, "org_admin" if member.is_admin else "org_member", domain)
         if not user.is_active or not enforcer.enforce(subject, domain, permission):
             raise HTTPException(status_code=403, detail="Insufficient organization permission")
         return organization

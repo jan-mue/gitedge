@@ -1,13 +1,23 @@
 # Authorization
 
 GitEdge uses PyCasbin directly (`casbin` on PyPI). Roles and their permission
-inheritance live in `model.conf` and `policy.csv`; FastAPI endpoints declare
-permissions with `@require_permission("repository:write")` or the relevant
-permission. Handlers explicitly declare `owner`, `repo`, their authentication
-argument, and their authorization service; the decorator checks those arguments
-before calling the handler. It injects no repository object or extra parameters.
-Underscored authentication/service arguments used only by the decorator are
-explicitly mapped at the decorator call. No decorator library or OpenFGA server is required.
+inheritance live in `model.conf` and `policy.csv`. FastAPI endpoints compose
+permission checks with an explicit authentication dependency:
+
+```python
+current_user: Annotated[
+    User,
+    Depends(require_permission("repository:write", user_dep=CurrentUser)),
+]
+```
+
+The dependency returns the authenticated user. `user_dep` accepts an Annotated
+alias (`CurrentUser`, `OptionalUser`, or `GitUser`) or its dependency callable.
+FastAPI preserves dependency caching, overrides, and security metadata. `owner`
+and `repo` are explicit named path parameters in the permission dependency;
+handlers keep their normal path arguments. There is no signature rewriting,
+argument-name mapping, or decorator library. Endpoints that do not consume the
+user declare the permission in the router's `dependencies` list.
 
 The database stores facts, not the static permission definitions:
 
@@ -16,7 +26,10 @@ The database stores facts, not the static permission definitions:
 - `team_member`: team membership; users must also belong to its organization.
 - `repository_collaborator`: a user or team granted a repository role.
 
-The service creates an isolated Casbin enforcer from the files and current facts.
+The service creates an isolated `casbin.AsyncEnforcer` from the files and current
+facts. Policy loading and role grants are awaited; the in-memory `enforce()`
+decision uses PyCasbin's synchronous API. Automatic persistence is disabled, so
+request-specific grants cannot modify the declarative policy files.
 Repository and organization UUIDs are separate authorization domains. Grants
 survive renames, and grants on one repository cannot authorize another. No
 cross-request authorization cache is used; revocations apply on the next request.

@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Response
+from fastapi import APIRouter, Depends, Query
 
 from app.api.dependencies import (
     ActivityServiceDep,
-    AuthorizationServiceDep,
     CurrentUser,
     OptionalUser,
     RepositoryServiceDep,
@@ -21,35 +20,30 @@ router = APIRouter(prefix="/repositories", tags=["activity"])
 user_router = APIRouter(prefix="/users", tags=["activity"])
 
 
-@router.get("/{owner}/{repo}/activity/statistics")
-@require_permission("repository:read", authorization="_authorization", user="_current_user", response="_response")
+@router.get(
+    "/{owner}/{repo}/activity/statistics",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalUser))],
+)
 async def get_repository_activity_statistics(
     owner: str,
     repo: str,
     activity_service: ActivityServiceDep,
     repository_service: RepositoryServiceDep,
     days: Annotated[int, Query(ge=1, le=365)] = 7,
-    *,
-    _authorization: AuthorizationServiceDep,
-    _current_user: OptionalUser,
-    _response: Response,
 ) -> RepositoryActivityStatistics:
     """Get pulse, contributors, code frequency, and recent commit statistics."""
     return await activity_service.repository_statistics(owner, repo, repository_service, days)
 
 
-@router.get("/{owner}/{repo}/activity")
-@require_permission("repository:read", authorization="_authorization", user="_current_user", response="_response")
+@router.get(
+    "/{owner}/{repo}/activity", dependencies=[Depends(require_permission("repository:read", user_dep=OptionalUser))]
+)
 async def get_repository_activity(
     owner: str,
     repo: str,
     activity_service: ActivityServiceDep,
     offset: int = 0,
     limit: int = 50,
-    *,
-    _authorization: AuthorizationServiceDep,
-    _current_user: OptionalUser,
-    _response: Response,
 ) -> ActivitiesPublic:
     """List activity for a repository."""
     return await activity_service.repo_activity(owner, repo, offset, limit)

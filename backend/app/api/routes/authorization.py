@@ -1,11 +1,13 @@
 """Organization membership, teams, and repository collaborator settings."""
 
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.dependencies import AuthorizationServiceDep, CurrentUser, OptionalUser
 from app.api.permissions import require_permission
+from app.entities.users import User
 from app.schemas.authorization import (
     CollaboratorInput,
     CollaboratorPublic,
@@ -20,9 +22,11 @@ router = APIRouter(tags=["authorization"])
 
 
 @router.get("/repositories/{owner}/{repo}/permissions")
-@require_permission("repository:read", response="_response")
 async def get_permissions(
-    owner: str, repo: str, authorization: AuthorizationServiceDep, current_user: OptionalUser, *, _response: Response
+    owner: str,
+    repo: str,
+    authorization: AuthorizationServiceDep,
+    current_user: Annotated[User | None, Depends(require_permission("repository:read", user_dep=OptionalUser))],
 ) -> RepositoryPermissions:
     """Return effective permissions for the current viewer."""
     repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
@@ -34,11 +38,11 @@ async def get_permissions(
     )
 
 
-@router.get("/repositories/{owner}/{repo}/collaborator-teams")
-@require_permission("repository:admin", user="_current_user", response="_response")
-async def list_collaborator_teams(
-    owner: str, repo: str, authorization: AuthorizationServiceDep, _current_user: OptionalUser, *, _response: Response
-) -> list[TeamPublic]:
+@router.get(
+    "/repositories/{owner}/{repo}/collaborator-teams",
+    dependencies=[Depends(require_permission("repository:admin", user_dep=OptionalUser))],
+)
+async def list_collaborator_teams(owner: str, repo: str, authorization: AuthorizationServiceDep) -> list[TeamPublic]:
     """List teams eligible for grants on this repository."""
     repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
     return [TeamPublic.model_validate(team) for team in await authorization.store.teams(repository.owner_id)]
@@ -123,11 +127,11 @@ async def remove_team_member(
     await authorization.store.remove(member)
 
 
-@router.get("/repositories/{owner}/{repo}/collaborators")
-@require_permission("repository:admin", user="_current_user", response="_response")
-async def list_collaborators(
-    owner: str, repo: str, authorization: AuthorizationServiceDep, _current_user: OptionalUser, *, _response: Response
-) -> list[CollaboratorPublic]:
+@router.get(
+    "/repositories/{owner}/{repo}/collaborators",
+    dependencies=[Depends(require_permission("repository:admin", user_dep=OptionalUser))],
+)
+async def list_collaborators(owner: str, repo: str, authorization: AuthorizationServiceDep) -> list[CollaboratorPublic]:
     """List explicit repository collaborators."""
     repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
     return [
@@ -137,15 +141,12 @@ async def list_collaborators(
 
 
 @router.put("/repositories/{owner}/{repo}/collaborators")
-@require_permission("repository:admin", response="_response")
 async def set_collaborator(
     owner: str,
     repo: str,
     body: CollaboratorInput,
     authorization: AuthorizationServiceDep,
-    current_user: CurrentUser,
-    *,
-    _response: Response,
+    current_user: Annotated[User, Depends(require_permission("repository:admin", user_dep=CurrentUser))],
 ) -> CollaboratorPublic:
     """Add or update a current_user or team's repository role."""
     repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
@@ -155,15 +156,12 @@ async def set_collaborator(
 
 
 @router.delete("/repositories/{owner}/{repo}/collaborators/{collaborator_id}", status_code=204)
-@require_permission("repository:admin", response="_response")
 async def remove_collaborator(
     owner: str,
     repo: str,
     collaborator_id: uuid.UUID,
     authorization: AuthorizationServiceDep,
-    current_user: CurrentUser,
-    *,
-    _response: Response,
+    current_user: Annotated[User, Depends(require_permission("repository:admin", user_dep=CurrentUser))],
 ) -> None:
     """Revoke an explicit repository role."""
     repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
