@@ -9,8 +9,7 @@ const channel = addons.getChannel()
 const subscribers = new Set<() => void>()
 let selectedTheme = "dark"
 
-// MDX pages without a Canvas never run story decorators. Keep their tokens and
-// the Docs renderer in sync with the same global used by the theme toolbar.
+// MDX docs without a Canvas need the theme applied explicitly.
 const applyTheme = ({ globals }: { globals: { theme?: string } }) => {
   selectedTheme = globals.theme === "light" ? "light" : "dark"
   document.documentElement.classList.toggle("dark", selectedTheme === "dark")

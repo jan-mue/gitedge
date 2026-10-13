@@ -3,8 +3,6 @@ import path from "node:path"
 import AxeBuilder from "@axe-core/playwright"
 import { test as baseTest, expect, type Page, type TestInfo } from "@playwright/test"
 
-// Keep a browser page per worker; each story still reloads in a fresh document.
-// Reusing the context avoids repeatedly installing MSW for every catalog entry.
 const test = baseTest.extend<object, { catalogPage: Page }>({
   catalogPage: [
     async ({ browser }, use, workerInfo) => {
@@ -38,8 +36,7 @@ const test = baseTest.extend<object, { catalogPage: Page }>({
   },
 })
 
-// Preserve the exact reference palette. Report its existing contrast limitations
-// separately while enforcing all other WCAG checks and keyboard interactions.
+// Record palette contrast findings separately from other accessibility failures.
 const expectAccessible = async (results: Awaited<ReturnType<AxeBuilder["analyze"]>>, testInfo: TestInfo) => {
   const contrast = results.violations.filter((violation) => violation.id === "color-contrast")
   if (contrast.length) {
@@ -130,7 +127,6 @@ for (const story of Object.values(index.entries).filter((entry) => entry.type ==
         ),
       )
       .toBe(0)
-    // Wait for async patterns to settle; loading stories deliberately never resolve.
     if (
       story.id === "patterns-repository-header--header" ||
       story.id === "patterns-repository-header--selected-actions"

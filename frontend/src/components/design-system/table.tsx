@@ -1,5 +1,4 @@
 import type { ComponentProps } from "react"
-/** Keyboard users can reach horizontal content without relying on a pointer. */
 export const Table = ({
   scrollLabel = "Data table",
   ...props

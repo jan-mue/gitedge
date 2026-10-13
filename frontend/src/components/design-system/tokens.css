@@ -116,7 +116,6 @@
   --language-markdown: #083fa1;
   --language-other: var(--lang-other);
 
-  /* Reference palette */
   --lang-go: hsl(195 80% 50%);
   --lang-js: hsl(50 90% 50%);
   --lang-ts: hsl(210 70% 50%);

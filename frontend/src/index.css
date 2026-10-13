@@ -252,7 +252,6 @@
   background: var(--accent);
 }
 
-/* File viewer — GitHub/Gitea-style code display */
 .file-viewer .highlight {
   margin: 0;
   border-radius: 0;
@@ -317,7 +316,6 @@
   overflow-x: auto;
 }
 
-/* Light mode: GitHub-style background */
 .file-viewer .highlight {
   background: var(--card);
   color: var(--foreground);
@@ -327,7 +325,6 @@
   border-right: 1px solid var(--border);
 }
 
-/* Dark mode overrides */
 .dark .file-viewer .highlight {
   background: var(--card);
   color: var(--foreground);

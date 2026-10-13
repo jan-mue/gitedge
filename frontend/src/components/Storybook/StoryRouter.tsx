@@ -4,13 +4,11 @@ import { createContext, type ReactNode, useContext, useState } from "react"
 
 const StoryContent = createContext<ReactNode>(null)
 const CurrentStory = () => <>{useContext(StoryContent)}</>
-/** A fresh query cache per story keeps API state isolated. */
 export const StoryRouter = ({ children }: { children: ReactNode }) => {
   const [queryClient] = useState(
     () => new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }),
   )
   const [router] = useState(() => {
-    // Keep the pattern visible while real navigation updates route match state.
     const root = createRootRoute({ component: CurrentStory })
     const repository = createRoute({ getParentRoute: () => root, path: "/$owner/$repo" })
     const pages = [

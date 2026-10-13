@@ -1,6 +1,5 @@
 import { create } from "storybook/theming"
 
-// Storybook's manager runs outside the preview iframe, so its API needs concrete colors.
 const palette = {
   canvas: "#101217",
   surface: "#191c23",
@@ -8,7 +7,7 @@ const palette = {
   border: "#333947",
   text: "#e4e7ed",
   muted: "#a6afbe",
-  brand: "#ff963f",
+  brand: "hsl(210, 70%, 55%)",
   link: "#71b4f6",
 }
 export const theme = create({

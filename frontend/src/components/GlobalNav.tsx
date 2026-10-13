@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { ChevronDown, GitFork, Inbox, LogOut, Plus, Settings, ShieldCheck, User } from "lucide-react"
+import { ChevronDown, Inbox, LogOut, Plus, Settings, ShieldCheck, User } from "lucide-react"
 import { useRef, useState } from "react"
 import {
   organizationsCreateOrganizationMutation,
@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
+  Logo,
   Link as RouterLink,
   SelectField,
   Textarea,
@@ -82,10 +83,7 @@ const GlobalNav = () => {
       <nav className="border-b border-border bg-secondary">
         <div className="container mx-auto flex h-12 max-w-7xl items-center justify-between gap-2 px-4">
           <RouterLink to="/" appearance="brand">
-            <div className="flex h-7 w-7 items-center justify-center rounded bg-primary">
-              <GitFork className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="text-sm font-bold">GitEdge</span>
+            <Logo size="compact" asLink={false} />
           </RouterLink>
 
           <div className="flex items-center gap-3">

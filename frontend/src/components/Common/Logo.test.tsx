@@ -82,11 +82,12 @@ describe("Logo", () => {
     expect(text).toHaveClass("text-lg")
   })
 
-  test("icon has primary color", () => {
+  test("icon uses the primary badge and contrasting foreground", () => {
     render(<Logo variant="icon" asLink={false} />)
 
     const svg = document.querySelector("svg")
-    expect(svg).toHaveClass("text-primary")
+    expect(svg).toHaveClass("text-primary-foreground")
+    expect(svg?.parentElement).toHaveClass("bg-primary")
   })
 
   test("full variant icon has correct size", () => {

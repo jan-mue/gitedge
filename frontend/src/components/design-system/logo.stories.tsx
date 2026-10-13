@@ -7,8 +7,9 @@ type Story = StoryObj
 
 export const Brand: Story = {
   render: () => (
-    <div className="flex items-center gap-6">
+    <div className="flex flex-wrap items-center gap-6">
       <Logo asLink={false} />
+      <Logo size="compact" asLink={false} />
       <Logo variant="icon" asLink={false} />
       <Logo size="hero" asLink={false} />
     </div>
