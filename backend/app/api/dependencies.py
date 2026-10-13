@@ -7,8 +7,8 @@ from functools import cache
 from typing import TYPE_CHECKING, Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, Request, Response, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi.security import APIKeyHeader, HTTPBasic, HTTPBasicCredentials, OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
 from redis_fastapi import get_async_redis
@@ -29,6 +29,7 @@ from app.clients.comments import CommentStore, SQLCommentStore
 from app.clients.email import EmailClient, SMTPClient
 from app.clients.issues import IssueStore, SQLIssueStore
 from app.clients.organizations import OrganizationStore, SQLOrganizationStore
+from app.clients.personal_access_tokens import PersonalAccessTokenStore, SQLPersonalAccessTokenStore
 from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
 from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClient
 from app.clients.releases import ReleaseStore, SQLReleaseStore
@@ -37,8 +38,8 @@ from app.clients.stars import SQLStarStore, StarStore
 from app.clients.users import SQLUserStore, UserStore
 from app.clients.watchers import SQLWatcherStore, WatcherStore
 from app.config import settings
-from app.entities.repositories import Repository as RepositoryEntity  # noqa: TC001 -- evaluated by FastAPI dependency
 from app.entities.users import User
+from app.schemas.personal_access_tokens import GitScope
 from app.schemas.token import TokenPayload
 from app.services.activity import ActivityService
 from app.services.authorization import AuthorizationService
@@ -48,6 +49,7 @@ from app.services.crud import CrudService
 from app.services.forks import ForkService
 from app.services.issues import IssueService
 from app.services.organizations import OrganizationService
+from app.services.personal_access_tokens import PersonalAccessTokenService, invalid_token
 from app.services.pull_requests import PullRequestService
 from app.services.releases import ReleaseService
 from app.services.repositories import RepositoryService
@@ -56,7 +58,7 @@ from app.services.watchers import WatcherService
 from app.utils import security
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Awaitable, Callable
+    from collections.abc import AsyncGenerator
 
     from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -212,21 +214,6 @@ def get_authorization_service(
 
 
 AuthorizationServiceDep = Annotated[AuthorizationService, Depends(get_authorization_service)]
-
-
-def require_repository(permission: str = "repository:read") -> Callable[..., Awaitable[RepositoryEntity]]:
-    """Declare a repository permission as a native FastAPI dependency."""
-
-    async def authorize(
-        owner: str, repo: str, response: Response, authorization: AuthorizationServiceDep, user: OptionalUser
-    ) -> RepositoryEntity:
-        repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
-        await authorization.require(repository, user, permission)
-        if repository.is_private or user is not None:
-            response.headers["Cache-Control"] = "private, no-store"
-        return repository
-
-    return authorize
 
 
 def get_current_active_superuser(current_user: CurrentUser) -> User:
@@ -711,3 +698,58 @@ def get_organization_service(
 
 
 OrganizationServiceDep = Annotated[OrganizationService, Depends(get_organization_service)]
+
+
+def get_personal_access_token_store(session: SessionDep) -> PersonalAccessTokenStore:
+    """Get the database-backed personal access token store."""
+    return SQLPersonalAccessTokenStore(session)
+
+
+PersonalAccessTokenStoreDep = Annotated[PersonalAccessTokenStore, Depends(get_personal_access_token_store)]
+
+
+def get_personal_access_token_service(
+    store: PersonalAccessTokenStoreDep, users: UserStoreDep, background_tasks: BackgroundTasks
+) -> PersonalAccessTokenService:
+    """Wire personal access token lifecycle and authentication."""
+    return PersonalAccessTokenService(store, users, background_tasks)
+
+
+PersonalAccessTokenServiceDep = Annotated[PersonalAccessTokenService, Depends(get_personal_access_token_service)]
+
+personal_access_token_header = APIKeyHeader(name="X-API-Key", scheme_name="PersonalAccessToken", auto_error=False)
+git_basic_auth = HTTPBasic(auto_error=False)
+
+
+async def get_git_user(
+    request: Request,
+    users: UserStoreDep,
+    tokens: PersonalAccessTokenServiceDep,
+    presented_key: Annotated[str | None, Depends(personal_access_token_header)],
+    bearer: Annotated[str | None, Depends(optional_oauth2)],
+    basic: Annotated[HTTPBasicCredentials | None, Depends(git_basic_auth)],
+) -> User | None:
+    """Authenticate Git credentials and constrain PATs to the requested Git operation."""
+    if sum(value is not None for value in (presented_key, bearer, basic)) > 1:
+        raise invalid_token()
+    push = request.url.path.endswith("/git-receive-pack") or request.query_params.get("service") == "git-receive-pack"
+    scope = GitScope.WRITE if push else GitScope.READ
+    if presented_key is not None:
+        return await tokens.authenticate(presented_key, scope)
+    if bearer is not None:
+        if bearer.startswith("gitedge_pat_"):
+            return await tokens.authenticate(bearer, scope)
+        return await get_current_user(users, bearer)
+    if basic is not None:
+        if basic.password.startswith("gitedge_pat_"):
+            return await tokens.authenticate(basic.password, scope, basic.username)
+        user = await users.get_by_name(basic.username)
+        if user is not None and security.verify_password(basic.password, user.hashed_password)[0] and user.is_active:
+            return user
+        raise invalid_token()
+    if request.headers.get("Authorization") or request.headers.get("X-API-Key") is not None:
+        raise invalid_token()
+    return None
+
+
+GitUser = Annotated[User | None, Depends(get_git_user)]

@@ -4,26 +4,34 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Response, status
 
-from app.api.dependencies import CommentServiceDep, CurrentUser, require_repository
+from app.api.dependencies import AuthorizationServiceDep, CommentServiceDep, CurrentUser, OptionalUser
+from app.api.permissions import require_permission
 from app.schemas.comments import CommentCreate, CommentPublic, CommentsPublic, CommentUpdate
 
 router = APIRouter(prefix="/repositories", tags=["comments"])
 comment_router = APIRouter(prefix="/comments", tags=["comments"])
 
 
-@router.get("/{owner}/{repo}/issues/{number}/comments", dependencies=[Depends(require_repository("repository:read"))])
-async def list_comments(owner: str, repo: str, number: int, comment_service: CommentServiceDep) -> CommentsPublic:
+@router.get("/{owner}/{repo}/issues/{number}/comments")
+@require_permission("repository:read", authorization="_authorization", user="_current_user", response="_response")
+async def list_comments(
+    owner: str,
+    repo: str,
+    number: int,
+    comment_service: CommentServiceDep,
+    *,
+    _authorization: AuthorizationServiceDep,
+    _current_user: OptionalUser,
+    _response: Response,
+) -> CommentsPublic:
     """List comments for an issue or pull request."""
     return await comment_service.list_comments(owner, repo, number)
 
 
-@router.post(
-    "/{owner}/{repo}/issues/{number}/comments",
-    status_code=201,
-    dependencies=[Depends(require_repository("repository:read"))],
-)
+@router.post("/{owner}/{repo}/issues/{number}/comments", status_code=201)
+@require_permission("repository:read", authorization="_authorization", response="_response")
 async def create_comment(
     owner: str,
     repo: str,
@@ -31,6 +39,9 @@ async def create_comment(
     body: CommentCreate,
     comment_service: CommentServiceDep,
     current_user: CurrentUser,
+    *,
+    _authorization: AuthorizationServiceDep,
+    _response: Response,
 ) -> CommentPublic:
     """Create a comment on an issue or pull request."""
     return await comment_service.create_comment(owner, repo, number, body, current_user)

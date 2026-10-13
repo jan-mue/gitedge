@@ -716,6 +716,13 @@ export type ForksPublic = {
 };
 
 /**
+ * GitScope
+ *
+ * Operations a personal access token can authorize.
+ */
+export type GitScope = 'git:read' | 'git:write';
+
+/**
  * HTTPValidationError
  */
 export type HTTPValidationError = {
@@ -964,6 +971,154 @@ export type OrganizationsPublic = {
      * Count
      */
     count: number;
+};
+
+/**
+ * PersonalAccessTokenCreate
+ *
+ * User-specified token name, expiry, and restricted Git scopes.
+ */
+export type PersonalAccessTokenCreate = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Scopes
+     */
+    scopes: Array<GitScope>;
+    /**
+     * Expires At
+     */
+    expires_at?: string | null;
+};
+
+/**
+ * PersonalAccessTokenIssued
+ *
+ * One-time response containing the newly issued plaintext credential.
+ */
+export type PersonalAccessTokenIssued = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Owner Id
+     */
+    owner_id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Prefix
+     */
+    prefix: string;
+    /**
+     * Key Id
+     */
+    key_id: string;
+    /**
+     * Secret Last4
+     */
+    secret_last4: string;
+    /**
+     * Scopes
+     */
+    scopes: Array<GitScope>;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Expires At
+     */
+    expires_at: string | null;
+    /**
+     * Last Used At
+     */
+    last_used_at: string | null;
+    /**
+     * Revoked At
+     */
+    revoked_at: string | null;
+    /**
+     * Revoked Reason
+     */
+    revoked_reason: string | null;
+    /**
+     * Token
+     */
+    token: string;
+};
+
+/**
+ * PersonalAccessTokenPublic
+ *
+ * Public metadata that never includes a token or secret hash.
+ */
+export type PersonalAccessTokenPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Owner Id
+     */
+    owner_id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Prefix
+     */
+    prefix: string;
+    /**
+     * Key Id
+     */
+    key_id: string;
+    /**
+     * Secret Last4
+     */
+    secret_last4: string;
+    /**
+     * Scopes
+     */
+    scopes: Array<GitScope>;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Expires At
+     */
+    expires_at: string | null;
+    /**
+     * Last Used At
+     */
+    last_used_at: string | null;
+    /**
+     * Revoked At
+     */
+    revoked_at: string | null;
+    /**
+     * Revoked Reason
+     */
+    revoked_reason: string | null;
+};
+
+/**
+ * PersonalAccessTokenRevoke
+ *
+ * Optional audit reason when revoking a credential.
+ */
+export type PersonalAccessTokenRevoke = {
+    /**
+     * Reason
+     */
+    reason?: string | null;
 };
 
 /**
@@ -2061,6 +2216,109 @@ export type loginRecoverPasswordHtmlContentResponses = {
     200: unknown;
 };
 
+export type personalAccessTokensListTokensData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/users/me/personal-access-tokens/';
+};
+
+export type personalAccessTokensListTokensResponses = {
+    /**
+     * Response Personal-Access-Tokens-List Tokens
+     *
+     * Successful Response
+     */
+    200: Array<PersonalAccessTokenPublic>;
+};
+
+export type personalAccessTokensListTokensResponse = personalAccessTokensListTokensResponses[keyof personalAccessTokensListTokensResponses];
+
+export type personalAccessTokensCreateTokenData = {
+    body: PersonalAccessTokenCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/users/me/personal-access-tokens/';
+};
+
+export type personalAccessTokensCreateTokenErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type personalAccessTokensCreateTokenError = personalAccessTokensCreateTokenErrors[keyof personalAccessTokensCreateTokenErrors];
+
+export type personalAccessTokensCreateTokenResponses = {
+    /**
+     * Successful Response
+     */
+    201: PersonalAccessTokenIssued;
+};
+
+export type personalAccessTokensCreateTokenResponse = personalAccessTokensCreateTokenResponses[keyof personalAccessTokensCreateTokenResponses];
+
+export type personalAccessTokensRevokeTokenData = {
+    body: PersonalAccessTokenRevoke;
+    path: {
+        /**
+         * Token Id
+         */
+        token_id: string;
+    };
+    query?: never;
+    url: '/api/v1/users/me/personal-access-tokens/{token_id}/revoke';
+};
+
+export type personalAccessTokensRevokeTokenErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type personalAccessTokensRevokeTokenError = personalAccessTokensRevokeTokenErrors[keyof personalAccessTokensRevokeTokenErrors];
+
+export type personalAccessTokensRevokeTokenResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type personalAccessTokensRevokeTokenResponse = personalAccessTokensRevokeTokenResponses[keyof personalAccessTokensRevokeTokenResponses];
+
+export type personalAccessTokensRotateTokenData = {
+    body: PersonalAccessTokenCreate;
+    path: {
+        /**
+         * Token Id
+         */
+        token_id: string;
+    };
+    query?: never;
+    url: '/api/v1/users/me/personal-access-tokens/{token_id}/rotate';
+};
+
+export type personalAccessTokensRotateTokenErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type personalAccessTokensRotateTokenError = personalAccessTokensRotateTokenErrors[keyof personalAccessTokensRotateTokenErrors];
+
+export type personalAccessTokensRotateTokenResponses = {
+    /**
+     * Successful Response
+     */
+    201: PersonalAccessTokenIssued;
+};
+
+export type personalAccessTokensRotateTokenResponse = personalAccessTokensRotateTokenResponses[keyof personalAccessTokensRotateTokenResponses];
+
 export type usersReadUsersData = {
     body?: never;
     path?: never;
@@ -2291,12 +2549,16 @@ export type gitGetInfoRefsData = {
     body?: never;
     path: {
         /**
-         * Repo Path
+         * Owner
          */
-        repo_path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: never;
-    url: '/api/v1/{repo_path}/info/refs';
+    url: '/api/v1/{owner}/{repo}.git/info/refs';
 };
 
 export type gitGetInfoRefsErrors = {
@@ -2319,12 +2581,16 @@ export type gitGetHeadData = {
     body?: never;
     path: {
         /**
-         * Repo Path
+         * Owner
          */
-        repo_path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: never;
-    url: '/api/v1/{repo_path}/HEAD';
+    url: '/api/v1/{owner}/{repo}.git/HEAD';
 };
 
 export type gitGetHeadErrors = {
@@ -2347,12 +2613,16 @@ export type gitGetInfoPacksData = {
     body?: never;
     path: {
         /**
-         * Repo Path
+         * Owner
          */
-        repo_path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: never;
-    url: '/api/v1/{repo_path}/objects/info/packs';
+    url: '/api/v1/{owner}/{repo}.git/objects/info/packs';
 };
 
 export type gitGetInfoPacksErrors = {
@@ -2375,9 +2645,13 @@ export type gitGetLooseObjectData = {
     body?: never;
     path: {
         /**
-         * Repo Path
+         * Owner
          */
-        repo_path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
         /**
          * Prefix
          */
@@ -2388,7 +2662,7 @@ export type gitGetLooseObjectData = {
         suffix: string;
     };
     query?: never;
-    url: '/api/v1/{repo_path}/objects/{prefix}/{suffix}';
+    url: '/api/v1/{owner}/{repo}.git/objects/{prefix}/{suffix}';
 };
 
 export type gitGetLooseObjectErrors = {
@@ -2411,16 +2685,20 @@ export type gitGetPackFileData = {
     body?: never;
     path: {
         /**
-         * Repo Path
+         * Owner
          */
-        repo_path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
         /**
          * Pack File
          */
         pack_file: string;
     };
     query?: never;
-    url: '/api/v1/{repo_path}/objects/pack/{pack_file}';
+    url: '/api/v1/{owner}/{repo}.git/objects/pack/{pack_file}';
 };
 
 export type gitGetPackFileErrors = {
@@ -2443,12 +2721,16 @@ export type gitGitUploadPackData = {
     body?: never;
     path: {
         /**
-         * Repo Path
+         * Owner
          */
-        repo_path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: never;
-    url: '/api/v1/{repo_path}/git-upload-pack';
+    url: '/api/v1/{owner}/{repo}.git/git-upload-pack';
 };
 
 export type gitGitUploadPackErrors = {
@@ -2471,12 +2753,16 @@ export type gitGitReceivePackData = {
     body?: never;
     path: {
         /**
-         * Repo Path
+         * Owner
          */
-        repo_path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: never;
-    url: '/api/v1/{repo_path}/git-receive-pack';
+    url: '/api/v1/{owner}/{repo}.git/git-receive-pack';
 };
 
 export type gitGitReceivePackErrors = {
@@ -3006,10 +3292,6 @@ export type authorizationRemoveCollaboratorData = {
     body?: never;
     path: {
         /**
-         * Collaborator Id
-         */
-        collaborator_id: string;
-        /**
          * Owner
          */
         owner: string;
@@ -3017,6 +3299,10 @@ export type authorizationRemoveCollaboratorData = {
          * Repo
          */
         repo: string;
+        /**
+         * Collaborator Id
+         */
+        collaborator_id: string;
     };
     query?: never;
     url: '/api/v1/repositories/{owner}/{repo}/collaborators/{collaborator_id}';

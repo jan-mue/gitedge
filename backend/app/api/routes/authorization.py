@@ -1,12 +1,11 @@
 """Organization membership, teams, and repository collaborator settings."""
 
 import uuid
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 
-from app.api.dependencies import AuthorizationServiceDep, CurrentUser, OptionalUser, require_repository
-from app.entities.repositories import Repository
+from app.api.dependencies import AuthorizationServiceDep, CurrentUser, OptionalUser
+from app.api.permissions import require_permission
 from app.schemas.authorization import (
     CollaboratorInput,
     CollaboratorPublic,
@@ -18,28 +17,30 @@ from app.schemas.authorization import (
 )
 
 router = APIRouter(tags=["authorization"])
-AdminRepository = Annotated[Repository, Depends(require_repository("repository:admin"))]
-ReadableRepository = Annotated[Repository, Depends(require_repository())]
 
 
-@router.get("/repositories/{owner}/{repo}/permissions")  # noqa: FAST003 -- path resolved by permission dependency
+@router.get("/repositories/{owner}/{repo}/permissions")
+@require_permission("repository:read", response="_response")
 async def get_permissions(
-    repository: ReadableRepository, authorization: AuthorizationServiceDep, user: OptionalUser
+    owner: str, repo: str, authorization: AuthorizationServiceDep, current_user: OptionalUser, *, _response: Response
 ) -> RepositoryPermissions:
     """Return effective permissions for the current viewer."""
+    repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
     return RepositoryPermissions(
         **{
-            permission: await authorization.can(repository, user, f"repository:{permission}")
+            permission: await authorization.can(repository, current_user, f"repository:{permission}")
             for permission in ("read", "write", "admin", "owner")
         }
     )
 
 
-@router.get("/repositories/{owner}/{repo}/collaborator-teams")  # noqa: FAST003 -- path resolved by permission dependency
+@router.get("/repositories/{owner}/{repo}/collaborator-teams")
+@require_permission("repository:admin", user="_current_user", response="_response")
 async def list_collaborator_teams(
-    repository: AdminRepository, authorization: AuthorizationServiceDep
+    owner: str, repo: str, authorization: AuthorizationServiceDep, _current_user: OptionalUser, *, _response: Response
 ) -> list[TeamPublic]:
     """List teams eligible for grants on this repository."""
+    repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
     return [TeamPublic.model_validate(team) for team in await authorization.store.teams(repository.owner_id)]
 
 
@@ -122,30 +123,48 @@ async def remove_team_member(
     await authorization.store.remove(member)
 
 
-@router.get("/repositories/{owner}/{repo}/collaborators")  # noqa: FAST003 -- path resolved by permission dependency
+@router.get("/repositories/{owner}/{repo}/collaborators")
+@require_permission("repository:admin", user="_current_user", response="_response")
 async def list_collaborators(
-    repository: AdminRepository, authorization: AuthorizationServiceDep
+    owner: str, repo: str, authorization: AuthorizationServiceDep, _current_user: OptionalUser, *, _response: Response
 ) -> list[CollaboratorPublic]:
     """List explicit repository collaborators."""
+    repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
     return [
         await authorization.collaborator_public(repository, item)
         for item in await authorization.store.collaborators(repository.id)
     ]
 
 
-@router.put("/repositories/{owner}/{repo}/collaborators")  # noqa: FAST003 -- path resolved by permission dependency
+@router.put("/repositories/{owner}/{repo}/collaborators")
+@require_permission("repository:admin", response="_response")
 async def set_collaborator(
-    repository: AdminRepository, body: CollaboratorInput, authorization: AuthorizationServiceDep, user: CurrentUser
+    owner: str,
+    repo: str,
+    body: CollaboratorInput,
+    authorization: AuthorizationServiceDep,
+    current_user: CurrentUser,
+    *,
+    _response: Response,
 ) -> CollaboratorPublic:
-    """Add or update a user or team's repository role."""
+    """Add or update a current_user or team's repository role."""
+    repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
     return await authorization.collaborator_public(
-        repository, await authorization.set_collaborator(repository, body, user)
+        repository, await authorization.set_collaborator(repository, body, current_user)
     )
 
 
-@router.delete("/repositories/{owner}/{repo}/collaborators/{collaborator_id}", status_code=204)  # noqa: FAST003 -- path resolved by permission dependency
+@router.delete("/repositories/{owner}/{repo}/collaborators/{collaborator_id}", status_code=204)
+@require_permission("repository:admin", response="_response")
 async def remove_collaborator(
-    repository: AdminRepository, collaborator_id: uuid.UUID, authorization: AuthorizationServiceDep, user: CurrentUser
+    owner: str,
+    repo: str,
+    collaborator_id: uuid.UUID,
+    authorization: AuthorizationServiceDep,
+    current_user: CurrentUser,
+    *,
+    _response: Response,
 ) -> None:
     """Revoke an explicit repository role."""
-    await authorization.remove_collaborator(repository, collaborator_id, user)
+    repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
+    await authorization.remove_collaborator(repository, collaborator_id, current_user)

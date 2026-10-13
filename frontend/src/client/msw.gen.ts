@@ -2,7 +2,7 @@
 
 import { http, type HttpHandler, HttpResponse, type HttpResponseResolver, type RequestHandlerOptions as RequestHandlerOptions2 } from 'msw';
 
-import type { activityGetFeedResponses, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsResponses, authorizationCreateTeamData, authorizationCreateTeamResponses, authorizationDeleteTeamResponses, authorizationGetPermissionsResponses, authorizationListCollaboratorsResponses, authorizationListCollaboratorTeamsResponses, authorizationListMembersResponses, authorizationListTeamMembersResponses, authorizationListTeamsResponses, authorizationRemoveCollaboratorResponses, authorizationRemoveMemberResponses, authorizationRemoveTeamMemberResponses, authorizationSetCollaboratorData, authorizationSetCollaboratorResponses, authorizationSetMemberData, authorizationSetMemberResponses, authorizationSetTeamMemberResponses, ClientOptions, commentsCreateCommentData, commentsCreateCommentResponses, commentsDeleteCommentResponses, commentsListCommentsResponses, commentsUpdateCommentData, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryResponses, forksListForksResponses, gitGetHeadResponses, gitGetInfoPacksResponses, gitGetInfoRefsResponses, gitGetLooseObjectResponses, gitGetPackFileResponses, gitGitReceivePackResponses, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenResponses, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordResponses, loginTestTokenResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationResponses, organizationsListOrganizationsResponses, privateCreateUserData, privateCreateUserResponses, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseResponses, releasesGetReleaseResponses, releasesListReleasesResponses, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseResponses, repositoriesCreateIssueData, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryResponses, repositoriesGetBlameResponses, repositoriesGetBlobResponses, repositoriesGetCommitResponses, repositoriesGetFileIndexResponses, repositoriesGetIssueResponses, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestResponses, repositoriesGetRawResponses, repositoriesGetReadmeResponses, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceResponses, repositoriesGetStatisticsResponses, repositoriesGetTreeResponses, repositoriesListBranchesResponses, repositoriesListCommitsResponses, repositoriesListIssuesResponses, repositoriesListPullRequestsResponses, repositoriesListRepositoriesResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryResponses, starsGetStarStateResponses, starsListStargazersResponses, starsListStarredRepositoriesResponses, starsStarRepositoryResponses, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserResponses, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeResponses, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserMeData, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckResponses, utilsTestEmailResponses, watchersGetWatchStateResponses, watchersListWatchersResponses, watchersUnwatchRepositoryResponses, watchersWatchRepositoryResponses } from './types.gen';
+import type { activityGetFeedResponses, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsResponses, authorizationCreateTeamData, authorizationCreateTeamResponses, authorizationDeleteTeamResponses, authorizationGetPermissionsResponses, authorizationListCollaboratorsResponses, authorizationListCollaboratorTeamsResponses, authorizationListMembersResponses, authorizationListTeamMembersResponses, authorizationListTeamsResponses, authorizationRemoveCollaboratorResponses, authorizationRemoveMemberResponses, authorizationRemoveTeamMemberResponses, authorizationSetCollaboratorData, authorizationSetCollaboratorResponses, authorizationSetMemberData, authorizationSetMemberResponses, authorizationSetTeamMemberResponses, ClientOptions, commentsCreateCommentData, commentsCreateCommentResponses, commentsDeleteCommentResponses, commentsListCommentsResponses, commentsUpdateCommentData, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryResponses, forksListForksResponses, gitGetHeadResponses, gitGetInfoPacksResponses, gitGetInfoRefsResponses, gitGetLooseObjectResponses, gitGetPackFileResponses, gitGitReceivePackResponses, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenResponses, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordResponses, loginTestTokenResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationResponses, organizationsListOrganizationsResponses, personalAccessTokensCreateTokenData, personalAccessTokensCreateTokenResponses, personalAccessTokensListTokensResponses, personalAccessTokensRevokeTokenData, personalAccessTokensRevokeTokenResponses, personalAccessTokensRotateTokenData, personalAccessTokensRotateTokenResponses, privateCreateUserData, privateCreateUserResponses, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseResponses, releasesGetReleaseResponses, releasesListReleasesResponses, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseResponses, repositoriesCreateIssueData, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryResponses, repositoriesGetBlameResponses, repositoriesGetBlobResponses, repositoriesGetCommitResponses, repositoriesGetFileIndexResponses, repositoriesGetIssueResponses, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestResponses, repositoriesGetRawResponses, repositoriesGetReadmeResponses, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceResponses, repositoriesGetStatisticsResponses, repositoriesGetTreeResponses, repositoriesListBranchesResponses, repositoriesListCommitsResponses, repositoriesListIssuesResponses, repositoriesListPullRequestsResponses, repositoriesListRepositoriesResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryResponses, starsGetStarStateResponses, starsListStargazersResponses, starsListStarredRepositoriesResponses, starsStarRepositoryResponses, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserResponses, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeResponses, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserMeData, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckResponses, utilsTestEmailResponses, watchersGetWatchStateResponses, watchersListWatchersResponses, watchersUnwatchRepositoryResponses, watchersWatchRepositoryResponses } from './types.gen';
 
 export type RequestHandlerOptions = RequestHandlerOptions2 & {
     baseUrl?: ClientOptions['baseUrl'];
@@ -141,6 +141,122 @@ export function handleLoginRecoverPasswordHtmlContent(response?: HandleLoginReco
         const body = response?.body;
         if (body !== undefined) {
             return new HttpResponse(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandlePersonalAccessTokensListTokensResponse = {
+    body: personalAccessTokensListTokensResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/users/me/personal-access-tokens/` operation.
+ */
+export function handlePersonalAccessTokensListTokens(response?: HandlePersonalAccessTokensListTokensResponse | HttpResponseResolver<never, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<never, never>(`${options?.baseUrl ?? '*'}/api/v1/users/me/personal-access-tokens/`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandlePersonalAccessTokensCreateTokenResponse = {
+    body: personalAccessTokensCreateTokenResponses[201];
+    status?: 201;
+};
+
+/**
+ * Handler for the `POST /api/v1/users/me/personal-access-tokens/` operation.
+ */
+export function handlePersonalAccessTokensCreateToken(response?: HandlePersonalAccessTokensCreateTokenResponse | HttpResponseResolver<never, personalAccessTokensCreateTokenData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.post<never, personalAccessTokensCreateTokenData['body']>(`${options?.baseUrl ?? '*'}/api/v1/users/me/personal-access-tokens/`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 201 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandlePersonalAccessTokensRevokeTokenResponse = {
+    body: personalAccessTokensRevokeTokenResponses[204];
+    status?: 204;
+};
+
+/**
+ * Handler for the `POST /api/v1/users/me/personal-access-tokens/{token_id}/revoke` operation.
+ */
+export function handlePersonalAccessTokensRevokeToken(response?: HandlePersonalAccessTokensRevokeTokenResponse | HttpResponseResolver<{
+    token_id: string;
+}, personalAccessTokensRevokeTokenData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.post<{
+        token_id: string;
+    }, personalAccessTokensRevokeTokenData['body']>(`${options?.baseUrl ?? '*'}/api/v1/users/me/personal-access-tokens/:token_id/revoke`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return new HttpResponse(body, { status: response?.status ?? 204 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandlePersonalAccessTokensRotateTokenResponse = {
+    body: personalAccessTokensRotateTokenResponses[201];
+    status?: 201;
+};
+
+/**
+ * Handler for the `POST /api/v1/users/me/personal-access-tokens/{token_id}/rotate` operation.
+ */
+export function handlePersonalAccessTokensRotateToken(response?: HandlePersonalAccessTokensRotateTokenResponse | HttpResponseResolver<{
+    token_id: string;
+}, personalAccessTokensRotateTokenData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.post<{
+        token_id: string;
+    }, personalAccessTokensRotateTokenData['body']>(`${options?.baseUrl ?? '*'}/api/v1/users/me/personal-access-tokens/:token_id/rotate`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 201 });
         }
         if (options?.responseFallback === 'passthrough') {
             return;
@@ -409,14 +525,16 @@ export type HandleGitGetInfoRefsResponse = {
 };
 
 /**
- * Handler for the `GET /api/v1/{repo_path}/info/refs` operation.
+ * Handler for the `GET /api/v1/{owner}/{repo}.git/info/refs` operation.
  */
 export function handleGitGetInfoRefs(response?: HandleGitGetInfoRefsResponse | HttpResponseResolver<{
-    repo_path: string;
+    owner: string;
+    repo: string;
 }, never>, options?: RequestHandlerOptions): HttpHandler {
     return http.get<{
-        repo_path: string;
-    }, never>(`${options?.baseUrl ?? '*'}/api/v1/:repo_path/info/refs`, info => {
+        owner: string;
+        repo: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/:owner/:repo.git/info/refs`, info => {
         if (typeof response === 'function') {
             return response(info);
         }
@@ -440,14 +558,16 @@ export type HandleGitGetHeadResponse = {
 };
 
 /**
- * Handler for the `GET /api/v1/{repo_path}/HEAD` operation.
+ * Handler for the `GET /api/v1/{owner}/{repo}.git/HEAD` operation.
  */
 export function handleGitGetHead(response?: HandleGitGetHeadResponse | HttpResponseResolver<{
-    repo_path: string;
+    owner: string;
+    repo: string;
 }, never>, options?: RequestHandlerOptions): HttpHandler {
     return http.get<{
-        repo_path: string;
-    }, never>(`${options?.baseUrl ?? '*'}/api/v1/:repo_path/HEAD`, info => {
+        owner: string;
+        repo: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/:owner/:repo.git/HEAD`, info => {
         if (typeof response === 'function') {
             return response(info);
         }
@@ -471,14 +591,16 @@ export type HandleGitGetInfoPacksResponse = {
 };
 
 /**
- * Handler for the `GET /api/v1/{repo_path}/objects/info/packs` operation.
+ * Handler for the `GET /api/v1/{owner}/{repo}.git/objects/info/packs` operation.
  */
 export function handleGitGetInfoPacks(response?: HandleGitGetInfoPacksResponse | HttpResponseResolver<{
-    repo_path: string;
+    owner: string;
+    repo: string;
 }, never>, options?: RequestHandlerOptions): HttpHandler {
     return http.get<{
-        repo_path: string;
-    }, never>(`${options?.baseUrl ?? '*'}/api/v1/:repo_path/objects/info/packs`, info => {
+        owner: string;
+        repo: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/:owner/:repo.git/objects/info/packs`, info => {
         if (typeof response === 'function') {
             return response(info);
         }
@@ -502,18 +624,20 @@ export type HandleGitGetLooseObjectResponse = {
 };
 
 /**
- * Handler for the `GET /api/v1/{repo_path}/objects/{prefix}/{suffix}` operation.
+ * Handler for the `GET /api/v1/{owner}/{repo}.git/objects/{prefix}/{suffix}` operation.
  */
 export function handleGitGetLooseObject(response?: HandleGitGetLooseObjectResponse | HttpResponseResolver<{
-    repo_path: string;
+    owner: string;
+    repo: string;
     prefix: string;
     suffix: string;
 }, never>, options?: RequestHandlerOptions): HttpHandler {
     return http.get<{
-        repo_path: string;
+        owner: string;
+        repo: string;
         prefix: string;
         suffix: string;
-    }, never>(`${options?.baseUrl ?? '*'}/api/v1/:repo_path/objects/:prefix/:suffix`, info => {
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/:owner/:repo.git/objects/:prefix/:suffix`, info => {
         if (typeof response === 'function') {
             return response(info);
         }
@@ -537,16 +661,18 @@ export type HandleGitGetPackFileResponse = {
 };
 
 /**
- * Handler for the `GET /api/v1/{repo_path}/objects/pack/{pack_file}` operation.
+ * Handler for the `GET /api/v1/{owner}/{repo}.git/objects/pack/{pack_file}` operation.
  */
 export function handleGitGetPackFile(response?: HandleGitGetPackFileResponse | HttpResponseResolver<{
-    repo_path: string;
+    owner: string;
+    repo: string;
     pack_file: string;
 }, never>, options?: RequestHandlerOptions): HttpHandler {
     return http.get<{
-        repo_path: string;
+        owner: string;
+        repo: string;
         pack_file: string;
-    }, never>(`${options?.baseUrl ?? '*'}/api/v1/:repo_path/objects/pack/:pack_file`, info => {
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/:owner/:repo.git/objects/pack/:pack_file`, info => {
         if (typeof response === 'function') {
             return response(info);
         }
@@ -570,14 +696,16 @@ export type HandleGitGitUploadPackResponse = {
 };
 
 /**
- * Handler for the `POST /api/v1/{repo_path}/git-upload-pack` operation.
+ * Handler for the `POST /api/v1/{owner}/{repo}.git/git-upload-pack` operation.
  */
 export function handleGitGitUploadPack(response?: HandleGitGitUploadPackResponse | HttpResponseResolver<{
-    repo_path: string;
+    owner: string;
+    repo: string;
 }, never>, options?: RequestHandlerOptions): HttpHandler {
     return http.post<{
-        repo_path: string;
-    }, never>(`${options?.baseUrl ?? '*'}/api/v1/:repo_path/git-upload-pack`, info => {
+        owner: string;
+        repo: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/:owner/:repo.git/git-upload-pack`, info => {
         if (typeof response === 'function') {
             return response(info);
         }
@@ -601,14 +729,16 @@ export type HandleGitGitReceivePackResponse = {
 };
 
 /**
- * Handler for the `POST /api/v1/{repo_path}/git-receive-pack` operation.
+ * Handler for the `POST /api/v1/{owner}/{repo}.git/git-receive-pack` operation.
  */
 export function handleGitGitReceivePack(response?: HandleGitGitReceivePackResponse | HttpResponseResolver<{
-    repo_path: string;
+    owner: string;
+    repo: string;
 }, never>, options?: RequestHandlerOptions): HttpHandler {
     return http.post<{
-        repo_path: string;
-    }, never>(`${options?.baseUrl ?? '*'}/api/v1/:repo_path/git-receive-pack`, info => {
+        owner: string;
+        repo: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/:owner/:repo.git/git-receive-pack`, info => {
         if (typeof response === 'function') {
             return response(info);
         }
@@ -1116,14 +1246,14 @@ export type HandleAuthorizationRemoveCollaboratorResponse = {
  * Handler for the `DELETE /api/v1/repositories/{owner}/{repo}/collaborators/{collaborator_id}` operation.
  */
 export function handleAuthorizationRemoveCollaborator(response?: HandleAuthorizationRemoveCollaboratorResponse | HttpResponseResolver<{
-    collaborator_id: string;
     owner: string;
     repo: string;
+    collaborator_id: string;
 }, never>, options?: RequestHandlerOptions): HttpHandler {
     return http.delete<{
-        collaborator_id: string;
         owner: string;
         repo: string;
+        collaborator_id: string;
     }, never>(`${options?.baseUrl ?? '*'}/api/v1/repositories/:owner/:repo/collaborators/:collaborator_id`, info => {
         if (typeof response === 'function') {
             return response(info);
@@ -2947,6 +3077,22 @@ export type MswHandlerFactories = {
      */
     loginRecoverPasswordHtmlContent: typeof handleLoginRecoverPasswordHtmlContent;
     /**
+     * Handler for the `GET /api/v1/users/me/personal-access-tokens/` operation.
+     */
+    personalAccessTokensListTokens: typeof handlePersonalAccessTokensListTokens;
+    /**
+     * Handler for the `POST /api/v1/users/me/personal-access-tokens/` operation.
+     */
+    personalAccessTokensCreateToken: typeof handlePersonalAccessTokensCreateToken;
+    /**
+     * Handler for the `POST /api/v1/users/me/personal-access-tokens/{token_id}/revoke` operation.
+     */
+    personalAccessTokensRevokeToken: typeof handlePersonalAccessTokensRevokeToken;
+    /**
+     * Handler for the `POST /api/v1/users/me/personal-access-tokens/{token_id}/rotate` operation.
+     */
+    personalAccessTokensRotateToken: typeof handlePersonalAccessTokensRotateToken;
+    /**
      * Handler for the `GET /api/v1/users/` operation.
      */
     usersReadUsers: typeof handleUsersReadUsers;
@@ -2983,31 +3129,31 @@ export type MswHandlerFactories = {
      */
     usersUpdateUser: typeof handleUsersUpdateUser;
     /**
-     * Handler for the `GET /api/v1/{repo_path}/info/refs` operation.
+     * Handler for the `GET /api/v1/{owner}/{repo}.git/info/refs` operation.
      */
     gitGetInfoRefs: typeof handleGitGetInfoRefs;
     /**
-     * Handler for the `GET /api/v1/{repo_path}/HEAD` operation.
+     * Handler for the `GET /api/v1/{owner}/{repo}.git/HEAD` operation.
      */
     gitGetHead: typeof handleGitGetHead;
     /**
-     * Handler for the `GET /api/v1/{repo_path}/objects/info/packs` operation.
+     * Handler for the `GET /api/v1/{owner}/{repo}.git/objects/info/packs` operation.
      */
     gitGetInfoPacks: typeof handleGitGetInfoPacks;
     /**
-     * Handler for the `GET /api/v1/{repo_path}/objects/{prefix}/{suffix}` operation.
+     * Handler for the `GET /api/v1/{owner}/{repo}.git/objects/{prefix}/{suffix}` operation.
      */
     gitGetLooseObject: typeof handleGitGetLooseObject;
     /**
-     * Handler for the `GET /api/v1/{repo_path}/objects/pack/{pack_file}` operation.
+     * Handler for the `GET /api/v1/{owner}/{repo}.git/objects/pack/{pack_file}` operation.
      */
     gitGetPackFile: typeof handleGitGetPackFile;
     /**
-     * Handler for the `POST /api/v1/{repo_path}/git-upload-pack` operation.
+     * Handler for the `POST /api/v1/{owner}/{repo}.git/git-upload-pack` operation.
      */
     gitGitUploadPack: typeof handleGitGitUploadPack;
     /**
-     * Handler for the `POST /api/v1/{repo_path}/git-receive-pack` operation.
+     * Handler for the `POST /api/v1/{owner}/{repo}.git/git-receive-pack` operation.
      */
     gitGitReceivePack: typeof handleGitGitReceivePack;
     /**
@@ -3316,6 +3462,10 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
         loginRecoverPassword: wrap(handleLoginRecoverPassword),
         loginResetPassword: wrap(handleLoginResetPassword),
         loginRecoverPasswordHtmlContent: wrap(handleLoginRecoverPasswordHtmlContent),
+        personalAccessTokensListTokens: wrap(handlePersonalAccessTokensListTokens),
+        personalAccessTokensCreateToken: wrap(handlePersonalAccessTokensCreateToken),
+        personalAccessTokensRevokeToken: wrap(handlePersonalAccessTokensRevokeToken),
+        personalAccessTokensRotateToken: wrap(handlePersonalAccessTokensRotateToken),
         usersReadUsers: wrap(handleUsersReadUsers),
         usersCreateUser: wrap(handleUsersCreateUser),
         usersDeleteUserMe: wrap(handleUsersDeleteUserMe),
@@ -3419,6 +3569,8 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.commentsListComments, overrides.commentsListComments),
             invoke(pick.commentsCreateComment, overrides.commentsCreateComment),
             invoke(pick.repositoriesGetPullRequestFiles, overrides.repositoriesGetPullRequestFiles),
+            invoke(pick.personalAccessTokensRevokeToken, overrides.personalAccessTokensRevokeToken),
+            invoke(pick.personalAccessTokensRotateToken, overrides.personalAccessTokensRotateToken),
             invoke(pick.authorizationListTeamMembers, overrides.authorizationListTeamMembers),
             invoke(pick.activityGetRepositoryActivityStatistics, overrides.activityGetRepositoryActivityStatistics),
             invoke(pick.authorizationRemoveCollaborator, overrides.authorizationRemoveCollaborator),
@@ -3429,6 +3581,9 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.repositoriesUpdateIssue, overrides.repositoriesUpdateIssue),
             invoke(pick.repositoriesGetPullRequest, overrides.repositoriesGetPullRequest),
             invoke(pick.repositoriesUpdatePullRequest, overrides.repositoriesUpdatePullRequest),
+            invoke(pick.gitGetInfoPacks, overrides.gitGetInfoPacks),
+            invoke(pick.gitGetPackFile, overrides.gitGetPackFile),
+            invoke(pick.gitGetLooseObject, overrides.gitGetLooseObject),
             invoke(pick.authorizationRemoveMember, overrides.authorizationRemoveMember),
             invoke(pick.authorizationSetMember, overrides.authorizationSetMember),
             invoke(pick.authorizationDeleteTeam, overrides.authorizationDeleteTeam),
@@ -3465,9 +3620,9 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.repositoriesCreateIssue, overrides.repositoriesCreateIssue),
             invoke(pick.repositoriesListPullRequests, overrides.repositoriesListPullRequests),
             invoke(pick.repositoriesCreatePullRequest, overrides.repositoriesCreatePullRequest),
-            invoke(pick.gitGetInfoPacks, overrides.gitGetInfoPacks),
-            invoke(pick.gitGetPackFile, overrides.gitGetPackFile),
-            invoke(pick.gitGetLooseObject, overrides.gitGetLooseObject),
+            invoke(pick.gitGetInfoRefs, overrides.gitGetInfoRefs),
+            invoke(pick.personalAccessTokensListTokens, overrides.personalAccessTokensListTokens),
+            invoke(pick.personalAccessTokensCreateToken, overrides.personalAccessTokensCreateToken),
             invoke(pick.usersUpdatePasswordMe, overrides.usersUpdatePasswordMe),
             invoke(pick.starsListStarredRepositories, overrides.starsListStarredRepositories),
             invoke(pick.activityGetFeed, overrides.activityGetFeed),
@@ -3479,7 +3634,9 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.repositoriesDeleteRepository, overrides.repositoriesDeleteRepository),
             invoke(pick.repositoriesGetRepository, overrides.repositoriesGetRepository),
             invoke(pick.repositoriesUpdateRepository, overrides.repositoriesUpdateRepository),
-            invoke(pick.gitGetInfoRefs, overrides.gitGetInfoRefs),
+            invoke(pick.gitGetHead, overrides.gitGetHead),
+            invoke(pick.gitGitUploadPack, overrides.gitGitUploadPack),
+            invoke(pick.gitGitReceivePack, overrides.gitGitReceivePack),
             invoke(pick.loginLoginAccessToken, overrides.loginLoginAccessToken),
             invoke(pick.loginTestToken, overrides.loginTestToken),
             invoke(pick.usersDeleteUserMe, overrides.usersDeleteUserMe),
@@ -3496,9 +3653,6 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.commentsDeleteComment, overrides.commentsDeleteComment),
             invoke(pick.commentsUpdateComment, overrides.commentsUpdateComment),
             invoke(pick.profilesReadUserByUsername, overrides.profilesReadUserByUsername),
-            invoke(pick.gitGetHead, overrides.gitGetHead),
-            invoke(pick.gitGitUploadPack, overrides.gitGitUploadPack),
-            invoke(pick.gitGitReceivePack, overrides.gitGitReceivePack),
             invoke(pick.loginResetPassword, overrides.loginResetPassword),
             invoke(pick.usersReadUsers, overrides.usersReadUsers),
             invoke(pick.usersCreateUser, overrides.usersCreateUser),

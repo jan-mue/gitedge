@@ -3,8 +3,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { ActivityService, AuthorizationService, CommentsService, ForksService, GitService, LoginService, type Options, OrganizationsService, PrivateService, ProfilesService, ReleasesService, RepositoriesService, StarsService, UsersService, UtilsService, WatchersService } from '../sdk.gen';
-import type { activityGetFeedData, activityGetFeedError, activityGetFeedResponse, activityGetRepositoryActivityData, activityGetRepositoryActivityError, activityGetRepositoryActivityResponse, activityGetRepositoryActivityStatisticsData, activityGetRepositoryActivityStatisticsError, activityGetRepositoryActivityStatisticsResponse, authorizationCreateTeamData, authorizationCreateTeamError, authorizationCreateTeamResponse, authorizationDeleteTeamData, authorizationDeleteTeamError, authorizationDeleteTeamResponse, authorizationGetPermissionsData, authorizationGetPermissionsError, authorizationGetPermissionsResponse, authorizationListCollaboratorsData, authorizationListCollaboratorsError, authorizationListCollaboratorsResponse, authorizationListCollaboratorTeamsData, authorizationListCollaboratorTeamsError, authorizationListCollaboratorTeamsResponse, authorizationListMembersData, authorizationListMembersError, authorizationListMembersResponse, authorizationListTeamMembersData, authorizationListTeamMembersError, authorizationListTeamMembersResponse, authorizationListTeamsData, authorizationListTeamsError, authorizationListTeamsResponse, authorizationRemoveCollaboratorData, authorizationRemoveCollaboratorError, authorizationRemoveCollaboratorResponse, authorizationRemoveMemberData, authorizationRemoveMemberError, authorizationRemoveMemberResponse, authorizationRemoveTeamMemberData, authorizationRemoveTeamMemberError, authorizationRemoveTeamMemberResponse, authorizationSetCollaboratorData, authorizationSetCollaboratorError, authorizationSetCollaboratorResponse, authorizationSetMemberData, authorizationSetMemberError, authorizationSetMemberResponse, authorizationSetTeamMemberData, authorizationSetTeamMemberError, authorizationSetTeamMemberResponse, commentsCreateCommentData, commentsCreateCommentError, commentsCreateCommentResponse, commentsDeleteCommentData, commentsDeleteCommentError, commentsDeleteCommentResponse, commentsListCommentsData, commentsListCommentsError, commentsListCommentsResponse, commentsUpdateCommentData, commentsUpdateCommentError, commentsUpdateCommentResponse, forksForkRepositoryData, forksForkRepositoryError, forksForkRepositoryResponse, forksListForksData, forksListForksError, forksListForksResponse, gitGetHeadData, gitGetHeadError, gitGetInfoPacksData, gitGetInfoPacksError, gitGetInfoRefsData, gitGetInfoRefsError, gitGetLooseObjectData, gitGetLooseObjectError, gitGetPackFileData, gitGetPackFileError, gitGitReceivePackData, gitGitReceivePackError, gitGitUploadPackData, gitGitUploadPackError, loginLoginAccessTokenData, loginLoginAccessTokenError, loginLoginAccessTokenResponse, loginRecoverPasswordData, loginRecoverPasswordError, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentError, loginRecoverPasswordResponse, loginResetPasswordData, loginResetPasswordError, loginResetPasswordResponse, loginTestTokenData, loginTestTokenResponse, organizationsCreateOrganizationData, organizationsCreateOrganizationError, organizationsCreateOrganizationResponse, organizationsListOrganizationsData, organizationsListOrganizationsError, organizationsListOrganizationsResponse, privateCreateUserData, privateCreateUserError, privateCreateUserResponse, profilesListUserRepositoriesData, profilesListUserRepositoriesError, profilesListUserRepositoriesResponse, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesError, profilesListUserStarredRepositoriesResponse, profilesReadUserByUsernameData, profilesReadUserByUsernameError, profilesReadUserByUsernameResponse, releasesCreateReleaseData, releasesCreateReleaseError, releasesCreateReleaseResponse, releasesGetReleaseData, releasesGetReleaseError, releasesGetReleaseResponse, releasesListReleasesData, releasesListReleasesError, releasesListReleasesResponse, releasesListTagsData, releasesListTagsError, releasesListTagsResponse, releasesUpdateReleaseData, releasesUpdateReleaseError, releasesUpdateReleaseResponse, repositoriesCreateIssueData, repositoriesCreateIssueError, repositoriesCreateIssueResponse, repositoriesCreatePullRequestData, repositoriesCreatePullRequestError, repositoriesCreatePullRequestResponse, repositoriesCreateRepositoryData, repositoriesCreateRepositoryError, repositoriesCreateRepositoryResponse, repositoriesDeleteRepositoryData, repositoriesDeleteRepositoryError, repositoriesDeleteRepositoryResponse, repositoriesGetBlameData, repositoriesGetBlameError, repositoriesGetBlameResponse, repositoriesGetBlobData, repositoriesGetBlobError, repositoriesGetBlobResponse, repositoriesGetCommitData, repositoriesGetCommitError, repositoriesGetCommitResponse, repositoriesGetFileIndexData, repositoriesGetFileIndexError, repositoriesGetFileIndexResponse, repositoriesGetIssueData, repositoriesGetIssueError, repositoriesGetIssueResponse, repositoriesGetPullRequestData, repositoriesGetPullRequestError, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesError, repositoriesGetPullRequestFilesResponse, repositoriesGetPullRequestResponse, repositoriesGetRawData, repositoriesGetRawError, repositoriesGetReadmeData, repositoriesGetReadmeError, repositoriesGetReadmeResponse, repositoriesGetRepositoryData, repositoriesGetRepositoryError, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoError, repositoriesGetRepositoryInfoResponse, repositoriesGetRepositoryResponse, repositoriesGetSourceData, repositoriesGetSourceError, repositoriesGetSourceResponse, repositoriesGetStatisticsData, repositoriesGetStatisticsError, repositoriesGetStatisticsResponse, repositoriesGetTreeData, repositoriesGetTreeError, repositoriesGetTreeResponse, repositoriesListBranchesData, repositoriesListBranchesError, repositoriesListBranchesResponse, repositoriesListCommitsData, repositoriesListCommitsError, repositoriesListCommitsResponse, repositoriesListIssuesData, repositoriesListIssuesError, repositoriesListIssuesResponse, repositoriesListPullRequestsData, repositoriesListPullRequestsError, repositoriesListPullRequestsResponse, repositoriesListRepositoriesData, repositoriesListRepositoriesResponse, repositoriesUpdateIssueData, repositoriesUpdateIssueError, repositoriesUpdateIssueResponse, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestError, repositoriesUpdatePullRequestResponse, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryError, repositoriesUpdateRepositoryResponse, starsGetStarStateData, starsGetStarStateError, starsGetStarStateResponse, starsListStargazersData, starsListStargazersError, starsListStargazersResponse, starsListStarredRepositoriesData, starsListStarredRepositoriesError, starsListStarredRepositoriesResponse, starsStarRepositoryData, starsStarRepositoryError, starsStarRepositoryResponse, starsUnstarRepositoryData, starsUnstarRepositoryError, starsUnstarRepositoryResponse, usersCreateUserData, usersCreateUserError, usersCreateUserResponse, usersDeleteUserData, usersDeleteUserError, usersDeleteUserMeData, usersDeleteUserMeResponse, usersDeleteUserResponse, usersReadUserMeData, usersReadUserMeResponse, usersReadUsersData, usersReadUsersError, usersReadUsersResponse, usersRegisterUserData, usersRegisterUserError, usersRegisterUserResponse, usersUpdatePasswordMeData, usersUpdatePasswordMeError, usersUpdatePasswordMeResponse, usersUpdateUserData, usersUpdateUserError, usersUpdateUserMeData, usersUpdateUserMeError, usersUpdateUserMeResponse, usersUpdateUserResponse, utilsHealthCheckData, utilsHealthCheckResponse, utilsTestEmailData, utilsTestEmailError, utilsTestEmailResponse, watchersGetWatchStateData, watchersGetWatchStateError, watchersGetWatchStateResponse, watchersListWatchersData, watchersListWatchersError, watchersListWatchersResponse, watchersUnwatchRepositoryData, watchersUnwatchRepositoryError, watchersUnwatchRepositoryResponse, watchersWatchRepositoryData, watchersWatchRepositoryError, watchersWatchRepositoryResponse } from '../types.gen';
+import { ActivityService, AuthorizationService, CommentsService, ForksService, GitService, LoginService, type Options, OrganizationsService, PersonalAccessTokensService, PrivateService, ProfilesService, ReleasesService, RepositoriesService, StarsService, UsersService, UtilsService, WatchersService } from '../sdk.gen';
+import type { activityGetFeedData, activityGetFeedError, activityGetFeedResponse, activityGetRepositoryActivityData, activityGetRepositoryActivityError, activityGetRepositoryActivityResponse, activityGetRepositoryActivityStatisticsData, activityGetRepositoryActivityStatisticsError, activityGetRepositoryActivityStatisticsResponse, authorizationCreateTeamData, authorizationCreateTeamError, authorizationCreateTeamResponse, authorizationDeleteTeamData, authorizationDeleteTeamError, authorizationDeleteTeamResponse, authorizationGetPermissionsData, authorizationGetPermissionsError, authorizationGetPermissionsResponse, authorizationListCollaboratorsData, authorizationListCollaboratorsError, authorizationListCollaboratorsResponse, authorizationListCollaboratorTeamsData, authorizationListCollaboratorTeamsError, authorizationListCollaboratorTeamsResponse, authorizationListMembersData, authorizationListMembersError, authorizationListMembersResponse, authorizationListTeamMembersData, authorizationListTeamMembersError, authorizationListTeamMembersResponse, authorizationListTeamsData, authorizationListTeamsError, authorizationListTeamsResponse, authorizationRemoveCollaboratorData, authorizationRemoveCollaboratorError, authorizationRemoveCollaboratorResponse, authorizationRemoveMemberData, authorizationRemoveMemberError, authorizationRemoveMemberResponse, authorizationRemoveTeamMemberData, authorizationRemoveTeamMemberError, authorizationRemoveTeamMemberResponse, authorizationSetCollaboratorData, authorizationSetCollaboratorError, authorizationSetCollaboratorResponse, authorizationSetMemberData, authorizationSetMemberError, authorizationSetMemberResponse, authorizationSetTeamMemberData, authorizationSetTeamMemberError, authorizationSetTeamMemberResponse, commentsCreateCommentData, commentsCreateCommentError, commentsCreateCommentResponse, commentsDeleteCommentData, commentsDeleteCommentError, commentsDeleteCommentResponse, commentsListCommentsData, commentsListCommentsError, commentsListCommentsResponse, commentsUpdateCommentData, commentsUpdateCommentError, commentsUpdateCommentResponse, forksForkRepositoryData, forksForkRepositoryError, forksForkRepositoryResponse, forksListForksData, forksListForksError, forksListForksResponse, gitGetHeadData, gitGetHeadError, gitGetInfoPacksData, gitGetInfoPacksError, gitGetInfoRefsData, gitGetInfoRefsError, gitGetLooseObjectData, gitGetLooseObjectError, gitGetPackFileData, gitGetPackFileError, gitGitReceivePackData, gitGitReceivePackError, gitGitUploadPackData, gitGitUploadPackError, loginLoginAccessTokenData, loginLoginAccessTokenError, loginLoginAccessTokenResponse, loginRecoverPasswordData, loginRecoverPasswordError, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentError, loginRecoverPasswordResponse, loginResetPasswordData, loginResetPasswordError, loginResetPasswordResponse, loginTestTokenData, loginTestTokenResponse, organizationsCreateOrganizationData, organizationsCreateOrganizationError, organizationsCreateOrganizationResponse, organizationsListOrganizationsData, organizationsListOrganizationsError, organizationsListOrganizationsResponse, personalAccessTokensCreateTokenData, personalAccessTokensCreateTokenError, personalAccessTokensCreateTokenResponse, personalAccessTokensListTokensData, personalAccessTokensListTokensResponse, personalAccessTokensRevokeTokenData, personalAccessTokensRevokeTokenError, personalAccessTokensRevokeTokenResponse, personalAccessTokensRotateTokenData, personalAccessTokensRotateTokenError, personalAccessTokensRotateTokenResponse, privateCreateUserData, privateCreateUserError, privateCreateUserResponse, profilesListUserRepositoriesData, profilesListUserRepositoriesError, profilesListUserRepositoriesResponse, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesError, profilesListUserStarredRepositoriesResponse, profilesReadUserByUsernameData, profilesReadUserByUsernameError, profilesReadUserByUsernameResponse, releasesCreateReleaseData, releasesCreateReleaseError, releasesCreateReleaseResponse, releasesGetReleaseData, releasesGetReleaseError, releasesGetReleaseResponse, releasesListReleasesData, releasesListReleasesError, releasesListReleasesResponse, releasesListTagsData, releasesListTagsError, releasesListTagsResponse, releasesUpdateReleaseData, releasesUpdateReleaseError, releasesUpdateReleaseResponse, repositoriesCreateIssueData, repositoriesCreateIssueError, repositoriesCreateIssueResponse, repositoriesCreatePullRequestData, repositoriesCreatePullRequestError, repositoriesCreatePullRequestResponse, repositoriesCreateRepositoryData, repositoriesCreateRepositoryError, repositoriesCreateRepositoryResponse, repositoriesDeleteRepositoryData, repositoriesDeleteRepositoryError, repositoriesDeleteRepositoryResponse, repositoriesGetBlameData, repositoriesGetBlameError, repositoriesGetBlameResponse, repositoriesGetBlobData, repositoriesGetBlobError, repositoriesGetBlobResponse, repositoriesGetCommitData, repositoriesGetCommitError, repositoriesGetCommitResponse, repositoriesGetFileIndexData, repositoriesGetFileIndexError, repositoriesGetFileIndexResponse, repositoriesGetIssueData, repositoriesGetIssueError, repositoriesGetIssueResponse, repositoriesGetPullRequestData, repositoriesGetPullRequestError, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesError, repositoriesGetPullRequestFilesResponse, repositoriesGetPullRequestResponse, repositoriesGetRawData, repositoriesGetRawError, repositoriesGetReadmeData, repositoriesGetReadmeError, repositoriesGetReadmeResponse, repositoriesGetRepositoryData, repositoriesGetRepositoryError, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoError, repositoriesGetRepositoryInfoResponse, repositoriesGetRepositoryResponse, repositoriesGetSourceData, repositoriesGetSourceError, repositoriesGetSourceResponse, repositoriesGetStatisticsData, repositoriesGetStatisticsError, repositoriesGetStatisticsResponse, repositoriesGetTreeData, repositoriesGetTreeError, repositoriesGetTreeResponse, repositoriesListBranchesData, repositoriesListBranchesError, repositoriesListBranchesResponse, repositoriesListCommitsData, repositoriesListCommitsError, repositoriesListCommitsResponse, repositoriesListIssuesData, repositoriesListIssuesError, repositoriesListIssuesResponse, repositoriesListPullRequestsData, repositoriesListPullRequestsError, repositoriesListPullRequestsResponse, repositoriesListRepositoriesData, repositoriesListRepositoriesResponse, repositoriesUpdateIssueData, repositoriesUpdateIssueError, repositoriesUpdateIssueResponse, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestError, repositoriesUpdatePullRequestResponse, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryError, repositoriesUpdateRepositoryResponse, starsGetStarStateData, starsGetStarStateError, starsGetStarStateResponse, starsListStargazersData, starsListStargazersError, starsListStargazersResponse, starsListStarredRepositoriesData, starsListStarredRepositoriesError, starsListStarredRepositoriesResponse, starsStarRepositoryData, starsStarRepositoryError, starsStarRepositoryResponse, starsUnstarRepositoryData, starsUnstarRepositoryError, starsUnstarRepositoryResponse, usersCreateUserData, usersCreateUserError, usersCreateUserResponse, usersDeleteUserData, usersDeleteUserError, usersDeleteUserMeData, usersDeleteUserMeResponse, usersDeleteUserResponse, usersReadUserMeData, usersReadUserMeResponse, usersReadUsersData, usersReadUsersError, usersReadUsersResponse, usersRegisterUserData, usersRegisterUserError, usersRegisterUserResponse, usersUpdatePasswordMeData, usersUpdatePasswordMeError, usersUpdatePasswordMeResponse, usersUpdateUserData, usersUpdateUserError, usersUpdateUserMeData, usersUpdateUserMeError, usersUpdateUserMeResponse, usersUpdateUserResponse, utilsHealthCheckData, utilsHealthCheckResponse, utilsTestEmailData, utilsTestEmailError, utilsTestEmailResponse, watchersGetWatchStateData, watchersGetWatchStateError, watchersGetWatchStateResponse, watchersListWatchersData, watchersListWatchersError, watchersListWatchersResponse, watchersUnwatchRepositoryData, watchersUnwatchRepositoryError, watchersUnwatchRepositoryResponse, watchersWatchRepositoryData, watchersWatchRepositoryError, watchersWatchRepositoryResponse } from '../types.gen';
 
 /**
  * Login Access Token
@@ -135,6 +135,83 @@ const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions
         params.query = options.query;
     }
     return [params];
+};
+
+export const personalAccessTokensListTokensQueryKey = (options?: Options<personalAccessTokensListTokensData>) => createQueryKey('personalAccessTokensListTokens', options);
+
+/**
+ * List Tokens
+ *
+ * List safe token metadata for the signed-in account.
+ */
+export const personalAccessTokensListTokensOptions = (options?: Options<personalAccessTokensListTokensData>) => queryOptions<personalAccessTokensListTokensResponse, DefaultError, personalAccessTokensListTokensResponse, ReturnType<typeof personalAccessTokensListTokensQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await PersonalAccessTokensService.accessTokensListTokens({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: personalAccessTokensListTokensQueryKey(options)
+});
+
+/**
+ * Create Token
+ *
+ * Generate a token and show its full value once.
+ */
+export const personalAccessTokensCreateTokenMutation = (options?: Partial<Options<personalAccessTokensCreateTokenData>>): UseMutationOptions<personalAccessTokensCreateTokenResponse, personalAccessTokensCreateTokenError, Options<personalAccessTokensCreateTokenData>> => {
+    const mutationOptions: UseMutationOptions<personalAccessTokensCreateTokenResponse, personalAccessTokensCreateTokenError, Options<personalAccessTokensCreateTokenData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await PersonalAccessTokensService.accessTokensCreateToken({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Revoke Token
+ *
+ * Revoke an account token without deleting its audit metadata.
+ */
+export const personalAccessTokensRevokeTokenMutation = (options?: Partial<Options<personalAccessTokensRevokeTokenData>>): UseMutationOptions<personalAccessTokensRevokeTokenResponse, personalAccessTokensRevokeTokenError, Options<personalAccessTokensRevokeTokenData>> => {
+    const mutationOptions: UseMutationOptions<personalAccessTokensRevokeTokenResponse, personalAccessTokensRevokeTokenError, Options<personalAccessTokensRevokeTokenData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await PersonalAccessTokensService.accessTokensRevokeToken({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Rotate Token
+ *
+ * Atomically replace a token, showing the replacement once.
+ */
+export const personalAccessTokensRotateTokenMutation = (options?: Partial<Options<personalAccessTokensRotateTokenData>>): UseMutationOptions<personalAccessTokensRotateTokenResponse, personalAccessTokensRotateTokenError, Options<personalAccessTokensRotateTokenData>> => {
+    const mutationOptions: UseMutationOptions<personalAccessTokensRotateTokenResponse, personalAccessTokensRotateTokenError, Options<personalAccessTokensRotateTokenData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await PersonalAccessTokensService.accessTokensRotateToken({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
 };
 
 export const usersReadUsersQueryKey = (options?: Options<usersReadUsersData>) => createQueryKey('usersReadUsers', options);
@@ -319,7 +396,10 @@ export const gitGetInfoRefsQueryKey = (options: Options<gitGetInfoRefsData>) => 
  *
  * Args:
  * request: FastAPI request.
- * repo_path: Repository path.
+ * owner: Repository owner.
+ * repo: Repository name.
+ * _authorization: Authorization service used by the permission decorator.
+ * _current_user: Git credentials used by the permission decorator.
  * repository_service: Repository service.
  *
  * Returns:
@@ -347,7 +427,10 @@ export const gitGetHeadQueryKey = (options: Options<gitGetHeadData>) => createQu
  *
  * Args:
  * request: FastAPI request.
- * repo_path: Repository path.
+ * owner: Repository owner.
+ * repo: Repository name.
+ * _authorization: Authorization service used by the permission decorator.
+ * _current_user: Git credentials used by the permission decorator.
  * repository_service: Repository service.
  *
  * Returns:
@@ -375,7 +458,10 @@ export const gitGetInfoPacksQueryKey = (options: Options<gitGetInfoPacksData>) =
  *
  * Args:
  * request: FastAPI request.
- * repo_path: Repository path.
+ * owner: Repository owner.
+ * repo: Repository name.
+ * _authorization: Authorization service used by the permission decorator.
+ * _current_user: Git credentials used by the permission decorator.
  * repository_service: Repository service.
  *
  * Returns:
@@ -403,7 +489,10 @@ export const gitGetLooseObjectQueryKey = (options: Options<gitGetLooseObjectData
  *
  * Args:
  * request: FastAPI request.
- * repo_path: Repository path.
+ * owner: Repository owner.
+ * repo: Repository name.
+ * _authorization: Authorization service used by the permission decorator.
+ * _current_user: Git credentials used by the permission decorator.
  * prefix: Object SHA prefix (2 chars).
  * suffix: Object SHA suffix (38 chars).
  * repository_service: Repository service.
@@ -433,7 +522,10 @@ export const gitGetPackFileQueryKey = (options: Options<gitGetPackFileData>) => 
  *
  * Args:
  * request: FastAPI request.
- * repo_path: Repository path.
+ * owner: Repository owner.
+ * repo: Repository name.
+ * _authorization: Authorization service used by the permission decorator.
+ * _current_user: Git credentials used by the permission decorator.
  * pack_file: Pack file name.
  * repository_service: Repository service.
  *
@@ -460,7 +552,10 @@ export const gitGetPackFileOptions = (options: Options<gitGetPackFileData>) => q
  *
  * Args:
  * request: FastAPI request.
- * repo_path: Repository path.
+ * owner: Repository owner.
+ * repo: Repository name.
+ * _authorization: Authorization service used by the permission decorator.
+ * _current_user: Git credentials used by the permission decorator.
  * repository_service: Repository service.
  *
  * Returns:
@@ -487,7 +582,10 @@ export const gitGitUploadPackMutation = (options?: Partial<Options<gitGitUploadP
  *
  * Args:
  * request: FastAPI request.
- * repo_path: Repository path.
+ * owner: Repository owner.
+ * repo: Repository name.
+ * _authorization: Authorization service used by the permission decorator.
+ * _current_user: Git credentials used by the permission decorator.
  * repository_service: Repository service.
  *
  * Returns:
@@ -844,7 +942,7 @@ export const authorizationListCollaboratorsOptions = (options: Options<authoriza
 /**
  * Set Collaborator
  *
- * Add or update a user or team's repository role.
+ * Add or update a current_user or team's repository role.
  */
 export const authorizationSetCollaboratorMutation = (options?: Partial<Options<authorizationSetCollaboratorData>>): UseMutationOptions<authorizationSetCollaboratorResponse, authorizationSetCollaboratorError, Options<authorizationSetCollaboratorData>> => {
     const mutationOptions: UseMutationOptions<authorizationSetCollaboratorResponse, authorizationSetCollaboratorError, Options<authorizationSetCollaboratorData>> = {

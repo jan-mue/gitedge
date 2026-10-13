@@ -21,6 +21,7 @@ from app.clients.database import CrudStore
 from app.clients.email import EmailClient
 from app.clients.issues import IssueStore
 from app.clients.organizations import OrganizationStore
+from app.clients.personal_access_tokens import AUTHENTICATION_LIMIT, AUTHENTICATION_WINDOW, PersonalAccessTokenStore
 from app.clients.pull_requests import PullRequestStore
 from app.clients.redis import AbstractRedisClient
 from app.clients.releases import ReleaseStore
@@ -35,6 +36,7 @@ from app.entities.base import Base
 from app.entities.comments import Comment
 from app.entities.issues import Issue, IssueState
 from app.entities.organizations import Organization
+from app.entities.personal_access_tokens import PersonalAccessToken
 from app.entities.principals import Principal, PrincipalType
 from app.entities.pull_requests import PullRequest
 from app.entities.releases import Release
@@ -783,6 +785,39 @@ class FakeAuthorizationStore(AuthorizationStore):
         await self.save(OrganizationMember(organization_id=organization.id, user_id=user_id, is_admin=True))
 
 
+class FakePersonalAccessTokenStore(FakeCrudStore[PersonalAccessToken], PersonalAccessTokenStore):
+    """In-memory token lifecycle and authentication rate-limit storage."""
+
+    async def find_by_key_id(self, key_id: str) -> PersonalAccessToken | None:
+        return next((token for token in self.items.values() if token.key_id == key_id), None)
+
+    async def list_by_owner(self, owner_id: uuid.UUID) -> list[PersonalAccessToken]:
+        return [token for token in self.items.values() if token.owner_id == owner_id]
+
+    async def issue(self, token: PersonalAccessToken, replacing: PersonalAccessToken | None = None) -> bool:
+        if await self.find_by_key_id(token.key_id) is not None:
+            return False
+        self.persist(token)
+        if replacing is not None:
+            replacing.revoked_at = token.created_at
+            replacing.revoked_reason = "Rotated"
+        return True
+
+    async def reserve_authentication(self, token: PersonalAccessToken, now: datetime) -> bool:
+        if token.revoked_at is not None:
+            return False
+        if (
+            token.authentication_window_start is None
+            or token.authentication_window_start <= now - AUTHENTICATION_WINDOW
+        ):
+            token.authentication_window_start = now
+            token.authentication_attempts = 0
+        if token.authentication_attempts >= AUTHENTICATION_LIMIT:
+            return False
+        token.authentication_attempts += 1
+        return True
+
+
 @dataclass
 class FakeStores:
     """Container for the in-memory store fakes."""
@@ -793,6 +828,7 @@ class FakeStores:
     repository: FakeRepositoryStore
     organizations: FakeOrganizationStore
     authorization: FakeAuthorizationStore
+    personal_access_tokens: FakePersonalAccessTokenStore
     stars: FakeStarStore
     watchers: FakeWatcherStore
     comments: FakeCommentStore
@@ -843,6 +879,7 @@ def build_fake_stores() -> FakeStores:
         repository=repository,
         organizations=organizations,
         authorization=FakeAuthorizationStore(organizations),
+        personal_access_tokens=FakePersonalAccessTokenStore(),
         stars=FakeStarStore(users),
         watchers=FakeWatcherStore(users),
         comments=comments,
