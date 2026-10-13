@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.api.dependencies import (
+    AuthorizationServiceDep,
     CurrentUser,
     IssueServiceDep,
+    OptionalUser,
     PullRequestServiceDep,
     RepositoryServiceDep,
+    require_repository,
 )
 from app.schemas.repositories import (
     BlameContent,
@@ -68,18 +71,28 @@ async def _apply_cache_headers(
 
 
 @router.get("/")
-async def list_repositories(repository_service: RepositoryServiceDep) -> RepositoriesPublic:
+async def list_repositories(repository_service: RepositoryServiceDep, user: OptionalUser) -> RepositoriesPublic:
     """List all repositories."""
-    return await repository_service.list_repositories()
+    return await repository_service.list_repositories(user)
 
 
 @router.post("/", status_code=201)
-async def create_repository(body: CreateRepositoryRequest, repository_service: RepositoryServiceDep) -> Repository:
+async def create_repository(
+    body: CreateRepositoryRequest,
+    repository_service: RepositoryServiceDep,
+    user: CurrentUser,
+    authorization: AuthorizationServiceDep,
+) -> Repository:
     """Create a new empty Git repository."""
-    return await repository_service.create_repository(body.owner, body.name)
+    await authorization.require_creation(body.owner, user)
+    if body.name in (".", "..") or body.name.endswith(".git"):
+        raise HTTPException(status_code=400, detail="Invalid repository name")
+    if await authorization.repositories.find_by_owner_and_name(body.owner, body.name) is not None:
+        raise HTTPException(status_code=409, detail="Repository already exists")
+    return await repository_service.create_repository(body.owner, body.name, is_private=body.is_private)
 
 
-@router.get("/{owner}/{repo}/source")
+@router.get("/{owner}/{repo}/source", dependencies=[Depends(require_repository("repository:read"))])
 async def get_source(
     owner: str,
     repo: str,
@@ -94,7 +107,7 @@ async def get_source(
     return result
 
 
-@router.get("/{owner}/{repo}/tree")
+@router.get("/{owner}/{repo}/tree", dependencies=[Depends(require_repository("repository:read"))])
 async def get_tree(
     owner: str,
     repo: str,
@@ -109,7 +122,7 @@ async def get_tree(
     return result
 
 
-@router.get("/{owner}/{repo}/blob")
+@router.get("/{owner}/{repo}/blob", dependencies=[Depends(require_repository("repository:read"))])
 async def get_blob(
     owner: str,
     repo: str,
@@ -124,7 +137,7 @@ async def get_blob(
     return result
 
 
-@router.get("/{owner}/{repo}/blame")
+@router.get("/{owner}/{repo}/blame", dependencies=[Depends(require_repository("repository:read"))])
 async def get_blame(
     owner: str,
     repo: str,
@@ -139,7 +152,7 @@ async def get_blame(
     return result
 
 
-@router.get("/{owner}/{repo}/statistics")
+@router.get("/{owner}/{repo}/statistics", dependencies=[Depends(require_repository("repository:read"))])
 async def get_statistics(
     owner: str,
     repo: str,
@@ -153,7 +166,7 @@ async def get_statistics(
     return result
 
 
-@router.get("/{owner}/{repo}/files")
+@router.get("/{owner}/{repo}/files", dependencies=[Depends(require_repository("repository:read"))])
 async def get_file_index(
     owner: str,
     repo: str,
@@ -167,7 +180,7 @@ async def get_file_index(
     return result
 
 
-@router.get("/{owner}/{repo}/raw")
+@router.get("/{owner}/{repo}/raw", dependencies=[Depends(require_repository("repository:read"))])
 async def get_raw(
     owner: str,
     repo: str,
@@ -182,7 +195,7 @@ async def get_raw(
     return response
 
 
-@router.get("/{owner}/{repo}/info")
+@router.get("/{owner}/{repo}/info", dependencies=[Depends(require_repository("repository:read"))])
 async def get_repository_info(
     owner: str,
     repo: str,
@@ -196,7 +209,7 @@ async def get_repository_info(
     return result
 
 
-@router.get("/{owner}/{repo}/readme")
+@router.get("/{owner}/{repo}/readme", dependencies=[Depends(require_repository("repository:read"))])
 async def get_readme(
     owner: str,
     repo: str,
@@ -211,7 +224,7 @@ async def get_readme(
     return result
 
 
-@router.get("/{owner}/{repo}/branches")
+@router.get("/{owner}/{repo}/branches", dependencies=[Depends(require_repository("repository:read"))])
 async def list_branches(
     owner: str, repo: str, response: Response, repository_service: RepositoryServiceDep
 ) -> list[BranchInfo]:
@@ -221,7 +234,7 @@ async def list_branches(
     return result
 
 
-@router.get("/{owner}/{repo}/commits")
+@router.get("/{owner}/{repo}/commits", dependencies=[Depends(require_repository("repository:read"))])
 async def list_commits(
     owner: str,
     repo: str,
@@ -238,7 +251,7 @@ async def list_commits(
     return result
 
 
-@router.get("/{owner}/{repo}/commits/{sha}")
+@router.get("/{owner}/{repo}/commits/{sha}", dependencies=[Depends(require_repository("repository:read"))])
 async def get_commit(
     owner: str, repo: str, sha: str, response: Response, repository_service: RepositoryServiceDep
 ) -> CommitDetail:
@@ -248,7 +261,7 @@ async def get_commit(
     return result
 
 
-@router.get("/{owner}/{repo}/issues")
+@router.get("/{owner}/{repo}/issues", dependencies=[Depends(require_repository("repository:read"))])
 async def list_issues(
     owner: str,
     repo: str,
@@ -259,7 +272,7 @@ async def list_issues(
     return await issue_service.list_issues(owner, repo, state)
 
 
-@router.post("/{owner}/{repo}/issues", status_code=201)
+@router.post("/{owner}/{repo}/issues", status_code=201, dependencies=[Depends(require_repository("repository:read"))])
 async def create_issue(
     owner: str, repo: str, body: IssueCreate, issue_service: IssueServiceDep, current_user: CurrentUser
 ) -> IssuePublic:
@@ -267,13 +280,13 @@ async def create_issue(
     return await issue_service.create_issue(owner, repo, body, current_user)
 
 
-@router.get("/{owner}/{repo}/issues/{number}")
+@router.get("/{owner}/{repo}/issues/{number}", dependencies=[Depends(require_repository("repository:read"))])
 async def get_issue(owner: str, repo: str, number: int, issue_service: IssueServiceDep) -> IssuePublic:
     """Get a single issue by number."""
     return await issue_service.get_issue(owner, repo, number)
 
 
-@router.patch("/{owner}/{repo}/issues/{number}")
+@router.patch("/{owner}/{repo}/issues/{number}", dependencies=[Depends(require_repository("repository:read"))])
 async def update_issue(
     owner: str, repo: str, number: int, body: IssueUpdate, issue_service: IssueServiceDep, current_user: CurrentUser
 ) -> IssuePublic:
@@ -281,7 +294,7 @@ async def update_issue(
     return await issue_service.update_issue(owner, repo, number, body, current_user)
 
 
-@router.get("/{owner}/{repo}/pulls")
+@router.get("/{owner}/{repo}/pulls", dependencies=[Depends(require_repository("repository:read"))])
 async def list_pull_requests(
     owner: str,
     repo: str,
@@ -292,7 +305,7 @@ async def list_pull_requests(
     return await pull_request_service.list_pull_requests(owner, repo, state)
 
 
-@router.post("/{owner}/{repo}/pulls", status_code=201)
+@router.post("/{owner}/{repo}/pulls", status_code=201, dependencies=[Depends(require_repository("repository:read"))])
 async def create_pull_request(
     owner: str,
     repo: str,
@@ -304,7 +317,7 @@ async def create_pull_request(
     return await pull_request_service.create_pull_request(owner, repo, body, current_user)
 
 
-@router.get("/{owner}/{repo}/pulls/{number}")
+@router.get("/{owner}/{repo}/pulls/{number}", dependencies=[Depends(require_repository("repository:read"))])
 async def get_pull_request(
     owner: str, repo: str, number: int, pull_request_service: PullRequestServiceDep
 ) -> PullRequestPublic:
@@ -312,7 +325,7 @@ async def get_pull_request(
     return await pull_request_service.get_pull_request(owner, repo, number)
 
 
-@router.get("/{owner}/{repo}/pulls/{number}/files")
+@router.get("/{owner}/{repo}/pulls/{number}/files", dependencies=[Depends(require_repository("repository:read"))])
 async def get_pull_request_files(
     owner: str,
     repo: str,
@@ -327,7 +340,7 @@ async def get_pull_request_files(
     return result
 
 
-@router.patch("/{owner}/{repo}/pulls/{number}")
+@router.patch("/{owner}/{repo}/pulls/{number}", dependencies=[Depends(require_repository("repository:read"))])
 async def update_pull_request(
     owner: str,
     repo: str,
@@ -340,7 +353,7 @@ async def update_pull_request(
     return await pull_request_service.update_pull_request(owner, repo, number, body, current_user)
 
 
-@router.get("/{owner}/{repo}")
+@router.get("/{owner}/{repo}", dependencies=[Depends(require_repository("repository:read"))])
 async def get_repository(
     owner: str, repo: str, response: Response, repository_service: RepositoryServiceDep
 ) -> Repository:
@@ -350,7 +363,7 @@ async def get_repository(
     return result
 
 
-@router.patch("/{owner}/{repo}")
+@router.patch("/{owner}/{repo}", dependencies=[Depends(require_repository("repository:admin"))])
 async def update_repository(
     owner: str,
     repo: str,
@@ -362,7 +375,7 @@ async def update_repository(
     return await repository_service.update_repository(owner, repo, body, current_user)
 
 
-@router.delete("/{owner}/{repo}", status_code=204)
+@router.delete("/{owner}/{repo}", status_code=204, dependencies=[Depends(require_repository("repository:owner"))])
 async def delete_repository(
     owner: str,
     repo: str,

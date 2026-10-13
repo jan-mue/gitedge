@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from app.clients.stars import StarStore
     from app.entities.users import User
     from app.services.activity import ActivityService
+    from app.services.authorization import AuthorizationService
 
 
 class StarService:
@@ -28,14 +29,17 @@ class StarService:
         star_store: StarStore,
         repository_store: RepositoryStore,
         activity_service: ActivityService,
+        authorization: AuthorizationService | None = None,
     ) -> None:
         """Initialize the star service.
 
         Args:
+            authorization: Authorization service for scoped role checks.
             star_store: Star store.
             repository_store: Repository store.
             activity_service: Service used to record activity.
         """
+        self.authorization = authorization
         self.star_store = star_store
         self.repository_store = repository_store
         self.activity_service = activity_service
@@ -122,10 +126,13 @@ class StarService:
         users = [UserPublic.model_validate(star.user) for star in stars if star.user is not None]
         return StargazersPublic(data=users, count=len(users))
 
-    async def starred_repositories(self, user_id: uuid.UUID, offset: int = 0, limit: int = 100) -> RepositoriesPublic:
+    async def starred_repositories(
+        self, user_id: uuid.UUID, offset: int = 0, limit: int = 100, viewer: User | None = None
+    ) -> RepositoriesPublic:
         """List repositories starred by a user.
 
         Args:
+            viewer: User viewing this list, or anonymous.
             user_id: The user id.
             offset: Pagination offset.
             limit: Maximum number of repositories.
@@ -137,7 +144,9 @@ class StarService:
         entities = []
         for star in stars:
             repository = await self.repository_store.find(star.repo_id)
-            if repository is not None:
+            if repository is not None and (
+                self.authorization is None or await self.authorization.can(repository, viewer)
+            ):
                 entities.append(repository)
 
         ids = [entity.id for entity in entities]

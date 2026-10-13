@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from app.clients.stars import StarStore
     from app.entities.users import User
     from app.services.activity import ActivityService
+    from app.services.authorization import AuthorizationService
     from app.services.repositories import RepositoryService
 
 
@@ -27,15 +28,18 @@ class ForkService:
         repository_service: RepositoryService,
         activity_service: ActivityService,
         star_store: StarStore,
+        authorization: AuthorizationService | None = None,
     ) -> None:
         """Initialize the fork service.
 
         Args:
+            authorization: Authorization service for scoped role checks.
             repository_store: Repository store.
             repository_service: Repository service used to create the Git repo.
             activity_service: Service used to record activity.
             star_store: Star store used to compute star counts.
         """
+        self.authorization = authorization
         self.repository_store = repository_store
         self.repository_service = repository_service
         self.activity_service = activity_service
@@ -61,9 +65,16 @@ class ForkService:
         dest_owner = body.owner or current_user.name
         dest_name = body.name or source.name
 
-        if source.is_private and source.owner_id != current_user.id and not current_user.is_superuser:
+        if self.authorization is not None:
+            await self.authorization.require(source, current_user)
+            await self.authorization.require_creation(dest_owner, current_user)
+        elif source.is_private and source.owner_id != current_user.id and not current_user.is_superuser:
             raise HTTPException(status_code=404, detail="Repository not found")
-        if dest_owner.lower() != current_user.name.lower() and not current_user.is_superuser:
+        if (
+            self.authorization is None
+            and dest_owner.lower() != current_user.name.lower()
+            and not current_user.is_superuser
+        ):
             raise HTTPException(status_code=403, detail="You can only fork into your own account")
 
         if dest_owner.lower() == source.owner.name.lower():
@@ -97,10 +108,13 @@ class ForkService:
 
         return await self._to_public(fork)
 
-    async def list_forks(self, owner: str, name: str, offset: int = 0, limit: int = 100) -> ForksPublic:
+    async def list_forks(
+        self, owner: str, name: str, offset: int = 0, limit: int = 100, user: User | None = None
+    ) -> ForksPublic:
         """List forks of a repository.
 
         Args:
+            user: Authenticated viewer, or anonymous for public reads.
             owner: Owner name.
             name: Repository name.
             offset: Pagination offset.
@@ -113,6 +127,8 @@ class ForkService:
         if source is None:
             return ForksPublic(data=[], count=0)
         forks = await self.repository_store.list_by_fork_of(source.id, offset, limit)
+        if self.authorization is not None:
+            forks = [fork for fork in forks if await self.authorization.can(fork, user)]
         return ForksPublic(data=[await self._to_public(fork) for fork in forks], count=len(forks))
 
     async def _to_public(self, fork: Repository) -> ForkPublic:

@@ -10,27 +10,37 @@ from app.entities.organizations import Organization
 from app.schemas.organizations import OrganizationCreate, OrganizationPublic, OrganizationsPublic
 
 if TYPE_CHECKING:
+    from app.clients.authorization import AuthorizationStore
     from app.clients.organizations import OrganizationStore
     from app.clients.users import UserStore
+    from app.entities.users import User
 
 
 class OrganizationService:
     """Service for managing organizations."""
 
-    def __init__(self, organization_store: OrganizationStore, user_store: UserStore) -> None:
+    def __init__(
+        self,
+        organization_store: OrganizationStore,
+        user_store: UserStore,
+        authorization_store: AuthorizationStore | None = None,
+    ) -> None:
         """Initialize the organization service.
 
         Args:
+            authorization_store: Persistent memberships and grants.
             organization_store: Organization store.
             user_store: User store used to keep the owner namespace unique.
         """
         self.organization_store = organization_store
         self.user_store = user_store
+        self.authorization_store = authorization_store
 
-    async def create_organization(self, body: OrganizationCreate) -> OrganizationPublic:
+    async def create_organization(self, body: OrganizationCreate, user: User | None = None) -> OrganizationPublic:
         """Create a new organization.
 
         Args:
+            user: Authenticated viewer, or anonymous for public reads.
             body: Organization creation data.
 
         Returns:
@@ -51,7 +61,10 @@ class OrganizationService:
             display_name=body.display_name,
             description=body.description,
         )
-        await self.organization_store.add(organization)
+        if self.authorization_store is not None and user is not None:
+            await self.authorization_store.create_organization(organization, user.id)
+        else:
+            await self.organization_store.add(organization)
         return OrganizationPublic.model_validate(organization)
 
     async def list_organizations(self, offset: int = 0, limit: int = 100) -> OrganizationsPublic:

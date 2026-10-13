@@ -28,6 +28,15 @@ FEED_URL = f"{settings.API_V1_STR}/users/me/feed"
 ACTIVITY_URL = f"{REPO_URL}/activity"
 
 
+@pytest.fixture(autouse=True)
+def existing_repository(fake_stores: FakeStores) -> None:
+    """Feature tests operate on an existing public repository."""
+    owner = next(iter(fake_stores.users.items.values()))
+    repository = Repository(owner_id=owner.id, name=REPO_NAME, default_branch="main", is_private=False)
+    fake_stores.repository.persist(repository)
+    repository.owner = owner
+
+
 @pytest.mark.parametrize("target", ["issues", "pulls"])
 def test_feed_includes_bounded_target_previews(
     client: TestClient, superuser_token_headers: dict[str, str], target: str
@@ -126,6 +135,11 @@ def test_feed_pagination_does_not_switch_to_global_activity(
 ) -> None:
     client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Personal"})
     other = next(user for user in fake_stores.users.items.values() if not user.is_superuser)
+    client.post(
+        f"{settings.API_V1_STR}/repositories/",
+        json={"owner": other.name, "name": "foreign"},
+        headers=normal_user_token_headers,
+    )
     foreign_url = f"{settings.API_V1_STR}/repositories/{other.name}/foreign/issues"
     client.post(foreign_url, headers=normal_user_token_headers, json={"title": "Global"})
     first = client.get(FEED_URL, headers=superuser_token_headers, params={"limit": 1}).json()

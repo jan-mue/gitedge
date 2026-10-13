@@ -7,13 +7,16 @@ server for use with blob storage and Redis backends.
 from __future__ import annotations
 
 from io import BytesIO
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from dulwich.web import GunzipFilter, HTTPGitApplication, LimitedInputFilter
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials, HTTPBearer
 
-from app.api.dependencies import RepositoryServiceDep
+from app.api.dependencies import AuthorizationServiceDep, RepositoryServiceDep, UserStoreDep, get_current_user
+from app.entities.users import User  # noqa: TC001 -- evaluated by FastAPI dependency
 from app.utils.cache_headers import CACHE_CONTROL_NO_STORE
+from app.utils.security import verify_password
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,7 +24,51 @@ if TYPE_CHECKING:
 
     from app.services.repositories import RepositoryService
 
-router = APIRouter(tags=["git"])
+basic_auth = HTTPBasic(auto_error=False)
+bearer_auth = HTTPBearer(auto_error=False)
+
+
+async def get_git_user(
+    request: Request,
+    users: UserStoreDep,
+    basic: Annotated[HTTPBasicCredentials | None, Depends(basic_auth)],
+    bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_auth)],
+) -> User | None:
+    """Authenticate Git clients with a username/password or Bearer access token."""
+    if bearer is not None:
+        return await get_current_user(users, bearer.credentials)
+    if basic is not None:
+        user = await users.get_by_name(basic.username)
+        if user is not None and verify_password(basic.password, user.hashed_password)[0] and user.is_active:
+            return user
+    elif not request.headers.get("Authorization"):
+        return None
+    raise HTTPException(
+        status_code=401, detail="Invalid Git credentials", headers={"WWW-Authenticate": 'Basic realm="GitEdge"'}
+    )
+
+
+async def authorize_git(
+    request: Request,
+    repo_path: str,
+    authorization: AuthorizationServiceDep,
+    user: Annotated[User | None, Depends(get_git_user)],
+) -> None:
+    """Authorize discovery, reads, and pushes before loading Git storage."""
+    owner, separator, name = repo_path.removesuffix(".git").partition("/")
+    if not separator or not owner or not name or "/" in name:
+        raise HTTPException(status_code=404, detail="Repository not found")
+    repository = await authorization.repositories.get_by_owner_and_name(owner, name)
+    push = request.url.path.endswith("/git-receive-pack") or request.query_params.get("service") == "git-receive-pack"
+    try:
+        await authorization.require(repository, user, "repository:write" if push else "repository:read")
+    except HTTPException as error:
+        if error.status_code == status.HTTP_401_UNAUTHORIZED:
+            error.headers = {"WWW-Authenticate": 'Basic realm="GitEdge"'}
+        raise
+
+
+router = APIRouter(tags=["git"], dependencies=[Depends(authorize_git)])
 
 _NO_STORE_PATHS = frozenset({"/info/refs", "/HEAD", "/git-upload-pack", "/git-receive-pack"})
 

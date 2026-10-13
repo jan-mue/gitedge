@@ -97,7 +97,7 @@ def test_create_wsgi_environ_uses_decoded_body(headers: list[tuple[bytes, bytes]
 
 @pytest.mark.parametrize("chunked", [False, True])
 async def test_receive_pack_persists_objects_and_refs(
-    client: TestClient, fake_stores: FakeStores, *, chunked: bool
+    client: TestClient, fake_stores: FakeStores, superuser_token_headers: dict[str, str], *, chunked: bool
 ) -> None:
     blob = Blob.from_string(b"Push over smart HTTP\n")
     tree = Tree()
@@ -115,7 +115,10 @@ async def test_receive_pack_persists_objects_and_refs(
     body = pkt_line(command) + pkt_line(None) + pack.getvalue()
     owner = settings.FIRST_SUPERUSER.split("@")[0]
     repo_path = f"{owner}/push.git"
-    headers = {"content-type": "application/x-git-receive-pack-request"}
+    client.post(
+        f"{settings.API_V1_STR}/repositories/", json={"owner": owner, "name": "push"}, headers=superuser_token_headers
+    )
+    headers = {**superuser_token_headers, "content-type": "application/x-git-receive-pack-request"}
     if chunked:
         headers["transfer-encoding"] = "chunked"
 

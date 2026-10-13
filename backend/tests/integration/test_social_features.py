@@ -21,6 +21,7 @@ from playwright.sync_api import expect
 from tests.integration.conftest import (
     FIRST_SUPERUSER,
     FIRST_SUPERUSER_PASSWORD,
+    configure_git_auth,
     create_repository_row,
     create_user_via_api,
     log_in_user,
@@ -95,6 +96,7 @@ def _push_repo(
         if tag:
             _run_git(source_dir, ["tag", tag])
 
+        configure_git_auth(app_url, repo_name, source_dir)
         _run_git(source_dir, ["remote", "add", "origin", remote_url])
         _run_git(source_dir, ["push", "-u", "--force", "origin", "main"])
         if tag:

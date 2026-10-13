@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from app.api.dependencies import CurrentUser, WatcherServiceDep
+from app.api.dependencies import CurrentUser, WatcherServiceDep, require_repository
 from app.schemas.social import WatchersPublic, WatcherState
 
 router = APIRouter(prefix="/repositories", tags=["watchers"])
 
 
-@router.get("/{owner}/{repo}/watch")
+@router.get("/{owner}/{repo}/watch", dependencies=[Depends(require_repository("repository:read"))])
 async def get_watch_state(
     owner: str, repo: str, watcher_service: WatcherServiceDep, current_user: CurrentUser
 ) -> WatcherState:
@@ -18,7 +18,7 @@ async def get_watch_state(
     return await watcher_service.state(owner, repo, current_user)
 
 
-@router.put("/{owner}/{repo}/watch")
+@router.put("/{owner}/{repo}/watch", dependencies=[Depends(require_repository("repository:read"))])
 async def watch_repository(
     owner: str, repo: str, watcher_service: WatcherServiceDep, current_user: CurrentUser
 ) -> WatcherState:
@@ -26,7 +26,7 @@ async def watch_repository(
     return await watcher_service.watch(owner, repo, current_user)
 
 
-@router.delete("/{owner}/{repo}/watch")
+@router.delete("/{owner}/{repo}/watch", dependencies=[Depends(require_repository("repository:read"))])
 async def unwatch_repository(
     owner: str, repo: str, watcher_service: WatcherServiceDep, current_user: CurrentUser
 ) -> WatcherState:
@@ -34,7 +34,7 @@ async def unwatch_repository(
     return await watcher_service.unwatch(owner, repo, current_user)
 
 
-@router.get("/{owner}/{repo}/watchers")
+@router.get("/{owner}/{repo}/watchers", dependencies=[Depends(require_repository("repository:read"))])
 async def list_watchers(
     owner: str, repo: str, watcher_service: WatcherServiceDep, offset: int = 0, limit: int = 100
 ) -> WatchersPublic:

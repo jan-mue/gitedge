@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, type Options as Options2, type RequestResult, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { activityGetFeedData, activityGetFeedErrors, activityGetFeedResponses, activityGetRepositoryActivityData, activityGetRepositoryActivityErrors, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsData, activityGetRepositoryActivityStatisticsErrors, activityGetRepositoryActivityStatisticsResponses, commentsCreateCommentData, commentsCreateCommentErrors, commentsCreateCommentResponses, commentsDeleteCommentData, commentsDeleteCommentErrors, commentsDeleteCommentResponses, commentsListCommentsData, commentsListCommentsErrors, commentsListCommentsResponses, commentsUpdateCommentData, commentsUpdateCommentErrors, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryErrors, forksForkRepositoryResponses, forksListForksData, forksListForksErrors, forksListForksResponses, gitGetHeadData, gitGetHeadErrors, gitGetHeadResponses, gitGetInfoPacksData, gitGetInfoPacksErrors, gitGetInfoPacksResponses, gitGetInfoRefsData, gitGetInfoRefsErrors, gitGetInfoRefsResponses, gitGetLooseObjectData, gitGetLooseObjectErrors, gitGetLooseObjectResponses, gitGetPackFileData, gitGetPackFileErrors, gitGetPackFileResponses, gitGitReceivePackData, gitGitReceivePackErrors, gitGitReceivePackResponses, gitGitUploadPackData, gitGitUploadPackErrors, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationErrors, organizationsCreateOrganizationResponses, organizationsListOrganizationsData, organizationsListOrganizationsErrors, organizationsListOrganizationsResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesListUserRepositoriesData, profilesListUserRepositoriesErrors, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesErrors, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameData, profilesReadUserByUsernameErrors, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseErrors, releasesCreateReleaseResponses, releasesGetReleaseData, releasesGetReleaseErrors, releasesGetReleaseResponses, releasesListReleasesData, releasesListReleasesErrors, releasesListReleasesResponses, releasesListTagsData, releasesListTagsErrors, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseErrors, releasesUpdateReleaseResponses, repositoriesCreateIssueData, repositoriesCreateIssueErrors, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestErrors, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryErrors, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryData, repositoriesDeleteRepositoryErrors, repositoriesDeleteRepositoryResponses, repositoriesGetBlameData, repositoriesGetBlameErrors, repositoriesGetBlameResponses, repositoriesGetBlobData, repositoriesGetBlobErrors, repositoriesGetBlobResponses, repositoriesGetCommitData, repositoriesGetCommitErrors, repositoriesGetCommitResponses, repositoriesGetFileIndexData, repositoriesGetFileIndexErrors, repositoriesGetFileIndexResponses, repositoriesGetIssueData, repositoriesGetIssueErrors, repositoriesGetIssueResponses, repositoriesGetPullRequestData, repositoriesGetPullRequestErrors, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesErrors, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestResponses, repositoriesGetRawData, repositoriesGetRawErrors, repositoriesGetRawResponses, repositoriesGetReadmeData, repositoriesGetReadmeErrors, repositoriesGetReadmeResponses, repositoriesGetRepositoryData, repositoriesGetRepositoryErrors, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoErrors, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceData, repositoriesGetSourceErrors, repositoriesGetSourceResponses, repositoriesGetStatisticsData, repositoriesGetStatisticsErrors, repositoriesGetStatisticsResponses, repositoriesGetTreeData, repositoriesGetTreeErrors, repositoriesGetTreeResponses, repositoriesListBranchesData, repositoriesListBranchesErrors, repositoriesListBranchesResponses, repositoriesListCommitsData, repositoriesListCommitsErrors, repositoriesListCommitsResponses, repositoriesListIssuesData, repositoriesListIssuesErrors, repositoriesListIssuesResponses, repositoriesListPullRequestsData, repositoriesListPullRequestsErrors, repositoriesListPullRequestsResponses, repositoriesListRepositoriesData, repositoriesListRepositoriesResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueErrors, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestErrors, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryErrors, repositoriesUpdateRepositoryResponses, starsGetStarStateData, starsGetStarStateErrors, starsGetStarStateResponses, starsListStargazersData, starsListStargazersErrors, starsListStargazersResponses, starsListStarredRepositoriesData, starsListStarredRepositoriesErrors, starsListStarredRepositoriesResponses, starsStarRepositoryData, starsStarRepositoryErrors, starsStarRepositoryResponses, starsUnstarRepositoryData, starsUnstarRepositoryErrors, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, watchersGetWatchStateData, watchersGetWatchStateErrors, watchersGetWatchStateResponses, watchersListWatchersData, watchersListWatchersErrors, watchersListWatchersResponses, watchersUnwatchRepositoryData, watchersUnwatchRepositoryErrors, watchersUnwatchRepositoryResponses, watchersWatchRepositoryData, watchersWatchRepositoryErrors, watchersWatchRepositoryResponses } from './types.gen';
+import type { activityGetFeedData, activityGetFeedErrors, activityGetFeedResponses, activityGetRepositoryActivityData, activityGetRepositoryActivityErrors, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsData, activityGetRepositoryActivityStatisticsErrors, activityGetRepositoryActivityStatisticsResponses, authorizationCreateTeamData, authorizationCreateTeamErrors, authorizationCreateTeamResponses, authorizationDeleteTeamData, authorizationDeleteTeamErrors, authorizationDeleteTeamResponses, authorizationGetPermissionsData, authorizationGetPermissionsErrors, authorizationGetPermissionsResponses, authorizationListCollaboratorsData, authorizationListCollaboratorsErrors, authorizationListCollaboratorsResponses, authorizationListCollaboratorTeamsData, authorizationListCollaboratorTeamsErrors, authorizationListCollaboratorTeamsResponses, authorizationListMembersData, authorizationListMembersErrors, authorizationListMembersResponses, authorizationListTeamMembersData, authorizationListTeamMembersErrors, authorizationListTeamMembersResponses, authorizationListTeamsData, authorizationListTeamsErrors, authorizationListTeamsResponses, authorizationRemoveCollaboratorData, authorizationRemoveCollaboratorErrors, authorizationRemoveCollaboratorResponses, authorizationRemoveMemberData, authorizationRemoveMemberErrors, authorizationRemoveMemberResponses, authorizationRemoveTeamMemberData, authorizationRemoveTeamMemberErrors, authorizationRemoveTeamMemberResponses, authorizationSetCollaboratorData, authorizationSetCollaboratorErrors, authorizationSetCollaboratorResponses, authorizationSetMemberData, authorizationSetMemberErrors, authorizationSetMemberResponses, authorizationSetTeamMemberData, authorizationSetTeamMemberErrors, authorizationSetTeamMemberResponses, commentsCreateCommentData, commentsCreateCommentErrors, commentsCreateCommentResponses, commentsDeleteCommentData, commentsDeleteCommentErrors, commentsDeleteCommentResponses, commentsListCommentsData, commentsListCommentsErrors, commentsListCommentsResponses, commentsUpdateCommentData, commentsUpdateCommentErrors, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryErrors, forksForkRepositoryResponses, forksListForksData, forksListForksErrors, forksListForksResponses, gitGetHeadData, gitGetHeadErrors, gitGetHeadResponses, gitGetInfoPacksData, gitGetInfoPacksErrors, gitGetInfoPacksResponses, gitGetInfoRefsData, gitGetInfoRefsErrors, gitGetInfoRefsResponses, gitGetLooseObjectData, gitGetLooseObjectErrors, gitGetLooseObjectResponses, gitGetPackFileData, gitGetPackFileErrors, gitGetPackFileResponses, gitGitReceivePackData, gitGitReceivePackErrors, gitGitReceivePackResponses, gitGitUploadPackData, gitGitUploadPackErrors, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationErrors, organizationsCreateOrganizationResponses, organizationsListOrganizationsData, organizationsListOrganizationsErrors, organizationsListOrganizationsResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesListUserRepositoriesData, profilesListUserRepositoriesErrors, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesErrors, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameData, profilesReadUserByUsernameErrors, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseErrors, releasesCreateReleaseResponses, releasesGetReleaseData, releasesGetReleaseErrors, releasesGetReleaseResponses, releasesListReleasesData, releasesListReleasesErrors, releasesListReleasesResponses, releasesListTagsData, releasesListTagsErrors, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseErrors, releasesUpdateReleaseResponses, repositoriesCreateIssueData, repositoriesCreateIssueErrors, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestErrors, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryErrors, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryData, repositoriesDeleteRepositoryErrors, repositoriesDeleteRepositoryResponses, repositoriesGetBlameData, repositoriesGetBlameErrors, repositoriesGetBlameResponses, repositoriesGetBlobData, repositoriesGetBlobErrors, repositoriesGetBlobResponses, repositoriesGetCommitData, repositoriesGetCommitErrors, repositoriesGetCommitResponses, repositoriesGetFileIndexData, repositoriesGetFileIndexErrors, repositoriesGetFileIndexResponses, repositoriesGetIssueData, repositoriesGetIssueErrors, repositoriesGetIssueResponses, repositoriesGetPullRequestData, repositoriesGetPullRequestErrors, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesErrors, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestResponses, repositoriesGetRawData, repositoriesGetRawErrors, repositoriesGetRawResponses, repositoriesGetReadmeData, repositoriesGetReadmeErrors, repositoriesGetReadmeResponses, repositoriesGetRepositoryData, repositoriesGetRepositoryErrors, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoErrors, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceData, repositoriesGetSourceErrors, repositoriesGetSourceResponses, repositoriesGetStatisticsData, repositoriesGetStatisticsErrors, repositoriesGetStatisticsResponses, repositoriesGetTreeData, repositoriesGetTreeErrors, repositoriesGetTreeResponses, repositoriesListBranchesData, repositoriesListBranchesErrors, repositoriesListBranchesResponses, repositoriesListCommitsData, repositoriesListCommitsErrors, repositoriesListCommitsResponses, repositoriesListIssuesData, repositoriesListIssuesErrors, repositoriesListIssuesResponses, repositoriesListPullRequestsData, repositoriesListPullRequestsErrors, repositoriesListPullRequestsResponses, repositoriesListRepositoriesData, repositoriesListRepositoriesResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueErrors, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestErrors, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryErrors, repositoriesUpdateRepositoryResponses, starsGetStarStateData, starsGetStarStateErrors, starsGetStarStateResponses, starsListStargazersData, starsListStargazersErrors, starsListStargazersResponses, starsListStarredRepositoriesData, starsListStarredRepositoriesErrors, starsListStarredRepositoriesResponses, starsStarRepositoryData, starsStarRepositoryErrors, starsStarRepositoryResponses, starsUnstarRepositoryData, starsUnstarRepositoryErrors, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, watchersGetWatchStateData, watchersGetWatchStateErrors, watchersGetWatchStateResponses, watchersListWatchersData, watchersListWatchersErrors, watchersListWatchersResponses, watchersUnwatchRepositoryData, watchersUnwatchRepositoryErrors, watchersUnwatchRepositoryResponses, watchersWatchRepositoryData, watchersWatchRepositoryErrors, watchersWatchRepositoryResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -46,7 +46,11 @@ export class LoginService {
      */
     public static testToken<ThrowOnError extends boolean = true>(options?: Options<loginTestTokenData, ThrowOnError>): RequestResult<loginTestTokenResponses, unknown, ThrowOnError> {
         return (options?.client ?? client).post<loginTestTokenResponses, unknown, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/login/test-token',
             ...options
         });
@@ -84,7 +88,11 @@ export class LoginService {
      */
     public static recoverPasswordHtmlContent<ThrowOnError extends boolean = true>(options: Options<loginRecoverPasswordHtmlContentData, ThrowOnError>): RequestResult<loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordHtmlContentErrors, ThrowOnError> {
         return (options.client ?? client).post<loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordHtmlContentErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/password-recovery-html-content/{email}',
             ...options
         });
@@ -99,7 +107,11 @@ export class UsersService {
      */
     public static readUsers<ThrowOnError extends boolean = true>(options?: Options<usersReadUsersData, ThrowOnError>): RequestResult<usersReadUsersResponses, usersReadUsersErrors, ThrowOnError> {
         return (options?.client ?? client).get<usersReadUsersResponses, usersReadUsersErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/users/',
             ...options
         });
@@ -112,7 +124,11 @@ export class UsersService {
      */
     public static createUser<ThrowOnError extends boolean = true>(options: Options<usersCreateUserData, ThrowOnError>): RequestResult<usersCreateUserResponses, usersCreateUserErrors, ThrowOnError> {
         return (options.client ?? client).post<usersCreateUserResponses, usersCreateUserErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/users/',
             ...options,
             headers: {
@@ -129,7 +145,11 @@ export class UsersService {
      */
     public static deleteUserMe<ThrowOnError extends boolean = true>(options?: Options<usersDeleteUserMeData, ThrowOnError>): RequestResult<usersDeleteUserMeResponses, unknown, ThrowOnError> {
         return (options?.client ?? client).delete<usersDeleteUserMeResponses, unknown, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/users/me',
             ...options
         });
@@ -142,7 +162,11 @@ export class UsersService {
      */
     public static readUserMe<ThrowOnError extends boolean = true>(options?: Options<usersReadUserMeData, ThrowOnError>): RequestResult<usersReadUserMeResponses, unknown, ThrowOnError> {
         return (options?.client ?? client).get<usersReadUserMeResponses, unknown, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/users/me',
             ...options
         });
@@ -155,7 +179,11 @@ export class UsersService {
      */
     public static updateUserMe<ThrowOnError extends boolean = true>(options: Options<usersUpdateUserMeData, ThrowOnError>): RequestResult<usersUpdateUserMeResponses, usersUpdateUserMeErrors, ThrowOnError> {
         return (options.client ?? client).patch<usersUpdateUserMeResponses, usersUpdateUserMeErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/users/me',
             ...options,
             headers: {
@@ -172,7 +200,11 @@ export class UsersService {
      */
     public static updatePasswordMe<ThrowOnError extends boolean = true>(options: Options<usersUpdatePasswordMeData, ThrowOnError>): RequestResult<usersUpdatePasswordMeResponses, usersUpdatePasswordMeErrors, ThrowOnError> {
         return (options.client ?? client).patch<usersUpdatePasswordMeResponses, usersUpdatePasswordMeErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/users/me/password',
             ...options,
             headers: {
@@ -205,7 +237,11 @@ export class UsersService {
      */
     public static deleteUser<ThrowOnError extends boolean = true>(options: Options<usersDeleteUserData, ThrowOnError>): RequestResult<usersDeleteUserResponses, usersDeleteUserErrors, ThrowOnError> {
         return (options.client ?? client).delete<usersDeleteUserResponses, usersDeleteUserErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/users/{user_id}',
             ...options
         });
@@ -218,7 +254,11 @@ export class UsersService {
      */
     public static updateUser<ThrowOnError extends boolean = true>(options: Options<usersUpdateUserData, ThrowOnError>): RequestResult<usersUpdateUserResponses, usersUpdateUserErrors, ThrowOnError> {
         return (options.client ?? client).patch<usersUpdateUserResponses, usersUpdateUserErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/users/{user_id}',
             ...options,
             headers: {
@@ -244,7 +284,15 @@ export class GitService {
      * Response with refs.
      */
     public static getInfoRefs<ThrowOnError extends boolean = true>(options: Options<gitGetInfoRefsData, ThrowOnError>): RequestResult<gitGetInfoRefsResponses, gitGetInfoRefsErrors, ThrowOnError> {
-        return (options.client ?? client).get<gitGetInfoRefsResponses, gitGetInfoRefsErrors, ThrowOnError>({ url: '/api/v1/{repo_path}/info/refs', ...options });
+        return (options.client ?? client).get<gitGetInfoRefsResponses, gitGetInfoRefsErrors, ThrowOnError>({
+            security: [{ scheme: 'basic', type: 'http' }, {
+                    key: 'HTTPBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/{repo_path}/info/refs',
+            ...options
+        });
     }
     
     /**
@@ -261,7 +309,15 @@ export class GitService {
      * Response with HEAD.
      */
     public static getHead<ThrowOnError extends boolean = true>(options: Options<gitGetHeadData, ThrowOnError>): RequestResult<gitGetHeadResponses, gitGetHeadErrors, ThrowOnError> {
-        return (options.client ?? client).get<gitGetHeadResponses, gitGetHeadErrors, ThrowOnError>({ url: '/api/v1/{repo_path}/HEAD', ...options });
+        return (options.client ?? client).get<gitGetHeadResponses, gitGetHeadErrors, ThrowOnError>({
+            security: [{ scheme: 'basic', type: 'http' }, {
+                    key: 'HTTPBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/{repo_path}/HEAD',
+            ...options
+        });
     }
     
     /**
@@ -278,7 +334,15 @@ export class GitService {
      * Response with pack info.
      */
     public static getInfoPacks<ThrowOnError extends boolean = true>(options: Options<gitGetInfoPacksData, ThrowOnError>): RequestResult<gitGetInfoPacksResponses, gitGetInfoPacksErrors, ThrowOnError> {
-        return (options.client ?? client).get<gitGetInfoPacksResponses, gitGetInfoPacksErrors, ThrowOnError>({ url: '/api/v1/{repo_path}/objects/info/packs', ...options });
+        return (options.client ?? client).get<gitGetInfoPacksResponses, gitGetInfoPacksErrors, ThrowOnError>({
+            security: [{ scheme: 'basic', type: 'http' }, {
+                    key: 'HTTPBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/{repo_path}/objects/info/packs',
+            ...options
+        });
     }
     
     /**
@@ -297,7 +361,15 @@ export class GitService {
      * Response with object data.
      */
     public static getLooseObject<ThrowOnError extends boolean = true>(options: Options<gitGetLooseObjectData, ThrowOnError>): RequestResult<gitGetLooseObjectResponses, gitGetLooseObjectErrors, ThrowOnError> {
-        return (options.client ?? client).get<gitGetLooseObjectResponses, gitGetLooseObjectErrors, ThrowOnError>({ url: '/api/v1/{repo_path}/objects/{prefix}/{suffix}', ...options });
+        return (options.client ?? client).get<gitGetLooseObjectResponses, gitGetLooseObjectErrors, ThrowOnError>({
+            security: [{ scheme: 'basic', type: 'http' }, {
+                    key: 'HTTPBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/{repo_path}/objects/{prefix}/{suffix}',
+            ...options
+        });
     }
     
     /**
@@ -315,7 +387,15 @@ export class GitService {
      * Response with pack/index data.
      */
     public static getPackFile<ThrowOnError extends boolean = true>(options: Options<gitGetPackFileData, ThrowOnError>): RequestResult<gitGetPackFileResponses, gitGetPackFileErrors, ThrowOnError> {
-        return (options.client ?? client).get<gitGetPackFileResponses, gitGetPackFileErrors, ThrowOnError>({ url: '/api/v1/{repo_path}/objects/pack/{pack_file}', ...options });
+        return (options.client ?? client).get<gitGetPackFileResponses, gitGetPackFileErrors, ThrowOnError>({
+            security: [{ scheme: 'basic', type: 'http' }, {
+                    key: 'HTTPBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/{repo_path}/objects/pack/{pack_file}',
+            ...options
+        });
     }
     
     /**
@@ -332,7 +412,15 @@ export class GitService {
      * Response with pack data.
      */
     public static gitUploadPack<ThrowOnError extends boolean = true>(options: Options<gitGitUploadPackData, ThrowOnError>): RequestResult<gitGitUploadPackResponses, gitGitUploadPackErrors, ThrowOnError> {
-        return (options.client ?? client).post<gitGitUploadPackResponses, gitGitUploadPackErrors, ThrowOnError>({ url: '/api/v1/{repo_path}/git-upload-pack', ...options });
+        return (options.client ?? client).post<gitGitUploadPackResponses, gitGitUploadPackErrors, ThrowOnError>({
+            security: [{ scheme: 'basic', type: 'http' }, {
+                    key: 'HTTPBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/{repo_path}/git-upload-pack',
+            ...options
+        });
     }
     
     /**
@@ -349,7 +437,15 @@ export class GitService {
      * Response with push result.
      */
     public static gitReceivePack<ThrowOnError extends boolean = true>(options: Options<gitGitReceivePackData, ThrowOnError>): RequestResult<gitGitReceivePackResponses, gitGitReceivePackErrors, ThrowOnError> {
-        return (options.client ?? client).post<gitGitReceivePackResponses, gitGitReceivePackErrors, ThrowOnError>({ url: '/api/v1/{repo_path}/git-receive-pack', ...options });
+        return (options.client ?? client).post<gitGitReceivePackResponses, gitGitReceivePackErrors, ThrowOnError>({
+            security: [{ scheme: 'basic', type: 'http' }, {
+                    key: 'HTTPBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/{repo_path}/git-receive-pack',
+            ...options
+        });
     }
 }
 
@@ -370,13 +466,269 @@ export class OrganizationsService {
      */
     public static createOrganization<ThrowOnError extends boolean = true>(options: Options<organizationsCreateOrganizationData, ThrowOnError>): RequestResult<organizationsCreateOrganizationResponses, organizationsCreateOrganizationErrors, ThrowOnError> {
         return (options.client ?? client).post<organizationsCreateOrganizationResponses, organizationsCreateOrganizationErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/organizations/',
             ...options,
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers
             }
+        });
+    }
+}
+
+export class AuthorizationService {
+    /**
+     * Get Permissions
+     *
+     * Return effective permissions for the current viewer.
+     */
+    public static getPermissions<ThrowOnError extends boolean = true>(options: Options<authorizationGetPermissionsData, ThrowOnError>): RequestResult<authorizationGetPermissionsResponses, authorizationGetPermissionsErrors, ThrowOnError> {
+        return (options.client ?? client).get<authorizationGetPermissionsResponses, authorizationGetPermissionsErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/permissions',
+            ...options
+        });
+    }
+    
+    /**
+     * List Collaborator Teams
+     *
+     * List teams eligible for grants on this repository.
+     */
+    public static listCollaboratorTeams<ThrowOnError extends boolean = true>(options: Options<authorizationListCollaboratorTeamsData, ThrowOnError>): RequestResult<authorizationListCollaboratorTeamsResponses, authorizationListCollaboratorTeamsErrors, ThrowOnError> {
+        return (options.client ?? client).get<authorizationListCollaboratorTeamsResponses, authorizationListCollaboratorTeamsErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/collaborator-teams',
+            ...options
+        });
+    }
+    
+    /**
+     * List Members
+     *
+     * List an organization's members.
+     */
+    public static listMembers<ThrowOnError extends boolean = true>(options: Options<authorizationListMembersData, ThrowOnError>): RequestResult<authorizationListMembersResponses, authorizationListMembersErrors, ThrowOnError> {
+        return (options.client ?? client).get<authorizationListMembersResponses, authorizationListMembersErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/organizations/{organization}/members',
+            ...options
+        });
+    }
+    
+    /**
+     * Remove Member
+     *
+     * Remove a member and revoke their team memberships.
+     */
+    public static removeMember<ThrowOnError extends boolean = true>(options: Options<authorizationRemoveMemberData, ThrowOnError>): RequestResult<authorizationRemoveMemberResponses, authorizationRemoveMemberErrors, ThrowOnError> {
+        return (options.client ?? client).delete<authorizationRemoveMemberResponses, authorizationRemoveMemberErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/organizations/{organization}/members/{user_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Set Member
+     *
+     * Add a member or change their organization role.
+     */
+    public static setMember<ThrowOnError extends boolean = true>(options: Options<authorizationSetMemberData, ThrowOnError>): RequestResult<authorizationSetMemberResponses, authorizationSetMemberErrors, ThrowOnError> {
+        return (options.client ?? client).put<authorizationSetMemberResponses, authorizationSetMemberErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/organizations/{organization}/members/{user_id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * List Teams
+     *
+     * List teams in an organization.
+     */
+    public static listTeams<ThrowOnError extends boolean = true>(options: Options<authorizationListTeamsData, ThrowOnError>): RequestResult<authorizationListTeamsResponses, authorizationListTeamsErrors, ThrowOnError> {
+        return (options.client ?? client).get<authorizationListTeamsResponses, authorizationListTeamsErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/organizations/{organization}/teams',
+            ...options
+        });
+    }
+    
+    /**
+     * Create Team
+     *
+     * Create an organization team.
+     */
+    public static createTeam<ThrowOnError extends boolean = true>(options: Options<authorizationCreateTeamData, ThrowOnError>): RequestResult<authorizationCreateTeamResponses, authorizationCreateTeamErrors, ThrowOnError> {
+        return (options.client ?? client).post<authorizationCreateTeamResponses, authorizationCreateTeamErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/organizations/{organization}/teams',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Delete Team
+     *
+     * Delete a team and its memberships and grants.
+     */
+    public static deleteTeam<ThrowOnError extends boolean = true>(options: Options<authorizationDeleteTeamData, ThrowOnError>): RequestResult<authorizationDeleteTeamResponses, authorizationDeleteTeamErrors, ThrowOnError> {
+        return (options.client ?? client).delete<authorizationDeleteTeamResponses, authorizationDeleteTeamErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/organizations/{organization}/teams/{team_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * List Team Members
+     *
+     * List a team's member IDs.
+     */
+    public static listTeamMembers<ThrowOnError extends boolean = true>(options: Options<authorizationListTeamMembersData, ThrowOnError>): RequestResult<authorizationListTeamMembersResponses, authorizationListTeamMembersErrors, ThrowOnError> {
+        return (options.client ?? client).get<authorizationListTeamMembersResponses, authorizationListTeamMembersErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/organizations/{organization}/teams/{team_id}/members',
+            ...options
+        });
+    }
+    
+    /**
+     * Remove Team Member
+     *
+     * Remove a team membership.
+     */
+    public static removeTeamMember<ThrowOnError extends boolean = true>(options: Options<authorizationRemoveTeamMemberData, ThrowOnError>): RequestResult<authorizationRemoveTeamMemberResponses, authorizationRemoveTeamMemberErrors, ThrowOnError> {
+        return (options.client ?? client).delete<authorizationRemoveTeamMemberResponses, authorizationRemoveTeamMemberErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/organizations/{organization}/teams/{team_id}/members/{user_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Set Team Member
+     *
+     * Add an existing organization member to a team.
+     */
+    public static setTeamMember<ThrowOnError extends boolean = true>(options: Options<authorizationSetTeamMemberData, ThrowOnError>): RequestResult<authorizationSetTeamMemberResponses, authorizationSetTeamMemberErrors, ThrowOnError> {
+        return (options.client ?? client).put<authorizationSetTeamMemberResponses, authorizationSetTeamMemberErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/organizations/{organization}/teams/{team_id}/members/{user_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * List Collaborators
+     *
+     * List explicit repository collaborators.
+     */
+    public static listCollaborators<ThrowOnError extends boolean = true>(options: Options<authorizationListCollaboratorsData, ThrowOnError>): RequestResult<authorizationListCollaboratorsResponses, authorizationListCollaboratorsErrors, ThrowOnError> {
+        return (options.client ?? client).get<authorizationListCollaboratorsResponses, authorizationListCollaboratorsErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/collaborators',
+            ...options
+        });
+    }
+    
+    /**
+     * Set Collaborator
+     *
+     * Add or update a user or team's repository role.
+     */
+    public static setCollaborator<ThrowOnError extends boolean = true>(options: Options<authorizationSetCollaboratorData, ThrowOnError>): RequestResult<authorizationSetCollaboratorResponses, authorizationSetCollaboratorErrors, ThrowOnError> {
+        return (options.client ?? client).put<authorizationSetCollaboratorResponses, authorizationSetCollaboratorErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/collaborators',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Remove Collaborator
+     *
+     * Revoke an explicit repository role.
+     */
+    public static removeCollaborator<ThrowOnError extends boolean = true>(options: Options<authorizationRemoveCollaboratorData, ThrowOnError>): RequestResult<authorizationRemoveCollaboratorResponses, authorizationRemoveCollaboratorErrors, ThrowOnError> {
+        return (options.client ?? client).delete<authorizationRemoveCollaboratorResponses, authorizationRemoveCollaboratorErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/collaborators/{collaborator_id}',
+            ...options
         });
     }
 }
@@ -389,7 +741,11 @@ export class StarsService {
      */
     public static unstarRepository<ThrowOnError extends boolean = true>(options: Options<starsUnstarRepositoryData, ThrowOnError>): RequestResult<starsUnstarRepositoryResponses, starsUnstarRepositoryErrors, ThrowOnError> {
         return (options.client ?? client).delete<starsUnstarRepositoryResponses, starsUnstarRepositoryErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}/star',
             ...options
         });
@@ -402,7 +758,11 @@ export class StarsService {
      */
     public static getStarState<ThrowOnError extends boolean = true>(options: Options<starsGetStarStateData, ThrowOnError>): RequestResult<starsGetStarStateResponses, starsGetStarStateErrors, ThrowOnError> {
         return (options.client ?? client).get<starsGetStarStateResponses, starsGetStarStateErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}/star',
             ...options
         });
@@ -415,7 +775,11 @@ export class StarsService {
      */
     public static starRepository<ThrowOnError extends boolean = true>(options: Options<starsStarRepositoryData, ThrowOnError>): RequestResult<starsStarRepositoryResponses, starsStarRepositoryErrors, ThrowOnError> {
         return (options.client ?? client).put<starsStarRepositoryResponses, starsStarRepositoryErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}/star',
             ...options
         });
@@ -427,7 +791,15 @@ export class StarsService {
      * List users who starred a repository.
      */
     public static listStargazers<ThrowOnError extends boolean = true>(options: Options<starsListStargazersData, ThrowOnError>): RequestResult<starsListStargazersResponses, starsListStargazersErrors, ThrowOnError> {
-        return (options.client ?? client).get<starsListStargazersResponses, starsListStargazersErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/stargazers', ...options });
+        return (options.client ?? client).get<starsListStargazersResponses, starsListStargazersErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/stargazers',
+            ...options
+        });
     }
     
     /**
@@ -437,7 +809,11 @@ export class StarsService {
      */
     public static listStarredRepositories<ThrowOnError extends boolean = true>(options?: Options<starsListStarredRepositoriesData, ThrowOnError>): RequestResult<starsListStarredRepositoriesResponses, starsListStarredRepositoriesErrors, ThrowOnError> {
         return (options?.client ?? client).get<starsListStarredRepositoriesResponses, starsListStarredRepositoriesErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/users/me/starred',
             ...options
         });
@@ -452,7 +828,11 @@ export class WatchersService {
      */
     public static unwatchRepository<ThrowOnError extends boolean = true>(options: Options<watchersUnwatchRepositoryData, ThrowOnError>): RequestResult<watchersUnwatchRepositoryResponses, watchersUnwatchRepositoryErrors, ThrowOnError> {
         return (options.client ?? client).delete<watchersUnwatchRepositoryResponses, watchersUnwatchRepositoryErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}/watch',
             ...options
         });
@@ -465,7 +845,11 @@ export class WatchersService {
      */
     public static getWatchState<ThrowOnError extends boolean = true>(options: Options<watchersGetWatchStateData, ThrowOnError>): RequestResult<watchersGetWatchStateResponses, watchersGetWatchStateErrors, ThrowOnError> {
         return (options.client ?? client).get<watchersGetWatchStateResponses, watchersGetWatchStateErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}/watch',
             ...options
         });
@@ -478,7 +862,11 @@ export class WatchersService {
      */
     public static watchRepository<ThrowOnError extends boolean = true>(options: Options<watchersWatchRepositoryData, ThrowOnError>): RequestResult<watchersWatchRepositoryResponses, watchersWatchRepositoryErrors, ThrowOnError> {
         return (options.client ?? client).put<watchersWatchRepositoryResponses, watchersWatchRepositoryErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}/watch',
             ...options
         });
@@ -490,7 +878,15 @@ export class WatchersService {
      * List users watching a repository.
      */
     public static listWatchers<ThrowOnError extends boolean = true>(options: Options<watchersListWatchersData, ThrowOnError>): RequestResult<watchersListWatchersResponses, watchersListWatchersErrors, ThrowOnError> {
-        return (options.client ?? client).get<watchersListWatchersResponses, watchersListWatchersErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/watchers', ...options });
+        return (options.client ?? client).get<watchersListWatchersResponses, watchersListWatchersErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/watchers',
+            ...options
+        });
     }
 }
 
@@ -501,7 +897,15 @@ export class ForksService {
      * List forks of a repository.
      */
     public static listForks<ThrowOnError extends boolean = true>(options: Options<forksListForksData, ThrowOnError>): RequestResult<forksListForksResponses, forksListForksErrors, ThrowOnError> {
-        return (options.client ?? client).get<forksListForksResponses, forksListForksErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/forks', ...options });
+        return (options.client ?? client).get<forksListForksResponses, forksListForksErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/forks',
+            ...options
+        });
     }
     
     /**
@@ -511,7 +915,11 @@ export class ForksService {
      */
     public static forkRepository<ThrowOnError extends boolean = true>(options: Options<forksForkRepositoryData, ThrowOnError>): RequestResult<forksForkRepositoryResponses, forksForkRepositoryErrors, ThrowOnError> {
         return (options.client ?? client).post<forksForkRepositoryResponses, forksForkRepositoryErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}/forks',
             ...options,
             headers: {
@@ -529,7 +937,15 @@ export class CommentsService {
      * List comments for an issue or pull request.
      */
     public static listComments<ThrowOnError extends boolean = true>(options: Options<commentsListCommentsData, ThrowOnError>): RequestResult<commentsListCommentsResponses, commentsListCommentsErrors, ThrowOnError> {
-        return (options.client ?? client).get<commentsListCommentsResponses, commentsListCommentsErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/issues/{number}/comments', ...options });
+        return (options.client ?? client).get<commentsListCommentsResponses, commentsListCommentsErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/issues/{number}/comments',
+            ...options
+        });
     }
     
     /**
@@ -539,7 +955,11 @@ export class CommentsService {
      */
     public static createComment<ThrowOnError extends boolean = true>(options: Options<commentsCreateCommentData, ThrowOnError>): RequestResult<commentsCreateCommentResponses, commentsCreateCommentErrors, ThrowOnError> {
         return (options.client ?? client).post<commentsCreateCommentResponses, commentsCreateCommentErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}/issues/{number}/comments',
             ...options,
             headers: {
@@ -556,7 +976,11 @@ export class CommentsService {
      */
     public static deleteComment<ThrowOnError extends boolean = true>(options: Options<commentsDeleteCommentData, ThrowOnError>): RequestResult<commentsDeleteCommentResponses, commentsDeleteCommentErrors, ThrowOnError> {
         return (options.client ?? client).delete<commentsDeleteCommentResponses, commentsDeleteCommentErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/comments/{comment_id}',
             ...options
         });
@@ -569,7 +993,11 @@ export class CommentsService {
      */
     public static updateComment<ThrowOnError extends boolean = true>(options: Options<commentsUpdateCommentData, ThrowOnError>): RequestResult<commentsUpdateCommentResponses, commentsUpdateCommentErrors, ThrowOnError> {
         return (options.client ?? client).patch<commentsUpdateCommentResponses, commentsUpdateCommentErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/comments/{comment_id}',
             ...options,
             headers: {
@@ -587,7 +1015,15 @@ export class ReleasesService {
      * List releases for a repository.
      */
     public static listReleases<ThrowOnError extends boolean = true>(options: Options<releasesListReleasesData, ThrowOnError>): RequestResult<releasesListReleasesResponses, releasesListReleasesErrors, ThrowOnError> {
-        return (options.client ?? client).get<releasesListReleasesResponses, releasesListReleasesErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/releases', ...options });
+        return (options.client ?? client).get<releasesListReleasesResponses, releasesListReleasesErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/releases',
+            ...options
+        });
     }
     
     /**
@@ -597,7 +1033,11 @@ export class ReleasesService {
      */
     public static createRelease<ThrowOnError extends boolean = true>(options: Options<releasesCreateReleaseData, ThrowOnError>): RequestResult<releasesCreateReleaseResponses, releasesCreateReleaseErrors, ThrowOnError> {
         return (options.client ?? client).post<releasesCreateReleaseResponses, releasesCreateReleaseErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}/releases',
             ...options,
             headers: {
@@ -613,7 +1053,15 @@ export class ReleasesService {
      * Get a single release by tag name.
      */
     public static getRelease<ThrowOnError extends boolean = true>(options: Options<releasesGetReleaseData, ThrowOnError>): RequestResult<releasesGetReleaseResponses, releasesGetReleaseErrors, ThrowOnError> {
-        return (options.client ?? client).get<releasesGetReleaseResponses, releasesGetReleaseErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/releases/{tag_name}', ...options });
+        return (options.client ?? client).get<releasesGetReleaseResponses, releasesGetReleaseErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/releases/{tag_name}',
+            ...options
+        });
     }
     
     /**
@@ -623,7 +1071,11 @@ export class ReleasesService {
      */
     public static updateRelease<ThrowOnError extends boolean = true>(options: Options<releasesUpdateReleaseData, ThrowOnError>): RequestResult<releasesUpdateReleaseResponses, releasesUpdateReleaseErrors, ThrowOnError> {
         return (options.client ?? client).patch<releasesUpdateReleaseResponses, releasesUpdateReleaseErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}/releases/{tag_name}',
             ...options,
             headers: {
@@ -639,7 +1091,15 @@ export class ReleasesService {
      * List Git tags for a repository.
      */
     public static listTags<ThrowOnError extends boolean = true>(options: Options<releasesListTagsData, ThrowOnError>): RequestResult<releasesListTagsResponses, releasesListTagsErrors, ThrowOnError> {
-        return (options.client ?? client).get<releasesListTagsResponses, releasesListTagsErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/tags', ...options });
+        return (options.client ?? client).get<releasesListTagsResponses, releasesListTagsErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/tags',
+            ...options
+        });
     }
 }
 
@@ -650,7 +1110,15 @@ export class ActivityService {
      * Get pulse, contributors, code frequency, and recent commit statistics.
      */
     public static getRepositoryActivityStatistics<ThrowOnError extends boolean = true>(options: Options<activityGetRepositoryActivityStatisticsData, ThrowOnError>): RequestResult<activityGetRepositoryActivityStatisticsResponses, activityGetRepositoryActivityStatisticsErrors, ThrowOnError> {
-        return (options.client ?? client).get<activityGetRepositoryActivityStatisticsResponses, activityGetRepositoryActivityStatisticsErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/activity/statistics', ...options });
+        return (options.client ?? client).get<activityGetRepositoryActivityStatisticsResponses, activityGetRepositoryActivityStatisticsErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/activity/statistics',
+            ...options
+        });
     }
     
     /**
@@ -659,7 +1127,15 @@ export class ActivityService {
      * List activity for a repository.
      */
     public static getRepositoryActivity<ThrowOnError extends boolean = true>(options: Options<activityGetRepositoryActivityData, ThrowOnError>): RequestResult<activityGetRepositoryActivityResponses, activityGetRepositoryActivityErrors, ThrowOnError> {
-        return (options.client ?? client).get<activityGetRepositoryActivityResponses, activityGetRepositoryActivityErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/activity', ...options });
+        return (options.client ?? client).get<activityGetRepositoryActivityResponses, activityGetRepositoryActivityErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/activity',
+            ...options
+        });
     }
     
     /**
@@ -669,7 +1145,11 @@ export class ActivityService {
      */
     public static getFeed<ThrowOnError extends boolean = true>(options?: Options<activityGetFeedData, ThrowOnError>): RequestResult<activityGetFeedResponses, activityGetFeedErrors, ThrowOnError> {
         return (options?.client ?? client).get<activityGetFeedResponses, activityGetFeedErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/users/me/feed',
             ...options
         });
@@ -692,7 +1172,15 @@ export class ProfilesService {
      * List repositories owned by a user or organization.
      */
     public static listUserRepositories<ThrowOnError extends boolean = true>(options: Options<profilesListUserRepositoriesData, ThrowOnError>): RequestResult<profilesListUserRepositoriesResponses, profilesListUserRepositoriesErrors, ThrowOnError> {
-        return (options.client ?? client).get<profilesListUserRepositoriesResponses, profilesListUserRepositoriesErrors, ThrowOnError>({ url: '/api/v1/users/{username}/repositories', ...options });
+        return (options.client ?? client).get<profilesListUserRepositoriesResponses, profilesListUserRepositoriesErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/users/{username}/repositories',
+            ...options
+        });
     }
     
     /**
@@ -704,7 +1192,15 @@ export class ProfilesService {
      * HTTPException: If no user matches the name (organizations cannot star).
      */
     public static listUserStarredRepositories<ThrowOnError extends boolean = true>(options: Options<profilesListUserStarredRepositoriesData, ThrowOnError>): RequestResult<profilesListUserStarredRepositoriesResponses, profilesListUserStarredRepositoriesErrors, ThrowOnError> {
-        return (options.client ?? client).get<profilesListUserStarredRepositoriesResponses, profilesListUserStarredRepositoriesErrors, ThrowOnError>({ url: '/api/v1/users/{username}/starred', ...options });
+        return (options.client ?? client).get<profilesListUserStarredRepositoriesResponses, profilesListUserStarredRepositoriesErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/users/{username}/starred',
+            ...options
+        });
     }
 }
 
@@ -715,7 +1211,15 @@ export class RepositoriesService {
      * List all repositories.
      */
     public static listRepositories<ThrowOnError extends boolean = true>(options?: Options<repositoriesListRepositoriesData, ThrowOnError>): RequestResult<repositoriesListRepositoriesResponses, unknown, ThrowOnError> {
-        return (options?.client ?? client).get<repositoriesListRepositoriesResponses, unknown, ThrowOnError>({ url: '/api/v1/repositories/', ...options });
+        return (options?.client ?? client).get<repositoriesListRepositoriesResponses, unknown, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/',
+            ...options
+        });
     }
     
     /**
@@ -725,6 +1229,11 @@ export class RepositoriesService {
      */
     public static createRepository<ThrowOnError extends boolean = true>(options: Options<repositoriesCreateRepositoryData, ThrowOnError>): RequestResult<repositoriesCreateRepositoryResponses, repositoriesCreateRepositoryErrors, ThrowOnError> {
         return (options.client ?? client).post<repositoriesCreateRepositoryResponses, repositoriesCreateRepositoryErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/',
             ...options,
             headers: {
@@ -740,7 +1249,15 @@ export class RepositoriesService {
      * Resolve a directory or file in one source request.
      */
     public static getSource<ThrowOnError extends boolean = true>(options: Options<repositoriesGetSourceData, ThrowOnError>): RequestResult<repositoriesGetSourceResponses, repositoriesGetSourceErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetSourceResponses, repositoriesGetSourceErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/source', ...options });
+        return (options.client ?? client).get<repositoriesGetSourceResponses, repositoriesGetSourceErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/source',
+            ...options
+        });
     }
     
     /**
@@ -749,7 +1266,15 @@ export class RepositoriesService {
      * Get directory listing for a repository path.
      */
     public static getTree<ThrowOnError extends boolean = true>(options: Options<repositoriesGetTreeData, ThrowOnError>): RequestResult<repositoriesGetTreeResponses, repositoriesGetTreeErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetTreeResponses, repositoriesGetTreeErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/tree', ...options });
+        return (options.client ?? client).get<repositoriesGetTreeResponses, repositoriesGetTreeErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/tree',
+            ...options
+        });
     }
     
     /**
@@ -758,7 +1283,15 @@ export class RepositoriesService {
      * Get file content with syntax highlighting.
      */
     public static getBlob<ThrowOnError extends boolean = true>(options: Options<repositoriesGetBlobData, ThrowOnError>): RequestResult<repositoriesGetBlobResponses, repositoriesGetBlobErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetBlobResponses, repositoriesGetBlobErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/blob', ...options });
+        return (options.client ?? client).get<repositoriesGetBlobResponses, repositoriesGetBlobErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/blob',
+            ...options
+        });
     }
     
     /**
@@ -767,7 +1300,15 @@ export class RepositoriesService {
      * Get line attribution for a file at a revision.
      */
     public static getBlame<ThrowOnError extends boolean = true>(options: Options<repositoriesGetBlameData, ThrowOnError>): RequestResult<repositoriesGetBlameResponses, repositoriesGetBlameErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetBlameResponses, repositoriesGetBlameErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/blame', ...options });
+        return (options.client ?? client).get<repositoriesGetBlameResponses, repositoriesGetBlameErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/blame',
+            ...options
+        });
     }
     
     /**
@@ -776,7 +1317,15 @@ export class RepositoriesService {
      * Get byte-weighted language, size, and commit statistics.
      */
     public static getStatistics<ThrowOnError extends boolean = true>(options: Options<repositoriesGetStatisticsData, ThrowOnError>): RequestResult<repositoriesGetStatisticsResponses, repositoriesGetStatisticsErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetStatisticsResponses, repositoriesGetStatisticsErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/statistics', ...options });
+        return (options.client ?? client).get<repositoriesGetStatisticsResponses, repositoriesGetStatisticsErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/statistics',
+            ...options
+        });
     }
     
     /**
@@ -785,7 +1334,15 @@ export class RepositoriesService {
      * Get searchable file paths at a revision.
      */
     public static getFileIndex<ThrowOnError extends boolean = true>(options: Options<repositoriesGetFileIndexData, ThrowOnError>): RequestResult<repositoriesGetFileIndexResponses, repositoriesGetFileIndexErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetFileIndexResponses, repositoriesGetFileIndexErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/files', ...options });
+        return (options.client ?? client).get<repositoriesGetFileIndexResponses, repositoriesGetFileIndexErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/files',
+            ...options
+        });
     }
     
     /**
@@ -794,7 +1351,15 @@ export class RepositoriesService {
      * Serve original file bytes without interpreting repository content as HTML.
      */
     public static getRaw<ThrowOnError extends boolean = true>(options: Options<repositoriesGetRawData, ThrowOnError>): RequestResult<repositoriesGetRawResponses, repositoriesGetRawErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetRawResponses, repositoriesGetRawErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/raw', ...options });
+        return (options.client ?? client).get<repositoriesGetRawResponses, repositoriesGetRawErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/raw',
+            ...options
+        });
     }
     
     /**
@@ -803,7 +1368,15 @@ export class RepositoriesService {
      * Get extended repository information.
      */
     public static getRepositoryInfo<ThrowOnError extends boolean = true>(options: Options<repositoriesGetRepositoryInfoData, ThrowOnError>): RequestResult<repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryInfoErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryInfoErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/info', ...options });
+        return (options.client ?? client).get<repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryInfoErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/info',
+            ...options
+        });
     }
     
     /**
@@ -812,7 +1385,15 @@ export class RepositoriesService {
      * Get README content from a repository directory.
      */
     public static getReadme<ThrowOnError extends boolean = true>(options: Options<repositoriesGetReadmeData, ThrowOnError>): RequestResult<repositoriesGetReadmeResponses, repositoriesGetReadmeErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetReadmeResponses, repositoriesGetReadmeErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/readme', ...options });
+        return (options.client ?? client).get<repositoriesGetReadmeResponses, repositoriesGetReadmeErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/readme',
+            ...options
+        });
     }
     
     /**
@@ -821,7 +1402,15 @@ export class RepositoriesService {
      * List all branches in a repository.
      */
     public static listBranches<ThrowOnError extends boolean = true>(options: Options<repositoriesListBranchesData, ThrowOnError>): RequestResult<repositoriesListBranchesResponses, repositoriesListBranchesErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesListBranchesResponses, repositoriesListBranchesErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/branches', ...options });
+        return (options.client ?? client).get<repositoriesListBranchesResponses, repositoriesListBranchesErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/branches',
+            ...options
+        });
     }
     
     /**
@@ -830,7 +1419,15 @@ export class RepositoriesService {
      * List commit history for a repository ref.
      */
     public static listCommits<ThrowOnError extends boolean = true>(options: Options<repositoriesListCommitsData, ThrowOnError>): RequestResult<repositoriesListCommitsResponses, repositoriesListCommitsErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesListCommitsResponses, repositoriesListCommitsErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/commits', ...options });
+        return (options.client ?? client).get<repositoriesListCommitsResponses, repositoriesListCommitsErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/commits',
+            ...options
+        });
     }
     
     /**
@@ -839,7 +1436,15 @@ export class RepositoriesService {
      * Get a single commit with its diff.
      */
     public static getCommit<ThrowOnError extends boolean = true>(options: Options<repositoriesGetCommitData, ThrowOnError>): RequestResult<repositoriesGetCommitResponses, repositoriesGetCommitErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetCommitResponses, repositoriesGetCommitErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/commits/{sha}', ...options });
+        return (options.client ?? client).get<repositoriesGetCommitResponses, repositoriesGetCommitErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/commits/{sha}',
+            ...options
+        });
     }
     
     /**
@@ -848,7 +1453,15 @@ export class RepositoriesService {
      * List issues for a repository.
      */
     public static listIssues<ThrowOnError extends boolean = true>(options: Options<repositoriesListIssuesData, ThrowOnError>): RequestResult<repositoriesListIssuesResponses, repositoriesListIssuesErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesListIssuesResponses, repositoriesListIssuesErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/issues', ...options });
+        return (options.client ?? client).get<repositoriesListIssuesResponses, repositoriesListIssuesErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/issues',
+            ...options
+        });
     }
     
     /**
@@ -858,7 +1471,11 @@ export class RepositoriesService {
      */
     public static createIssue<ThrowOnError extends boolean = true>(options: Options<repositoriesCreateIssueData, ThrowOnError>): RequestResult<repositoriesCreateIssueResponses, repositoriesCreateIssueErrors, ThrowOnError> {
         return (options.client ?? client).post<repositoriesCreateIssueResponses, repositoriesCreateIssueErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}/issues',
             ...options,
             headers: {
@@ -874,7 +1491,15 @@ export class RepositoriesService {
      * Get a single issue by number.
      */
     public static getIssue<ThrowOnError extends boolean = true>(options: Options<repositoriesGetIssueData, ThrowOnError>): RequestResult<repositoriesGetIssueResponses, repositoriesGetIssueErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetIssueResponses, repositoriesGetIssueErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/issues/{number}', ...options });
+        return (options.client ?? client).get<repositoriesGetIssueResponses, repositoriesGetIssueErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/issues/{number}',
+            ...options
+        });
     }
     
     /**
@@ -884,7 +1509,11 @@ export class RepositoriesService {
      */
     public static updateIssue<ThrowOnError extends boolean = true>(options: Options<repositoriesUpdateIssueData, ThrowOnError>): RequestResult<repositoriesUpdateIssueResponses, repositoriesUpdateIssueErrors, ThrowOnError> {
         return (options.client ?? client).patch<repositoriesUpdateIssueResponses, repositoriesUpdateIssueErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}/issues/{number}',
             ...options,
             headers: {
@@ -900,7 +1529,15 @@ export class RepositoriesService {
      * List pull requests for a repository.
      */
     public static listPullRequests<ThrowOnError extends boolean = true>(options: Options<repositoriesListPullRequestsData, ThrowOnError>): RequestResult<repositoriesListPullRequestsResponses, repositoriesListPullRequestsErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesListPullRequestsResponses, repositoriesListPullRequestsErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/pulls', ...options });
+        return (options.client ?? client).get<repositoriesListPullRequestsResponses, repositoriesListPullRequestsErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/pulls',
+            ...options
+        });
     }
     
     /**
@@ -910,7 +1547,11 @@ export class RepositoriesService {
      */
     public static createPullRequest<ThrowOnError extends boolean = true>(options: Options<repositoriesCreatePullRequestData, ThrowOnError>): RequestResult<repositoriesCreatePullRequestResponses, repositoriesCreatePullRequestErrors, ThrowOnError> {
         return (options.client ?? client).post<repositoriesCreatePullRequestResponses, repositoriesCreatePullRequestErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}/pulls',
             ...options,
             headers: {
@@ -926,7 +1567,15 @@ export class RepositoriesService {
      * Get a single pull request by number.
      */
     public static getPullRequest<ThrowOnError extends boolean = true>(options: Options<repositoriesGetPullRequestData, ThrowOnError>): RequestResult<repositoriesGetPullRequestResponses, repositoriesGetPullRequestErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetPullRequestResponses, repositoriesGetPullRequestErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}', ...options });
+        return (options.client ?? client).get<repositoriesGetPullRequestResponses, repositoriesGetPullRequestErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}',
+            ...options
+        });
     }
     
     /**
@@ -936,7 +1585,11 @@ export class RepositoriesService {
      */
     public static updatePullRequest<ThrowOnError extends boolean = true>(options: Options<repositoriesUpdatePullRequestData, ThrowOnError>): RequestResult<repositoriesUpdatePullRequestResponses, repositoriesUpdatePullRequestErrors, ThrowOnError> {
         return (options.client ?? client).patch<repositoriesUpdatePullRequestResponses, repositoriesUpdatePullRequestErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}',
             ...options,
             headers: {
@@ -952,7 +1605,15 @@ export class RepositoriesService {
      * List the files changed by a pull request, diffed against its base branch.
      */
     public static getPullRequestFiles<ThrowOnError extends boolean = true>(options: Options<repositoriesGetPullRequestFilesData, ThrowOnError>): RequestResult<repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestFilesErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestFilesErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/files', ...options });
+        return (options.client ?? client).get<repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestFilesErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/files',
+            ...options
+        });
     }
     
     /**
@@ -962,7 +1623,11 @@ export class RepositoriesService {
      */
     public static deleteRepository<ThrowOnError extends boolean = true>(options: Options<repositoriesDeleteRepositoryData, ThrowOnError>): RequestResult<repositoriesDeleteRepositoryResponses, repositoriesDeleteRepositoryErrors, ThrowOnError> {
         return (options.client ?? client).delete<repositoriesDeleteRepositoryResponses, repositoriesDeleteRepositoryErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}',
             ...options
         });
@@ -974,7 +1639,15 @@ export class RepositoriesService {
      * Get a specific repository.
      */
     public static getRepository<ThrowOnError extends boolean = true>(options: Options<repositoriesGetRepositoryData, ThrowOnError>): RequestResult<repositoriesGetRepositoryResponses, repositoriesGetRepositoryErrors, ThrowOnError> {
-        return (options.client ?? client).get<repositoriesGetRepositoryResponses, repositoriesGetRepositoryErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}', ...options });
+        return (options.client ?? client).get<repositoriesGetRepositoryResponses, repositoriesGetRepositoryErrors, ThrowOnError>({
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
+            url: '/api/v1/repositories/{owner}/{repo}',
+            ...options
+        });
     }
     
     /**
@@ -984,7 +1657,11 @@ export class RepositoriesService {
      */
     public static updateRepository<ThrowOnError extends boolean = true>(options: Options<repositoriesUpdateRepositoryData, ThrowOnError>): RequestResult<repositoriesUpdateRepositoryResponses, repositoriesUpdateRepositoryErrors, ThrowOnError> {
         return (options.client ?? client).patch<repositoriesUpdateRepositoryResponses, repositoriesUpdateRepositoryErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/repositories/{owner}/{repo}',
             ...options,
             headers: {
@@ -1003,7 +1680,11 @@ export class UtilsService {
      */
     public static testEmail<ThrowOnError extends boolean = true>(options: Options<utilsTestEmailData, ThrowOnError>): RequestResult<utilsTestEmailResponses, utilsTestEmailErrors, ThrowOnError> {
         return (options.client ?? client).post<utilsTestEmailResponses, utilsTestEmailErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
+            security: [{
+                    key: 'OAuth2PasswordBearer',
+                    scheme: 'bearer',
+                    type: 'http'
+                }],
             url: '/api/v1/utils/test-email/',
             ...options
         });

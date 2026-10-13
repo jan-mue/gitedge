@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from app.config import settings
+from app.entities.repositories import Repository
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -42,11 +43,19 @@ def test_star_and_unstar_repository(
     assert len(fake_stores.stars.items) == 0
 
 
+@pytest.fixture(autouse=True)
+def existing_repository(fake_stores: FakeStores) -> None:
+    """Feature tests operate on an existing public repository."""
+    owner = next(iter(fake_stores.users.items.values()))
+    repository = Repository(owner_id=owner.id, name=REPO_NAME, default_branch="main", is_private=False)
+    fake_stores.repository.persist(repository)
+    repository.owner = owner
+
+
 @pytest.mark.usefixtures("fake_stores")
 def test_star_state_for_unknown_repository(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
-    r = client.get(STAR_URL, headers=superuser_token_headers)
-    assert r.status_code == 200
-    assert r.json() == {"is_starred": False, "stars_count": 0}
+    r = client.get(STAR_URL.replace(REPO_NAME, "missing"), headers=superuser_token_headers)
+    assert r.status_code == 404
 
 
 @pytest.mark.usefixtures("fake_stores")

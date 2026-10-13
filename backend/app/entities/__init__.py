@@ -1,4 +1,5 @@
 from app.entities.activity import Activity
+from app.entities.authorization import OrganizationMember, RepositoryCollaborator, Team, TeamMember
 from app.entities.comments import Comment
 from app.entities.issues import Issue
 from app.entities.organizations import Organization
@@ -15,11 +16,15 @@ __all__ = [
     "Comment",
     "Issue",
     "Organization",
+    "OrganizationMember",
     "Principal",
     "PullRequest",
     "Release",
     "Repository",
+    "RepositoryCollaborator",
     "Star",
+    "Team",
+    "TeamMember",
     "User",
     "Watcher",
 ]

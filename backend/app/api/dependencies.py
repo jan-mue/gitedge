@@ -7,7 +7,7 @@ from functools import cache
 from typing import TYPE_CHECKING, Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
@@ -16,6 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.activity import ActivityStore, SQLActivityStore
+from app.clients.authorization import AuthorizationStore, SQLAuthorizationStore
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
 from app.clients.cache import (
     AbstractCacheClient,
@@ -36,9 +37,11 @@ from app.clients.stars import SQLStarStore, StarStore
 from app.clients.users import SQLUserStore, UserStore
 from app.clients.watchers import SQLWatcherStore, WatcherStore
 from app.config import settings
+from app.entities.repositories import Repository as RepositoryEntity  # noqa: TC001 -- evaluated by FastAPI dependency
 from app.entities.users import User
 from app.schemas.token import TokenPayload
 from app.services.activity import ActivityService
+from app.services.authorization import AuthorizationService
 from app.services.blob_backend import BlobBackend
 from app.services.comments import CommentService
 from app.services.crud import CrudService
@@ -53,7 +56,7 @@ from app.services.watchers import WatcherService
 from app.utils import security
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Awaitable, Callable
 
     from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -169,6 +172,61 @@ async def get_current_user(user_store: UserStoreDep, token: TokenDep) -> User:
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+optional_oauth2 = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/login/access-token", auto_error=False)
+
+
+async def get_optional_user(
+    request: Request, user_store: UserStoreDep, token: Annotated[str | None, Depends(optional_oauth2)]
+) -> User | None:
+    """Allow absent credentials, but reject any supplied invalid credentials."""
+    if token is not None:
+        return await get_current_user(user_store, token)
+    if request.headers.get("Authorization"):
+        raise HTTPException(
+            status_code=401, detail="Invalid authentication scheme", headers={"WWW-Authenticate": "Bearer"}
+        )
+    return None
+
+
+OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+
+
+def get_authorization_store(session: SessionDep) -> AuthorizationStore:
+    """Get the persistent authorization fact store."""
+    return SQLAuthorizationStore(session)
+
+
+AuthorizationStoreDep = Annotated[AuthorizationStore, Depends(get_authorization_store)]
+
+
+def get_authorization_service(
+    store: AuthorizationStoreDep,
+    repositories: RepositoryStoreDep,
+    organizations: OrganizationStoreDep,
+    users: UserStoreDep,
+) -> AuthorizationService:
+    """Wire the Casbin authorization service."""
+    return AuthorizationService(store, repositories, organizations, users)
+
+
+AuthorizationServiceDep = Annotated[AuthorizationService, Depends(get_authorization_service)]
+
+
+def require_repository(permission: str = "repository:read") -> Callable[..., Awaitable[RepositoryEntity]]:
+    """Declare a repository permission as a native FastAPI dependency."""
+
+    async def authorize(
+        owner: str, repo: str, response: Response, authorization: AuthorizationServiceDep, user: OptionalUser
+    ) -> RepositoryEntity:
+        repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
+        await authorization.require(repository, user, permission)
+        if repository.is_private or user is not None:
+            response.headers["Cache-Control"] = "private, no-store"
+        return repository
+
+    return authorize
 
 
 def get_current_active_superuser(current_user: CurrentUser) -> User:
@@ -322,10 +380,12 @@ def get_repository_service(
     cache_client: CacheClientDep,
     repository_store: RepositoryStoreDep,
     star_store: StarStoreDep,
+    authorization: AuthorizationServiceDep,
 ) -> RepositoryService:
     """Get the repository service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         backend: Git backend dependency.
         blob_client: Blob storage client dependency.
         redis_client: Redis client dependency.
@@ -336,7 +396,9 @@ def get_repository_service(
     Returns:
         Repository service instance.
     """
-    return RepositoryService(backend, blob_client, redis_client, cache_client, repository_store, star_store)
+    return RepositoryService(
+        backend, blob_client, redis_client, cache_client, repository_store, star_store, authorization
+    )
 
 
 RepositoryServiceDep = Annotated[RepositoryService, Depends(get_repository_service)]
@@ -436,10 +498,12 @@ def get_activity_service(
     activity_store: ActivityStoreDep,
     repository_store: RepositoryStoreDep,
     star_store: StarStoreDep,
+    authorization: AuthorizationServiceDep,
 ) -> ActivityService:
     """Get the activity service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         activity_store: Activity store dependency.
         repository_store: Repository store dependency.
         star_store: Star store dependency.
@@ -447,7 +511,7 @@ def get_activity_service(
     Returns:
         Activity service instance.
     """
-    return ActivityService(activity_store, repository_store, star_store)
+    return ActivityService(activity_store, repository_store, star_store, authorization)
 
 
 ActivityServiceDep = Annotated[ActivityService, Depends(get_activity_service)]
@@ -457,10 +521,12 @@ def get_issue_service(
     issue_store: IssueStoreDep,
     repository_store: RepositoryStoreDep,
     activity_service: ActivityServiceDep,
+    authorization: AuthorizationServiceDep,
 ) -> IssueService:
     """Get the issue service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         issue_store: Issue store dependency.
         repository_store: Repository store dependency.
         activity_service: Activity service dependency.
@@ -468,7 +534,7 @@ def get_issue_service(
     Returns:
         Issue service instance.
     """
-    return IssueService(issue_store, repository_store, activity_service)
+    return IssueService(issue_store, repository_store, activity_service, authorization)
 
 
 IssueServiceDep = Annotated[IssueService, Depends(get_issue_service)]
@@ -479,10 +545,12 @@ def get_pull_request_service(
     repository_store: RepositoryStoreDep,
     repository_service: RepositoryServiceDep,
     activity_service: ActivityServiceDep,
+    authorization: AuthorizationServiceDep,
 ) -> PullRequestService:
     """Get the pull request service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         pull_request_store: Pull request store dependency.
         repository_store: Repository store dependency.
         repository_service: Repository service dependency.
@@ -491,7 +559,7 @@ def get_pull_request_service(
     Returns:
         Pull request service instance.
     """
-    return PullRequestService(pull_request_store, repository_store, repository_service, activity_service)
+    return PullRequestService(pull_request_store, repository_store, repository_service, activity_service, authorization)
 
 
 PullRequestServiceDep = Annotated[PullRequestService, Depends(get_pull_request_service)]
@@ -501,10 +569,12 @@ def get_star_service(
     star_store: StarStoreDep,
     repository_store: RepositoryStoreDep,
     activity_service: ActivityServiceDep,
+    authorization: AuthorizationServiceDep,
 ) -> StarService:
     """Get the star service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         star_store: Star store dependency.
         repository_store: Repository store dependency.
         activity_service: Activity service dependency.
@@ -512,7 +582,7 @@ def get_star_service(
     Returns:
         Star service instance.
     """
-    return StarService(star_store, repository_store, activity_service)
+    return StarService(star_store, repository_store, activity_service, authorization)
 
 
 StarServiceDep = Annotated[StarService, Depends(get_star_service)]
@@ -546,10 +616,12 @@ def get_comment_service(
     pull_request_store: PullRequestStoreDep,
     repository_store: RepositoryStoreDep,
     activity_service: ActivityServiceDep,
+    authorization: AuthorizationServiceDep,
 ) -> CommentService:
     """Get the comment service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         comment_store: Comment store dependency.
         issue_store: Issue store dependency.
         pull_request_store: Pull request store dependency.
@@ -565,6 +637,7 @@ def get_comment_service(
         pull_request_store=pull_request_store,
         repository_store=repository_store,
         activity_service=activity_service,
+        authorization=authorization,
     )
 
 
@@ -575,10 +648,12 @@ def get_release_service(
     release_store: ReleaseStoreDep,
     repository_store: RepositoryStoreDep,
     activity_service: ActivityServiceDep,
+    authorization: AuthorizationServiceDep,
 ) -> ReleaseService:
     """Get the release service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         release_store: Release store dependency.
         repository_store: Repository store dependency.
         activity_service: Activity service dependency.
@@ -586,7 +661,7 @@ def get_release_service(
     Returns:
         Release service instance.
     """
-    return ReleaseService(release_store, repository_store, activity_service)
+    return ReleaseService(release_store, repository_store, activity_service, authorization)
 
 
 ReleaseServiceDep = Annotated[ReleaseService, Depends(get_release_service)]
@@ -597,10 +672,12 @@ def get_fork_service(
     repository_service: RepositoryServiceDep,
     activity_service: ActivityServiceDep,
     star_store: StarStoreDep,
+    authorization: AuthorizationServiceDep,
 ) -> ForkService:
     """Get the fork service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         repository_store: Repository store dependency.
         repository_service: Repository service dependency.
         activity_service: Activity service dependency.
@@ -609,7 +686,7 @@ def get_fork_service(
     Returns:
         Fork service instance.
     """
-    return ForkService(repository_store, repository_service, activity_service, star_store)
+    return ForkService(repository_store, repository_service, activity_service, star_store, authorization)
 
 
 ForkServiceDep = Annotated[ForkService, Depends(get_fork_service)]
@@ -618,17 +695,19 @@ ForkServiceDep = Annotated[ForkService, Depends(get_fork_service)]
 def get_organization_service(
     organization_store: OrganizationStoreDep,
     user_store: UserStoreDep,
+    authorization_store: AuthorizationStoreDep,
 ) -> OrganizationService:
     """Get the organization service dependency.
 
     Args:
+        authorization_store: Persistent memberships and grants.
         organization_store: Organization store dependency.
         user_store: User store dependency.
 
     Returns:
         Organization service instance.
     """
-    return OrganizationService(organization_store, user_store)
+    return OrganizationService(organization_store, user_store, authorization_store)
 
 
 OrganizationServiceDep = Annotated[OrganizationService, Depends(get_organization_service)]

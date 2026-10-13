@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import httpx2
 
-from tests.integration.conftest import create_repository_row
+from tests.integration.conftest import create_repository_row, superuser_headers
 from tests.integration.test_social_features import _push_repo
 
 REF_CACHE_CONTROL = "public, max-age=0, s-maxage=60, stale-while-revalidate=300"
@@ -34,7 +34,9 @@ def test_commit_content_is_immutable(app_url: str) -> None:
 def test_private_repository_is_not_cached(app_url: str) -> None:
     create_repository_row("admin", "privaterepo", is_private=True)
 
-    response = httpx2.get(f"{app_url}/api/v1/repositories/admin/privaterepo/branches")
+    response = httpx2.get(
+        f"{app_url}/api/v1/repositories/admin/privaterepo/branches", headers=superuser_headers(app_url)
+    )
 
     assert response.headers["cache-control"] == PRIVATE_CACHE_CONTROL
 

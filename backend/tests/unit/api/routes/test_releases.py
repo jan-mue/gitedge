@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from app.config import settings
+from app.entities.repositories import Repository
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -14,6 +17,15 @@ if TYPE_CHECKING:
 REPO_OWNER = settings.FIRST_SUPERUSER.split("@")[0]
 REPO_NAME = "repo"
 RELEASES_URL = f"{settings.API_V1_STR}/repositories/{REPO_OWNER}/{REPO_NAME}/releases"
+
+
+@pytest.fixture(autouse=True)
+def existing_repository(fake_stores: FakeStores) -> None:
+    """Feature tests operate on an existing public repository."""
+    owner = next(iter(fake_stores.users.items.values()))
+    repository = Repository(owner_id=owner.id, name=REPO_NAME, default_branch="main", is_private=False)
+    fake_stores.repository.persist(repository)
+    repository.owner = owner
 
 
 def test_create_and_list_releases(

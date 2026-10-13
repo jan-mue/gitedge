@@ -7,6 +7,8 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
+from tests.integration.conftest import configure_git_auth
+
 
 def test_git_push_and_clone(app_url: str) -> None:
     """Test pushing a repository to GitEdge and cloning it back.
@@ -46,6 +48,7 @@ def test_git_push_and_clone(app_url: str) -> None:
 
         source_log = _run_git(source_dir, ["log", "--oneline"])
 
+        configure_git_auth(app_url, repo_name, source_dir)
         _run_git(source_dir, ["remote", "add", "origin", remote_url])
         _run_git(source_dir, ["push", "-u", "origin", "main"])
 
@@ -88,6 +91,7 @@ def test_git_push_to_new_branch(app_url: str) -> None:
         _run_git(source_dir, ["add", "README.md"])
         _run_git(source_dir, ["commit", "-m", "Initial commit"])
 
+        configure_git_auth(app_url, repo_name, source_dir)
         _run_git(source_dir, ["remote", "add", "origin", remote_url])
         _run_git(source_dir, ["push", "-u", "origin", "main"])
 
@@ -129,6 +133,7 @@ def test_info_refs_endpoint(app_url: str) -> None:
         readme.write_text("# Test\n")
         _run_git(source_dir, ["add", "README.md"])
         _run_git(source_dir, ["commit", "-m", "Initial"])
+        configure_git_auth(app_url, repo_name, source_dir)
         _run_git(source_dir, ["remote", "add", "origin", remote_url])
         _run_git(source_dir, ["push", "-u", "origin", "main"])
 

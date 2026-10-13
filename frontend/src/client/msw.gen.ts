@@ -2,7 +2,7 @@
 
 import { http, type HttpHandler, HttpResponse, type HttpResponseResolver, type RequestHandlerOptions as RequestHandlerOptions2 } from 'msw';
 
-import type { activityGetFeedResponses, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsResponses, ClientOptions, commentsCreateCommentData, commentsCreateCommentResponses, commentsDeleteCommentResponses, commentsListCommentsResponses, commentsUpdateCommentData, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryResponses, forksListForksResponses, gitGetHeadResponses, gitGetInfoPacksResponses, gitGetInfoRefsResponses, gitGetLooseObjectResponses, gitGetPackFileResponses, gitGitReceivePackResponses, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenResponses, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordResponses, loginTestTokenResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationResponses, organizationsListOrganizationsResponses, privateCreateUserData, privateCreateUserResponses, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseResponses, releasesGetReleaseResponses, releasesListReleasesResponses, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseResponses, repositoriesCreateIssueData, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryResponses, repositoriesGetBlameResponses, repositoriesGetBlobResponses, repositoriesGetCommitResponses, repositoriesGetFileIndexResponses, repositoriesGetIssueResponses, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestResponses, repositoriesGetRawResponses, repositoriesGetReadmeResponses, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceResponses, repositoriesGetStatisticsResponses, repositoriesGetTreeResponses, repositoriesListBranchesResponses, repositoriesListCommitsResponses, repositoriesListIssuesResponses, repositoriesListPullRequestsResponses, repositoriesListRepositoriesResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryResponses, starsGetStarStateResponses, starsListStargazersResponses, starsListStarredRepositoriesResponses, starsStarRepositoryResponses, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserResponses, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeResponses, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserMeData, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckResponses, utilsTestEmailResponses, watchersGetWatchStateResponses, watchersListWatchersResponses, watchersUnwatchRepositoryResponses, watchersWatchRepositoryResponses } from './types.gen';
+import type { activityGetFeedResponses, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsResponses, authorizationCreateTeamData, authorizationCreateTeamResponses, authorizationDeleteTeamResponses, authorizationGetPermissionsResponses, authorizationListCollaboratorsResponses, authorizationListCollaboratorTeamsResponses, authorizationListMembersResponses, authorizationListTeamMembersResponses, authorizationListTeamsResponses, authorizationRemoveCollaboratorResponses, authorizationRemoveMemberResponses, authorizationRemoveTeamMemberResponses, authorizationSetCollaboratorData, authorizationSetCollaboratorResponses, authorizationSetMemberData, authorizationSetMemberResponses, authorizationSetTeamMemberResponses, ClientOptions, commentsCreateCommentData, commentsCreateCommentResponses, commentsDeleteCommentResponses, commentsListCommentsResponses, commentsUpdateCommentData, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryResponses, forksListForksResponses, gitGetHeadResponses, gitGetInfoPacksResponses, gitGetInfoRefsResponses, gitGetLooseObjectResponses, gitGetPackFileResponses, gitGitReceivePackResponses, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenResponses, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordResponses, loginTestTokenResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationResponses, organizationsListOrganizationsResponses, privateCreateUserData, privateCreateUserResponses, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseResponses, releasesGetReleaseResponses, releasesListReleasesResponses, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseResponses, repositoriesCreateIssueData, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryResponses, repositoriesGetBlameResponses, repositoriesGetBlobResponses, repositoriesGetCommitResponses, repositoriesGetFileIndexResponses, repositoriesGetIssueResponses, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestResponses, repositoriesGetRawResponses, repositoriesGetReadmeResponses, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceResponses, repositoriesGetStatisticsResponses, repositoriesGetTreeResponses, repositoriesListBranchesResponses, repositoriesListCommitsResponses, repositoriesListIssuesResponses, repositoriesListPullRequestsResponses, repositoriesListRepositoriesResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryResponses, starsGetStarStateResponses, starsListStargazersResponses, starsListStarredRepositoriesResponses, starsStarRepositoryResponses, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserResponses, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeResponses, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserMeData, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckResponses, utilsTestEmailResponses, watchersGetWatchStateResponses, watchersListWatchersResponses, watchersUnwatchRepositoryResponses, watchersWatchRepositoryResponses } from './types.gen';
 
 export type RequestHandlerOptions = RequestHandlerOptions2 & {
     baseUrl?: ClientOptions['baseUrl'];
@@ -669,6 +669,468 @@ export function handleOrganizationsCreateOrganization(response?: HandleOrganizat
         const body = response?.body;
         if (body !== undefined) {
             return HttpResponse.json(body, { status: response?.status ?? 201 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationGetPermissionsResponse = {
+    body: authorizationGetPermissionsResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/repositories/{owner}/{repo}/permissions` operation.
+ */
+export function handleAuthorizationGetPermissions(response?: HandleAuthorizationGetPermissionsResponse | HttpResponseResolver<{
+    owner: string;
+    repo: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        owner: string;
+        repo: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/repositories/:owner/:repo/permissions`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationListCollaboratorTeamsResponse = {
+    body: authorizationListCollaboratorTeamsResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/repositories/{owner}/{repo}/collaborator-teams` operation.
+ */
+export function handleAuthorizationListCollaboratorTeams(response?: HandleAuthorizationListCollaboratorTeamsResponse | HttpResponseResolver<{
+    owner: string;
+    repo: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        owner: string;
+        repo: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/repositories/:owner/:repo/collaborator-teams`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationListMembersResponse = {
+    body: authorizationListMembersResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/organizations/{organization}/members` operation.
+ */
+export function handleAuthorizationListMembers(response?: HandleAuthorizationListMembersResponse | HttpResponseResolver<{
+    organization: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        organization: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/organizations/:organization/members`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationRemoveMemberResponse = {
+    body: authorizationRemoveMemberResponses[204];
+    status?: 204;
+};
+
+/**
+ * Handler for the `DELETE /api/v1/organizations/{organization}/members/{user_id}` operation.
+ */
+export function handleAuthorizationRemoveMember(response?: HandleAuthorizationRemoveMemberResponse | HttpResponseResolver<{
+    organization: string;
+    user_id: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.delete<{
+        organization: string;
+        user_id: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/organizations/:organization/members/:user_id`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return new HttpResponse(body, { status: response?.status ?? 204 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationSetMemberResponse = {
+    body: authorizationSetMemberResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `PUT /api/v1/organizations/{organization}/members/{user_id}` operation.
+ */
+export function handleAuthorizationSetMember(response?: HandleAuthorizationSetMemberResponse | HttpResponseResolver<{
+    organization: string;
+    user_id: string;
+}, authorizationSetMemberData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.put<{
+        organization: string;
+        user_id: string;
+    }, authorizationSetMemberData['body']>(`${options?.baseUrl ?? '*'}/api/v1/organizations/:organization/members/:user_id`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationListTeamsResponse = {
+    body: authorizationListTeamsResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/organizations/{organization}/teams` operation.
+ */
+export function handleAuthorizationListTeams(response?: HandleAuthorizationListTeamsResponse | HttpResponseResolver<{
+    organization: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        organization: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/organizations/:organization/teams`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationCreateTeamResponse = {
+    body: authorizationCreateTeamResponses[201];
+    status?: 201;
+};
+
+/**
+ * Handler for the `POST /api/v1/organizations/{organization}/teams` operation.
+ */
+export function handleAuthorizationCreateTeam(response?: HandleAuthorizationCreateTeamResponse | HttpResponseResolver<{
+    organization: string;
+}, authorizationCreateTeamData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.post<{
+        organization: string;
+    }, authorizationCreateTeamData['body']>(`${options?.baseUrl ?? '*'}/api/v1/organizations/:organization/teams`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 201 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationDeleteTeamResponse = {
+    body: authorizationDeleteTeamResponses[204];
+    status?: 204;
+};
+
+/**
+ * Handler for the `DELETE /api/v1/organizations/{organization}/teams/{team_id}` operation.
+ */
+export function handleAuthorizationDeleteTeam(response?: HandleAuthorizationDeleteTeamResponse | HttpResponseResolver<{
+    organization: string;
+    team_id: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.delete<{
+        organization: string;
+        team_id: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/organizations/:organization/teams/:team_id`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return new HttpResponse(body, { status: response?.status ?? 204 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationListTeamMembersResponse = {
+    body: authorizationListTeamMembersResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/organizations/{organization}/teams/{team_id}/members` operation.
+ */
+export function handleAuthorizationListTeamMembers(response?: HandleAuthorizationListTeamMembersResponse | HttpResponseResolver<{
+    organization: string;
+    team_id: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        organization: string;
+        team_id: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/organizations/:organization/teams/:team_id/members`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationRemoveTeamMemberResponse = {
+    body: authorizationRemoveTeamMemberResponses[204];
+    status?: 204;
+};
+
+/**
+ * Handler for the `DELETE /api/v1/organizations/{organization}/teams/{team_id}/members/{user_id}` operation.
+ */
+export function handleAuthorizationRemoveTeamMember(response?: HandleAuthorizationRemoveTeamMemberResponse | HttpResponseResolver<{
+    organization: string;
+    team_id: string;
+    user_id: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.delete<{
+        organization: string;
+        team_id: string;
+        user_id: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/organizations/:organization/teams/:team_id/members/:user_id`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return new HttpResponse(body, { status: response?.status ?? 204 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationSetTeamMemberResponse = {
+    body: authorizationSetTeamMemberResponses[204];
+    status?: 204;
+};
+
+/**
+ * Handler for the `PUT /api/v1/organizations/{organization}/teams/{team_id}/members/{user_id}` operation.
+ */
+export function handleAuthorizationSetTeamMember(response?: HandleAuthorizationSetTeamMemberResponse | HttpResponseResolver<{
+    organization: string;
+    team_id: string;
+    user_id: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.put<{
+        organization: string;
+        team_id: string;
+        user_id: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/organizations/:organization/teams/:team_id/members/:user_id`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return new HttpResponse(body, { status: response?.status ?? 204 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationListCollaboratorsResponse = {
+    body: authorizationListCollaboratorsResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/repositories/{owner}/{repo}/collaborators` operation.
+ */
+export function handleAuthorizationListCollaborators(response?: HandleAuthorizationListCollaboratorsResponse | HttpResponseResolver<{
+    owner: string;
+    repo: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        owner: string;
+        repo: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/repositories/:owner/:repo/collaborators`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationSetCollaboratorResponse = {
+    body: authorizationSetCollaboratorResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `PUT /api/v1/repositories/{owner}/{repo}/collaborators` operation.
+ */
+export function handleAuthorizationSetCollaborator(response?: HandleAuthorizationSetCollaboratorResponse | HttpResponseResolver<{
+    owner: string;
+    repo: string;
+}, authorizationSetCollaboratorData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.put<{
+        owner: string;
+        repo: string;
+    }, authorizationSetCollaboratorData['body']>(`${options?.baseUrl ?? '*'}/api/v1/repositories/:owner/:repo/collaborators`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationRemoveCollaboratorResponse = {
+    body: authorizationRemoveCollaboratorResponses[204];
+    status?: 204;
+};
+
+/**
+ * Handler for the `DELETE /api/v1/repositories/{owner}/{repo}/collaborators/{collaborator_id}` operation.
+ */
+export function handleAuthorizationRemoveCollaborator(response?: HandleAuthorizationRemoveCollaboratorResponse | HttpResponseResolver<{
+    collaborator_id: string;
+    owner: string;
+    repo: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.delete<{
+        collaborator_id: string;
+        owner: string;
+        repo: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/repositories/:owner/:repo/collaborators/:collaborator_id`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return new HttpResponse(body, { status: response?.status ?? 204 });
         }
         if (options?.responseFallback === 'passthrough') {
             return;
@@ -2557,6 +3019,62 @@ export type MswHandlerFactories = {
      */
     organizationsCreateOrganization: typeof handleOrganizationsCreateOrganization;
     /**
+     * Handler for the `GET /api/v1/repositories/{owner}/{repo}/permissions` operation.
+     */
+    authorizationGetPermissions: typeof handleAuthorizationGetPermissions;
+    /**
+     * Handler for the `GET /api/v1/repositories/{owner}/{repo}/collaborator-teams` operation.
+     */
+    authorizationListCollaboratorTeams: typeof handleAuthorizationListCollaboratorTeams;
+    /**
+     * Handler for the `GET /api/v1/organizations/{organization}/members` operation.
+     */
+    authorizationListMembers: typeof handleAuthorizationListMembers;
+    /**
+     * Handler for the `DELETE /api/v1/organizations/{organization}/members/{user_id}` operation.
+     */
+    authorizationRemoveMember: typeof handleAuthorizationRemoveMember;
+    /**
+     * Handler for the `PUT /api/v1/organizations/{organization}/members/{user_id}` operation.
+     */
+    authorizationSetMember: typeof handleAuthorizationSetMember;
+    /**
+     * Handler for the `GET /api/v1/organizations/{organization}/teams` operation.
+     */
+    authorizationListTeams: typeof handleAuthorizationListTeams;
+    /**
+     * Handler for the `POST /api/v1/organizations/{organization}/teams` operation.
+     */
+    authorizationCreateTeam: typeof handleAuthorizationCreateTeam;
+    /**
+     * Handler for the `DELETE /api/v1/organizations/{organization}/teams/{team_id}` operation.
+     */
+    authorizationDeleteTeam: typeof handleAuthorizationDeleteTeam;
+    /**
+     * Handler for the `GET /api/v1/organizations/{organization}/teams/{team_id}/members` operation.
+     */
+    authorizationListTeamMembers: typeof handleAuthorizationListTeamMembers;
+    /**
+     * Handler for the `DELETE /api/v1/organizations/{organization}/teams/{team_id}/members/{user_id}` operation.
+     */
+    authorizationRemoveTeamMember: typeof handleAuthorizationRemoveTeamMember;
+    /**
+     * Handler for the `PUT /api/v1/organizations/{organization}/teams/{team_id}/members/{user_id}` operation.
+     */
+    authorizationSetTeamMember: typeof handleAuthorizationSetTeamMember;
+    /**
+     * Handler for the `GET /api/v1/repositories/{owner}/{repo}/collaborators` operation.
+     */
+    authorizationListCollaborators: typeof handleAuthorizationListCollaborators;
+    /**
+     * Handler for the `PUT /api/v1/repositories/{owner}/{repo}/collaborators` operation.
+     */
+    authorizationSetCollaborator: typeof handleAuthorizationSetCollaborator;
+    /**
+     * Handler for the `DELETE /api/v1/repositories/{owner}/{repo}/collaborators/{collaborator_id}` operation.
+     */
+    authorizationRemoveCollaborator: typeof handleAuthorizationRemoveCollaborator;
+    /**
      * Handler for the `DELETE /api/v1/repositories/{owner}/{repo}/star` operation.
      */
     starsUnstarRepository: typeof handleStarsUnstarRepository;
@@ -2816,6 +3334,20 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
         gitGitReceivePack: wrap(handleGitGitReceivePack),
         organizationsListOrganizations: wrap(handleOrganizationsListOrganizations),
         organizationsCreateOrganization: wrap(handleOrganizationsCreateOrganization),
+        authorizationGetPermissions: wrap(handleAuthorizationGetPermissions),
+        authorizationListCollaboratorTeams: wrap(handleAuthorizationListCollaboratorTeams),
+        authorizationListMembers: wrap(handleAuthorizationListMembers),
+        authorizationRemoveMember: wrap(handleAuthorizationRemoveMember),
+        authorizationSetMember: wrap(handleAuthorizationSetMember),
+        authorizationListTeams: wrap(handleAuthorizationListTeams),
+        authorizationCreateTeam: wrap(handleAuthorizationCreateTeam),
+        authorizationDeleteTeam: wrap(handleAuthorizationDeleteTeam),
+        authorizationListTeamMembers: wrap(handleAuthorizationListTeamMembers),
+        authorizationRemoveTeamMember: wrap(handleAuthorizationRemoveTeamMember),
+        authorizationSetTeamMember: wrap(handleAuthorizationSetTeamMember),
+        authorizationListCollaborators: wrap(handleAuthorizationListCollaborators),
+        authorizationSetCollaborator: wrap(handleAuthorizationSetCollaborator),
+        authorizationRemoveCollaborator: wrap(handleAuthorizationRemoveCollaborator),
         starsUnstarRepository: wrap(handleStarsUnstarRepository),
         starsGetStarState: wrap(handleStarsGetStarState),
         starsStarRepository: wrap(handleStarsStarRepository),
@@ -2882,10 +3414,14 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
         }
         const overrides = options.pick ?? {};
         return [
+            invoke(pick.authorizationRemoveTeamMember, overrides.authorizationRemoveTeamMember),
+            invoke(pick.authorizationSetTeamMember, overrides.authorizationSetTeamMember),
             invoke(pick.commentsListComments, overrides.commentsListComments),
             invoke(pick.commentsCreateComment, overrides.commentsCreateComment),
             invoke(pick.repositoriesGetPullRequestFiles, overrides.repositoriesGetPullRequestFiles),
+            invoke(pick.authorizationListTeamMembers, overrides.authorizationListTeamMembers),
             invoke(pick.activityGetRepositoryActivityStatistics, overrides.activityGetRepositoryActivityStatistics),
+            invoke(pick.authorizationRemoveCollaborator, overrides.authorizationRemoveCollaborator),
             invoke(pick.releasesGetRelease, overrides.releasesGetRelease),
             invoke(pick.releasesUpdateRelease, overrides.releasesUpdateRelease),
             invoke(pick.repositoriesGetCommit, overrides.repositoriesGetCommit),
@@ -2893,6 +3429,13 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.repositoriesUpdateIssue, overrides.repositoriesUpdateIssue),
             invoke(pick.repositoriesGetPullRequest, overrides.repositoriesGetPullRequest),
             invoke(pick.repositoriesUpdatePullRequest, overrides.repositoriesUpdatePullRequest),
+            invoke(pick.authorizationRemoveMember, overrides.authorizationRemoveMember),
+            invoke(pick.authorizationSetMember, overrides.authorizationSetMember),
+            invoke(pick.authorizationDeleteTeam, overrides.authorizationDeleteTeam),
+            invoke(pick.authorizationGetPermissions, overrides.authorizationGetPermissions),
+            invoke(pick.authorizationListCollaboratorTeams, overrides.authorizationListCollaboratorTeams),
+            invoke(pick.authorizationListCollaborators, overrides.authorizationListCollaborators),
+            invoke(pick.authorizationSetCollaborator, overrides.authorizationSetCollaborator),
             invoke(pick.starsUnstarRepository, overrides.starsUnstarRepository),
             invoke(pick.starsGetStarState, overrides.starsGetStarState),
             invoke(pick.starsStarRepository, overrides.starsStarRepository),
@@ -2928,6 +3471,9 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.usersUpdatePasswordMe, overrides.usersUpdatePasswordMe),
             invoke(pick.starsListStarredRepositories, overrides.starsListStarredRepositories),
             invoke(pick.activityGetFeed, overrides.activityGetFeed),
+            invoke(pick.authorizationListMembers, overrides.authorizationListMembers),
+            invoke(pick.authorizationListTeams, overrides.authorizationListTeams),
+            invoke(pick.authorizationCreateTeam, overrides.authorizationCreateTeam),
             invoke(pick.profilesListUserRepositories, overrides.profilesListUserRepositories),
             invoke(pick.profilesListUserStarredRepositories, overrides.profilesListUserStarredRepositories),
             invoke(pick.repositoriesDeleteRepository, overrides.repositoriesDeleteRepository),

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from app.config import settings
+from app.entities.repositories import Repository
 from app.utils.cache_headers import CACHE_CONTROL_PRIVATE, CACHE_CONTROL_REVALIDATE
 
 if TYPE_CHECKING:
@@ -23,7 +24,7 @@ REPOSITORIES_URL = f"{settings.API_V1_STR}/repositories/"
 def test_repository_settings_and_deletion(
     client: TestClient, superuser_token_headers: dict[str, str], fake_stores: FakeStores
 ) -> None:
-    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME})
+    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME}, headers=superuser_token_headers)
     client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Tracked issue"})
     assert client.patch(REPO_URL, json={"description": "Anonymous"}).status_code == 401
     response = client.patch(
@@ -46,7 +47,7 @@ def test_repository_settings_require_owner(
     superuser_token_headers: dict[str, str],
     normal_user_token_headers: dict[str, str],
 ) -> None:
-    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME})
+    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME}, headers=superuser_token_headers)
     assert client.delete(REPO_URL, headers=normal_user_token_headers).status_code == 403
     response = client.patch(REPO_URL, headers=normal_user_token_headers, json={"description": "Denied"})
     assert response.status_code == 403
@@ -54,8 +55,10 @@ def test_repository_settings_require_owner(
     assert client.patch(REPO_URL, headers=superuser_token_headers, json={"name": ".git"}).status_code == 400
 
 
-def test_empty_repository_statistics_and_missing_content(client: TestClient) -> None:
-    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME})
+def test_empty_repository_statistics_and_missing_content(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME}, headers=superuser_token_headers)
     response = client.get(f"{REPO_URL}/statistics")
     assert response.status_code == 200
     assert response.json() == {"commit_count": 0, "size": 0, "languages": []}
@@ -64,6 +67,15 @@ def test_empty_repository_statistics_and_missing_content(client: TestClient) -> 
     for endpoint in ("source", "blame", "raw"):
         response = client.get(f"{REPO_URL}/{endpoint}", params={"file_path": "missing.txt"})
         assert response.status_code == 404
+
+
+@pytest.fixture(autouse=True)
+def existing_repository(fake_stores: FakeStores) -> None:
+    """Feature tests operate on an existing public repository."""
+    owner = next(iter(fake_stores.users.items.values()))
+    repository = Repository(owner_id=owner.id, name=REPO_NAME, default_branch="main", is_private=False)
+    fake_stores.repository.persist(repository)
+    repository.owner = owner
 
 
 @pytest.mark.parametrize("url", [ISSUES_URL, PULLS_URL])
@@ -107,20 +119,23 @@ def test_empty_description_has_empty_html(
     assert response.json()["body_html"] == ""
 
 
-def test_repository_metadata_sets_cache_headers(client: TestClient) -> None:
-    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME})
+def test_repository_metadata_sets_cache_headers(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
+    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME}, headers=superuser_token_headers)
 
     r = client.get(REPO_URL)
     assert r.status_code == 200
     assert r.headers["cache-control"] == CACHE_CONTROL_REVALIDATE
 
 
-def test_private_repository_is_not_cached(client: TestClient, fake_stores: FakeStores) -> None:
-    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME})
+def test_private_repository_is_not_cached(
+    client: TestClient, fake_stores: FakeStores, superuser_token_headers: dict[str, str]
+) -> None:
+    client.post(REPOSITORIES_URL, json={"owner": REPO_OWNER, "name": REPO_NAME}, headers=superuser_token_headers)
     entity = next(iter(fake_stores.repository.items.values()))
     entity.is_private = True
 
-    r = client.get(REPO_URL)
+    assert client.get(REPO_URL).status_code == 401
+    r = client.get(REPO_URL, headers=superuser_token_headers)
     assert r.status_code == 200
     assert r.headers["cache-control"] == CACHE_CONTROL_PRIVATE
 
@@ -163,9 +178,8 @@ def test_list_issues(client: TestClient, superuser_token_headers: dict[str, str]
 
 @pytest.mark.usefixtures("fake_stores")
 def test_list_issues_for_unknown_repository(client: TestClient) -> None:
-    r = client.get(ISSUES_URL)
-    assert r.status_code == 200
-    assert r.json()["count"] == 0
+    r = client.get(ISSUES_URL.replace(REPO_NAME, "missing"))
+    assert r.status_code == 404
 
 
 @pytest.mark.usefixtures("fake_stores")
@@ -223,7 +237,7 @@ def test_update_issue_requires_authorship(
     assert r.status_code == 403
 
     r = client.patch(f"{ISSUES_URL}/1", headers=normal_user_token_headers, json={"state": "closed"})
-    assert r.status_code == 200
+    assert r.status_code == 403
 
 
 def test_create_pull_request(
