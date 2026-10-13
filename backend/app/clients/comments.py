@@ -33,7 +33,9 @@ class SQLCommentStore(CommentStore, SQLStore[Comment]):
         super().__init__(db, Comment)
 
     async def find(self, primary_key: uuid.UUID) -> Comment | None:
-        """Find a comment by id, loading its author."""
+        """Find a comment with its author and issue for authorization."""
         return await self.db.scalar(
-            select(Comment).options(selectinload(Comment.author)).where(Comment.id == primary_key)
+            select(Comment)
+            .options(selectinload(Comment.author), selectinload(Comment.issue))
+            .where(Comment.id == primary_key)
         )

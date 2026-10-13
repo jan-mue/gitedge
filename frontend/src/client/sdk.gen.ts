@@ -678,7 +678,7 @@ export class AuthorizationService {
     /**
      * Set Collaborator
      *
-     * Add or update a current_user or team's repository role.
+     * Add or update a user or team's repository role.
      */
     public static setCollaborator<ThrowOnError extends boolean = true>(options: Options<authorizationSetCollaboratorData, ThrowOnError>): RequestResult<authorizationSetCollaboratorResponses, authorizationSetCollaboratorErrors, ThrowOnError> {
         return (options.client ?? client).put<authorizationSetCollaboratorResponses, authorizationSetCollaboratorErrors, ThrowOnError>({

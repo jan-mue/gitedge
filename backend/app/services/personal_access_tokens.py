@@ -143,8 +143,7 @@ class PersonalAccessTokenService:
         user = await self.users.find(token.owner_id)
         if user is None or not user.is_active or (username is not None and username.lower() != user.lower_name):
             raise invalid_token()
-        # Read current state again after costly verification so a concurrent
-        # revocation cannot authenticate using an earlier metadata snapshot.
+        # Recheck revocation after hash verification, which runs outside the transaction.
         await self.store.refresh(token)
         if token.revoked_at is not None or (token.expires_at is not None and token.expires_at <= datetime.now(UTC)):
             raise invalid_token()

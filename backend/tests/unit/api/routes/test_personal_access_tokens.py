@@ -79,7 +79,6 @@ def test_pat_authenticates_git_and_updates_last_use(
         response = client.get(url, headers=credential_headers)
     assert response.status_code == 200
     assert next(iter(fake_stores.personal_access_tokens.items.values())).last_used_at is not None
-    # PATs cannot mint new PATs or access account settings APIs.
     assert client.get(TOKENS_URL, headers={"Authorization": f"Bearer {token}"}).status_code == 401
 
 

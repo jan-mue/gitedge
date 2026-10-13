@@ -11,7 +11,6 @@ from app.entities.users import User
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
-# Both authenticated users and anonymous readers can pass a permission check.
 PermissionUser = User | None
 
 
@@ -21,12 +20,7 @@ def require_permission(
     user_dep: object = OptionalUser,
     challenge: str = "Bearer",
 ) -> Callable[..., Awaitable[PermissionUser]]:
-    """Return a dependency that authenticates, authorizes, and returns the user.
-
-    Pass an Annotated authentication alias (CurrentUser, OptionalUser, or GitUser)
-    or its dependency callable. FastAPI resolves owner and repo as named path
-    parameters and caches authentication normally, including dependency overrides.
-    """
+    """Authenticate and authorize a user for the named repository path."""
     authentication = next((metadata for metadata in get_args(user_dep) if isinstance(metadata, Dependency)), None)
     if authentication is None:
         if not callable(user_dep):

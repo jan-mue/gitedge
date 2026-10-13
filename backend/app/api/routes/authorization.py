@@ -148,7 +148,7 @@ async def set_collaborator(
     authorization: AuthorizationServiceDep,
     current_user: Annotated[User, Depends(require_permission("repository:admin", user_dep=CurrentUser))],
 ) -> CollaboratorPublic:
-    """Add or update a current_user or team's repository role."""
+    """Add or update a user or team's repository role."""
     repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
     return await authorization.collaborator_public(
         repository, await authorization.set_collaborator(repository, body, current_user)

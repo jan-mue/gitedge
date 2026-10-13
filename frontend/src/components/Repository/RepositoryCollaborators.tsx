@@ -75,7 +75,6 @@ const RepositoryCollaborators = ({
       await grant.mutateAsync({ path, body })
       setUsername("")
     } catch (error) {
-      // Mutation errors are displayed by its onError handler.
       if (!mutationStarted) handleError.call(showErrorToast, error)
     } finally {
       setResolving(false)

@@ -74,7 +74,6 @@ class AuthorizationService:
                 if collaborator.user_id == user.id:
                     await enforcer.add_grouping_policy(subject, collaborator.role, domain)
                 elif collaborator.team_id is not None and member is not None:
-                    # Organization membership is required even if a stale team row exists.
                     teams = await self.store.teams(repository.owner_id)
                     if any(team.id == collaborator.team_id for team in teams):
                         team_members = await self.store.team_members(collaborator.team_id)

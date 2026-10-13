@@ -928,7 +928,7 @@ export const authorizationListCollaboratorsOptions = (options: Options<authoriza
 /**
  * Set Collaborator
  *
- * Add or update a current_user or team's repository role.
+ * Add or update a user or team's repository role.
  */
 export const authorizationSetCollaboratorMutation = (options?: Partial<Options<authorizationSetCollaboratorData>>): UseMutationOptions<authorizationSetCollaboratorResponse, authorizationSetCollaboratorError, Options<authorizationSetCollaboratorData>> => {
     const mutationOptions: UseMutationOptions<authorizationSetCollaboratorResponse, authorizationSetCollaboratorError, Options<authorizationSetCollaboratorData>> = {

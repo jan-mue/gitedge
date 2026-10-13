@@ -67,8 +67,7 @@ class SQLPersonalAccessTokenStore(PersonalAccessTokenStore, SQLStore[PersonalAcc
         """Issue and optionally revoke the previous credential in one transaction."""
         self.db.add(token)
         try:
-            # Flush issuance before modifying the old row, so a key-id collision
-            # rolls back without changing rotation state on the old credential.
+            # A key-id collision must leave the token being rotated untouched.
             await self.db.flush()
             if replacing is not None:
                 replacing.revoked_at = token.created_at
