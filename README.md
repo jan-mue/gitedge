@@ -160,6 +160,22 @@ The frontend lives in `frontend/` and is built with [Vite](https://vitejs.dev/),
 and [Tailwind CSS](https://tailwindcss.com/). See `frontend/package.json` for all
 available scripts.
 
+#### Storybook
+
+Run the component explorer:
+
+```shell
+bun run --filter frontend storybook
+```
+
+Storybook runs at <http://localhost:6006>. The MCP addon exposes component
+documentation and story development tools at <http://localhost:6006/mcp> while
+the dev server is running. Add that URL as an HTTP MCP server in your agent's
+configuration. Component manifests are enabled for the documentation tools.
+
+Build the static Storybook with `bun run --filter frontend build-storybook`.
+Both scripts disable all Storybook telemetry, including the startup event.
+
 ### Disabling sign-ups
 
 Self-service registration can be turned off by setting the matching variables on
