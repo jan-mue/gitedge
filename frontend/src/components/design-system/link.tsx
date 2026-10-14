@@ -18,6 +18,8 @@ const appearances = {
   repositoryEntry: "flex items-center gap-2 font-medium text-primary hover:underline",
   truncated: "min-w-0 truncate text-primary hover:underline",
   commitPreview: "block max-w-60 truncate text-xs hover:text-primary hover:underline",
+  commitMessage:
+    "order-last w-full truncate text-sm text-foreground hover:text-primary hover:underline md:order-none md:w-auto md:min-w-0 md:flex-1",
   hash: "font-mono text-xs text-primary hover:underline",
   branch: "font-mono text-sm text-primary hover:underline",
   revision: "font-mono text-primary hover:underline",
