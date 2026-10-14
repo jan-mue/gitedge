@@ -6,12 +6,14 @@ const frontendConfig: VercelConfig = {
     { source: "/:owner/:repo.git/:path*", destination: "https://gitedge-backend.vercel.app/:owner/:repo.git/:path*" },
     { source: "/(.*)", destination: "/index.html" },
   ],
-  git: { deploymentEnabled: { "renovate/*": false } },
 }
 const storybookConfig: VercelConfig = {
   framework: null,
   buildCommand: "bun run build-storybook",
   outputDirectory: "storybook-static",
+}
+export const config: VercelConfig = {
+  // Vercel reads Git settings statically before evaluating the deployment target.
   git: { deploymentEnabled: { "renovate/*": false } },
 }
-export const config: VercelConfig = process.env.DEPLOY_TARGET === "storybook" ? storybookConfig : frontendConfig
+Object.assign(config, process.env.DEPLOY_TARGET === "storybook" ? storybookConfig : frontendConfig)
