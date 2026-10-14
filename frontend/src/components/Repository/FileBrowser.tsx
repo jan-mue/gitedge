@@ -79,6 +79,12 @@ const FileBrowser = ({
           key={entry.path}
           type="button"
           onClick={() => handleEntryClick(entry)}
+          aria-label={entry.name}
+          aria-description={
+            entry.last_commit
+              ? `${entry.last_commit.message.split("\n")[0]}; ${formatRelativeTime(entry.last_commit.timestamp)}`
+              : undefined
+          }
           variant="fileRow"
           size="file-row"
           data-testid={`tree-entry-${entry.name}`}

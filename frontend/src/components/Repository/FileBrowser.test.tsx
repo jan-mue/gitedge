@@ -49,6 +49,8 @@ describe("FileBrowser", () => {
     )
     for (const entry of entries) {
       const row = screen.getByTestId(`tree-entry-${entry.name}`)
+      expect(screen.getByRole("button", { name: entry.name, exact: true })).toBe(row)
+      expect(row).toHaveAccessibleDescription(`Update ${entry.name}; 2 minutes ago`)
       expect(within(row).getByText(`Update ${entry.name}`)).toBeInTheDocument()
       expect(within(row).getByText("2 minutes ago")).toHaveAttribute(
         "dateTime",
