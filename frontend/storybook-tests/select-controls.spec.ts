@@ -1,0 +1,188 @@
+import { expect, test } from "@playwright/test"
+
+const themeFor = (project: string) => (project.startsWith("dark") ? "dark" : "light")
+
+test.describe("branch picker pointer focus", () => {
+  test.use({ hasTouch: true })
+
+  for (const pointer of ["mouse", "touch"] as const) {
+    test(`${pointer} clicks leave tabs without an outline and preserve keyboard focus`, async ({ page }, testInfo) => {
+      const theme = themeFor(testInfo.project.name)
+      await page.goto(`/iframe.html?id=components-branch-selector--closed&viewMode=story&globals=theme:${theme}`)
+      await page.getByRole("button", { name: "Switch branch" }).click()
+      await expect(page.getByRole("textbox", { name: "Filter branch or tag" })).toBeFocused()
+
+      const session = await page.context().newCDPSession(page)
+      await session.send("DOM.enable")
+      await session.send("CSS.enable")
+      for (const name of ["Tags", "Branches"]) {
+        const tab = page.getByRole("tab", { name, exact: true })
+        if (pointer === "touch") await tab.tap()
+        else await tab.click()
+        await expect(tab).toBeFocused()
+        await expect(tab).toHaveAttribute("aria-selected", "true")
+
+        // Exercise browsers that retain :focus-visible after focus leaves the search input.
+        const { root } = await session.send("DOM.getDocument")
+        const { nodeId } = await session.send("DOM.querySelector", {
+          nodeId: root.nodeId,
+          selector: '[role="tab"][aria-selected="true"]',
+        })
+        await session.send("CSS.forcePseudoState", { nodeId, forcedPseudoClasses: ["focus-visible"] })
+        await expect(tab).toHaveCSS("outline-style", "none")
+        await expect(tab).not.toHaveCSS("box-shadow", /0px 0px 0px [1-9]\d*px/)
+        await expect(tab).toHaveCSS("border-top-width", "0px")
+        await expect(tab).toHaveCSS("border-bottom-width", "2px")
+        await session.send("CSS.forcePseudoState", { nodeId, forcedPseudoClasses: [] })
+      }
+
+      await page.keyboard.press("ArrowRight")
+      const tags = page.getByRole("tab", { name: "Tags", exact: true })
+      await expect(tags).toBeFocused()
+      await expect(tags).toHaveAttribute("aria-selected", "true")
+      await expect(tags).toHaveCSS("box-shadow", /0px 0px 0px [1-9]\d*px/)
+      await page.keyboard.press("ArrowLeft")
+      const branches = page.getByRole("tab", { name: "Branches", exact: true })
+      await expect(branches).toBeFocused()
+      await expect(branches).toHaveCSS("box-shadow", /0px 0px 0px [1-9]\d*px/)
+      await page.keyboard.press("Escape")
+      await expect(page.getByRole("button", { name: "Switch branch" })).toBeFocused()
+    })
+  }
+})
+
+test("shadcn select fields support keyboard selection, disabled choices, and empty lists", async ({
+  page,
+}, testInfo) => {
+  const theme = themeFor(testInfo.project.name)
+  await page.goto(`/iframe.html?id=components-select-field--default&viewMode=story&globals=theme:${theme}`)
+  const trigger = page.getByRole("combobox", { name: "Notification preference" })
+  await trigger.focus()
+  await page.keyboard.press("Enter")
+  await expect(page.getByRole("option", { name: "All activity", exact: true })).toBeFocused()
+  await page.keyboard.press("ArrowDown")
+  await expect(page.getByRole("option", { name: "Participating and mentions" })).toBeFocused()
+  await page.keyboard.press("Enter")
+  await expect(trigger).toHaveText("Participating and mentions")
+  await expect(trigger).toBeFocused()
+  await page.keyboard.press("Enter")
+  await expect(page.getByRole("option", { name: "Participating and mentions" })).toBeFocused()
+  await page.keyboard.press("End")
+  await expect(page.getByRole("option", { name: "Mentions only", exact: true })).toBeFocused()
+  await expect(page.getByRole("option", { name: "Custom notifications" })).toHaveAttribute("aria-disabled", "true")
+  await page.keyboard.press("Escape")
+  await expect(trigger).toBeFocused()
+  await page.goto(`/iframe.html?id=components-select-field--empty&viewMode=story&globals=theme:${theme}`)
+  await expect(page.getByRole("option", { name: "No options available." })).toHaveAttribute("aria-disabled", "true")
+  await page.keyboard.press("Escape")
+  await expect(page.getByRole("combobox")).toBeFocused()
+})
+
+test("dedicated branch selector handles keyboard selection, default markers, and retry", async ({ page }, testInfo) => {
+  const theme = themeFor(testInfo.project.name)
+  await page.goto(`/iframe.html?id=components-branch-selector--closed&viewMode=story&globals=theme:${theme}`)
+  const trigger = page.getByRole("button", { name: "Switch branch" })
+  await trigger.focus()
+  await page.keyboard.press("Enter")
+  await expect(page.getByRole("textbox", { name: "Filter branch or tag" })).toBeFocused()
+  await expect(page.getByRole("option", { name: "main", exact: true })).toContainText("default")
+  await page.keyboard.press("ArrowUp")
+  await expect(page.getByRole("option", { name: "feature/repository-navigation", exact: true })).toBeFocused()
+  await page.keyboard.press("Home")
+  await expect(page.getByRole("option", { name: "main", exact: true })).toBeFocused()
+  await page.keyboard.press("ArrowDown")
+  await expect(page.getByRole("option", { name: "develop", exact: true })).toBeFocused()
+  await page.keyboard.press("Enter")
+  await expect(trigger).toHaveText("develop▾")
+  await expect(trigger).toBeFocused()
+  await trigger.click()
+  const search = page.getByRole("textbox", { name: "Filter branch or tag" })
+  await search.fill("V1")
+  await expect(page.getByText("No results found", { exact: true })).toBeVisible()
+  await page.getByRole("tab", { name: "Tags", exact: true }).click()
+  await page.getByRole("option", { name: "v1.0.0", exact: true }).click()
+  await expect(trigger).toHaveText("v1.0.0▾")
+  await trigger.click()
+  await expect(page.getByRole("tab", { name: "Tags", exact: true })).toHaveAttribute("aria-selected", "true")
+  await expect(page.getByRole("option", { name: "v1.0.0", exact: true })).toHaveAttribute("aria-selected", "true")
+  await search.fill("missing-ref")
+  await expect(page.getByText("No results found", { exact: true })).toBeVisible()
+  await page.keyboard.press("Escape")
+  await expect(trigger).toBeFocused()
+  await trigger.click()
+  await expect(search).toHaveValue("")
+  await expect(page.getByRole("option", { name: "v1.0.0", exact: true })).toBeVisible()
+  await page.keyboard.press("Escape")
+  await page.goto(`/iframe.html?id=components-branch-selector--load-error&viewMode=story&globals=theme:${theme}`)
+  await expect(page.getByRole("alert")).toHaveText(/Unable to load branches/)
+  await page.getByRole("button", { name: "Try again" }).click()
+  await expect(page.getByRole("alert")).not.toBeVisible()
+  await expect(page.getByRole("option", { name: "develop", exact: true })).toBeVisible()
+  await page.keyboard.press("Escape")
+})
+
+test("branch form selections submit the selected values and survive form reset", async ({ page }, testInfo) => {
+  const theme = themeFor(testInfo.project.name)
+  await page.goto(`/iframe.html?id=patterns-repository-settings--settings&viewMode=story&globals=theme:${theme}`)
+  const defaultBranch = page.getByRole("combobox", { name: "Default branch" })
+  await expect(defaultBranch).toHaveText("main")
+  await defaultBranch.click()
+  await page.getByRole("option", { name: "develop", exact: true }).click()
+  const saved = page.waitForResponse(
+    (response) => response.request().method() === "PATCH" && response.url().includes("/repositories/"),
+  )
+  await page.getByRole("button", { name: "Save settings", exact: true }).click()
+  const response = await saved
+  expect(response.status()).toBe(200)
+  expect(response.request().postDataJSON().default_branch).toBe("develop")
+  await expect(page.getByRole("button", { name: "Save settings", exact: true })).toBeDisabled()
+  await expect(defaultBranch).toHaveText("develop")
+  await page.screenshot({ path: `visual-review/select-default-branch-${testInfo.project.name}.png`, fullPage: true })
+
+  await page.goto(
+    `/iframe.html?id=patterns-repository-new-pull-request--create-pull-request&viewMode=story&globals=theme:${theme}`,
+  )
+  await page.getByLabel("Title", { exact: true }).fill("Improve repository navigation")
+  await page.getByRole("combobox", { name: "Source branch" }).click()
+  await page.getByRole("option", { name: "develop", exact: true }).click()
+  await expect(page.getByRole("combobox", { name: "Target branch" })).toHaveText("main")
+  const created = page.waitForResponse(
+    (response) => response.request().method() === "POST" && response.url().endsWith("/pulls"),
+  )
+  await page.getByRole("button", { name: "Create pull request", exact: true }).click()
+  const creation = await created
+  expect(creation.status()).toBe(201)
+  expect(creation.request().postDataJSON()).toMatchObject({ head_branch: "develop", base_branch: "main" })
+})
+
+test("owner selection and table pagination use the shared shadcn select", async ({ page }, testInfo) => {
+  const theme = themeFor(testInfo.project.name)
+  await page.goto(`/iframe.html?id=patterns-navigation--repository-owner&viewMode=story&globals=theme:${theme}`)
+  await page.getByTestId("create-menu").click()
+  await page.getByRole("menuitem", { name: "New Repository", exact: true }).click()
+  const owner = page.getByRole("combobox", { name: "Owner", exact: true })
+  await expect(owner).toHaveText("jan-mue")
+  await owner.click()
+  await page.getByRole("option", { name: "edge-team", exact: true }).click()
+  await expect(owner).toHaveText("edge-team")
+  await page.screenshot({ path: `visual-review/select-owner-${testInfo.project.name}.png`, fullPage: true })
+  await page.getByTestId("new-repo-name").fill("select-owner-check")
+  const created = page.waitForResponse(
+    (response) => response.request().method() === "POST" && response.url().includes("/api/v1/repositories"),
+  )
+  await page.getByTestId("new-repo-submit").click()
+  const creation = await created
+  expect(creation.status()).toBe(201)
+  expect(creation.request().postDataJSON()).toMatchObject({ owner: "edge-team", name: "select-owner-check" })
+  await expect(page.getByRole("dialog")).not.toBeVisible()
+  await page.goto(`/iframe.html?id=patterns-data-table--pagination&viewMode=story&globals=theme:${theme}`)
+  await expect(page.getByRole("row")).toHaveCount(11)
+  await page.getByRole("combobox", { name: "Rows per page" }).click()
+  await page.getByRole("option", { name: "25", exact: true }).click()
+  await expect(page.getByRole("row")).toHaveCount(13)
+  await expect(page.getByRole("combobox", { name: "Rows per page" })).toHaveText("25")
+  await page.getByRole("combobox", { name: "Rows per page" }).click()
+  await page.getByRole("option", { name: "5", exact: true }).click()
+  await expect(page.getByRole("row")).toHaveCount(6)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(false)
+})

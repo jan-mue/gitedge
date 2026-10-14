@@ -42,7 +42,7 @@ describe("cn", () => {
   })
 
   test("merges conflicting tailwind classes", () => {
-    expect(cn("text-red-500", "text-blue-500")).toBe("text-blue-500")
+    expect(cn("text-destructive", "text-primary")).toBe("text-primary")
   })
 
   test("preserves non-conflicting tailwind classes", () => {
@@ -70,7 +70,7 @@ describe("cn", () => {
   })
 
   test("handles variant classes from tailwind", () => {
-    expect(cn("hover:bg-red-500", "hover:bg-blue-500")).toBe("hover:bg-blue-500")
+    expect(cn("hover:bg-destructive", "hover:bg-primary")).toBe("hover:bg-primary")
   })
 
   test("handles responsive classes", () => {

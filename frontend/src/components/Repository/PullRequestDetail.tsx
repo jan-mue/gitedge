@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link as RouterLink, useParams } from "@tanstack/react-router"
+import { useParams } from "@tanstack/react-router"
 import { ArrowLeft, CircleCheck, GitMerge, GitPullRequest } from "lucide-react"
 import { useState } from "react"
 import {
@@ -9,11 +9,9 @@ import {
   repositoriesListPullRequestsQueryKey,
   repositoriesUpdatePullRequestMutation,
 } from "@/client/@tanstack/react-query.gen"
-import MarkdownContent from "@/components/Common/MarkdownContent"
+import { Badge, Button, Input, MarkdownContent, Link as RouterLink, Textarea } from "@/components/design-system"
 import CommentsSection from "@/components/Repository/CommentsSection"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -21,7 +19,7 @@ import { handleError } from "@/utils"
 const stateBadge = (state: string) => {
   if (state === "merged") {
     return (
-      <Badge className="bg-purple-500 text-white" data-testid="pr-state">
+      <Badge variant="merged" data-testid="pr-state">
         <GitMerge className="w-3 h-3" /> Merged
       </Badge>
     )
@@ -34,7 +32,7 @@ const stateBadge = (state: string) => {
     )
   }
   return (
-    <Badge className="bg-success text-success-foreground" data-testid="pr-state">
+    <Badge variant="success" data-testid="pr-state">
       <GitPullRequest className="w-3 h-3" /> Open
     </Badge>
   )
@@ -112,36 +110,31 @@ const PullRequestDetail = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6" data-testid="pull-detail">
-      <RouterLink
-        to="/$owner/$repo/pulls"
-        params={{ owner, repo }}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
+      <RouterLink to="/$owner/$repo/pulls" params={{ owner, repo }} appearance="muted">
         <ArrowLeft className="w-4 h-4" />
         Back to pull requests
       </RouterLink>
 
       {editing ? (
         <div className="space-y-3">
-          <input
+          <Input
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
             data-testid="edit-pr-title"
-            className="w-full rounded border border-border bg-card px-3 py-2 text-lg font-bold text-foreground focus:outline-none"
+            appearance="title"
           />
-          <textarea
+          <Textarea
             value={editBody}
             onChange={(e) => setEditBody(e.target.value)}
             rows={5}
             data-testid="edit-pr-body"
-            className="w-full rounded border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none resize-y"
           />
           <div className="flex justify-end gap-2">
-            <Button size="sm" variant="outline" onClick={() => setEditing(false)} data-testid="edit-pr-cancel">
+            <Button size="compact" variant="repository" onClick={() => setEditing(false)} data-testid="edit-pr-cancel">
               Cancel
             </Button>
             <Button
-              size="sm"
+              size="compact"
               disabled={!editTitle.trim() || editMutation.isPending}
               onClick={() =>
                 editMutation.mutate({
@@ -165,8 +158,8 @@ const PullRequestDetail = () => {
               <div className="flex items-center gap-2">
                 {canEdit && (
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="repository"
+                    size="compact"
                     onClick={() => {
                       setEditTitle(pull.title)
                       setEditBody(pull.body ?? "")
@@ -221,7 +214,7 @@ const PullRequestDetail = () => {
                   <RouterLink
                     to="/$owner/$repo/src/commit/$sha/$"
                     params={{ owner, repo, sha: changes.head_commit, _splat: file.path }}
-                    className="text-xs text-primary hover:underline"
+                    appearance="caption"
                     data-testid={`view-file-${file.path}`}
                   >
                     View file
@@ -239,7 +232,7 @@ const PullRequestDetail = () => {
         {isOpen ? (
           <>
             <Button
-              size="sm"
+              size="compact"
               disabled={mutation.isPending}
               onClick={() => mutation.mutate({ path: { owner, repo, number: prNumber }, body: { state: "merged" } })}
               data-testid="merge-pr"
@@ -248,8 +241,8 @@ const PullRequestDetail = () => {
               Merge
             </Button>
             <Button
-              variant="outline"
-              size="sm"
+              variant="repository"
+              size="compact"
               disabled={mutation.isPending}
               onClick={() => mutation.mutate({ path: { owner, repo, number: prNumber }, body: { state: "closed" } })}
               data-testid="close-pr"
@@ -259,8 +252,8 @@ const PullRequestDetail = () => {
           </>
         ) : (
           <Button
-            variant="outline"
-            size="sm"
+            variant="repository"
+            size="compact"
             disabled={mutation.isPending}
             onClick={() => mutation.mutate({ path: { owner, repo, number: prNumber }, body: { state: "open" } })}
             data-testid="reopen-pr"

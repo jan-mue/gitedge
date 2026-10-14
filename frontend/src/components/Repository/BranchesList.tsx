@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
 import { GitBranch, Tag } from "lucide-react"
 import { releasesListTagsOptions, repositoriesListBranchesOptions } from "@/client/@tanstack/react-query.gen"
+import { Link } from "@/components/design-system"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 
 interface BranchesListProps {
@@ -60,7 +60,7 @@ const BranchesList = ({ owner, repo }: BranchesListProps) => {
               <Link
                 to="/$owner/$repo/src/branch/$branch"
                 params={{ owner, repo, branch: branch.name }}
-                className="font-mono text-sm text-primary hover:underline"
+                appearance="branch"
               >
                 {branch.name}
               </Link>
@@ -90,7 +90,7 @@ const BranchesList = ({ owner, repo }: BranchesListProps) => {
               <Link
                 to="/$owner/$repo/src/commit/$sha"
                 params={{ owner, repo, sha: tag.commit_sha }}
-                className="font-mono text-sm text-primary hover:underline"
+                appearance="branch"
               >
                 {tag.name}
               </Link>

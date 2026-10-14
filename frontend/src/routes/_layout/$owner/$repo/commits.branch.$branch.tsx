@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-
+import { Section } from "@/components/design-system"
 import CommitsList from "@/components/Repository/CommitsList"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/commits/branch/$branch")({
@@ -17,9 +17,8 @@ function BranchCommitsPage() {
   const { path } = Route.useSearch()
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-lg font-semibold text-foreground">Commit history</h1>
+    <Section title="Commit history">
       <CommitsList owner={owner} repo={repo} branch={branch} filePath={path} />
-    </div>
+    </Section>
   )
 }

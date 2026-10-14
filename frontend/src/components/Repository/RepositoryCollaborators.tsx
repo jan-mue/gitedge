@@ -8,9 +8,16 @@ import {
   authorizationRemoveCollaboratorMutation,
   authorizationSetCollaboratorMutation,
 } from "@/client/@tanstack/react-query.gen"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { LoadingButton } from "@/components/ui/loading-button"
+import {
+  Alert,
+  AlertDescription,
+  Badge,
+  Button,
+  Input,
+  Label,
+  LoadingButton,
+  SelectField,
+} from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -95,44 +102,43 @@ const RepositoryCollaborators = ({
         {collaborators.isPending ? (
           <p role="status">Loading collaborators…</p>
         ) : collaborators.isError ? (
-          <div role="alert">
-            <p>Unable to load collaborators.</p>
-            <Button variant="outline" onClick={() => collaborators.refetch()}>
-              Retry
-            </Button>
-          </div>
+          <Alert variant="destructive">
+            <AlertDescription>Unable to load collaborators.</AlertDescription>
+            <div className="mt-3">
+              <Button variant="repository" onClick={() => collaborators.refetch()}>
+                Retry
+              </Button>
+            </div>
+          </Alert>
         ) : collaborators.data.length ? (
-          <ul className="divide-y">
+          <ul className="divide-y divide-border">
             {collaborators.data.map((collaborator) => (
               <li key={collaborator.id} className="flex flex-wrap items-center gap-3 py-3">
-                <span className="min-w-0 flex-1 break-words">
-                  {collaborator.subject_name}
-                  <span className="ml-2 text-xs text-muted-foreground">{collaborator.team_id ? "Team" : "User"}</span>
-                </span>
-                <select
-                  aria-label={`Role for ${collaborator.subject_name}`}
-                  value={collaborator.role}
-                  disabled={busy || (collaborator.role === "owner" && !canManageOwners)}
-                  onChange={(event) =>
-                    grant.mutate({
-                      path,
-                      body: {
-                        user_id: collaborator.user_id,
-                        team_id: collaborator.team_id,
-                        role: event.target.value as RepositoryRole,
-                      },
-                    })
-                  }
-                  className="rounded border bg-background px-3 py-2 text-sm"
-                >
-                  {(collaborator.role === "owner" && !canManageOwners ? ["owner" as const] : roles).map((item) => (
-                    <option key={item} value={item}>
-                      {roleLabels[item]}
-                    </option>
-                  ))}
-                </select>
+                <span className="min-w-0 flex-1 break-words">{collaborator.subject_name}</span>
+                <Badge variant="secondary">{collaborator.team_id ? "Team" : "User"}</Badge>
+                <div className="w-32">
+                  <SelectField
+                    aria-label={`Role for ${collaborator.subject_name}`}
+                    value={collaborator.role}
+                    disabled={busy || (collaborator.role === "owner" && !canManageOwners)}
+                    onValueChange={(value) =>
+                      grant.mutate({
+                        path,
+                        body: {
+                          user_id: collaborator.user_id,
+                          team_id: collaborator.team_id,
+                          role: value as RepositoryRole,
+                        },
+                      })
+                    }
+                    options={(collaborator.role === "owner" && !canManageOwners ? ["owner" as const] : roles).map(
+                      (item) => ({ value: item, label: roleLabels[item] }),
+                    )}
+                  />
+                </div>
                 <Button
-                  variant="outline"
+                  variant="dangerOutline"
+                  size="compact"
                   disabled={busy || (collaborator.role === "owner" && !canManageOwners)}
                   onClick={() => remove.mutate({ path: { ...path, collaborator_id: collaborator.id } })}
                 >
@@ -145,74 +151,71 @@ const RepositoryCollaborators = ({
           <p className="text-sm text-muted-foreground">No additional collaborators.</p>
         )}
         <form
-          className="grid gap-3 sm:grid-cols-2"
+          className="grid gap-4 sm:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault()
             void add()
           }}
         >
           <div>
-            <label htmlFor="collaborator-kind" className="mb-1 block text-sm font-medium">
+            <Label htmlFor="collaborator-kind" appearance="field">
               Collaborator type
-            </label>
-            <select
+            </Label>
+            <SelectField
               id="collaborator-kind"
               value={kind}
-              onChange={(event) => setKind(event.target.value as "user" | "team")}
-              className="w-full rounded border bg-background px-3 py-2 text-sm"
-            >
-              <option value="user">User</option>
-              {!!teams.data?.length && <option value="team">Organization team</option>}
-            </select>
+              disabled={busy}
+              onValueChange={(value) => {
+                setKind(value as "user" | "team")
+                setTeamId("")
+              }}
+              options={[
+                { value: "user", label: "User" },
+                ...(teams.data?.length ? [{ value: "team", label: "Organization team" }] : []),
+              ]}
+            />
           </div>
           <div>
-            <label htmlFor="collaborator-subject" className="mb-1 block text-sm font-medium">
+            <Label htmlFor="collaborator-subject" appearance="field">
               {kind === "user" ? "Username" : "Team"}
-            </label>
+            </Label>
             {kind === "user" ? (
               <Input
                 id="collaborator-subject"
                 required
+                disabled={busy}
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
               />
             ) : (
-              <select
+              <SelectField
                 id="collaborator-subject"
                 required
+                disabled={busy}
                 value={teamId}
-                onChange={(event) => setTeamId(event.target.value)}
-                className="w-full rounded border bg-background px-3 py-2 text-sm"
-              >
-                <option value="">Select a team</option>
-                {teams.data?.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
+                onValueChange={setTeamId}
+                placeholder="Select a team"
+                options={(teams.data ?? []).map((team) => ({ value: team.id, label: team.name }))}
+              />
             )}
           </div>
           <div>
-            <label htmlFor="collaborator-role" className="mb-1 block text-sm font-medium">
+            <Label htmlFor="collaborator-role" appearance="field">
               Role
-            </label>
-            <select
+            </Label>
+            <SelectField
               id="collaborator-role"
               value={role}
-              onChange={(event) => setRole(event.target.value as RepositoryRole)}
-              className="w-full rounded border bg-background px-3 py-2 text-sm"
-            >
-              {roles.map((item) => (
-                <option key={item} value={item}>
-                  {roleLabels[item]}
-                </option>
-              ))}
-            </select>
+              disabled={busy}
+              onValueChange={(value) => setRole(value as RepositoryRole)}
+              options={roles.map((item) => ({ value: item, label: roleLabels[item] }))}
+            />
           </div>
-          <LoadingButton className="self-end" type="submit" loading={busy}>
-            Add collaborator
-          </LoadingButton>
+          <div className="self-end">
+            <LoadingButton variant="success" type="submit" loading={busy} disabled={kind === "team" && !teamId}>
+              Add collaborator
+            </LoadingButton>
+          </div>
         </form>
       </div>
     </section>

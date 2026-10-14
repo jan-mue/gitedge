@@ -309,6 +309,15 @@ class TestBranchSwitcher:
         expect(page.get_by_test_id("branch-option-main")).to_be_visible()
         expect(page.get_by_test_id("branch-option-develop")).to_be_visible()
 
+        search = page.get_by_role("textbox", name="Filter branch or tag")
+        search.fill("nonexistent-branch")
+        expect(page.get_by_role("option")).to_have_count(0)
+        page.keyboard.press("Escape")
+        branch_selector.click()
+        expect(search).to_have_value("")
+        expect(page.get_by_test_id("branch-option-main")).to_be_visible()
+        expect(page.get_by_test_id("branch-option-develop")).to_be_visible()
+
     def test_switch_branch_updates_tree(self, app_url: str, page: Page) -> None:
         """Test that selecting a different branch updates the file tree.
 
@@ -523,11 +532,8 @@ class TestCreatePullRequest:
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         page.goto(f"{app_url}/admin/createprrepo/pulls/new")
 
-        page.wait_for_selector(
-            '[data-testid="pr-source-branch"] option[value="main"]',
-            state="attached",
-        )
-        page.get_by_test_id("pr-source-branch").select_option("main")
+        page.get_by_test_id("pr-source-branch").click()
+        page.get_by_role("option", name="main", exact=True).click()
         page.get_by_test_id("pr-title-input").fill("My first pull request")
         page.get_by_test_id("pr-body-input").fill("This is the PR body.")
         page.get_by_test_id("submit-pr-btn").click()
@@ -557,11 +563,8 @@ class TestIssuesAndPullRequests:
         expect(page.get_by_test_id("issue-1")).to_be_visible(timeout=15000)
 
         page.goto(f"{app_url}/admin/mixedrepo/pulls/new")
-        page.wait_for_selector(
-            '[data-testid="pr-source-branch"] option[value="main"]',
-            state="attached",
-        )
-        page.get_by_test_id("pr-source-branch").select_option("main")
+        page.get_by_test_id("pr-source-branch").click()
+        page.get_by_role("option", name="main", exact=True).click()
         page.get_by_test_id("pr-title-input").fill("Pull request two")
         page.get_by_test_id("pr-body-input").fill("Pull request body")
         page.get_by_test_id("submit-pr-btn").click()
@@ -621,12 +624,10 @@ class TestPullRequestFiles:
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         page.goto(f"{app_url}/admin/prfilesrepo/pulls/new")
 
-        page.wait_for_selector(
-            '[data-testid="pr-source-branch"] option[value="develop"]',
-            state="attached",
-        )
-        page.get_by_test_id("pr-source-branch").select_option("develop")
-        page.get_by_test_id("pr-target-branch").select_option("main")
+        page.get_by_test_id("pr-source-branch").click()
+        page.get_by_role("option", name="develop", exact=True).click()
+        page.get_by_test_id("pr-target-branch").click()
+        page.get_by_role("option", name="main", exact=True).click()
         page.get_by_test_id("pr-title-input").fill("Add develop content")
         page.get_by_test_id("submit-pr-btn").click()
         expect(page.get_by_test_id("pr-1")).to_be_visible(timeout=15000)

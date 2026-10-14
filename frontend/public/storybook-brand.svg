@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="40" viewBox="0 0 220 40">
+  <title>GitEdge Design System</title>
+  <rect width="28" height="28" y="6" rx="4" fill="hsl(210, 70%, 55%)"/>
+  <svg x="6" y="12" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="18" r="3"/>
+    <circle cx="6" cy="6" r="3"/>
+    <circle cx="18" cy="6" r="3"/>
+    <path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/>
+    <path d="M12 12v3"/>
+  </svg>
+  <text x="36" y="24" fill="hsl(210, 20%, 88%)" font-family="system-ui,sans-serif" font-size="14" font-weight="700">GitEdge</text>
+  <text x="100" y="24" fill="#a6afbe" font-family="system-ui,sans-serif" font-size="12">DESIGN SYSTEM</text>
+</svg>

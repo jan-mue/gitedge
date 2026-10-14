@@ -1,18 +1,18 @@
-import { Skeleton } from "@/components/ui/skeleton"
+import { Button, Skeleton } from "@/components/design-system"
 
 const RepositoryLoading = ({ label = "Loading repository", rows = 6 }: { label?: string; rows?: number }) => (
   <div role="status" aria-label={label} className="space-y-4 motion-safe:animate-in motion-safe:fade-in-0">
     <span className="sr-only">{label}</span>
     <div className="overflow-hidden rounded-lg border bg-card">
       <div className="flex items-center gap-3 border-b bg-secondary px-4 py-3">
-        <Skeleton className="repository-skeleton size-7 rounded-full" />
-        <Skeleton className="repository-skeleton h-4 w-1/3" />
-        <Skeleton className="repository-skeleton ml-auto h-4 w-20" />
+        <Skeleton appearance="avatar" />
+        <Skeleton appearance="third" />
+        <Skeleton appearance="trailing" />
       </div>
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} className="flex items-center gap-3 border-b px-4 py-3 last:border-0">
-          <Skeleton className="repository-skeleton size-4" />
-          <Skeleton className={`h-4 ${index % 2 ? "w-1/3" : "w-1/2"}`} />
+          <Skeleton appearance="icon" />
+          <Skeleton appearance={index % 2 ? "third" : "half"} />
         </div>
       ))}
     </div>
@@ -29,13 +29,9 @@ export const RepositoryError = ({
   <div role="alert" className="rounded-lg border bg-card p-8 text-center">
     <p className="text-sm text-muted-foreground">{message}</p>
     {retry && (
-      <button
-        type="button"
-        onClick={retry}
-        className="mt-3 rounded border bg-secondary px-3 py-1.5 text-sm hover:bg-accent"
-      >
+      <Button type="button" onClick={retry} variant="repository" size="compact">
         Try again
-      </button>
+      </Button>
     )}
   </div>
 )

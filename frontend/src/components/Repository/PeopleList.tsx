@@ -1,5 +1,5 @@
 import type { UserPublic } from "@/client"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/design-system"
 
 interface PeopleListProps {
   users: UserPublic[]

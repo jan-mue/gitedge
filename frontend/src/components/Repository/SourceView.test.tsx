@@ -1,6 +1,7 @@
 import { HttpResponse } from "msw"
+import type { ReactNode } from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
-import type { FileContent, ReadmeContent } from "@/client"
+import type { FileContent, ReadmeContent, RepositoryInfo } from "@/client"
 import {
   handleRepositoriesGetReadme,
   handleRepositoriesGetRepositoryInfo,
@@ -15,13 +16,60 @@ vi.mock("@/components/Repository/RepoStats", () => ({
     <div>{showStatistics ? "Repository statistics" : "Repository navigation"}</div>
   ),
 }))
-vi.mock("@/components/Repository/FileBrowser", () => ({ default: () => <div data-testid="file-tree">Files</div> }))
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => vi.fn(),
+  Link: ({ children, "data-testid": testId }: { children: ReactNode; "data-testid"?: string }) => (
+    <a href="/" data-testid={testId}>
+      {children}
+    </a>
+  ),
+}))
 vi.mock("@/components/Repository/ReadmeViewer", () => ({ default: () => <div>README content</div> }))
 vi.mock("@/components/Repositories/RepoBreadcrumbs", () => ({ default: () => <div>Path</div> }))
 vi.mock("@/components/Repositories/CodeViewer", () => ({ default: () => <div>File content</div> }))
 const props = { owner: "owner", repo: "repo", mode: "branch" as const, refName: "main", path: "" }
 
 describe("Source loading", () => {
+  const commit = { sha: "abcdef1234567890", message: "Latest commit", author: "Jan", timestamp: 1791663993 }
+  const metadata = {
+    owner: "owner",
+    name: "repo",
+    default_branch: "main",
+    branch_count: 1,
+    tag_count: 0,
+    last_commit: commit,
+  }
+
+  test("keeps the commit header while metadata loads and fills it when the response arrives", async () => {
+    let finish: (value: RepositoryInfo) => void = () => {}
+    const info = new Promise<RepositoryInfo>((resolve) => {
+      finish = resolve
+    })
+    server.use(
+      handleRepositoriesGetSource({ body: { entries: [], tree_path: "", ref: "main" } }),
+      handleRepositoriesGetRepositoryInfo(async () => HttpResponse.json(await info)),
+    )
+    render(<SourceView {...props} />)
+    expect(await screen.findByRole("status", { name: "Loading latest commit" })).toBeInTheDocument()
+    expect(screen.getByTestId("file-tree")).toBeInTheDocument()
+    finish(metadata)
+    expect(await screen.findByTestId("last-commit-sha")).toHaveTextContent("abcdef1234")
+    expect(screen.getByTestId("last-commit-header")).toHaveTextContent("Latest commit")
+  })
+
+  test("keeps the file list and offers retry when commit metadata fails", async () => {
+    server.use(
+      handleRepositoriesGetSource({ body: { entries: [], tree_path: "", ref: "main" } }),
+      handleRepositoriesGetRepositoryInfo(() => new HttpResponse(null, { status: 503 }), { once: true }),
+    )
+    const { user } = render(<SourceView {...props} />)
+    expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load the latest commit")
+    expect(screen.getByTestId("file-tree")).toBeInTheDocument()
+    server.use(handleRepositoriesGetRepositoryInfo({ body: metadata }))
+    await user.click(screen.getByRole("button", { name: "Try again" }))
+    expect(await screen.findByTestId("last-commit-sha")).toHaveTextContent("abcdef1234")
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+  })
   beforeEach(() => {
     server.use(
       handleRepositoriesGetRepositoryInfo({
@@ -107,5 +155,37 @@ describe("Source loading", () => {
     })
     await waitFor(() => expect(screen.getByText("File content")).toBeInTheDocument())
     expect(getReadme).not.toHaveBeenCalled()
+  })
+  test("uses the tag namespace for source, metadata and README requests", async () => {
+    const refs: string[] = []
+    const record = (request: Request) => refs.push(new URL(request.url).searchParams.get("ref") ?? "")
+    server.use(
+      handleRepositoriesGetSource(({ request }) => {
+        record(request)
+        return HttpResponse.json({
+          entries: [{ name: "README.md", path: "README.md", type: "blob", size: 5 }],
+          tree_path: "",
+          ref: "refs/tags/main",
+        })
+      }),
+      handleRepositoriesGetRepositoryInfo(({ request }) => {
+        record(request)
+        return HttpResponse.json({
+          owner: "owner",
+          name: "repo",
+          default_branch: "main",
+          branch_count: 1,
+          tag_count: 1,
+        })
+      }),
+      handleRepositoriesGetReadme(({ request }) => {
+        record(request)
+        return HttpResponse.json({ filename: "README.md", content: "Hello", html: "<p>Hello</p>" })
+      }),
+    )
+    render(<SourceView {...props} mode="tag" refName="main" />)
+    expect(await screen.findByText("README content")).toBeInTheDocument()
+    expect(refs).toHaveLength(3)
+    expect(refs.every((ref) => ref === "refs/tags/main")).toBe(true)
   })
 })

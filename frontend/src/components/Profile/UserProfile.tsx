@@ -1,17 +1,14 @@
 import { useQuery } from "@tanstack/react-query"
-import { Link as RouterLink } from "@tanstack/react-router"
 import { GitBranch } from "lucide-react"
 import { useState } from "react"
-
 import type { Repository } from "@/client"
 import {
   profilesListUserRepositoriesOptions,
   profilesListUserStarredRepositoriesOptions,
   profilesReadUserByUsernameOptions,
 } from "@/client/@tanstack/react-query.gen"
+import { Avatar, AvatarFallback, Button, Link as RouterLink } from "@/components/design-system"
 import StarButton from "@/components/Repository/StarButton"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
 
 interface UserProfileProps {
   username: string
@@ -21,11 +18,7 @@ const RepoCard = ({ repo }: { repo: Repository }) => (
   <div className="border border-border rounded-lg bg-card px-4 py-3" data-testid={`profile-repo-${repo.name}`}>
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <RouterLink
-          to="/$owner/$repo"
-          params={{ owner: repo.owner, repo: repo.name }}
-          className="text-sm font-medium text-primary hover:underline"
-        >
+        <RouterLink to="/$owner/$repo" params={{ owner: repo.owner, repo: repo.name }} appearance="repository">
           {repo.owner}/{repo.name}
         </RouterLink>
         {repo.description && <p className="text-xs text-muted-foreground mt-1">{repo.description}</p>}
@@ -58,8 +51,8 @@ const UserProfile = ({ username }: UserProfileProps) => {
   return (
     <div className="container mx-auto max-w-7xl space-y-6 px-4 py-6" data-testid="user-profile">
       <div className="flex items-center gap-4">
-        <Avatar className="size-16">
-          <AvatarFallback className="text-xl">
+        <Avatar appearance="profile">
+          <AvatarFallback appearance="profile">
             {(user?.display_name || username).slice(0, 1).toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -71,10 +64,8 @@ const UserProfile = ({ username }: UserProfileProps) => {
 
       <div className="flex items-center gap-2 border-b border-border">
         <Button
-          variant="ghost"
-          className={`rounded-none border-b-2 ${
-            tab === "repositories" ? "border-primary text-foreground" : "border-transparent text-muted-foreground"
-          }`}
+          variant="tab"
+          aria-pressed={tab === "repositories"}
           onClick={() => setTab("repositories")}
           data-testid="profile-tab-repositories"
         >
@@ -83,10 +74,8 @@ const UserProfile = ({ username }: UserProfileProps) => {
         </Button>
         {isUser && (
           <Button
-            variant="ghost"
-            className={`rounded-none border-b-2 ${
-              tab === "starred" ? "border-primary text-foreground" : "border-transparent text-muted-foreground"
-            }`}
+            variant="tab"
+            aria-pressed={tab === "starred"}
             onClick={() => setTab("starred")}
             data-testid="profile-tab-starred"
           >

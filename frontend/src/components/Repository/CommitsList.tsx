@@ -1,8 +1,13 @@
 import { useQuery } from "@tanstack/react-query"
-import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
-import { Check, GitBranch } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { repositoriesListBranchesOptions, repositoriesListCommitsOptions } from "@/client/@tanstack/react-query.gen"
+import { useNavigate } from "@tanstack/react-router"
+import { useState } from "react"
+import {
+  releasesListTagsOptions,
+  repositoriesListBranchesOptions,
+  repositoriesListCommitsOptions,
+} from "@/client/@tanstack/react-query.gen"
+import { Link as RouterLink } from "@/components/design-system"
+import BranchSelector from "@/components/Repository/BranchSelector"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 
 interface CommitsListProps {
@@ -10,15 +15,15 @@ interface CommitsListProps {
   repo: string
   branch?: string
   filePath?: string
+  tag?: string
 }
 
 const formatDate = (timestamp: number) => new Date(timestamp * 1000).toLocaleString()
 
-const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
-  const ref = branch ?? "main"
+const CommitsList = ({ owner, repo, branch, tag, filePath }: CommitsListProps) => {
+  const ref = tag ? `refs/tags/${tag}` : (branch ?? "main")
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const {
     data: commitsData,
@@ -29,29 +34,41 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
     ...repositoriesListCommitsOptions({ path: { owner, repo }, query: { ref, limit: 50, file_path: filePath } }),
   })
 
-  const { data: branches } = useQuery({
+  const {
+    data: branches,
+    isPending: branchesPending,
+    isError: branchesError,
+    refetch: refetchBranches,
+  } = useQuery({
     ...repositoriesListBranchesOptions({ path: { owner, repo } }),
-    enabled: open,
   })
-
-  const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-      setOpen(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside)
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [open, handleClickOutside])
 
   const commits = commitsData?.data ?? []
 
-  const selectBranch = (branchName: string) => {
+  const {
+    data: tags,
+    isPending: tagsPending,
+    isError: tagsError,
+    refetch: refetchTags,
+  } = useQuery({
+    ...releasesListTagsOptions({ path: { owner, repo } }),
+    enabled: open,
+  })
+
+  const selectBranch = (branchName: string, kind: "branch" | "tag") => {
     setOpen(false)
-    navigate({ to: "/$owner/$repo/commits/branch/$branch", params: { owner, repo, branch: branchName } })
+    if (kind === "tag")
+      navigate({
+        to: "/$owner/$repo/commits/tag/$tag",
+        params: { owner, repo, tag: branchName },
+        search: { path: filePath },
+      })
+    else
+      navigate({
+        to: "/$owner/$repo/commits/branch/$branch",
+        params: { owner, repo, branch: branchName },
+        search: { path: filePath },
+      })
   }
 
   if (isPending) return <RepositoryLoading label="Loading commits" />
@@ -65,43 +82,23 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
         </h2>
       )}
       <div className="flex items-center gap-2">
-        <div className="relative" ref={dropdownRef}>
-          <button
-            type="button"
-            onClick={() => setOpen((prev) => !prev)}
-            className="flex items-center gap-1.5 rounded border border-border bg-secondary px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
-            data-testid="commits-branch-selector"
-          >
-            <GitBranch className="h-3.5 w-3.5" />
-            <span>{ref}</span>
-            <span className="text-muted-foreground">&#9662;</span>
-          </button>
-          {open && (
-            <div
-              className="absolute left-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-lg border border-border bg-card shadow-lg"
-              data-testid="commits-branch-dropdown"
-            >
-              <div className="max-h-64 overflow-y-auto py-1">
-                {branches?.map((branch) => (
-                  <button
-                    key={branch.name}
-                    type="button"
-                    onClick={() => selectBranch(branch.name)}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
-                  >
-                    {branch.name === ref ? (
-                      <Check className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
-                    ) : (
-                      <span className="h-3.5 w-3.5 flex-shrink-0" />
-                    )}
-                    <span className="truncate">{branch.name}</span>
-                  </button>
-                ))}
-                {!branches && <div className="px-3 py-2 text-sm text-muted-foreground">Loading...</div>}
-              </div>
-            </div>
-          )}
-        </div>
+        <BranchSelector
+          branches={branches ?? []}
+          tags={tags?.data ?? []}
+          value={tag ?? ref}
+          kind={tag ? "tag" : "branch"}
+          onValueChange={selectBranch}
+          open={open}
+          onOpenChange={setOpen}
+          loading={branchesPending}
+          error={branchesError}
+          onRetry={() => refetchBranches()}
+          tagsLoading={tagsPending}
+          tagsError={tagsError}
+          onRetryTags={() => refetchTags()}
+          data-testid="commits-branch-selector"
+          dropdownTestId="commits-branch-dropdown"
+        />
         <span className="text-sm text-muted-foreground">
           {commits.length} {commits.length === 1 ? "commit" : "commits"}
         </span>
@@ -118,11 +115,7 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
               {commit.author.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <RouterLink
-                to="/$owner/$repo/commit/$hash"
-                params={{ owner, repo, hash: commit.sha }}
-                className="text-sm font-medium text-foreground hover:text-primary"
-              >
+              <RouterLink to="/$owner/$repo/commit/$hash" params={{ owner, repo, hash: commit.sha }} appearance="title">
                 {commit.message.split("\n")[0]}
               </RouterLink>
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -133,7 +126,7 @@ const CommitsList = ({ owner, repo, branch, filePath }: CommitsListProps) => {
             <RouterLink
               to="/$owner/$repo/commit/$hash"
               params={{ owner, repo, hash: commit.sha }}
-              className="flex-shrink-0 font-mono text-xs text-primary hover:underline"
+              appearance="commitHash"
             >
               {commit.sha.slice(0, 10)}
             </RouterLink>

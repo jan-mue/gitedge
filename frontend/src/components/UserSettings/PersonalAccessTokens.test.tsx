@@ -42,7 +42,8 @@ describe("PersonalAccessTokens", () => {
     const { user } = render(<PersonalAccessTokens />)
     await screen.findByText("No personal access tokens.")
     await user.type(screen.getByLabelText("Token name"), "Laptop")
-    await user.selectOptions(screen.getByLabelText("Git access"), "write")
+    await user.click(screen.getByRole("combobox", { name: "Git access" }))
+    await user.click(screen.getByRole("option", { name: "Read and write — clone, fetch, and push" }))
     await user.click(screen.getByRole("button", { name: "Create token" }))
     expect(await screen.findByLabelText("New personal access token")).toHaveValue(fullToken)
     expect(create).toHaveBeenCalledExactlyOnceWith({
@@ -89,7 +90,8 @@ describe("PersonalAccessTokens", () => {
     const { user } = render(<PersonalAccessTokens />)
     await user.click(await screen.findByRole("button", { name: "Rotate" }))
     expect(screen.getByText("The old token will be revoked when its replacement is created.")).toBeInTheDocument()
-    await user.selectOptions(screen.getByLabelText("Expiration"), "never")
+    await user.click(screen.getByRole("combobox", { name: "Expiration" }))
+    await user.click(screen.getByRole("option", { name: "No expiration" }))
     await user.click(screen.getByRole("button", { name: "Create replacement" }))
     expect(await screen.findByLabelText("New personal access token")).toHaveValue(fullToken)
     expect(rotate).toHaveBeenCalledExactlyOnceWith({

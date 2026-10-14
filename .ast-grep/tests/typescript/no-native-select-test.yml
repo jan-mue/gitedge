@@ -1,0 +1,8 @@
+id: no-native-select
+valid:
+  - '<SelectField options={options} />'
+  - '<BranchSelector branches={branches} value="main" onValueChange={setBranch} />'
+  - '<Select><SelectTrigger><SelectValue /></SelectTrigger></Select>'
+invalid:
+  - '<select><option>main</option></select>'
+  - '<select aria-label="Sort order" />'

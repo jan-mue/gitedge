@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest"
 import { handleRepositoriesCreatePullRequest, handleRepositoriesListBranches } from "@/client/msw.gen"
 import { branches, pullRequest } from "@/test/fixtures"
 import { server } from "@/test/server"
-import { render, screen, within } from "@/test/test-utils"
+import { render, screen } from "@/test/test-utils"
 import NewPullRequestForm from "./NewPullRequestForm"
 
 const navigate = vi.hoisted(() => vi.fn())
@@ -32,8 +32,8 @@ describe("NewPullRequestForm", () => {
 
     const sourceSelect = screen.getByTestId("pr-source-branch")
     await user.type(screen.getByTestId("pr-title-input"), "Title")
-    await within(sourceSelect).findByRole("option", { name: "feature" })
-    await user.selectOptions(sourceSelect, "feature")
+    await user.click(sourceSelect)
+    await user.click(await screen.findByRole("option", { name: "feature" }))
 
     expect(submit).toBeEnabled()
   })
@@ -51,8 +51,8 @@ describe("NewPullRequestForm", () => {
 
     const sourceSelect = screen.getByTestId("pr-source-branch")
     await user.type(screen.getByTestId("pr-title-input"), "Title")
-    await within(sourceSelect).findByRole("option", { name: "feature" })
-    await user.selectOptions(sourceSelect, "feature")
+    await user.click(sourceSelect)
+    await user.click(await screen.findByRole("option", { name: "feature" }))
     await user.click(screen.getByTestId("submit-pr-btn"))
 
     await vi.waitFor(() =>

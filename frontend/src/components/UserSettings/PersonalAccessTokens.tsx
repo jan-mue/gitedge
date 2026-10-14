@@ -10,9 +10,22 @@ import {
   personalAccessTokensRevokeTokenMutation,
   personalAccessTokensRotateTokenMutation,
 } from "@/client/@tanstack/react-query.gen"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { LoadingButton } from "@/components/ui/loading-button"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Button,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  LoadingButton,
+  SelectField,
+} from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -91,13 +104,15 @@ const PersonalAccessTokens = () => {
         </p>
       </div>
       {issued && (
-        <section className="space-y-3 rounded border border-primary p-4" aria-label="New token">
-          <h4 className="font-medium">Save your new token</h4>
-          <p className="text-sm">Copy it now. The full token will not be shown again.</p>
-          <Input aria-label="New personal access token" value={issued.token} readOnly autoComplete="off" />
+        <Alert aria-label="New token">
+          <AlertTitle>Save your new token</AlertTitle>
+          <AlertDescription>Copy it now. The full token will not be shown again.</AlertDescription>
+          <div className="my-3">
+            <Input aria-label="New personal access token" value={issued.token} readOnly autoComplete="off" />
+          </div>
           <div className="flex gap-2">
             <Button
-              variant="outline"
+              variant="repository"
               onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(issued.token)
@@ -111,7 +126,7 @@ const PersonalAccessTokens = () => {
             </Button>
             <Button onClick={dismiss}>I've saved my token</Button>
           </div>
-        </section>
+        </Alert>
       )}
       <section className="rounded border bg-card p-4">
         <h4 className="mb-3 font-medium">{rotating ? `Replace ${rotating.name}` : "Create a token"}</h4>
@@ -120,82 +135,109 @@ const PersonalAccessTokens = () => {
             The old token will be revoked when its replacement is created.
           </p>
         )}
-        <form onSubmit={form.handleSubmit(submit)} className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label htmlFor="pat-name" className="mb-1 block text-sm font-medium">
-              Token name
-            </label>
-            <Input
-              id="pat-name"
-              {...form.register("name")}
-              aria-invalid={Boolean(form.formState.errors.name)}
-              placeholder="Work laptop"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(submit)} className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>Token name</FormLabel>
+                    <FormControl>
+                      <Input {...field} aria-invalid={fieldState.invalid} placeholder="Work laptop" disabled={busy} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="access"
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel>Git access</FormLabel>
+                  <FormControl>
+                    <SelectField
+                      name={field.name}
+                      ref={field.ref}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      onBlur={field.onBlur}
+                      disabled={busy}
+                      aria-invalid={fieldState.invalid}
+                      options={[
+                        { value: "read", label: "Read — clone and fetch" },
+                        { value: "write", label: "Read and write — clone, fetch, and push" },
+                      ]}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            {form.formState.errors.name && (
-              <p className="text-sm text-destructive" role="alert">
-                {form.formState.errors.name.message}
-              </p>
-            )}
-          </div>
-          <div>
-            <label htmlFor="pat-access" className="mb-1 block text-sm font-medium">
-              Git access
-            </label>
-            <select
-              id="pat-access"
-              {...form.register("access")}
-              className="w-full rounded border bg-background px-3 py-2 text-sm"
-            >
-              <option value="read">Read — clone and fetch</option>
-              <option value="write">Read and write — clone, fetch, and push</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="pat-expiry" className="mb-1 block text-sm font-medium">
-              Expiration
-            </label>
-            <select
-              id="pat-expiry"
-              {...form.register("expiry")}
-              className="w-full rounded border bg-background px-3 py-2 text-sm"
-            >
-              <option value="30">30 days</option>
-              <option value="90">90 days</option>
-              <option value="365">1 year</option>
-              <option value="never">No expiration</option>
-            </select>
-          </div>
-          <div className="flex gap-2 sm:col-span-2">
-            <LoadingButton type="submit" loading={busy} disabled={Boolean(issued)}>
-              {rotating ? "Create replacement" : "Create token"}
-            </LoadingButton>
-            {rotating && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() => {
-                  setRotating(null)
-                  form.reset()
-                }}
-              >
-                Cancel
-              </Button>
-            )}
-          </div>
-        </form>
+            <FormField
+              control={form.control}
+              name="expiry"
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel>Expiration</FormLabel>
+                  <FormControl>
+                    <SelectField
+                      name={field.name}
+                      ref={field.ref}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      onBlur={field.onBlur}
+                      disabled={busy}
+                      aria-invalid={fieldState.invalid}
+                      options={[
+                        { value: "30", label: "30 days" },
+                        { value: "90", label: "90 days" },
+                        { value: "365", label: "1 year" },
+                        { value: "never", label: "No expiration" },
+                      ]}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="flex gap-2 sm:col-span-2">
+              <LoadingButton variant="success" type="submit" loading={busy} disabled={Boolean(issued)}>
+                {rotating ? "Create replacement" : "Create token"}
+              </LoadingButton>
+              {rotating && (
+                <Button
+                  type="button"
+                  variant="repository"
+                  disabled={busy}
+                  onClick={() => {
+                    setRotating(null)
+                    form.reset()
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
+          </form>
+        </Form>
       </section>
       <section aria-label="Your tokens">
         <h4 className="mb-3 font-medium">Your tokens</h4>
         {tokens.isPending ? (
           <p role="status">Loading tokens…</p>
         ) : tokens.isError ? (
-          <div role="alert">
-            <p>Unable to load tokens.</p>
-            <Button variant="outline" onClick={() => tokens.refetch()}>
-              Retry
-            </Button>
-          </div>
+          <Alert variant="destructive">
+            <AlertDescription>Unable to load tokens.</AlertDescription>
+            <div className="mt-3">
+              <Button variant="repository" onClick={() => tokens.refetch()}>
+                Retry
+              </Button>
+            </div>
+          </Alert>
         ) : !tokens.data.length ? (
           <p className="text-sm text-muted-foreground">No personal access tokens.</p>
         ) : (
@@ -204,7 +246,18 @@ const PersonalAccessTokens = () => {
               <li key={token.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div>
                   <p className="font-medium">
-                    {token.name} <span className="ml-2 text-xs text-muted-foreground">{tokenStatus(token)}</span>
+                    {token.name}{" "}
+                    <Badge
+                      variant={
+                        tokenStatus(token) === "Active"
+                          ? "success"
+                          : tokenStatus(token) === "Expired"
+                            ? "warning"
+                            : "secondary"
+                      }
+                    >
+                      {tokenStatus(token)}
+                    </Badge>
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Ending in {token.secret_last4} · {token.scopes.includes("git:write") ? "Read and write" : "Read"}
@@ -219,7 +272,7 @@ const PersonalAccessTokens = () => {
                 {!token.revoked_at && (
                   <div className="flex gap-2">
                     <Button
-                      variant="outline"
+                      variant="repository"
                       disabled={busy || Boolean(issued)}
                       onClick={() => {
                         setRotating(token)
@@ -233,7 +286,7 @@ const PersonalAccessTokens = () => {
                       Rotate
                     </Button>
                     <Button
-                      variant="destructive"
+                      variant="dangerOutline"
                       disabled={busy}
                       onClick={() => {
                         if (rotating?.id === token.id) setRotating(null)

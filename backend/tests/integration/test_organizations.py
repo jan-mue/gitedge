@@ -37,7 +37,8 @@ class TestOrganizations:
         page.get_by_test_id("create-menu").click()
         page.get_by_role("menuitem", name="New Repository").click()
         expect(page.get_by_role("dialog", name="New Repository")).to_be_visible()
-        page.get_by_test_id("new-repo-owner").select_option("test-org")
+        page.get_by_test_id("new-repo-owner").click()
+        page.get_by_role("option", name="test-org", exact=True).click()
         page.get_by_test_id("new-repo-name").fill("org-repo")
         page.get_by_test_id("new-repo-submit").click()
 

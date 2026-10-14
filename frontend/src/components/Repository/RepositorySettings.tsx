@@ -1,9 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { Settings, Trash2 } from "lucide-react"
+import { Settings, Trash2, Users } from "lucide-react"
 import { useEffect, useState } from "react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
 import {
   authorizationGetPermissionsOptions,
@@ -12,9 +12,11 @@ import {
   repositoriesListBranchesOptions,
   repositoriesUpdateRepositoryMutation,
 } from "@/client/@tanstack/react-query.gen"
-import RepositoryCollaborators from "@/components/Repository/RepositoryCollaborators"
-import { Button } from "@/components/ui/button"
 import {
+  Button,
+  Checkbox,
+  DangerZone,
+  DangerZoneAction,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,9 +24,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { LoadingButton } from "@/components/ui/loading-button"
+  ExternalLink,
+  Input,
+  Label,
+  LoadingButton,
+  SelectField,
+  Textarea,
+} from "@/components/design-system"
+import RepositoryCollaborators from "@/components/Repository/RepositoryCollaborators"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -54,6 +61,7 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
   const { data: branches } = useQuery(repositoriesListBranchesOptions({ path: { owner, repo } }))
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isDirty },
@@ -63,7 +71,7 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
       reset({
         name: data.name,
         description: data.description ?? "",
-        default_branch: data.default_branch,
+        default_branch: data.default_branch ?? "main",
         is_private: data.is_private,
       })
   }, [data, reset])
@@ -74,7 +82,7 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
       reset({
         name: updated.name,
         description: updated.description ?? "",
-        default_branch: updated.default_branch,
+        default_branch: updated.default_branch ?? "main",
         is_private: updated.is_private,
       })
       showSuccessToast("Repository settings saved")
@@ -94,6 +102,8 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
   })
   if (isPending || permissions.isPending) return <RepositoryLoading label="Loading repository settings" />
   if (isError) return <RepositoryError message="Unable to load settings." retry={() => refetch()} />
+  if (permissions.isError)
+    return <RepositoryError message="Unable to load permissions." retry={() => permissions.refetch()} />
   if (!user || !permissions.data?.admin)
     return <RepositoryError message="Repository admin permission is required to change these settings." />
   const fullName = `${owner}/${repo}`
@@ -105,24 +115,19 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
           className="flex gap-1 overflow-x-auto text-sm md:flex-col md:gap-0 md:overflow-visible"
           aria-label="Repository settings"
         >
-          <a
-            href="#basic-settings"
-            className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded bg-accent/50 px-3 py-2 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring md:rounded-none md:border-b md:bg-transparent md:px-4 md:py-3"
-          >
+          <ExternalLink href="#basic-settings" appearance="settings">
             <Settings className="size-4 shrink-0" aria-hidden="true" />
             Repository
-          </a>
-          <a href="#collaborators" className="px-4 py-3 text-sm hover:bg-accent">
+          </ExternalLink>
+          <ExternalLink href="#collaborators" appearance="settings">
+            <Users className="size-4 shrink-0" aria-hidden="true" />
             Collaborators
-          </a>
+          </ExternalLink>
           {permissions.data.owner && (
-            <a
-              href="#danger-zone"
-              className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded bg-accent/50 px-3 py-2 text-destructive transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring md:rounded-none md:bg-transparent md:px-4 md:py-3"
-            >
+            <ExternalLink href="#danger-zone" appearance="settingsDanger">
               <Trash2 className="size-4 shrink-0" aria-hidden="true" />
               Danger zone
-            </a>
+            </ExternalLink>
           )}
         </nav>
       </aside>
@@ -134,50 +139,66 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
             className="space-y-4 p-4"
           >
             <div>
-              <label htmlFor="repository-name" className="mb-1 block text-sm font-medium">
+              <Label htmlFor="repository-name" appearance="field">
                 Repository name *
-              </label>
+              </Label>
               <Input id="repository-name" {...register("name")} aria-invalid={Boolean(errors.name)} />
               {errors.name && <p className="mt-1 text-sm text-destructive">{errors.name.message}</p>}
             </div>
             <div>
-              <label htmlFor="repository-description" className="mb-1 block text-sm font-medium">
+              <Label htmlFor="repository-description" appearance="field">
                 Description
-              </label>
-              <textarea
-                id="repository-description"
-                {...register("description")}
-                className="min-h-24 w-full rounded border bg-background px-3 py-2 text-sm"
-              />
+              </Label>
+              <Textarea id="repository-description" {...register("description")} />
               {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
             </div>
             <div>
-              <label htmlFor="default-branch" className="mb-1 block text-sm font-medium">
+              <Label htmlFor="default-branch" appearance="field">
                 Default branch
-              </label>
-              {branches?.length ? (
-                <select
-                  id="default-branch"
-                  {...register("default_branch")}
-                  className="w-full rounded border bg-background px-3 py-2 text-sm"
-                >
-                  {branches.map((branch) => (
-                    <option key={branch.name} value={branch.name}>
-                      {branch.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <Input id="default-branch" {...register("default_branch")} />
-              )}
+              </Label>
+              <Controller
+                control={control}
+                name="default_branch"
+                render={({ field }) => (
+                  <SelectField
+                    id="default-branch"
+                    aria-label="Default branch"
+                    name={field.name}
+                    ref={field.ref}
+                    value={field.value ?? ""}
+                    onValueChange={field.onChange}
+                    onBlur={field.onBlur}
+                    options={(branches?.length ? branches : [{ name: data.default_branch ?? "main" }]).map(
+                      (branch) => ({ value: branch.name, label: branch.name }),
+                    )}
+                    aria-invalid={Boolean(errors.default_branch)}
+                  />
+                )}
+              />
               {errors.default_branch && <p className="text-sm text-destructive">{errors.default_branch.message}</p>}
               <p className="mt-1 text-xs text-muted-foreground">The branch shown when visitors open the repository.</p>
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" {...register("is_private")} />
-              Private repository
-            </label>
-            <p className="text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Controller
+                control={control}
+                name="is_private"
+                render={({ field }) => (
+                  <Checkbox
+                    id="repository-private"
+                    name={field.name}
+                    ref={field.ref}
+                    checked={field.value}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
+                    onBlur={field.onBlur}
+                    aria-describedby="repository-visibility-description"
+                  />
+                )}
+              />
+              <Label htmlFor="repository-private" appearance="inline">
+                Private repository
+              </Label>
+            </div>
+            <p id="repository-visibility-description" className="text-xs text-muted-foreground">
               Public repositories allow anyone to read and clone. Private repositories require authentication and a
               repository role.
             </p>
@@ -188,65 +209,64 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
         </section>
         <RepositoryCollaborators owner={owner} repo={repo} canManageOwners={permissions.data.owner} />
         {permissions.data.owner && (
-          <section id="danger-zone" className="overflow-hidden rounded border border-destructive bg-card">
-            <h3 className="border-b border-destructive bg-destructive/10 px-4 py-3 text-xl font-semibold text-destructive">
-              Danger zone
-            </h3>
-            <div className="flex flex-wrap items-center justify-between gap-4 p-4">
-              <div>
-                <p className="font-medium">Delete this repository</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Permanently delete code, issues, pull requests, releases, and repository activity.
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">Independent forks will be preserved.</p>
-              </div>
-              <Dialog
-                open={deleteOpen}
-                onOpenChange={(open) => {
-                  if (!remove.isPending) {
-                    setDeleteOpen(open)
-                    setConfirmation("")
-                  }
-                }}
-              >
-                <DialogTrigger asChild>
-                  <Button variant="destructive" disabled={update.isPending}>
-                    Delete this repository
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Delete {fullName}?</DialogTitle>
-                    <DialogDescription>
-                      This is permanent. All code and repository records will be deleted. Type {fullName} to confirm.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <label htmlFor="delete-confirmation" className="text-sm font-medium">
-                    Repository full name
-                  </label>
-                  <Input
-                    id="delete-confirmation"
-                    value={confirmation}
-                    onChange={(event) => setConfirmation(event.target.value)}
-                    autoComplete="off"
-                  />
-                  <DialogFooter>
-                    <Button variant="outline" disabled={remove.isPending} onClick={() => setDeleteOpen(false)}>
-                      Cancel
+          <DangerZone id="danger-zone">
+            <DangerZoneAction
+              title="Delete this repository"
+              description={
+                <>
+                  <p>Permanently delete code, issues, pull requests, releases, and repository activity.</p>
+                  <p className="mt-1 text-xs">Independent forks will be preserved.</p>
+                </>
+              }
+              action={
+                <Dialog
+                  open={deleteOpen}
+                  onOpenChange={(open) => {
+                    if (!remove.isPending) {
+                      setDeleteOpen(open)
+                      setConfirmation("")
+                    }
+                  }}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="dangerOutline" size="danger" disabled={update.isPending}>
+                      Delete this repository
                     </Button>
-                    <LoadingButton
-                      variant="destructive"
-                      loading={remove.isPending}
-                      disabled={confirmation !== fullName}
-                      onClick={() => remove.mutate({ path: { owner, repo } })}
-                    >
-                      Delete repository
-                    </LoadingButton>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </section>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete {fullName}?</DialogTitle>
+                      <DialogDescription>
+                        This is permanent. All code and repository records will be deleted. Type {fullName} to confirm.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Label htmlFor="delete-confirmation" appearance="field">
+                      Repository full name
+                    </Label>
+                    <Input
+                      id="delete-confirmation"
+                      value={confirmation}
+                      onChange={(event) => setConfirmation(event.target.value)}
+                      autoComplete="off"
+                    />
+                    <DialogFooter>
+                      <Button variant="repository" disabled={remove.isPending} onClick={() => setDeleteOpen(false)}>
+                        Cancel
+                      </Button>
+                      <LoadingButton
+                        variant="destructive"
+                        loading={remove.isPending}
+                        disabled={confirmation !== fullName}
+                        onClick={() => remove.mutate({ path: { owner, repo } })}
+                      >
+                        Delete repository
+                      </LoadingButton>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              }
+            />
+          </DangerZone>
         )}
       </div>
     </div>

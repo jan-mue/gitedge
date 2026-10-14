@@ -1,0 +1,39 @@
+id: no-design-system-overrides
+language: tsx
+severity: error
+message: Design-system components own their styling. Use a named variant, or add a layout wrapper.
+files:
+  - frontend/src/**/*.tsx
+ignores:
+  - frontend/src/components/ui/**
+  - frontend/src/components/design-system/**
+  - frontend/src/**/*.test.tsx
+  - frontend/src/**/*.stories.tsx
+  - frontend/src/components/Storybook/**
+rule:
+  kind: jsx_attribute
+  regex: '^(className|style)='
+  inside:
+    any:
+      - kind: jsx_opening_element
+      - kind: jsx_self_closing_element
+    has:
+      field: name
+      pattern: $CONTROL
+      inside:
+        stopBy: end
+        kind: program
+        has:
+          kind: import_statement
+          all:
+            - has:
+                field: source
+                regex: '^[''"]@/components/design-system(?:/[^''"]*)?[''"]$'
+            - has:
+                stopBy: end
+                kind: import_specifier
+                any:
+                  - pattern: $CONTROL
+                  - has:
+                      field: alias
+                      pattern: $CONTROL

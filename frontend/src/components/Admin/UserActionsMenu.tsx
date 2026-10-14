@@ -1,9 +1,7 @@
 import { EllipsisVertical } from "lucide-react"
 import { useState } from "react"
-
 import type { UserPublic } from "@/client"
-import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
 import DeleteUser from "./DeleteUser"
 import EditUser from "./EditUser"

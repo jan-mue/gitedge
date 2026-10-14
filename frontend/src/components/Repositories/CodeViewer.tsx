@@ -1,11 +1,9 @@
-import { Link } from "@tanstack/react-router"
 import { ArrowLeft, File } from "lucide-react"
 import { useState } from "react"
-
 import type { FileContent } from "@/client"
+import { Button, ExternalLink, Link } from "@/components/design-system"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
 import SourceLink from "@/components/Repositories/SourceLink"
-import { Button } from "@/components/ui/button"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import { useSyntaxHighlightCSS } from "@/hooks/useSyntaxHighlightCSS"
 import { formatSize } from "@/utils"
@@ -26,31 +24,44 @@ const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
   useSyntaxHighlightCSS(file.css, file.css_dark)
   const [escapedTabs, setEscapedTabs] = useState(false)
   const [, copy] = useCopyToClipboard()
-  const rawUrl = `${import.meta.env.VITE_API_URL ?? ""}/api/v1/repositories/${encodeURIComponent(backLink.owner)}/${encodeURIComponent(backLink.repo)}/raw?${new URLSearchParams({ ref: backLink.refName, file_path: file.path })}`
+  const revision = backLink.mode === "tag" ? `refs/tags/${backLink.refName}` : backLink.refName
+  const rawUrl = `${import.meta.env.VITE_API_URL ?? ""}/api/v1/repositories/${encodeURIComponent(backLink.owner)}/${encodeURIComponent(backLink.repo)}/raw?${new URLSearchParams({ ref: revision, file_path: file.path })}`
 
   return (
     <div className="file-viewer border rounded-lg overflow-hidden" data-testid="file-viewer">
       <FileHeader file={file} backLink={backLink} />
       <div className="flex flex-wrap items-center justify-end gap-1 border-b bg-secondary/50 px-4 py-2">
-        <a href={rawUrl} className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent">
+        <ExternalLink href={rawUrl} appearance="codeAction">
           Raw
-        </a>
+        </ExternalLink>
         <Link
           to="/$owner/$repo/blame/$"
           params={{ owner: backLink.owner, repo: backLink.repo, _splat: file.path }}
-          search={{ ref: backLink.refName }}
-          className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent"
+          search={{ ref: revision }}
+          appearance="codeAction"
         >
           Blame
         </Link>
-        <Link
-          to="/$owner/$repo/commits/branch/$branch"
-          params={{ owner: backLink.owner, repo: backLink.repo, branch: backLink.refName }}
-          search={{ path: file.path }}
-          className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent"
-        >
-          History
-        </Link>
+        {backLink.mode === "tag" ? (
+          <Link
+            to="/$owner/$repo/commits/tag/$tag"
+            params={{ owner: backLink.owner, repo: backLink.repo, tag: backLink.refName }}
+            search={{ path: file.path }}
+            appearance="codeAction"
+          >
+            History
+          </Link>
+        ) : (
+          <Link
+            to="/$owner/$repo/commits/branch/$branch"
+            params={{ owner: backLink.owner, repo: backLink.repo, branch: backLink.refName }}
+            search={{ path: file.path }}
+            appearance="codeAction"
+          >
+            History
+          </Link>
+        )}
+
         {commitSha && (
           <SourceLink
             owner={backLink.owner}
@@ -58,25 +69,17 @@ const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
             mode="commit"
             refName={commitSha}
             path={file.path}
-            className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent"
+            appearance="codeAction"
           >
             Permalink
           </SourceLink>
         )}
-        <button
-          type="button"
-          onClick={() => copy(file.content)}
-          className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent"
-        >
+        <Button type="button" onClick={() => copy(file.content)} variant="codeAction" size="code">
           Copy content
-        </button>
-        <button
-          type="button"
-          onClick={() => setEscapedTabs((value) => !value)}
-          className="rounded border bg-background px-2.5 py-1 text-xs hover:bg-accent"
-        >
+        </Button>
+        <Button type="button" onClick={() => setEscapedTabs((value) => !value)} variant="codeAction" size="code">
           {escapedTabs ? "Unescape tabs" : "Escape tabs"}
-        </button>
+        </Button>
       </div>
       <HighlightedContent html={escapedTabs ? file.highlighted_html.replace(/\t/g, "\\t") : file.highlighted_html} />
     </div>
@@ -103,7 +106,7 @@ const FileHeader = ({ file, backLink }: { file: FileContent; backLink: CodeViewe
       refName={backLink.refName}
       path={backLink.path}
     >
-      <Button variant="ghost" size="sm">
+      <Button variant="ghost" size="compact">
         <ArrowLeft className="h-4 w-4 mr-1" />
         Back
       </Button>

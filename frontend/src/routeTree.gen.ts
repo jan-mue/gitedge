@@ -42,12 +42,16 @@ import { Route as LayoutOwnerRepoPullsIndexRouteImport } from './routes/_layout/
 import { Route as LayoutOwnerRepoPullsNumberRouteImport } from './routes/_layout/$owner/$repo/pulls.$number'
 import { Route as LayoutOwnerRepoPullsNewRouteImport } from './routes/_layout/$owner/$repo/pulls.new'
 import { Route as LayoutOwnerRepoCommitsBranchBranchRouteImport } from './routes/_layout/$owner/$repo/commits.branch.$branch'
+import { Route as LayoutOwnerRepoCommitsTagTagRouteImport } from './routes/_layout/$owner/$repo/commits.tag.$tag'
 import { Route as LayoutOwnerRepoSrcBranchBranchRouteImport } from './routes/_layout/$owner/$repo/src.branch.$branch'
 import { Route as LayoutOwnerRepoSrcCommitShaRouteImport } from './routes/_layout/$owner/$repo/src.commit.$sha'
+import { Route as LayoutOwnerRepoSrcTagTagRouteImport } from './routes/_layout/$owner/$repo/src.tag.$tag'
 import { Route as LayoutOwnerRepoSrcBranchBranchIndexRouteImport } from './routes/_layout/$owner/$repo/src.branch.$branch.index'
 import { Route as LayoutOwnerRepoSrcBranchBranchSplatRouteImport } from './routes/_layout/$owner/$repo/src.branch.$branch.$'
 import { Route as LayoutOwnerRepoSrcCommitShaIndexRouteImport } from './routes/_layout/$owner/$repo/src.commit.$sha.index'
 import { Route as LayoutOwnerRepoSrcCommitShaSplatRouteImport } from './routes/_layout/$owner/$repo/src.commit.$sha.$'
+import { Route as LayoutOwnerRepoSrcTagTagIndexRouteImport } from './routes/_layout/$owner/$repo/src.tag.$tag.index'
+import { Route as LayoutOwnerRepoSrcTagTagSplatRouteImport } from './routes/_layout/$owner/$repo/src.tag.$tag.$'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -222,6 +226,12 @@ const LayoutOwnerRepoCommitsBranchBranchRoute =
     path: '/branch/$branch',
     getParentRoute: () => LayoutOwnerRepoCommitsRoute,
   } as any)
+const LayoutOwnerRepoCommitsTagTagRoute =
+  LayoutOwnerRepoCommitsTagTagRouteImport.update({
+    id: '/tag/$tag',
+    path: '/tag/$tag',
+    getParentRoute: () => LayoutOwnerRepoCommitsRoute,
+  } as any)
 const LayoutOwnerRepoSrcBranchBranchRoute =
   LayoutOwnerRepoSrcBranchBranchRouteImport.update({
     id: '/$owner/$repo/src/branch/$branch',
@@ -232,6 +242,12 @@ const LayoutOwnerRepoSrcCommitShaRoute =
   LayoutOwnerRepoSrcCommitShaRouteImport.update({
     id: '/$owner/$repo/src/commit/$sha',
     path: '/$owner/$repo/src/commit/$sha',
+    getParentRoute: () => LayoutRoute,
+  } as any)
+const LayoutOwnerRepoSrcTagTagRoute =
+  LayoutOwnerRepoSrcTagTagRouteImport.update({
+    id: '/$owner/$repo/src/tag/$tag',
+    path: '/$owner/$repo/src/tag/$tag',
     getParentRoute: () => LayoutRoute,
   } as any)
 const LayoutOwnerRepoSrcBranchBranchIndexRoute =
@@ -257,6 +273,18 @@ const LayoutOwnerRepoSrcCommitShaSplatRoute =
     id: '/$',
     path: '/$',
     getParentRoute: () => LayoutOwnerRepoSrcCommitShaRoute,
+  } as any)
+const LayoutOwnerRepoSrcTagTagIndexRoute =
+  LayoutOwnerRepoSrcTagTagIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => LayoutOwnerRepoSrcTagTagRoute,
+  } as any)
+const LayoutOwnerRepoSrcTagTagSplatRoute =
+  LayoutOwnerRepoSrcTagTagSplatRouteImport.update({
+    id: '/$',
+    path: '/$',
+    getParentRoute: () => LayoutOwnerRepoSrcTagTagRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -292,12 +320,16 @@ export interface FileRoutesByFullPath {
   '/$owner/$repo/issues/': typeof LayoutOwnerRepoIssuesIndexRoute
   '/$owner/$repo/pulls/': typeof LayoutOwnerRepoPullsIndexRoute
   '/$owner/$repo/commits/branch/$branch': typeof LayoutOwnerRepoCommitsBranchBranchRoute
+  '/$owner/$repo/commits/tag/$tag': typeof LayoutOwnerRepoCommitsTagTagRoute
   '/$owner/$repo/src/branch/$branch': typeof LayoutOwnerRepoSrcBranchBranchRouteWithChildren
   '/$owner/$repo/src/commit/$sha': typeof LayoutOwnerRepoSrcCommitShaRouteWithChildren
+  '/$owner/$repo/src/tag/$tag': typeof LayoutOwnerRepoSrcTagTagRouteWithChildren
   '/$owner/$repo/src/branch/$branch/$': typeof LayoutOwnerRepoSrcBranchBranchSplatRoute
   '/$owner/$repo/src/commit/$sha/$': typeof LayoutOwnerRepoSrcCommitShaSplatRoute
+  '/$owner/$repo/src/tag/$tag/$': typeof LayoutOwnerRepoSrcTagTagSplatRoute
   '/$owner/$repo/src/branch/$branch/': typeof LayoutOwnerRepoSrcBranchBranchIndexRoute
   '/$owner/$repo/src/commit/$sha/': typeof LayoutOwnerRepoSrcCommitShaIndexRoute
+  '/$owner/$repo/src/tag/$tag/': typeof LayoutOwnerRepoSrcTagTagIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -329,10 +361,13 @@ export interface FileRoutesByTo {
   '/$owner/$repo/issues': typeof LayoutOwnerRepoIssuesIndexRoute
   '/$owner/$repo/pulls': typeof LayoutOwnerRepoPullsIndexRoute
   '/$owner/$repo/commits/branch/$branch': typeof LayoutOwnerRepoCommitsBranchBranchRoute
+  '/$owner/$repo/commits/tag/$tag': typeof LayoutOwnerRepoCommitsTagTagRoute
   '/$owner/$repo/src/branch/$branch/$': typeof LayoutOwnerRepoSrcBranchBranchSplatRoute
   '/$owner/$repo/src/commit/$sha/$': typeof LayoutOwnerRepoSrcCommitShaSplatRoute
+  '/$owner/$repo/src/tag/$tag/$': typeof LayoutOwnerRepoSrcTagTagSplatRoute
   '/$owner/$repo/src/branch/$branch': typeof LayoutOwnerRepoSrcBranchBranchIndexRoute
   '/$owner/$repo/src/commit/$sha': typeof LayoutOwnerRepoSrcCommitShaIndexRoute
+  '/$owner/$repo/src/tag/$tag': typeof LayoutOwnerRepoSrcTagTagIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -369,12 +404,16 @@ export interface FileRoutesById {
   '/_layout/$owner/$repo/issues/': typeof LayoutOwnerRepoIssuesIndexRoute
   '/_layout/$owner/$repo/pulls/': typeof LayoutOwnerRepoPullsIndexRoute
   '/_layout/$owner/$repo/commits/branch/$branch': typeof LayoutOwnerRepoCommitsBranchBranchRoute
+  '/_layout/$owner/$repo/commits/tag/$tag': typeof LayoutOwnerRepoCommitsTagTagRoute
   '/_layout/$owner/$repo/src/branch/$branch': typeof LayoutOwnerRepoSrcBranchBranchRouteWithChildren
   '/_layout/$owner/$repo/src/commit/$sha': typeof LayoutOwnerRepoSrcCommitShaRouteWithChildren
+  '/_layout/$owner/$repo/src/tag/$tag': typeof LayoutOwnerRepoSrcTagTagRouteWithChildren
   '/_layout/$owner/$repo/src/branch/$branch/$': typeof LayoutOwnerRepoSrcBranchBranchSplatRoute
   '/_layout/$owner/$repo/src/commit/$sha/$': typeof LayoutOwnerRepoSrcCommitShaSplatRoute
+  '/_layout/$owner/$repo/src/tag/$tag/$': typeof LayoutOwnerRepoSrcTagTagSplatRoute
   '/_layout/$owner/$repo/src/branch/$branch/': typeof LayoutOwnerRepoSrcBranchBranchIndexRoute
   '/_layout/$owner/$repo/src/commit/$sha/': typeof LayoutOwnerRepoSrcCommitShaIndexRoute
+  '/_layout/$owner/$repo/src/tag/$tag/': typeof LayoutOwnerRepoSrcTagTagIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -411,12 +450,16 @@ export interface FileRouteTypes {
     | '/$owner/$repo/issues/'
     | '/$owner/$repo/pulls/'
     | '/$owner/$repo/commits/branch/$branch'
+    | '/$owner/$repo/commits/tag/$tag'
     | '/$owner/$repo/src/branch/$branch'
     | '/$owner/$repo/src/commit/$sha'
+    | '/$owner/$repo/src/tag/$tag'
     | '/$owner/$repo/src/branch/$branch/$'
     | '/$owner/$repo/src/commit/$sha/$'
+    | '/$owner/$repo/src/tag/$tag/$'
     | '/$owner/$repo/src/branch/$branch/'
     | '/$owner/$repo/src/commit/$sha/'
+    | '/$owner/$repo/src/tag/$tag/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -448,10 +491,13 @@ export interface FileRouteTypes {
     | '/$owner/$repo/issues'
     | '/$owner/$repo/pulls'
     | '/$owner/$repo/commits/branch/$branch'
+    | '/$owner/$repo/commits/tag/$tag'
     | '/$owner/$repo/src/branch/$branch/$'
     | '/$owner/$repo/src/commit/$sha/$'
+    | '/$owner/$repo/src/tag/$tag/$'
     | '/$owner/$repo/src/branch/$branch'
     | '/$owner/$repo/src/commit/$sha'
+    | '/$owner/$repo/src/tag/$tag'
   id:
     | '__root__'
     | '/_layout'
@@ -487,12 +533,16 @@ export interface FileRouteTypes {
     | '/_layout/$owner/$repo/issues/'
     | '/_layout/$owner/$repo/pulls/'
     | '/_layout/$owner/$repo/commits/branch/$branch'
+    | '/_layout/$owner/$repo/commits/tag/$tag'
     | '/_layout/$owner/$repo/src/branch/$branch'
     | '/_layout/$owner/$repo/src/commit/$sha'
+    | '/_layout/$owner/$repo/src/tag/$tag'
     | '/_layout/$owner/$repo/src/branch/$branch/$'
     | '/_layout/$owner/$repo/src/commit/$sha/$'
+    | '/_layout/$owner/$repo/src/tag/$tag/$'
     | '/_layout/$owner/$repo/src/branch/$branch/'
     | '/_layout/$owner/$repo/src/commit/$sha/'
+    | '/_layout/$owner/$repo/src/tag/$tag/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -736,6 +786,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutOwnerRepoCommitsBranchBranchRouteImport
       parentRoute: typeof LayoutOwnerRepoCommitsRoute
     }
+    '/_layout/$owner/$repo/commits/tag/$tag': {
+      id: '/_layout/$owner/$repo/commits/tag/$tag'
+      path: '/tag/$tag'
+      fullPath: '/$owner/$repo/commits/tag/$tag'
+      preLoaderRoute: typeof LayoutOwnerRepoCommitsTagTagRouteImport
+      parentRoute: typeof LayoutOwnerRepoCommitsRoute
+    }
     '/_layout/$owner/$repo/src/branch/$branch': {
       id: '/_layout/$owner/$repo/src/branch/$branch'
       path: '/$owner/$repo/src/branch/$branch'
@@ -748,6 +805,13 @@ declare module '@tanstack/react-router' {
       path: '/$owner/$repo/src/commit/$sha'
       fullPath: '/$owner/$repo/src/commit/$sha'
       preLoaderRoute: typeof LayoutOwnerRepoSrcCommitShaRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/$owner/$repo/src/tag/$tag': {
+      id: '/_layout/$owner/$repo/src/tag/$tag'
+      path: '/$owner/$repo/src/tag/$tag'
+      fullPath: '/$owner/$repo/src/tag/$tag'
+      preLoaderRoute: typeof LayoutOwnerRepoSrcTagTagRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/$owner/$repo/src/branch/$branch/': {
@@ -778,6 +842,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutOwnerRepoSrcCommitShaSplatRouteImport
       parentRoute: typeof LayoutOwnerRepoSrcCommitShaRoute
     }
+    '/_layout/$owner/$repo/src/tag/$tag/': {
+      id: '/_layout/$owner/$repo/src/tag/$tag/'
+      path: '/'
+      fullPath: '/$owner/$repo/src/tag/$tag/'
+      preLoaderRoute: typeof LayoutOwnerRepoSrcTagTagIndexRouteImport
+      parentRoute: typeof LayoutOwnerRepoSrcTagTagRoute
+    }
+    '/_layout/$owner/$repo/src/tag/$tag/$': {
+      id: '/_layout/$owner/$repo/src/tag/$tag/$'
+      path: '/$'
+      fullPath: '/$owner/$repo/src/tag/$tag/$'
+      preLoaderRoute: typeof LayoutOwnerRepoSrcTagTagSplatRouteImport
+      parentRoute: typeof LayoutOwnerRepoSrcTagTagRoute
+    }
   }
 }
 
@@ -797,6 +875,7 @@ const LayoutOwnerRepoCommitRouteWithChildren =
 interface LayoutOwnerRepoCommitsRouteChildren {
   LayoutOwnerRepoCommitsIndexRoute: typeof LayoutOwnerRepoCommitsIndexRoute
   LayoutOwnerRepoCommitsBranchBranchRoute: typeof LayoutOwnerRepoCommitsBranchBranchRoute
+  LayoutOwnerRepoCommitsTagTagRoute: typeof LayoutOwnerRepoCommitsTagTagRoute
 }
 
 const LayoutOwnerRepoCommitsRouteChildren: LayoutOwnerRepoCommitsRouteChildren =
@@ -804,6 +883,7 @@ const LayoutOwnerRepoCommitsRouteChildren: LayoutOwnerRepoCommitsRouteChildren =
     LayoutOwnerRepoCommitsIndexRoute: LayoutOwnerRepoCommitsIndexRoute,
     LayoutOwnerRepoCommitsBranchBranchRoute:
       LayoutOwnerRepoCommitsBranchBranchRoute,
+    LayoutOwnerRepoCommitsTagTagRoute: LayoutOwnerRepoCommitsTagTagRoute,
   }
 
 const LayoutOwnerRepoCommitsRouteWithChildren =
@@ -879,6 +959,22 @@ const LayoutOwnerRepoSrcCommitShaRouteWithChildren =
     LayoutOwnerRepoSrcCommitShaRouteChildren,
   )
 
+interface LayoutOwnerRepoSrcTagTagRouteChildren {
+  LayoutOwnerRepoSrcTagTagSplatRoute: typeof LayoutOwnerRepoSrcTagTagSplatRoute
+  LayoutOwnerRepoSrcTagTagIndexRoute: typeof LayoutOwnerRepoSrcTagTagIndexRoute
+}
+
+const LayoutOwnerRepoSrcTagTagRouteChildren: LayoutOwnerRepoSrcTagTagRouteChildren =
+  {
+    LayoutOwnerRepoSrcTagTagSplatRoute: LayoutOwnerRepoSrcTagTagSplatRoute,
+    LayoutOwnerRepoSrcTagTagIndexRoute: LayoutOwnerRepoSrcTagTagIndexRoute,
+  }
+
+const LayoutOwnerRepoSrcTagTagRouteWithChildren =
+  LayoutOwnerRepoSrcTagTagRoute._addFileChildren(
+    LayoutOwnerRepoSrcTagTagRouteChildren,
+  )
+
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
   LayoutExploreRoute: typeof LayoutExploreRoute
@@ -901,6 +997,7 @@ interface LayoutRouteChildren {
   LayoutOwnerRepoBlameSplatRoute: typeof LayoutOwnerRepoBlameSplatRoute
   LayoutOwnerRepoSrcBranchBranchRoute: typeof LayoutOwnerRepoSrcBranchBranchRouteWithChildren
   LayoutOwnerRepoSrcCommitShaRoute: typeof LayoutOwnerRepoSrcCommitShaRouteWithChildren
+  LayoutOwnerRepoSrcTagTagRoute: typeof LayoutOwnerRepoSrcTagTagRouteWithChildren
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
@@ -927,6 +1024,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
     LayoutOwnerRepoSrcBranchBranchRouteWithChildren,
   LayoutOwnerRepoSrcCommitShaRoute:
     LayoutOwnerRepoSrcCommitShaRouteWithChildren,
+  LayoutOwnerRepoSrcTagTagRoute: LayoutOwnerRepoSrcTagTagRouteWithChildren,
 }
 
 const LayoutRouteWithChildren =

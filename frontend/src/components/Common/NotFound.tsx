@@ -1,5 +1,4 @@
-import { Link } from "@tanstack/react-router"
-import { Button } from "@/components/ui/button"
+import { Button, Link } from "@/components/design-system"
 
 const NotFound = () => {
   return (
@@ -13,9 +12,13 @@ const NotFound = () => {
 
       <p className="text-lg text-muted-foreground mb-4 text-center z-10">The page you are looking for was not found.</p>
       <div className="z-10">
-        <Link to="/">
-          <Button className="mt-4">Go Back</Button>
-        </Link>
+        <div className="mt-4">
+          <Button asChild>
+            <Link to="/" appearance="inherited">
+              Go Back
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   )

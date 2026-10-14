@@ -4,11 +4,10 @@ import { Plus } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-
 import { usersCreateUserMutation, usersReadUsersQueryKey } from "@/client/@tanstack/react-query.gen"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
+  Button,
+  Checkbox,
   Dialog,
   DialogClose,
   DialogContent,
@@ -17,10 +16,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { LoadingButton } from "@/components/ui/loading-button"
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  LoadingButton,
+} from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -82,12 +86,14 @@ const AddUser = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="my-4">
-          <Plus className="mr-2" />
-          Add User
-        </Button>
+        <div className="my-4">
+          <Button>
+            <Plus className="mr-2" />
+            Add User
+          </Button>
+        </div>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent appearance="compact">
         <DialogHeader>
           <DialogTitle>Add User</DialogTitle>
           <DialogDescription>Fill in the form below to add a new user to the system.</DialogDescription>
@@ -161,11 +167,11 @@ const AddUser = () => {
                 control={form.control}
                 name="is_superuser"
                 render={({ field }) => (
-                  <FormItem className="flex items-center gap-3 space-y-0">
+                  <FormItem appearance="inline">
                     <FormControl>
                       <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
-                    <FormLabel className="font-normal">Is superuser?</FormLabel>
+                    <FormLabel appearance="regular">Is superuser?</FormLabel>
                   </FormItem>
                 )}
               />
@@ -174,11 +180,11 @@ const AddUser = () => {
                 control={form.control}
                 name="is_active"
                 render={({ field }) => (
-                  <FormItem className="flex items-center gap-3 space-y-0">
+                  <FormItem appearance="inline">
                     <FormControl>
                       <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
-                    <FormLabel className="font-normal">Is active?</FormLabel>
+                    <FormLabel appearance="regular">Is active?</FormLabel>
                   </FormItem>
                 )}
               />
@@ -186,7 +192,7 @@ const AddUser = () => {
 
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="outline" disabled={mutation.isPending}>
+                <Button variant="repository" disabled={mutation.isPending}>
                   Cancel
                 </Button>
               </DialogClose>

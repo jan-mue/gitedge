@@ -456,8 +456,8 @@ class TestPullRequestCommentsAndMerge:
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/prmergerepo/pulls/new")
-        page.wait_for_selector('[data-testid="pr-source-branch"] option[value="feature"]', state="attached")
-        page.get_by_test_id("pr-source-branch").select_option("feature")
+        page.get_by_test_id("pr-source-branch").click()
+        page.get_by_role("option", name="feature", exact=True).click()
         page.get_by_test_id("pr-title-input").fill("Merge the feature")
         page.get_by_test_id("pr-body-input").fill("## PR details\n\nPR **body**")
         page.get_by_test_id("submit-pr-btn").click()
@@ -497,8 +497,8 @@ class TestPullRequestCommentsAndMerge:
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/editprrepo/pulls/new")
-        page.wait_for_selector('[data-testid="pr-source-branch"] option[value="feature"]', state="attached")
-        page.get_by_test_id("pr-source-branch").select_option("feature")
+        page.get_by_test_id("pr-source-branch").click()
+        page.get_by_role("option", name="feature", exact=True).click()
         page.get_by_test_id("pr-title-input").fill("Original PR")
         page.get_by_test_id("submit-pr-btn").click()
 
@@ -623,14 +623,18 @@ class TestActivityAndFeed:
         expect(page.get_by_role("combobox", name="Activity period")).to_be_visible(timeout=15000)
         expect(page.get_by_role("main")).to_contain_text("4 additions and 0 deletions")
         period = page.get_by_role("combobox", name="Activity period")
-        expect(period.locator("option")).to_have_text(
+        period.click()
+        expect(page.get_by_role("option")).to_have_text(
             ["1 day", "3 days", "1 week", "1 month", "3 months", "6 months", "1 year"]
         )
-        for days in [1, 3, 30, 90, 180, 365]:
+        page.keyboard.press("Escape")
+        periods = {1: "1 day", 3: "3 days", 30: "1 month", 90: "3 months", 180: "6 months", 365: "1 year"}
+        for days, label in periods.items():
             with page.expect_response(
                 lambda response, days=days: response.url.endswith(f"/activity/statistics?days={days}")
             ) as statistics:
-                period.select_option(str(days))
+                period.click()
+                page.get_by_role("option", name=label, exact=True).click()
             assert statistics.value.status == 200
             assert len(statistics.value.json()["daily_commits"]) == days + 1
             expect(page.get_by_role("main")).to_contain_text("4 additions and 0 deletions")
@@ -639,7 +643,8 @@ class TestActivityAndFeed:
         contributor = page.get_by_test_id("activity-contributor")
         expect(contributor).to_contain_text("Test User")
         expect(contributor).to_contain_text("1 Commits 4++ 0--")
-        page.get_by_role("combobox", name="Contribution metric").select_option("additions")
+        page.get_by_role("combobox", name="Contribution metric").click()
+        page.get_by_role("option", name="Additions", exact=True).click()
         expect(page.get_by_role("group", name="Overall additions", exact=True)).to_be_visible()
 
         page.get_by_role("button", name="Code frequency", exact=True).click()

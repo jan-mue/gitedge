@@ -29,14 +29,7 @@ const RepoBreadcrumbs = ({
 
   return (
     <div className="flex items-center gap-1 text-sm flex-wrap">
-      <SourceLink
-        owner={owner}
-        repo={repo}
-        mode={mode}
-        refName={refName}
-        path=""
-        className="font-semibold text-primary hover:underline"
-      >
+      <SourceLink owner={owner} repo={repo} mode={mode} refName={refName} path="" appearance="strong">
         {repo}
       </SourceLink>
       {parts.map((part, i) => {
@@ -49,14 +42,7 @@ const RepoBreadcrumbs = ({
             {isLast && lastSegmentIsStatic ? (
               <span className="font-medium">{part}</span>
             ) : (
-              <SourceLink
-                owner={owner}
-                repo={repo}
-                mode={mode}
-                refName={refName}
-                path={subPath}
-                className="text-primary hover:underline"
-              >
+              <SourceLink owner={owner} repo={repo} mode={mode} refName={refName} path={subPath} appearance="default">
                 {part}
               </SourceLink>
             )}

@@ -1,0 +1,32 @@
+import { Skeleton as PrimitiveSkeleton } from "@/components/ui/skeleton"
+import { component } from "./component"
+export const Skeleton = component(
+  PrimitiveSkeleton,
+  {
+    short: "h-4 w-12",
+    medium: "h-4 w-32",
+    long: "h-4 w-48",
+    title: "h-4 w-64",
+    email: "h-4 w-40",
+    action: "size-8 rounded-md",
+    badge: "h-5 w-20 rounded-full",
+    dot: "size-2 rounded-full",
+    bar: "h-2 w-full",
+    avatar: "repository-skeleton size-7 rounded-full",
+    third: "repository-skeleton h-4 w-1/3",
+    half: "h-4 w-1/2",
+    trailing: "repository-skeleton ml-auto h-4 w-20",
+    icon: "repository-skeleton size-4",
+    fileTitle: "repository-skeleton h-4 w-48",
+    fileMeta: "repository-skeleton h-4 w-36",
+    fileSize: "ml-auto h-4 w-16",
+    fileAction: "h-6 w-14",
+    heading: "h-6 w-1/3",
+    line: "h-4 w-full",
+    paragraph: "h-4 w-2/3",
+    codeShort: "repository-skeleton h-3 w-32 shrink-0",
+    codeMedium: "repository-skeleton h-3 w-48 shrink-0",
+    codeLong: "repository-skeleton h-3 w-64 shrink-0",
+  },
+  "bg-muted",
+)

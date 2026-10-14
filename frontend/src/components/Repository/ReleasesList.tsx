@@ -12,11 +12,10 @@ import {
   releasesListTagsOptions,
   releasesUpdateReleaseMutation,
 } from "@/client/@tanstack/react-query.gen"
-import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
+  Badge,
+  Button,
+  Checkbox,
   Dialog,
   DialogClose,
   DialogContent,
@@ -25,10 +24,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { LoadingButton } from "@/components/ui/loading-button"
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  LoadingButton,
+  Textarea,
+} from "@/components/design-system"
+import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -74,14 +80,15 @@ const ReleaseCard = ({
           <span className="text-xs text-muted-foreground">{new Date(release.published_at).toLocaleDateString()}</span>
         )}
         {canEdit && (
-          <button
+          <Button
             type="button"
-            className="text-xs text-muted-foreground hover:text-foreground"
+            variant="text"
+            size="text"
             onClick={() => onEdit(release)}
             data-testid={`edit-release-${release.tag_name}`}
           >
             Edit
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -126,7 +133,7 @@ const EditReleaseDialog = ({
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent appearance="compact">
         <DialogHeader>
           <DialogTitle>Edit release</DialogTitle>
           <DialogDescription>Update the details for {release.tag_name}.</DialogDescription>
@@ -161,13 +168,7 @@ const EditReleaseDialog = ({
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <textarea
-                        rows={5}
-                        placeholder="Release notes"
-                        data-testid="edit-release-body-input"
-                        className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-y"
-                        {...field}
-                      />
+                      <Textarea rows={5} placeholder="Release notes" data-testid="edit-release-body-input" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -177,7 +178,7 @@ const EditReleaseDialog = ({
                 control={form.control}
                 name="is_prerelease"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center gap-2">
+                  <FormItem appearance="inline">
                     <FormControl>
                       <Checkbox
                         checked={field.value}
@@ -191,7 +192,12 @@ const EditReleaseDialog = ({
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
+              <Button
+                type="button"
+                variant="repository"
+                onClick={() => onOpenChange(false)}
+                disabled={mutation.isPending}
+              >
                 Cancel
               </Button>
               <LoadingButton type="submit" loading={mutation.isPending} data-testid="edit-release-submit">
@@ -271,12 +277,12 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
         </h2>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" variant="outline" data-testid="new-release-button">
+            <Button size="compact" variant="repository" data-testid="new-release-button">
               <Plus className="w-3.5 h-3.5" />
               New release
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent appearance="compact">
             <DialogHeader>
               <DialogTitle>Create release</DialogTitle>
               <DialogDescription>Create a release tied to a Git tag.</DialogDescription>
@@ -331,12 +337,11 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
                       <FormItem>
                         <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <textarea
+                          <Textarea
                             id="release-body"
                             rows={5}
                             placeholder="Release notes"
                             data-testid="release-body-input"
-                            className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-y"
                             {...field}
                           />
                         </FormControl>
@@ -347,7 +352,7 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
                 </div>
                 <DialogFooter>
                   <DialogClose asChild>
-                    <Button variant="outline" disabled={mutation.isPending}>
+                    <Button variant="repository" disabled={mutation.isPending}>
                       Cancel
                     </Button>
                   </DialogClose>

@@ -4,13 +4,12 @@ import { Plus } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-
 import {
   repositoriesCreateRepositoryMutation,
   repositoriesListRepositoriesQueryKey,
 } from "@/client/@tanstack/react-query.gen"
-import { Button } from "@/components/ui/button"
 import {
+  Button,
   Dialog,
   DialogClose,
   DialogContent,
@@ -19,10 +18,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { LoadingButton } from "@/components/ui/loading-button"
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  LoadingButton,
+} from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -83,7 +87,7 @@ const CreateRepository = () => {
           New Repository
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent appearance="compact">
         <DialogHeader>
           <DialogTitle>Create Repository</DialogTitle>
           <DialogDescription>Create a new empty Git repository.</DialogDescription>
@@ -126,7 +130,7 @@ const CreateRepository = () => {
 
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="outline" disabled={mutation.isPending}>
+                <Button variant="repository" disabled={mutation.isPending}>
                   Cancel
                 </Button>
               </DialogClose>
