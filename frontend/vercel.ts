@@ -13,7 +13,10 @@ const storybookConfig: VercelConfig = {
   outputDirectory: "storybook-static",
 }
 export const config: VercelConfig = {
-  // Vercel reads Git settings statically before evaluating the deployment target.
   git: { deploymentEnabled: { "renovate/*": false } },
 }
-Object.assign(config, process.env.DEPLOY_TARGET === "storybook" ? storybookConfig : frontendConfig)
+
+export default {
+  ...config,
+  ...(process.env.DEPLOY_TARGET === "storybook" ? storybookConfig : frontendConfig),
+} satisfies VercelConfig
