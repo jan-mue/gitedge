@@ -1,3 +1,4 @@
+import { type ComponentProps, useState } from "react"
 import {
   Tabs as PrimitiveTabs,
   TabsContent as PrimitiveTabsContent,
@@ -14,12 +15,40 @@ export const TabsList = component(
   },
   "h-10 rounded-md p-1",
 )
-export const TabsTrigger = component(
+const StyledTabsTrigger = component(
   PrimitiveTabsTrigger,
   {
     branchPicker:
-      "flex-1 gap-1.5 rounded-none border-0 px-0 py-2 text-sm font-normal transition-colors hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary dark:data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent",
+      "flex-1 gap-1.5 rounded-none border-0 px-0 py-2 text-sm font-normal transition-colors hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary dark:data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent data-[pointer-focus]:outline-none data-[pointer-focus]:focus-visible:ring-0 data-[pointer-focus]:focus-visible:ring-offset-0 data-[pointer-focus]:focus-visible:outline-none",
   },
   "h-auto flex-none rounded-sm border-0 px-3 py-1.5 text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background",
 )
+export const TabsTrigger = ({
+  appearance,
+  onPointerDown,
+  onKeyDown,
+  onBlur,
+  ...props
+}: ComponentProps<typeof StyledTabsTrigger>) => {
+  const [pointerFocus, setPointerFocus] = useState(false)
+  return (
+    <StyledTabsTrigger
+      {...props}
+      appearance={appearance}
+      data-pointer-focus={appearance === "branchPicker" && pointerFocus ? "" : undefined}
+      onPointerDown={(event) => {
+        setPointerFocus(true)
+        onPointerDown?.(event)
+      }}
+      onKeyDown={(event) => {
+        setPointerFocus(false)
+        onKeyDown?.(event)
+      }}
+      onBlur={(event) => {
+        setPointerFocus(false)
+        onBlur?.(event)
+      }}
+    />
+  )
+}
 export const TabsContent = component(PrimitiveTabsContent, { spaced: "mt-0 space-y-4", branchPicker: "mt-0" }, "mt-2")

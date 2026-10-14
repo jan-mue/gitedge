@@ -2,6 +2,55 @@ import { expect, test } from "@playwright/test"
 
 const themeFor = (project: string) => (project.startsWith("dark") ? "dark" : "light")
 
+test.describe("branch picker pointer focus", () => {
+  test.use({ hasTouch: true })
+
+  for (const pointer of ["mouse", "touch"] as const) {
+    test(`${pointer} clicks leave tabs without an outline and preserve keyboard focus`, async ({ page }, testInfo) => {
+      const theme = themeFor(testInfo.project.name)
+      await page.goto(`/iframe.html?id=components-branch-selector--closed&viewMode=story&globals=theme:${theme}`)
+      await page.getByRole("button", { name: "Switch branch" }).click()
+      await expect(page.getByRole("textbox", { name: "Filter branch or tag" })).toBeFocused()
+
+      const session = await page.context().newCDPSession(page)
+      await session.send("DOM.enable")
+      await session.send("CSS.enable")
+      for (const name of ["Tags", "Branches"]) {
+        const tab = page.getByRole("tab", { name, exact: true })
+        if (pointer === "touch") await tab.tap()
+        else await tab.click()
+        await expect(tab).toBeFocused()
+        await expect(tab).toHaveAttribute("aria-selected", "true")
+
+        // Exercise browsers that retain :focus-visible after focus leaves the search input.
+        const { root } = await session.send("DOM.getDocument")
+        const { nodeId } = await session.send("DOM.querySelector", {
+          nodeId: root.nodeId,
+          selector: '[role="tab"][aria-selected="true"]',
+        })
+        await session.send("CSS.forcePseudoState", { nodeId, forcedPseudoClasses: ["focus-visible"] })
+        await expect(tab).toHaveCSS("outline-style", "none")
+        await expect(tab).not.toHaveCSS("box-shadow", /0px 0px 0px [1-9]\d*px/)
+        await expect(tab).toHaveCSS("border-top-width", "0px")
+        await expect(tab).toHaveCSS("border-bottom-width", "2px")
+        await session.send("CSS.forcePseudoState", { nodeId, forcedPseudoClasses: [] })
+      }
+
+      await page.keyboard.press("ArrowRight")
+      const tags = page.getByRole("tab", { name: "Tags", exact: true })
+      await expect(tags).toBeFocused()
+      await expect(tags).toHaveAttribute("aria-selected", "true")
+      await expect(tags).toHaveCSS("box-shadow", /0px 0px 0px [1-9]\d*px/)
+      await page.keyboard.press("ArrowLeft")
+      const branches = page.getByRole("tab", { name: "Branches", exact: true })
+      await expect(branches).toBeFocused()
+      await expect(branches).toHaveCSS("box-shadow", /0px 0px 0px [1-9]\d*px/)
+      await page.keyboard.press("Escape")
+      await expect(page.getByRole("button", { name: "Switch branch" })).toBeFocused()
+    })
+  }
+})
+
 test("shadcn select fields support keyboard selection, disabled choices, and empty lists", async ({
   page,
 }, testInfo) => {
