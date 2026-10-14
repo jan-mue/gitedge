@@ -49,6 +49,15 @@ class RepositoriesPublic(GitEdgeBaseModel):
     count: int
 
 
+class CommitInfo(GitEdgeBaseModel):
+    """Information about a commit."""
+
+    sha: str
+    message: str
+    author: str
+    timestamp: int
+
+
 class TreeEntry(GitEdgeBaseModel):
     """A single entry in a Git tree (file or directory)."""
 
@@ -56,6 +65,7 @@ class TreeEntry(GitEdgeBaseModel):
     path: str
     type: TreeEntryType
     size: int | None = None
+    last_commit: CommitInfo | None = None
 
 
 class TreeListing(GitEdgeBaseModel):
@@ -78,6 +88,7 @@ class FileContent(GitEdgeBaseModel):
     css_dark: str
     language: str
     line_count: int
+    last_commit: CommitInfo | None = None
 
 
 class CreateRepositoryRequest(GitEdgeBaseModel):
@@ -131,15 +142,6 @@ class BlameContent(GitEdgeBaseModel):
     path: str
     revision: str
     lines: list[BlameLine]
-
-
-class CommitInfo(GitEdgeBaseModel):
-    """Information about a commit."""
-
-    sha: str
-    message: str
-    author: str
-    timestamp: int
 
 
 class RepositoryInfo(GitEdgeBaseModel):

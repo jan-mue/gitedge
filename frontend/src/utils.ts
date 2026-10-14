@@ -36,3 +36,20 @@ export const formatSize = (bytes: number): string => {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
+
+export const formatRelativeTime = (timestamp: number): string => {
+  const minutes = Math.max(0, (Date.now() / 1000 - timestamp) / 60)
+  if (minutes < 1) return "just now"
+  const [unit, duration]: [string, number] =
+    minutes < 60
+      ? ["minute", 1]
+      : minutes < 1440
+        ? ["hour", 60]
+        : minutes < 43200
+          ? ["day", 1440]
+          : minutes < 525600
+            ? ["month", 43200]
+            : ["year", 525600]
+  const count = Math.floor(minutes / duration)
+  return `${count} ${unit}${count === 1 ? "" : "s"} ago`
+}

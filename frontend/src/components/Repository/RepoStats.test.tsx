@@ -68,6 +68,7 @@ describe("RepoStats", () => {
 
     expect(screen.getByTestId("repo-stats")).toBeInTheDocument()
     expect(screen.getByTestId("clone-url")).toHaveValue(`${window.location.origin}/owner/repo.git`)
+    expect(screen.getByTestId("clone-url")).toBeDisabled()
     expect(screen.getByTestId("copy-clone-url")).toBeInTheDocument()
   })
 

@@ -39,7 +39,12 @@ def _run_git(cwd: Path, args: list[str]) -> str:
     return result.stdout.strip()
 
 
-def _push_test_repo(wrangler_dev_url: str, repo_name: str, extra_files: dict[str, str] | None = None) -> None:
+def _push_test_repo(
+    wrangler_dev_url: str,
+    repo_name: str,
+    extra_files: dict[str, str] | None = None,
+    later_files: dict[str, str] | None = None,
+) -> None:
     """Push a test repository with known files to the server.
 
     Creates a repo with:
@@ -81,12 +86,33 @@ def _push_test_repo(wrangler_dev_url: str, repo_name: str, extra_files: dict[str
 
         _run_git(source_dir, ["add", "."])
         _run_git(source_dir, ["commit", "-m", "Initial commit with test files"])
+        if later_files:
+            for path, content in later_files.items():
+                (source_dir / path).write_text(content)
+            _run_git(source_dir, ["add", "."])
+            _run_git(source_dir, ["commit", "-m", "Update repository documentation"])
         _run_git(source_dir, ["remote", "add", "origin", remote_url])
         _run_git(source_dir, ["push", "-u", "--force", "origin", "main"])
 
 
 class TestRepositoryBrowsing:
     """Test browsing a repository's file tree via the UI."""
+
+    def test_source_shows_each_paths_last_change(self, app_url: str, page: Page) -> None:
+        _push_test_repo(app_url, "admin/pathhistory.git", later_files={"README.md": "# Updated documentation\n"})
+        log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
+        page.goto(f"{app_url}/admin/pathhistory")
+        expect(page.get_by_test_id("entry-commit-src")).to_have_text("Initial commit with test files", timeout=15000)
+        expect(page.get_by_test_id("entry-commit-README.md")).to_have_text("Update repository documentation")
+        expect(page.get_by_test_id("clone-url")).to_be_disabled()
+        expect(page.get_by_test_id("tree-entry-src").locator("time")).to_be_visible()
+
+        page.get_by_test_id("tree-entry-src").click()
+        expect(page.get_by_test_id("entry-commit-main.py")).to_have_text("Initial commit with test files")
+        page.get_by_test_id("tree-entry-main.py").click()
+        expect(page.get_by_test_id("file-viewer")).to_be_visible()
+        expect(page.get_by_test_id("last-commit-header")).to_contain_text("Initial commit with test files")
+        expect(page.get_by_test_id("last-commit-header")).not_to_contain_text("Update repository documentation")
 
     def test_source_language_statistics_only_load_at_root(self, app_url: str, page: Page) -> None:
         sources = {"src/main.ts": "const answer = 42;\n", "src/view.tsx": "export const View = () => <p>Hello</p>;\n"}

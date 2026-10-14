@@ -45,7 +45,7 @@ const CodeViewer = ({
       <RepositoryCommitHeader
         owner={backLink.owner}
         repo={backLink.repo}
-        commit={lastCommit}
+        commit={file.last_commit ?? lastCommit}
         loading={lastCommitLoading}
         error={lastCommitError}
         onRetry={onRetryLastCommit}
@@ -136,9 +136,12 @@ const FileHeader = ({ file, backLink }: { file: FileContent; backLink: CodeViewe
 )
 
 const HighlightedContent = ({ html }: { html: string }) => (
-  <div
-    className="overflow-x-auto text-sm"
+  <section
+    className="overflow-x-auto text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
     data-testid="highlighted-content"
+    aria-label="File contents"
+    // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to focus the scrollable code pane.
+    tabIndex={0}
     // biome-ignore lint/security/noDangerouslySetInnerHtml: Pygments server-rendered HTML
     dangerouslySetInnerHTML={{ __html: html }}
   />

@@ -1,15 +1,6 @@
 import type { CommitInfo } from "@/client"
 import { Button, Link, Skeleton } from "@/components/design-system"
-
-const relativeDate = (timestamp: number) => {
-  const age = (Date.now() / 1000 - timestamp) / 60
-  if (age < 1) return "just now"
-  if (age < 60) return `${Math.floor(age)} minutes ago`
-  if (age < 1440) return `${Math.floor(age / 60)} hours ago`
-  if (age < 43200) return `${Math.floor(age / 1440)} days ago`
-  if (age < 525600) return `${Math.floor(age / 43200)} months ago`
-  return `${Math.floor(age / 525600)} years ago`
-}
+import { formatRelativeTime } from "@/utils"
 
 const RepositoryCommitHeader = ({
   owner,
@@ -61,7 +52,7 @@ const RepositoryCommitHeader = ({
             className="ml-auto whitespace-nowrap text-sm text-muted-foreground"
             dateTime={new Date(commit.timestamp * 1000).toISOString()}
           >
-            {relativeDate(commit.timestamp)}
+            {formatRelativeTime(commit.timestamp)}
           </time>
         </>
       ) : loading ? (

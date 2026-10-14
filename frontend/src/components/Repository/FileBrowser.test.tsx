@@ -1,9 +1,9 @@
-import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import type { ReactNode } from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 
 import type { TreeEntry } from "@/client"
+import { render, screen, within } from "@/test/test-utils"
 import FileBrowser from "./FileBrowser"
 
 const navigate = vi.hoisted(() => vi.fn())
@@ -33,6 +33,32 @@ describe("FileBrowser", () => {
     expect(screen.getByTestId("file-tree")).toBeInTheDocument()
     expect(screen.getByTestId("tree-entry-src")).toBeInTheDocument()
     expect(screen.getByTestId("tree-entry-README.md")).toBeInTheDocument()
+  })
+
+  test("shows each entry's commit subject and timestamp instead of its file size", () => {
+    const timestamp = Math.floor(Date.now() / 1000) - 120
+    render(
+      <FileBrowser
+        owner="owner"
+        repo="repo"
+        entries={entries.map((entry) => ({
+          ...entry,
+          last_commit: { sha: "a".repeat(40), author: "Jan", message: `Update ${entry.name}\n\nDetails`, timestamp },
+        }))}
+      />,
+    )
+    for (const entry of entries) {
+      const row = screen.getByTestId(`tree-entry-${entry.name}`)
+      expect(screen.getByRole("button", { name: entry.name })).toBe(row)
+      expect(row).toHaveAccessibleDescription(`Update ${entry.name}; 2 minutes ago`)
+      expect(within(row).getByText(`Update ${entry.name}`)).toBeInTheDocument()
+      expect(within(row).getByText("2 minutes ago")).toHaveAttribute(
+        "dateTime",
+        new Date(timestamp * 1000).toISOString(),
+      )
+      expect(row).not.toHaveTextContent("Details")
+    }
+    expect(screen.queryByText("12 B")).not.toBeInTheDocument()
   })
 
   test("navigates into a directory when clicked", async () => {
