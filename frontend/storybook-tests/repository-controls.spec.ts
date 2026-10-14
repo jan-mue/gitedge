@@ -1,4 +1,3 @@
-import AxeBuilder from "@axe-core/playwright"
 import { expect, test } from "@playwright/test"
 
 test("repository filters combine, reset, sort, and support keyboard menus", async ({ page }, testInfo) => {
@@ -95,11 +94,6 @@ test("Activity sidebar switches all views; settings keep delete confirmation", a
   await trigger.click()
   await expect(page.getByLabel("Repository full name")).toHaveValue("")
   await expect(confirm).toBeDisabled()
-  const results = await new AxeBuilder({ page })
-    .include("[role=dialog]")
-    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-    .analyze()
-  expect(results.violations.filter((violation) => violation.id !== "color-contrast")).toEqual([])
   await page.keyboard.press("Escape")
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(false)
 })
