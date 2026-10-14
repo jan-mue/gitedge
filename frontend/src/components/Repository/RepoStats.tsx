@@ -158,11 +158,10 @@ const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true, mode 
           <div className="flex h-8 min-w-0 flex-1 items-stretch">
             <Input
               type="text"
-              readOnly
+              disabled
               value={cloneUrl}
               data-testid="clone-url"
               aria-label="HTTPS clone URL"
-              onFocus={(e) => e.currentTarget.select()}
               appearance="clone"
             />
             <div className="relative flex">

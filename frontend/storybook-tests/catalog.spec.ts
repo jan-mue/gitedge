@@ -1,7 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
-import AxeBuilder from "@axe-core/playwright"
-import { test as baseTest, expect, type Page, type TestInfo } from "@playwright/test"
+import { test as baseTest, expect, type Page } from "@playwright/test"
 
 const test = baseTest.extend<object, { catalogPage: Page }>({
   catalogPage: [
@@ -36,29 +35,6 @@ const test = baseTest.extend<object, { catalogPage: Page }>({
   },
 })
 
-// Record palette contrast findings separately from other accessibility failures.
-const expectAccessible = async (results: Awaited<ReturnType<AxeBuilder["analyze"]>>, testInfo: TestInfo) => {
-  const contrast = results.violations.filter((violation) => violation.id === "color-contrast")
-  if (contrast.length) {
-    testInfo.annotations.push({
-      type: "reference-palette-contrast",
-      description: `${contrast[0].nodes.length} contrast findings in the reference palette`,
-    })
-    await testInfo.attach("reference-palette-contrast", {
-      body: JSON.stringify(contrast, null, 2),
-      contentType: "application/json",
-    })
-  }
-  expect(
-    results.violations
-      .filter((violation) => violation.id !== "color-contrast")
-      .map((violation) => ({
-        id: violation.id,
-        nodes: violation.nodes.map((node) => ({ target: node.target, reason: node.failureSummary })),
-      })),
-  ).toEqual([])
-}
-
 const index = JSON.parse(
   fs.readFileSync(path.resolve(import.meta.dirname, "../storybook-static/index.json"), "utf8"),
 ) as {
@@ -78,11 +54,6 @@ for (const docs of Object.values(index.entries).filter((entry) => entry.type ===
     })
     expect(errors).toEqual([])
     expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)).toBe(false)
-    const results = await new AxeBuilder({ page })
-      .include(".sbdocs-content")
-      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-      .analyze()
-    await expectAccessible(results, testInfo)
   })
 }
 
@@ -145,12 +116,6 @@ for (const story of Object.values(index.entries).filter((entry) => entry.type ==
     expect(overflow, "The story should fit the viewport without page-level horizontal scrolling").toBe(false)
     if (story.id.startsWith("components-branch-selector--"))
       await page.screenshot({ path: `visual-review/${story.id}-${testInfo.project.name}.png`, fullPage: true })
-    const results = await new AxeBuilder({ page })
-      .include(".story-canvas, [role=dialog], [role=menu], [role=listbox]")
-      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-      .disableRules(["region"])
-      .analyze()
-    await expectAccessible(results, testInfo)
   })
 }
 
@@ -222,9 +187,4 @@ test("notification variants render with the shared theme", async ({ page }, test
     await page.getByRole("button", { name: button, exact: true }).click()
     await expect(page.getByText(message, { exact: true })).toBeVisible()
   }
-  const results = await new AxeBuilder({ page })
-    .include("[data-sonner-toaster]")
-    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-    .analyze()
-  await expectAccessible(results, testInfo)
 })

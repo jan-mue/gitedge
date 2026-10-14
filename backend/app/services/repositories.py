@@ -729,6 +729,8 @@ class RepositoryService:
 
             entries: list[TreeEntry] = []
             store = repo.object_store
+            paths = [f"{tree_path}/{item.path.decode()}".lstrip("/") for item in tree.items()]
+            last_commits = await run_in_threadpool(self._get_path_commits, repo, commit_sha, paths)
 
             for item in sorted(tree.items(), key=lambda e: (not stat.S_ISDIR(e.mode), e.path)):
                 entry_name = item.path.decode()
@@ -747,13 +749,14 @@ class RepositoryService:
                         path=entry_path,
                         type=TreeEntryType.TREE if is_dir else TreeEntryType.BLOB,
                         size=size,
+                        last_commit=last_commits.get(entry_path),
                     )
                 )
 
             return TreeListing(entries=entries, tree_path=tree_path, ref=ref)
 
         return await self._cached_model(
-            key=f"tree:{ref}:{tree_path}",
+            key=f"tree:v2:{ref}:{tree_path}",
             group=self._cache_group(owner, name),
             ttl=self._ttl_for_ref(ref),
             model=TreeListing,
@@ -820,6 +823,7 @@ class RepositoryService:
                 f".dark {line}" if line and not line.startswith(".dark") else line for line in raw_dark_css.split("\n")
             )
             line_count = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
+            last_commits = await run_in_threadpool(self._get_path_commits, repo, commit_sha, [file_path])
 
             return FileContent(
                 name=filename,
@@ -831,10 +835,11 @@ class RepositoryService:
                 css_dark=css_dark,
                 language=lexer.name,
                 line_count=line_count,
+                last_commit=last_commits.get(file_path),
             )
 
         return await self._cached_model(
-            key=f"blob:{ref}:{file_path}",
+            key=f"blob:v2:{ref}:{file_path}",
             group=self._cache_group(owner, name),
             ttl=self._ttl_for_ref(ref),
             model=FileContent,
@@ -1438,6 +1443,47 @@ class RepositoryService:
                 default_branch = target_str[len("refs/heads/") :]
 
         return branch_count, tag_count, default_branch
+
+    @staticmethod
+    def _get_path_commits(repo: BlobRepository, commit_sha: bytes, paths: list[str]) -> dict[str, CommitInfo]:
+        """Find each path's last change in one walk, following unchanged merge parents."""
+        remaining = set(paths)
+        if not remaining:
+            return {}
+        pending: dict[bytes, set[str]] = {commit_sha: set(paths)}
+        result: dict[str, CommitInfo] = {}
+        store = repo.object_store
+
+        def path_entry(tree_sha: ObjectID, path: str) -> tuple[int, ObjectID] | None:
+            tree = store[tree_sha]
+            if not isinstance(tree, Tree):
+                return None
+            try:
+                return tree.lookup_path(store.__getitem__, path.encode())
+            except KeyError:
+                return None
+
+        for entry in repo.get_walker(include=[ObjectID(commit_sha)], order="topo"):
+            commit = entry.commit
+            candidates = pending.pop(commit.id, set()) & remaining
+            if not candidates:
+                continue
+            for path in candidates:
+                current = path_entry(commit.tree, path)
+                unchanged_parents = []
+                for parent_sha in commit.parents:
+                    parent = store[parent_sha]
+                    if isinstance(parent, Commit) and path_entry(parent.tree, path) == current:
+                        unchanged_parents.append(parent_sha)
+                if unchanged_parents:
+                    for parent_sha in unchanged_parents:
+                        pending.setdefault(parent_sha, set()).add(path)
+                else:
+                    result[path] = RepositoryService._get_commit_info(repo, commit.id)
+                    remaining.remove(path)
+            if not remaining:
+                break
+        return result
 
     @staticmethod
     def _get_commit_info(repo: BlobRepository, commit_sha: bytes) -> CommitInfo:

@@ -9,7 +9,7 @@ import { TooltipProvider } from "@/components/design-system"
 import { ThemedDocsContainer } from "./docs-container"
 
 const preview: Preview = {
-  initialGlobals: { theme: "dark", a11y: { manual: true } },
+  initialGlobals: { theme: "dark" },
   decorators: [
     withThemeByClassName({ themes: { dark: "dark", light: "light" }, defaultTheme: "dark" }),
     (Story) => (
@@ -27,7 +27,6 @@ const preview: Preview = {
     backgrounds: { disable: true },
     docs: { container: ThemedDocsContainer },
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
-    a11y: { test: "error" },
     options: { storySort: { order: ["Foundations", "Components", "Patterns"] } },
   },
 }

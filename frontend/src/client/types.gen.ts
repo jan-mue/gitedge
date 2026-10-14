@@ -629,6 +629,7 @@ export type FileContent = {
      * Line Count
      */
     line_count: number;
+    last_commit?: CommitInfo | null;
 };
 
 /**
@@ -1831,6 +1832,7 @@ export type TreeEntry = {
      * Size
      */
     size?: number | null;
+    last_commit?: CommitInfo | null;
 };
 
 /**
