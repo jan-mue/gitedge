@@ -52,11 +52,9 @@
     "zod": "4.6.6"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.13.0",
     "@biomejs/biome": "2.5.15",
     "@hey-api/openapi-ts": "0.99.0",
     "@playwright/test": "1.64.0",
-    "@storybook/addon-a11y": "10.6.1",
     "@storybook/addon-docs": "10.6.1",
     "@storybook/addon-themes": "10.6.1",
     "@storybook/react-vite": "10.6.1",
