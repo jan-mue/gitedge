@@ -20,6 +20,30 @@ export const Repository: Story = {
     </DangerZone>
   ),
 }
+export const MultipleActions: Story = {
+  render: () => (
+    <DangerZone>
+      <DangerZoneAction
+        title="Make this repository public"
+        description="Anyone will be able to view this repository and its activity."
+        action={
+          <Button variant="dangerOutline" size="danger">
+            Make repository public
+          </Button>
+        }
+      />
+      <DangerZoneAction
+        title="Delete this repository"
+        description="Deleting a repository is permanent and cannot be undone."
+        action={
+          <Button variant="dangerOutline" size="danger">
+            Delete this repository
+          </Button>
+        }
+      />
+    </DangerZone>
+  ),
+}
 export const Disabled: Story = {
   render: () => (
     <DangerZone>

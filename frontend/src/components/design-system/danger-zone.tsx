@@ -7,7 +7,7 @@ export const DangerZone = ({ title = "Danger zone", children, ...props }: Danger
     <h3 className="border-b border-destructive bg-destructive/10 px-4 py-3 text-xl font-semibold text-destructive">
       {title}
     </h3>
-    <div className="space-y-4 p-4">{children}</div>
+    <div className="divide-y divide-border">{children}</div>
   </section>
 )
 
@@ -20,7 +20,7 @@ export const DangerZoneAction = ({
   description: ReactNode
   action: ReactNode
 }) => (
-  <div className="flex flex-col items-start gap-3 rounded border border-border p-3 sm:flex-row sm:items-center sm:justify-between">
+  <div className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
     <div className="min-w-0 flex-1">
       <p className="font-medium text-foreground">{title}</p>
       <div className="text-sm text-muted-foreground">{description}</div>
