@@ -9,8 +9,7 @@ import {
   commentsListCommentsQueryKey,
   commentsUpdateCommentMutation,
 } from "@/client/@tanstack/react-query.gen"
-import MarkdownContent from "@/components/Common/MarkdownContent"
-import { Button, Textarea } from "@/components/design-system"
+import { Button, MarkdownContent, Textarea } from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"

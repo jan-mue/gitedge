@@ -9,8 +9,7 @@ import {
   repositoriesListPullRequestsQueryKey,
   repositoriesUpdatePullRequestMutation,
 } from "@/client/@tanstack/react-query.gen"
-import MarkdownContent from "@/components/Common/MarkdownContent"
-import { Badge, Button, Input, Link as RouterLink, Textarea } from "@/components/design-system"
+import { Badge, Button, Input, MarkdownContent, Link as RouterLink, Textarea } from "@/components/design-system"
 import CommentsSection from "@/components/Repository/CommentsSection"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import useAuth from "@/hooks/useAuth"

@@ -1,15 +1,14 @@
-import { render, screen } from "@testing-library/react"
 import React from "react"
 import { describe, expect, test, vi } from "vitest"
+import { render, screen } from "@/test/test-utils"
 
-// Mock TanStack Router's Link component
 vi.mock("@tanstack/react-router", () => ({
   Link: vi.fn(({ children, to }: { children: React.ReactNode; to: string }) =>
     React.createElement("a", { href: to }, children),
   ),
 }))
 
-import { Logo } from "./Logo"
+import { Logo } from "./logo"
 
 describe("Logo", () => {
   test("renders full variant by default", () => {

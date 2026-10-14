@@ -8,11 +8,10 @@ import {
   repositoriesGetStatisticsOptions,
   repositoriesListBranchesOptions,
 } from "@/client/@tanstack/react-query.gen"
-import { Button, Input, Link as RouterLink, Skeleton } from "@/components/design-system"
+import { Button, Input, LanguageBar, Link as RouterLink, Skeleton } from "@/components/design-system"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
 import BranchSelector from "@/components/Repository/BranchSelector"
 import FileFinder from "@/components/Repository/FileFinder"
-import LanguageBar from "@/components/Repository/LanguageBar"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import { formatSize } from "@/utils"
 
