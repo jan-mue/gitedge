@@ -16,7 +16,7 @@ from app.exceptions import NotFoundError
 
 if TYPE_CHECKING:
     import uuid
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
 
     from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def create_db_engine() -> AsyncIterator[AsyncEngine]:
+async def create_db_engine() -> AsyncGenerator[AsyncEngine]:
     """Create a database engine bound to the context's lifetime.
 
     Yields:

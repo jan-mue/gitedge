@@ -11,7 +11,7 @@ from app.clients.cache import uses_redis_cache
 from app.clients.database import create_db_engine, create_session_factory
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
 
     from fastapi import FastAPI
     from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -25,7 +25,7 @@ class LifespanState(TypedDict):
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[LifespanState]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[LifespanState]:
     """Create shared resources on startup and release them on shutdown.
 
     Args:
