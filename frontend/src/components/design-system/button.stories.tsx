@@ -27,6 +27,7 @@ const meta = {
         "notification",
         "tab",
         "row",
+        "fileRow",
         "menu",
       ],
     },

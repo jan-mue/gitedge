@@ -9,7 +9,8 @@ export const Input = component(
     trackerSearch:
       "h-auto rounded border-border bg-secondary dark:bg-secondary px-3 py-1.5 text-sm focus-visible:border-border focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
     title: "h-10 text-lg font-bold md:text-lg",
-    clone: "h-8 rounded-r-none bg-secondary font-mono text-xs text-muted-foreground sm:w-72 md:text-xs",
+    clone:
+      "h-8 rounded-r-none bg-secondary font-mono text-xs text-muted-foreground disabled:opacity-100 sm:w-72 md:text-xs",
     compact: "h-8 text-xs md:text-xs",
     repository:
       "h-auto rounded border-border py-2 text-sm focus-visible:border-border focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",

@@ -37,6 +37,8 @@ export const buttonVariants = cva(
           "font-normal text-muted-foreground hover:text-foreground hover:bg-accent aria-pressed:bg-accent aria-pressed:font-medium aria-pressed:text-foreground",
         tab: "rounded-none border-b-2 border-transparent font-normal text-muted-foreground hover:text-foreground aria-pressed:border-primary aria-pressed:font-medium aria-pressed:text-foreground",
         row: "w-full justify-start gap-3 rounded-none border-b border-border bg-background text-foreground font-normal hover:bg-accent/50 last:border-b-0 [&_[data-slot=file-name]:hover]:text-primary [&_[data-slot=file-name]:hover]:underline",
+        fileRow:
+          "grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 rounded-none border-b border-border bg-background text-left text-foreground font-normal hover:bg-accent/50 last:border-b-0 sm:grid-cols-[12rem_minmax(0,1fr)_auto] [&_[data-slot=file-name]:hover]:text-primary [&_[data-slot=file-name]:hover]:underline",
         menu: "w-full justify-start rounded-none text-left font-normal text-foreground hover:bg-accent",
         branchItem: "w-full justify-start gap-2 rounded-none text-left font-normal text-foreground hover:bg-accent",
       },
