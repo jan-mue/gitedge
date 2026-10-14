@@ -21,6 +21,7 @@ from playwright.sync_api import expect
 from tests.integration.conftest import (
     FIRST_SUPERUSER,
     FIRST_SUPERUSER_PASSWORD,
+    configure_git_auth,
     create_repository_row,
     create_user_via_api,
     log_in_user,
@@ -95,6 +96,7 @@ def _push_repo(
         if tag:
             _run_git(source_dir, ["tag", tag])
 
+        configure_git_auth(app_url, repo_name, source_dir)
         _run_git(source_dir, ["remote", "add", "origin", remote_url])
         _run_git(source_dir, ["push", "-u", "--force", "origin", "main"])
         if tag:
@@ -350,9 +352,13 @@ class TestIssueComments:
 
         page.get_by_test_id("comments-section").get_by_role("button", name="Edit").click()
         page.locator('[data-testid^="edit-comment-input-"]').fill("Edited comment.")
-        page.get_by_role("button", name="Save").click()
+        with page.expect_response(
+            lambda response: "/api/v1/comments/" in response.url and response.request.method == "PATCH"
+        ) as updated:
+            page.get_by_role("button", name="Save").click()
+        assert updated.value.status == 200
+        assert updated.value.json()["body"] == "Edited comment."
 
-        # The editor closes only after the update is persisted.
         expect(page.locator('[data-testid^="edit-comment-input-"]')).to_have_count(0, timeout=15000)
         expect(page.get_by_test_id("comments-section")).to_contain_text("Edited comment.", timeout=15000)
         expect(page.get_by_test_id("comments-section")).not_to_contain_text("Original comment.")
@@ -427,7 +433,11 @@ class TestIssueComments:
         expect(page.get_by_test_id("comments-section")).to_contain_text("Delete me.", timeout=15000)
 
         page.once("dialog", lambda dialog: dialog.accept())
-        page.locator('[data-testid^="delete-comment-"]').click()
+        with page.expect_response(
+            lambda response: "/api/v1/comments/" in response.url and response.request.method == "DELETE"
+        ) as deleted:
+            page.locator('[data-testid^="delete-comment-"]').click()
+        assert deleted.value.status == 204
 
         expect(page.get_by_test_id("comments-section")).not_to_contain_text("Delete me.", timeout=15000)
 
@@ -562,7 +572,12 @@ class TestActivityAndFeed:
         ).click()
         page.get_by_test_id(f"edit-comment-{comment_id}").click()
         page.get_by_test_id(f"edit-comment-input-{comment_id}").fill("Edited actual reply")
-        page.get_by_test_id(f"edit-comment-submit-{comment_id}").click()
+        with page.expect_response(
+            lambda response: response.url.endswith(f"/comments/{comment_id}") and response.request.method == "PATCH"
+        ) as updated:
+            page.get_by_test_id(f"edit-comment-submit-{comment_id}").click()
+        assert updated.value.status == 200
+        assert updated.value.json()["body"] == "Edited actual reply"
         expect(page.get_by_test_id(f"edit-comment-input-{comment_id}")).to_have_count(0)
         expect(page.get_by_test_id(f"comment-{comment_id}")).to_contain_text("Edited actual reply")
         page.get_by_role("link", name="GitEdge", exact=True).click()
@@ -574,7 +589,11 @@ class TestActivityAndFeed:
             "link", name="Comment preview target #1", exact=True
         ).click()
         page.once("dialog", lambda dialog: dialog.accept())
-        page.get_by_test_id(f"delete-comment-{comment_id}").click()
+        with page.expect_response(
+            lambda response: response.url.endswith(f"/comments/{comment_id}") and response.request.method == "DELETE"
+        ) as deleted:
+            page.get_by_test_id(f"delete-comment-{comment_id}").click()
+        assert deleted.value.status == 204
         expect(page.get_by_test_id(f"comment-{comment_id}")).to_have_count(0)
         page.get_by_role("link", name="GitEdge", exact=True).click()
         expect(comments).to_have_count(2)

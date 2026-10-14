@@ -71,6 +71,7 @@ if TYPE_CHECKING:
     from app.clients.repositories import RepositoryStore
     from app.clients.stars import StarStore
     from app.entities.users import User
+    from app.services.authorization import AuthorizationService
     from app.services.blob_backend import BlobBackend
     from app.services.blob_repository import BlobRepository
 
@@ -179,10 +180,12 @@ class RepositoryService:
         cache_client: AbstractCacheClient,
         repository_store: RepositoryStore,
         star_store: StarStore,
+        authorization: AuthorizationService | None = None,
     ) -> None:
         """Initialize the repository service.
 
         Args:
+            authorization: Authorization service for scoped role checks.
             backend: Git backend.
             blob_client: Blob storage client.
             redis_client: Redis client.
@@ -196,6 +199,7 @@ class RepositoryService:
         self.cache_client = cache_client
         self.repository_store = repository_store
         self.star_store = star_store
+        self.authorization = authorization
 
     def _cache_group(self, owner: str, name: str) -> str:
         """Build the cache group for a repository.
@@ -267,23 +271,9 @@ class RepositoryService:
         return {"Cache-Control": CACHE_CONTROL_REVALIDATE}
 
     async def _is_private(self, owner: str, name: str) -> bool:
-        """Resolve whether a repository is private, caching the answer briefly.
-
-        Args:
-            owner: Owner name.
-            name: Repository name.
-
-        Returns:
-            True if the repository exists and is private.
-        """
-        group = self._cache_group(owner, name)
-        cached = await self.cache_client.get("private", group=group)
-        if cached is not None:
-            return cached == "1"
-        entity = await self.repository_store.find_by_owner_and_name(owner, name)
-        is_private = entity is not None and entity.is_private
-        await self.cache_client.set("private", "1" if is_private else "0", ttl=settings.CACHE_TTL, group=group)
-        return is_private
+        """Read current visibility so a privacy change cannot use stale CDN headers."""
+        entity = await self.repository_store.get_by_owner_and_name(owner, name)
+        return entity.is_private
 
     @staticmethod
     def _build_schema(entity: RepositoryEntity, stars_count: int, forks_count: int) -> Repository:
@@ -303,7 +293,9 @@ class RepositoryService:
             description=entity.description,
             default_branch=entity.default_branch,
             is_private=entity.is_private,
-            fork_of=f"{entity.fork_of.owner.name}/{entity.fork_of.name}" if entity.fork_of is not None else None,
+            fork_of=f"{entity.fork_of.owner.name}/{entity.fork_of.name}"
+            if entity.fork_of is not None and not entity.fork_of.is_private
+            else None,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -343,20 +335,25 @@ class RepositoryService:
             for entity in entities
         ]
 
-    async def list_repositories(self) -> RepositoriesPublic:
+    async def list_repositories(self, user: User | None = None) -> RepositoriesPublic:
         """List all repositories.
 
         Returns:
             RepositoriesPublic with the discovered repositories.
         """
         entities = await self.repository_store.get_all(offset=0, limit=10000)
+        if self.authorization is not None:
+            entities = [entity for entity in entities if await self.authorization.can(entity, user)]
         data = await self._to_schemas(entities)
         return RepositoriesPublic(data=data, count=len(data))
 
-    async def get_user_repositories(self, owner_id: uuid.UUID, offset: int = 0, limit: int = 100) -> RepositoriesPublic:
+    async def get_user_repositories(
+        self, owner_id: uuid.UUID, offset: int = 0, limit: int = 100, user: User | None = None
+    ) -> RepositoriesPublic:
         """List repositories owned by a principal.
 
         Args:
+            user: Authenticated viewer, or anonymous for public reads.
             owner_id: The principal id of the repository owner.
             offset: Pagination offset.
             limit: Maximum number of repositories.
@@ -365,6 +362,8 @@ class RepositoryService:
             RepositoriesPublic with the owner's repositories.
         """
         entities = await self.repository_store.get_by_owner(owner_id, offset, limit)
+        if self.authorization is not None:
+            entities = [entity for entity in entities if await self.authorization.can(entity, user)]
         data = await self._to_schemas(entities)
         return RepositoriesPublic(data=data, count=len(data))
 
@@ -384,10 +383,11 @@ class RepositoryService:
         entity = await self.repository_store.get_by_owner_and_name(owner, name)
         return await self._to_schema(entity)
 
-    async def create_repository(self, owner: str, name: str) -> Repository:
+    async def create_repository(self, owner: str, name: str, *, is_private: bool = False) -> Repository:
         """Create a new empty Git repository.
 
         Args:
+            is_private: Whether the new repository requires authentication.
             owner: Owner name.
             name: Repository name.
 
@@ -397,6 +397,11 @@ class RepositoryService:
         Raises:
             HTTPException: If the owner cannot be resolved.
         """
+        entity = await self.repository_store.find_by_owner_and_name(owner, name)
+        if entity is None:
+            owner_id, _ = await self.repository_store.resolve_owner(owner)
+            entity = RepositoryEntity(name=name, owner_id=owner_id, is_private=is_private)
+            await self.repository_store.add(entity)
         key = repo_key(owner, name)
 
         self.backend.create_repository(key)
@@ -409,16 +414,22 @@ class RepositoryService:
         entity = await self.repository_store.get_by_owner_and_name(owner, name)
         return await self._to_schema(entity)
 
-    async def _editable_repository(self, owner: str, name: str, user: User) -> RepositoryEntity:
+    async def _editable_repository(
+        self, owner: str, name: str, user: User, permission: str = "repository:admin"
+    ) -> RepositoryEntity:
         """Resolve a repository and require its owner or an administrator."""
         entity = await self.repository_store.get_by_owner_and_name(owner, name)
-        if entity.owner_id != user.id and not user.is_superuser:
+        if self.authorization is not None:
+            await self.authorization.require(entity, user, permission)
+        elif entity.owner_id != user.id and not user.is_superuser:
             raise HTTPException(status_code=403, detail="Only the repository owner can change settings")
         return entity
 
     async def update_repository(self, owner: str, name: str, body: RepositoryUpdate, user: User) -> Repository:
         """Save settings, keeping Git storage and the default HEAD in sync."""
         entity = await self._editable_repository(owner, name, user)
+        if body.is_private is False and entity.fork_of is not None and entity.fork_of.is_private:
+            raise HTTPException(status_code=400, detail="Forks of private repositories must remain private")
         owner = entity.owner.name
         repo = await self.load_repository(owner, name)
         new_name = body.name or name
@@ -477,7 +488,7 @@ class RepositoryService:
 
     async def delete_repository(self, owner: str, name: str, user: User) -> None:
         """Delete repository data and metadata, retaining independent forks."""
-        entity = await self._editable_repository(owner, name, user)
+        entity = await self._editable_repository(owner, name, user, "repository:owner")
         owner = entity.owner.name
         forks = await self.repository_store.list_by_fork_of(entity.id, limit=10000)
         await self._delete_storage(repo_key(owner, name))

@@ -8,6 +8,7 @@ import random
 import shutil
 import socket
 import string
+import subprocess
 import sys
 import time
 import urllib.error
@@ -17,6 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import httpx2
 import psycopg
 import pytest
 import redis
@@ -168,6 +170,30 @@ def _delete_repository_rows() -> None:
         conn.execute("DELETE FROM pull_request")
         conn.execute("DELETE FROM issue")
         conn.execute("DELETE FROM repository")
+
+
+def superuser_headers(app_url: str) -> dict[str, str]:
+    """Authenticate integration setup requests as the seeded administrator."""
+    response = httpx2.post(
+        f"{app_url}/api/v1/login/access-token", data={"username": FIRST_SUPERUSER, "password": FIRST_SUPERUSER_PASSWORD}
+    )
+    response.raise_for_status()
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+def configure_git_auth(app_url: str, repo_name: str, source_dir: Path) -> None:
+    """Create a repository and authenticate pushes from a temporary checkout."""
+    headers = superuser_headers(app_url)
+    owner, name = repo_name.removesuffix(".git").split("/")
+    response = httpx2.post(f"{app_url}/api/v1/repositories/", json={"owner": owner, "name": name}, headers=headers)
+    assert response.status_code in (201, 409), response.text
+    result = subprocess.run(
+        ["git", "config", "http.extraHeader", f"Authorization: {headers['Authorization']}"],
+        cwd=source_dir,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, "Could not configure Git authentication"
 
 
 def create_repository_row(owner: str, name: str, *, is_private: bool = False) -> None:

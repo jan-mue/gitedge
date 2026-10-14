@@ -10,11 +10,13 @@ from pytest_socket import disable_socket
 from app.api.dependencies import (
     check_database_connection,
     get_activity_store,
+    get_authorization_store,
     get_blob_client,
     get_cache_client,
     get_comment_store,
     get_issue_store,
     get_organization_store,
+    get_personal_access_token_store,
     get_pull_request_store,
     get_redis_client,
     get_release_store,
@@ -46,6 +48,8 @@ def pytest_runtest_setup() -> None:
 def fake_stores() -> Generator[FakeStores]:
     """Override the data access stores with in-memory fakes."""
     fakes = build_fake_stores()
+    app.dependency_overrides[get_personal_access_token_store] = lambda: fakes.personal_access_tokens
+    app.dependency_overrides[get_authorization_store] = lambda: fakes.authorization
     app.dependency_overrides[get_user_store] = lambda: fakes.users
     app.dependency_overrides[get_issue_store] = lambda: fakes.issues
     app.dependency_overrides[get_pull_request_store] = lambda: fakes.pull_requests
@@ -62,6 +66,8 @@ def fake_stores() -> Generator[FakeStores]:
 
     yield fakes
 
+    app.dependency_overrides.pop(get_personal_access_token_store, None)
+    app.dependency_overrides.pop(get_authorization_store, None)
     app.dependency_overrides.pop(get_user_store, None)
     app.dependency_overrides.pop(get_issue_store, None)
     app.dependency_overrides.pop(get_pull_request_store, None)

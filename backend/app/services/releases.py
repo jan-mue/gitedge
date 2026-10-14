@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from app.clients.repositories import RepositoryStore
     from app.entities.users import User
     from app.services.activity import ActivityService
+    from app.services.authorization import AuthorizationService
 
 
 class ReleaseService:
@@ -28,22 +29,28 @@ class ReleaseService:
         release_store: ReleaseStore,
         repository_store: RepositoryStore,
         activity_service: ActivityService,
+        authorization: AuthorizationService | None = None,
     ) -> None:
         """Initialize the release service.
 
         Args:
+            authorization: Authorization service for scoped role checks.
             release_store: Release store.
             repository_store: Repository store.
             activity_service: Service used to record activity.
         """
+        self.authorization = authorization
         self.release_store = release_store
         self.repository_store = repository_store
         self.activity_service = activity_service
 
-    async def list_releases(self, owner: str, name: str, include_drafts: bool = False) -> ReleasesPublic:
+    async def list_releases(
+        self, owner: str, name: str, include_drafts: bool = False, user: User | None = None
+    ) -> ReleasesPublic:
         """List releases for a repository.
 
         Args:
+            user: Authenticated viewer, or anonymous for public reads.
             owner: Owner name.
             name: Repository name.
             include_drafts: Whether to include draft releases.
@@ -54,13 +61,16 @@ class ReleaseService:
         repository = await self.repository_store.find_by_owner_and_name(owner, name, include_releases=True)
         if repository is None:
             return ReleasesPublic(data=[], count=0)
+        if include_drafts and self.authorization is not None:
+            await self.authorization.require(repository, user, "repository:write")
         releases = [release for release in repository.releases if include_drafts or not release.is_draft]
         return ReleasesPublic(data=[self._to_public(release, owner, name) for release in releases], count=len(releases))
 
-    async def get_release(self, owner: str, name: str, tag_name: str) -> ReleasePublic:
+    async def get_release(self, owner: str, name: str, tag_name: str, user: User | None = None) -> ReleasePublic:
         """Get a single release by tag name.
 
         Args:
+            user: Authenticated viewer, or anonymous for public reads.
             owner: Owner name.
             name: Repository name.
             tag_name: The release tag name.
@@ -72,6 +82,9 @@ class ReleaseService:
             ReleaseNotFoundError: If the release is not found.
         """
         release = await self._find_release(owner, name, tag_name)
+        if release.is_draft and self.authorization is not None:
+            repository = await self.repository_store.get_by_owner_and_name(owner, name)
+            await self.authorization.require(repository, user, "repository:write")
         return self._to_public(release, owner, name)
 
     async def create_release(self, owner: str, name: str, body: ReleaseCreate, current_user: User) -> ReleasePublic:
@@ -135,7 +148,10 @@ class ReleaseService:
             HTTPException: If the user is not allowed to edit the release.
         """
         release = await self._find_release(owner, name, tag_name)
-        if release.author_id != current_user.id and not current_user.is_superuser:
+        if self.authorization is not None:
+            repository = await self.repository_store.get_by_owner_and_name(owner, name)
+            await self.authorization.require(repository, current_user, "repository:write")
+        elif release.author_id != current_user.id and not current_user.is_superuser:
             raise HTTPException(status_code=403, detail="You can only edit your own releases")
 
         if body.name is not None:

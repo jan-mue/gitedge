@@ -10,9 +10,10 @@ from io import BytesIO
 from typing import TYPE_CHECKING, Any
 
 from dulwich.web import GunzipFilter, HTTPGitApplication, LimitedInputFilter
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 
-from app.api.dependencies import RepositoryServiceDep
+from app.api.dependencies import GitUser, RepositoryServiceDep
+from app.api.permissions import require_permission
 from app.utils.cache_headers import CACHE_CONTROL_NO_STORE
 
 if TYPE_CHECKING:
@@ -22,6 +23,12 @@ if TYPE_CHECKING:
     from app.services.repositories import RepositoryService
 
 router = APIRouter(tags=["git"])
+
+
+def git_discovery_permission(request: Request) -> str:
+    """Require write access when advertising receive-pack to a pushing client."""
+    return "repository:write" if request.query_params.get("service") == "git-receive-pack" else "repository:read"
+
 
 _NO_STORE_PATHS = frozenset({"/info/refs", "/HEAD", "/git-upload-pack", "/git-receive-pack"})
 
@@ -155,67 +162,88 @@ async def _handle_git_request(
 # These match the patterns in dulwich.web.HTTPGitApplication.services
 
 
-@router.get("/{repo_path:path}/info/refs")
+@router.get(
+    "/{owner}/{repo}.git/info/refs",
+    dependencies=[
+        Depends(require_permission(git_discovery_permission, user_dep=GitUser, challenge='Basic realm="GitEdge"'))
+    ],
+)
 async def get_info_refs(
     request: Request,
-    repo_path: str,
+    owner: str,
+    repo: str,
     repository_service: RepositoryServiceDep,
 ) -> Response:
     """Get repository references (used for clone/fetch discovery).
 
     Args:
         request: FastAPI request.
-        repo_path: Repository path.
+        owner: Repository owner.
+        repo: Repository name.
         repository_service: Repository service.
 
     Returns:
         Response with refs.
     """
-    return await _handle_git_request(request, repo_path, "/info/refs", repository_service)
+    return await _handle_git_request(request, f"{owner}/{repo}.git", "/info/refs", repository_service)
 
 
-@router.get("/{repo_path:path}/HEAD")
+@router.get(
+    "/{owner}/{repo}.git/HEAD",
+    dependencies=[Depends(require_permission("repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
 async def get_head(
     request: Request,
-    repo_path: str,
+    owner: str,
+    repo: str,
     repository_service: RepositoryServiceDep,
 ) -> Response:
     """Get repository HEAD.
 
     Args:
         request: FastAPI request.
-        repo_path: Repository path.
+        owner: Repository owner.
+        repo: Repository name.
         repository_service: Repository service.
 
     Returns:
         Response with HEAD.
     """
-    return await _handle_git_request(request, repo_path, "/HEAD", repository_service)
+    return await _handle_git_request(request, f"{owner}/{repo}.git", "/HEAD", repository_service)
 
 
-@router.get("/{repo_path:path}/objects/info/packs")
+@router.get(
+    "/{owner}/{repo}.git/objects/info/packs",
+    dependencies=[Depends(require_permission("repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
 async def get_info_packs(
     request: Request,
-    repo_path: str,
+    owner: str,
+    repo: str,
     repository_service: RepositoryServiceDep,
 ) -> Response:
     """Get pack file info.
 
     Args:
         request: FastAPI request.
-        repo_path: Repository path.
+        owner: Repository owner.
+        repo: Repository name.
         repository_service: Repository service.
 
     Returns:
         Response with pack info.
     """
-    return await _handle_git_request(request, repo_path, "/objects/info/packs", repository_service)
+    return await _handle_git_request(request, f"{owner}/{repo}.git", "/objects/info/packs", repository_service)
 
 
-@router.get("/{repo_path:path}/objects/{prefix:path}/{suffix}")
+@router.get(
+    "/{owner}/{repo}.git/objects/{prefix:path}/{suffix}",
+    dependencies=[Depends(require_permission("repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
 async def get_loose_object(
     request: Request,
-    repo_path: str,
+    owner: str,
+    repo: str,
     prefix: str,
     suffix: str,
     repository_service: RepositoryServiceDep,
@@ -224,7 +252,8 @@ async def get_loose_object(
 
     Args:
         request: FastAPI request.
-        repo_path: Repository path.
+        owner: Repository owner.
+        repo: Repository name.
         prefix: Object SHA prefix (2 chars).
         suffix: Object SHA suffix (38 chars).
         repository_service: Repository service.
@@ -232,13 +261,17 @@ async def get_loose_object(
     Returns:
         Response with object data.
     """
-    return await _handle_git_request(request, repo_path, f"/objects/{prefix}/{suffix}", repository_service)
+    return await _handle_git_request(request, f"{owner}/{repo}.git", f"/objects/{prefix}/{suffix}", repository_service)
 
 
-@router.get("/{repo_path:path}/objects/pack/{pack_file}")
+@router.get(
+    "/{owner}/{repo}.git/objects/pack/{pack_file}",
+    dependencies=[Depends(require_permission("repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
 async def get_pack_file(
     request: Request,
-    repo_path: str,
+    owner: str,
+    repo: str,
     pack_file: str,
     repository_service: RepositoryServiceDep,
 ) -> Response:
@@ -246,49 +279,60 @@ async def get_pack_file(
 
     Args:
         request: FastAPI request.
-        repo_path: Repository path.
+        owner: Repository owner.
+        repo: Repository name.
         pack_file: Pack file name.
         repository_service: Repository service.
 
     Returns:
         Response with pack/index data.
     """
-    return await _handle_git_request(request, repo_path, f"/objects/pack/{pack_file}", repository_service)
+    return await _handle_git_request(request, f"{owner}/{repo}.git", f"/objects/pack/{pack_file}", repository_service)
 
 
-@router.post("/{repo_path:path}/git-upload-pack")
+@router.post(
+    "/{owner}/{repo}.git/git-upload-pack",
+    dependencies=[Depends(require_permission("repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
 async def git_upload_pack(
     request: Request,
-    repo_path: str,
+    owner: str,
+    repo: str,
     repository_service: RepositoryServiceDep,
 ) -> Response:
     """Handle git-upload-pack (clone/fetch).
 
     Args:
         request: FastAPI request.
-        repo_path: Repository path.
+        owner: Repository owner.
+        repo: Repository name.
         repository_service: Repository service.
 
     Returns:
         Response with pack data.
     """
-    return await _handle_git_request(request, repo_path, "/git-upload-pack", repository_service)
+    return await _handle_git_request(request, f"{owner}/{repo}.git", "/git-upload-pack", repository_service)
 
 
-@router.post("/{repo_path:path}/git-receive-pack")
+@router.post(
+    "/{owner}/{repo}.git/git-receive-pack",
+    dependencies=[Depends(require_permission("repository:write", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
 async def git_receive_pack(
     request: Request,
-    repo_path: str,
+    owner: str,
+    repo: str,
     repository_service: RepositoryServiceDep,
 ) -> Response:
     """Handle git-receive-pack (push).
 
     Args:
         request: FastAPI request.
-        repo_path: Repository path.
+        owner: Repository owner.
+        repo: Repository name.
         repository_service: Repository service.
 
     Returns:
         Response with push result.
     """
-    return await _handle_git_request(request, repo_path, "/git-receive-pack", repository_service)
+    return await _handle_git_request(request, f"{owner}/{repo}.git", "/git-receive-pack", repository_service)

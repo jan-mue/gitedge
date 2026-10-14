@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException
 
-from app.api.dependencies import OrganizationStoreDep, RepositoryServiceDep, StarServiceDep, UserStoreDep
+from app.api.dependencies import OptionalUser, OrganizationStoreDep, RepositoryServiceDep, StarServiceDep, UserStoreDep
 from app.schemas.repositories import RepositoriesPublic
 from app.schemas.users import ProfilePublic
 
@@ -55,10 +55,11 @@ async def list_user_repositories(
     user_store: UserStoreDep,
     organization_store: OrganizationStoreDep,
     repository_service: RepositoryServiceDep,
+    user: OptionalUser,
 ) -> RepositoriesPublic:
     """List repositories owned by a user or organization."""
     principal = await _resolve_principal(username, user_store, organization_store)
-    return await repository_service.get_user_repositories(principal.id)
+    return await repository_service.get_user_repositories(principal.id, user=user)
 
 
 @router.get("/{username}/starred")
@@ -66,6 +67,7 @@ async def list_user_starred_repositories(
     username: str,
     user_store: UserStoreDep,
     star_service: StarServiceDep,
+    viewer: OptionalUser,
 ) -> RepositoriesPublic:
     """List repositories starred by a user.
 
@@ -75,4 +77,4 @@ async def list_user_starred_repositories(
     user = await user_store.get_by_name(username)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    return await star_service.starred_repositories(user.id)
+    return await star_service.starred_repositories(user.id, viewer=viewer)

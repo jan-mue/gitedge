@@ -3,12 +3,14 @@ import { Appearance } from "@/components/Common/Appearance"
 import { Page, PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/design-system"
 import ChangePassword from "@/components/UserSettings/ChangePassword"
 import DeleteAccount from "@/components/UserSettings/DeleteAccount"
+import PersonalAccessTokens from "@/components/UserSettings/PersonalAccessTokens"
 import UserInformation from "@/components/UserSettings/UserInformation"
 import useAuth from "@/hooks/useAuth"
 
 const tabsConfig = [
   { value: "my-profile", title: "My profile", component: UserInformation },
   { value: "password", title: "Password", component: ChangePassword },
+  { value: "tokens", title: "Access tokens", component: PersonalAccessTokens },
   { value: "danger-zone", title: "Danger zone", component: DeleteAccount },
 ]
 
@@ -25,7 +27,7 @@ export const Route = createFileRoute("/_layout/settings")({
 
 function UserSettings() {
   const { user: currentUser } = useAuth()
-  const finalTabs = currentUser?.is_superuser ? tabsConfig.slice(0, 3) : tabsConfig
+  const finalTabs = tabsConfig
 
   if (!currentUser) {
     return null

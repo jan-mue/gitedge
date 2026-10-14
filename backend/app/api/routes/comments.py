@@ -3,18 +3,29 @@
 from __future__ import annotations
 
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 
-from app.api.dependencies import CommentServiceDep, CurrentUser
+from app.api.dependencies import CommentServiceDep, CurrentUser, OptionalUser
+from app.api.permissions import require_permission
+from app.entities.users import User
 from app.schemas.comments import CommentCreate, CommentPublic, CommentsPublic, CommentUpdate
 
 router = APIRouter(prefix="/repositories", tags=["comments"])
 comment_router = APIRouter(prefix="/comments", tags=["comments"])
 
 
-@router.get("/{owner}/{repo}/issues/{number}/comments")
-async def list_comments(owner: str, repo: str, number: int, comment_service: CommentServiceDep) -> CommentsPublic:
+@router.get(
+    "/{owner}/{repo}/issues/{number}/comments",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalUser))],
+)
+async def list_comments(
+    owner: str,
+    repo: str,
+    number: int,
+    comment_service: CommentServiceDep,
+) -> CommentsPublic:
     """List comments for an issue or pull request."""
     return await comment_service.list_comments(owner, repo, number)
 
@@ -26,7 +37,7 @@ async def create_comment(
     number: int,
     body: CommentCreate,
     comment_service: CommentServiceDep,
-    current_user: CurrentUser,
+    current_user: Annotated[User, Depends(require_permission("repository:read", user_dep=CurrentUser))],
 ) -> CommentPublic:
     """Create a comment on an issue or pull request."""
     return await comment_service.create_comment(owner, repo, number, body, current_user)

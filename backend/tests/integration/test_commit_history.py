@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from playwright.sync_api import expect
 
-from tests.integration.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD, log_in_user
+from tests.integration.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD, configure_git_auth, log_in_user
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
@@ -62,6 +62,7 @@ def _push_repo_with_commits(app_url: str, repo_name: str, count: int = 3) -> Non
             _run_git(source_dir, ["add", "."])
             _run_git(source_dir, ["commit", "-m", f"Commit number {i}"])
 
+        configure_git_auth(app_url, repo_name, source_dir)
         _run_git(source_dir, ["remote", "add", "origin", remote_url])
         _run_git(source_dir, ["push", "-u", "--force", "origin", "main"])
 

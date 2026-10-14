@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.schema import ColumnDefault
 
 from app.clients.activity import ActivityStore
+from app.clients.authorization import AccessEntity, AuthorizationStore
 from app.clients.blob_storage import BlobStorageClient
 from app.clients.cache import AbstractCacheClient
 from app.clients.comments import CommentStore
@@ -20,6 +21,7 @@ from app.clients.database import CrudStore
 from app.clients.email import EmailClient
 from app.clients.issues import IssueStore
 from app.clients.organizations import OrganizationStore
+from app.clients.personal_access_tokens import AUTHENTICATION_LIMIT, AUTHENTICATION_WINDOW, PersonalAccessTokenStore
 from app.clients.pull_requests import PullRequestStore
 from app.clients.redis import AbstractRedisClient
 from app.clients.releases import ReleaseStore
@@ -29,10 +31,12 @@ from app.clients.users import UserStore
 from app.clients.watchers import WatcherStore
 from app.config import settings
 from app.entities.activity import Activity, ActivityKind
+from app.entities.authorization import OrganizationMember, RepositoryCollaborator, Team, TeamMember
 from app.entities.base import Base
 from app.entities.comments import Comment
 from app.entities.issues import Issue, IssueState
 from app.entities.organizations import Organization
+from app.entities.personal_access_tokens import PersonalAccessToken
 from app.entities.principals import Principal, PrincipalType
 from app.entities.pull_requests import PullRequest
 from app.entities.releases import Release
@@ -723,6 +727,97 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
         return [self._hydrate(activity) for activity in activities[offset : offset + limit]]
 
 
+class FakeAuthorizationStore(AuthorizationStore):
+    """In-memory authorization facts with production-equivalent revocation."""
+
+    def __init__(self, organizations: FakeOrganizationStore) -> None:
+        self.items: dict[uuid.UUID, AccessEntity] = {}
+        self.organizations = organizations
+
+    async def members(self, organization_id: uuid.UUID, *, for_update: bool = False) -> list[OrganizationMember]:
+        del for_update
+        return [
+            item
+            for item in self.items.values()
+            if isinstance(item, OrganizationMember) and item.organization_id == organization_id
+        ]
+
+    async def teams(self, organization_id: uuid.UUID) -> list[Team]:
+        return [
+            item for item in self.items.values() if isinstance(item, Team) and item.organization_id == organization_id
+        ]
+
+    async def team_members(self, team_id: uuid.UUID) -> list[TeamMember]:
+        return [item for item in self.items.values() if isinstance(item, TeamMember) and item.team_id == team_id]
+
+    async def collaborators(self, repository_id: uuid.UUID) -> list[RepositoryCollaborator]:
+        return [
+            item
+            for item in self.items.values()
+            if isinstance(item, RepositoryCollaborator) and item.repository_id == repository_id
+        ]
+
+    async def save(self, entity: AccessEntity) -> None:
+        if entity.id is None:
+            entity.id = uuid.uuid4()
+        entity.created_at = entity.created_at or datetime.now(UTC)
+        entity.updated_at = datetime.now(UTC)
+        self.items[entity.id] = entity
+
+    async def remove(self, entity: AccessEntity) -> None:
+        if isinstance(entity, OrganizationMember):
+            team_ids = {team.id for team in await self.teams(entity.organization_id)}
+            self.items = {
+                key: item
+                for key, item in self.items.items()
+                if not (isinstance(item, TeamMember) and item.team_id in team_ids and item.user_id == entity.user_id)
+            }
+        if isinstance(entity, Team):
+            self.items = {
+                key: item
+                for key, item in self.items.items()
+                if not (isinstance(item, (TeamMember, RepositoryCollaborator)) and item.team_id == entity.id)
+            }
+        self.items.pop(entity.id, None)
+
+    async def create_organization(self, organization: Organization, user_id: uuid.UUID) -> None:
+        await self.organizations.add(organization)
+        await self.save(OrganizationMember(organization_id=organization.id, user_id=user_id, is_admin=True))
+
+
+class FakePersonalAccessTokenStore(FakeCrudStore[PersonalAccessToken], PersonalAccessTokenStore):
+    """In-memory token lifecycle and authentication rate-limit storage."""
+
+    async def find_by_key_id(self, key_id: str) -> PersonalAccessToken | None:
+        return next((token for token in self.items.values() if token.key_id == key_id), None)
+
+    async def list_by_owner(self, owner_id: uuid.UUID) -> list[PersonalAccessToken]:
+        return [token for token in self.items.values() if token.owner_id == owner_id]
+
+    async def issue(self, token: PersonalAccessToken, replacing: PersonalAccessToken | None = None) -> bool:
+        if await self.find_by_key_id(token.key_id) is not None:
+            return False
+        self.persist(token)
+        if replacing is not None:
+            replacing.revoked_at = token.created_at
+            replacing.revoked_reason = "Rotated"
+        return True
+
+    async def reserve_authentication(self, token: PersonalAccessToken, now: datetime) -> bool:
+        if token.revoked_at is not None:
+            return False
+        if (
+            token.authentication_window_start is None
+            or token.authentication_window_start <= now - AUTHENTICATION_WINDOW
+        ):
+            token.authentication_window_start = now
+            token.authentication_attempts = 0
+        if token.authentication_attempts >= AUTHENTICATION_LIMIT:
+            return False
+        token.authentication_attempts += 1
+        return True
+
+
 @dataclass
 class FakeStores:
     """Container for the in-memory store fakes."""
@@ -732,6 +827,8 @@ class FakeStores:
     pull_requests: FakePullRequestStore
     repository: FakeRepositoryStore
     organizations: FakeOrganizationStore
+    authorization: FakeAuthorizationStore
+    personal_access_tokens: FakePersonalAccessTokenStore
     stars: FakeStarStore
     watchers: FakeWatcherStore
     comments: FakeCommentStore
@@ -781,6 +878,8 @@ def build_fake_stores() -> FakeStores:
         pull_requests=pull_requests,
         repository=repository,
         organizations=organizations,
+        authorization=FakeAuthorizationStore(organizations),
+        personal_access_tokens=FakePersonalAccessTokenStore(),
         stars=FakeStarStore(users),
         watchers=FakeWatcherStore(users),
         comments=comments,

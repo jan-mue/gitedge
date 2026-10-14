@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from app.clients.repositories import RepositoryStore
     from app.entities.users import User
     from app.services.activity import ActivityService
+    from app.services.authorization import AuthorizationService
 
 
 class IssueService:
@@ -28,14 +29,17 @@ class IssueService:
         issue_store: IssueStore,
         repository_store: RepositoryStore,
         activity_service: ActivityService,
+        authorization: AuthorizationService | None = None,
     ) -> None:
         """Initialize the issue service.
 
         Args:
+            authorization: Authorization service for scoped role checks.
             issue_store: Issue store.
             repository_store: Repository store.
             activity_service: Service used to record activity.
         """
+        self.authorization = authorization
         self.issue_store = issue_store
         self.repository_store = repository_store
         self.activity_service = activity_service
@@ -137,13 +141,13 @@ class IssueService:
             HTTPException: If the issue is not found, the state is invalid, or the user is not allowed to edit.
         """
         issue = await self._find_issue(owner, name, number)
-
-        if (
-            (body.title is not None or body.body is not None)
-            and issue.author_id != current_user.id
-            and not current_user.is_superuser
-        ):
-            raise HTTPException(status_code=403, detail="You can only edit your own issues")
+        if self.authorization is not None:
+            repository = await self.repository_store.get_by_owner_and_name(owner, name)
+            await self.authorization.require(repository, current_user)
+            if issue.author_id != current_user.id:
+                await self.authorization.require(repository, current_user, "repository:write")
+        elif issue.author_id != current_user.id and not current_user.is_superuser:
+            raise HTTPException(status_code=403, detail="Only authors or maintainers can edit discussions")
 
         if body.title is not None:
             issue.title = body.title

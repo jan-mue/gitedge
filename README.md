@@ -281,3 +281,5 @@ also feeds the dynamic CORS allowlist described above.
 ## License
 
 [MIT](LICENSE)
+
+See [the authorization model](backend/resources/authorization/README.md) for repository roles, organization membership, teams, and Git authentication.

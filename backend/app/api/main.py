@@ -4,11 +4,13 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     activity,
+    authorization,
     comments,
     forks,
     git,
     login,
     organizations,
+    personal_access_tokens,
     private,
     profiles,
     releases,
@@ -22,9 +24,11 @@ from app.config import settings
 
 api_router = APIRouter()
 api_router.include_router(login.router)
+api_router.include_router(personal_access_tokens.router)
 api_router.include_router(users.router)
 api_router.include_router(git.router)
 api_router.include_router(organizations.router)
+api_router.include_router(authorization.router)
 api_router.include_router(stars.router)
 api_router.include_router(stars.user_router)
 api_router.include_router(watchers.router)

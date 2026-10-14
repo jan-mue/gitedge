@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from app.clients.stars import StarStore
     from app.entities.repositories import Repository
     from app.entities.users import User
+    from app.services.authorization import AuthorizationService
     from app.services.repositories import RepositoryService
 
 
@@ -31,14 +32,17 @@ class ActivityService:
         activity_store: ActivityStore,
         repository_store: RepositoryStore,
         star_store: StarStore,
+        authorization: AuthorizationService | None = None,
     ) -> None:
         """Initialize the activity service.
 
         Args:
+            authorization: Authorization service for scoped role checks.
             activity_store: Activity store.
             repository_store: Repository store.
             star_store: Star store used to build a personalized feed.
         """
+        self.authorization = authorization
         self.activity_store = activity_store
         self.repository_store = repository_store
         self.star_store = star_store
@@ -189,6 +193,17 @@ class ActivityService:
             if offset and await self.activity_store.list_feed(user.id, 0, 1):
                 return ActivitiesPublic(data=[], count=0)
             activities = await self.activity_store.list_recent(offset, limit)
+        if self.authorization is not None:
+            visible = []
+            for activity in activities:
+                repository = (
+                    await self.repository_store.find(activity.repo_id) if activity.repo_id is not None else None
+                )
+                if (repository is None and activity.repo_id is None) or (
+                    repository is not None and await self.authorization.can(repository, user)
+                ):
+                    visible.append(activity)
+            activities = visible
         previews = await self.activity_store.get_target_previews(activities)
         public = [
             self._to_public(activity).model_copy(update={"preview": previews.get(activity.id)})

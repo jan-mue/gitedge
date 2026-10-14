@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from app.entities.issues import Issue
     from app.entities.users import User
     from app.services.activity import ActivityService
+    from app.services.authorization import AuthorizationService
 
 
 class CommentService:
@@ -36,16 +37,19 @@ class CommentService:
         pull_request_store: PullRequestStore,
         repository_store: RepositoryStore,
         activity_service: ActivityService,
+        authorization: AuthorizationService | None = None,
     ) -> None:
         """Initialize the comment service.
 
         Args:
+            authorization: Authorization service for scoped role checks.
             comment_store: Comment store.
             issue_store: Issue store.
             pull_request_store: Pull request store.
             repository_store: Repository store.
             activity_service: Service used to record activity.
         """
+        self.authorization = authorization
         self.comment_store = comment_store
         self.issue_store = issue_store
         self.pull_request_store = pull_request_store
@@ -123,7 +127,12 @@ class CommentService:
             HTTPException: If the user is not allowed to edit the comment.
         """
         comment = await self.comment_store.get(comment_id)
-        if comment.author_id != current_user.id and not current_user.is_superuser:
+        if self.authorization is not None:
+            repository = await self.repository_store.get(comment.issue.repo_id)
+            await self.authorization.require(repository, current_user)
+            if comment.author_id != current_user.id:
+                await self.authorization.require(repository, current_user, "repository:write")
+        elif comment.author_id != current_user.id and not current_user.is_superuser:
             raise HTTPException(status_code=403, detail="You can only edit your own comments")
 
         comment.body = body.body
@@ -143,7 +152,12 @@ class CommentService:
             HTTPException: If the user is not allowed to delete the comment.
         """
         comment = await self.comment_store.get(comment_id)
-        if comment.author_id != current_user.id and not current_user.is_superuser:
+        if self.authorization is not None:
+            repository = await self.repository_store.get(comment.issue.repo_id)
+            await self.authorization.require(repository, current_user)
+            if comment.author_id != current_user.id:
+                await self.authorization.require(repository, current_user, "repository:write")
+        elif comment.author_id != current_user.id and not current_user.is_superuser:
             raise HTTPException(status_code=403, detail="You can only delete your own comments")
 
         await self.comment_store.delete(comment)

@@ -4,9 +4,15 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
-from app.api.dependencies import ActivityServiceDep, CurrentUser, RepositoryServiceDep
+from app.api.dependencies import (
+    ActivityServiceDep,
+    CurrentUser,
+    OptionalUser,
+    RepositoryServiceDep,
+)
+from app.api.permissions import require_permission
 from app.schemas.activity import ActivitiesPublic
 from app.schemas.repository_activity import RepositoryActivityStatistics
 
@@ -14,7 +20,10 @@ router = APIRouter(prefix="/repositories", tags=["activity"])
 user_router = APIRouter(prefix="/users", tags=["activity"])
 
 
-@router.get("/{owner}/{repo}/activity/statistics")
+@router.get(
+    "/{owner}/{repo}/activity/statistics",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalUser))],
+)
 async def get_repository_activity_statistics(
     owner: str,
     repo: str,
@@ -26,9 +35,15 @@ async def get_repository_activity_statistics(
     return await activity_service.repository_statistics(owner, repo, repository_service, days)
 
 
-@router.get("/{owner}/{repo}/activity")
+@router.get(
+    "/{owner}/{repo}/activity", dependencies=[Depends(require_permission("repository:read", user_dep=OptionalUser))]
+)
 async def get_repository_activity(
-    owner: str, repo: str, activity_service: ActivityServiceDep, offset: int = 0, limit: int = 50
+    owner: str,
+    repo: str,
+    activity_service: ActivityServiceDep,
+    offset: int = 0,
+    limit: int = 50,
 ) -> ActivitiesPublic:
     """List activity for a repository."""
     return await activity_service.repo_activity(owner, repo, offset, limit)

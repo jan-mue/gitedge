@@ -94,12 +94,15 @@ class FileContent(GitEdgeBaseModel):
 class CreateRepositoryRequest(GitEdgeBaseModel):
     """Request to create a new repository."""
 
-    name: str
+    name: str = Field(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9_.-]+$")
     owner: str
+    is_private: bool = False
 
 
 class RepositoryUpdate(GitEdgeBaseModel):
     """Editable repository settings."""
+
+    is_private: bool | None = None
 
     name: str | None = Field(default=None, min_length=1, max_length=255, pattern=r"^[A-Za-z0-9_.-]+$")
     description: str | None = Field(default=None, max_length=10000)

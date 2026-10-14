@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from app.clients.repositories import RepositoryStore
     from app.entities.users import User
     from app.services.activity import ActivityService
+    from app.services.authorization import AuthorizationService
     from app.services.repositories import RepositoryService
 
 
@@ -37,15 +38,18 @@ class PullRequestService:
         repository_store: RepositoryStore,
         repository_service: RepositoryService,
         activity_service: ActivityService,
+        authorization: AuthorizationService | None = None,
     ) -> None:
         """Initialize the pull request service.
 
         Args:
+            authorization: Authorization service for scoped role checks.
             pull_request_store: Pull request store.
             repository_store: Repository store.
             repository_service: Repository service used to diff refs.
             activity_service: Service used to record activity.
         """
+        self.authorization = authorization
         self.pull_request_store = pull_request_store
         self.repository_store = repository_store
         self.repository_service = repository_service
@@ -173,13 +177,15 @@ class PullRequestService:
             HTTPException: If the pull request is not found, the state is invalid, or the user is not allowed to edit.
         """
         pull_request = await self._find_pull_request(owner, name, number)
-
-        if (
-            (body.title is not None or body.body is not None)
-            and pull_request.author_id != current_user.id
-            and not current_user.is_superuser
-        ):
-            raise HTTPException(status_code=403, detail="You can only edit your own pull requests")
+        if self.authorization is not None:
+            repository = await self.repository_store.get_by_owner_and_name(owner, name)
+            await self.authorization.require(repository, current_user)
+            if pull_request.author_id != current_user.id:
+                await self.authorization.require(repository, current_user, "repository:write")
+            if body.state == IssueState.MERGED:
+                await self.authorization.require(repository, current_user, "repository:write")
+        elif pull_request.author_id != current_user.id and not current_user.is_superuser:
+            raise HTTPException(status_code=403, detail="Only authors or maintainers can edit discussions")
 
         if body.title is not None:
             pull_request.title = body.title

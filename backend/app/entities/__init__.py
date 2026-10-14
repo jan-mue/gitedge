@@ -1,7 +1,9 @@
 from app.entities.activity import Activity
+from app.entities.authorization import OrganizationMember, RepositoryCollaborator, Team, TeamMember
 from app.entities.comments import Comment
 from app.entities.issues import Issue
 from app.entities.organizations import Organization
+from app.entities.personal_access_tokens import PersonalAccessToken
 from app.entities.principals import Principal
 from app.entities.pull_requests import PullRequest
 from app.entities.releases import Release
@@ -15,11 +17,16 @@ __all__ = [
     "Comment",
     "Issue",
     "Organization",
+    "OrganizationMember",
+    "PersonalAccessToken",
     "Principal",
     "PullRequest",
     "Release",
     "Repository",
+    "RepositoryCollaborator",
     "Star",
+    "Team",
+    "TeamMember",
     "User",
     "Watcher",
 ]

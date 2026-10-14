@@ -1,0 +1,13 @@
+# Roles are scoped to a repository or organization by g's domain argument.
+# Permission inheritance: owner > admin > write > read.
+p, read, repository:read
+p, write, repository:write
+p, admin, repository:admin
+p, owner, repository:owner
+p, org_member, organization:read
+p, org_admin, organization:admin
+
+g2, repository:owner, repository:admin
+g2, repository:admin, repository:write
+g2, repository:write, repository:read
+g2, organization:admin, organization:read
