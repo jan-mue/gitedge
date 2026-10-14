@@ -1,26 +1,28 @@
 import { useState } from "react"
-import type { LanguageStatistic } from "@/client"
 
-const colors: Record<string, string> = {
-  Python: "#3572a5",
-  JavaScript: "#f1e05a",
-  TypeScript: "#3178c6",
-  Go: "#00add8",
-  CSS: "#563d7c",
-  HTML: "#e34c26",
-  Rust: "#dea584",
-  Ruby: "#701516",
-  Shell: "#89e051",
-  JSON: "#9b9b9b",
-  Markdown: "#083fa1",
-  Other: "#8b949e",
-}
-const languageColor = (name: string) => colors[name] ?? "#8b949e"
+type LanguageStatistic = { name: string; size: number; percentage: number }
+
+const languages = new Set([
+  "python",
+  "javascript",
+  "typescript",
+  "go",
+  "css",
+  "html",
+  "rust",
+  "ruby",
+  "shell",
+  "json",
+  "markdown",
+])
+const languageColor = (name: string) =>
+  `var(--language-${languages.has(name.toLowerCase()) ? name.toLowerCase() : "other"})`
 
 const LanguageBar = ({ languages }: { languages: LanguageStatistic[] }) => {
   const [open, setOpen] = useState(false)
   if (!languages.length) return null
   const total = languages.reduce((sum, language) => sum + language.size, 0)
+  if (total <= 0) return null
   return (
     <div>
       <div className="flex h-2 overflow-hidden rounded-full">

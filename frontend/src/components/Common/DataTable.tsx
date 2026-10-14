@@ -6,10 +6,16 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Button,
+  SelectField,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/design-system"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -29,7 +35,7 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="hover:bg-transparent">
+            <TableRow key={headerGroup.id} appearance="static">
               {headerGroup.headers.map((header) => {
                 return (
                   <TableHead key={header.id}>
@@ -50,8 +56,8 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
               </TableRow>
             ))
           ) : (
-            <TableRow className="hover:bg-transparent">
-              <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground">
+            <TableRow appearance="static">
+              <TableCell colSpan={columns.length} appearance="empty">
                 No results found.
               </TableCell>
             </TableRow>
@@ -59,7 +65,7 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
         </TableBody>
       </Table>
 
-      {table.getPageCount() > 1 && (
+      {data.length > 0 && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border-t bg-muted/20">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="text-sm text-muted-foreground">
@@ -72,23 +78,13 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
             </div>
             <div className="flex items-center gap-x-2">
               <p className="text-sm text-muted-foreground">Rows per page</p>
-              <Select
-                value={`${table.getState().pagination.pageSize}`}
-                onValueChange={(value) => {
-                  table.setPageSize(Number(value))
-                }}
-              >
-                <SelectTrigger className="h-8 w-[70px]">
-                  <SelectValue placeholder={table.getState().pagination.pageSize} />
-                </SelectTrigger>
-                <SelectContent side="top">
-                  {[5, 10, 25, 50].map((pageSize) => (
-                    <SelectItem key={pageSize} value={`${pageSize}`}>
-                      {pageSize}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SelectField
+                value={String(table.getState().pagination.pageSize)}
+                onValueChange={(value) => table.setPageSize(Number(value))}
+                aria-label="Rows per page"
+                appearance="pagination"
+                options={[5, 10, 25, 50].map((pageSize) => ({ value: String(pageSize), label: pageSize }))}
+              />
             </div>
           </div>
 
@@ -102,9 +98,8 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
 
             <div className="flex items-center gap-x-1">
               <Button
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
+                variant="repository"
+                size="icon-sm"
                 onClick={() => table.setPageIndex(0)}
                 disabled={!table.getCanPreviousPage()}
               >
@@ -112,9 +107,8 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
               <Button
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
+                variant="repository"
+                size="icon-sm"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
               >
@@ -122,9 +116,8 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <Button
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
+                variant="repository"
+                size="icon-sm"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
               >
@@ -132,9 +125,8 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
                 <ChevronRight className="h-4 w-4" />
               </Button>
               <Button
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
+                variant="repository"
+                size="icon-sm"
                 onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                 disabled={!table.getCanNextPage()}
               >

@@ -4,6 +4,7 @@ import {
   repositoriesGetRepositoryInfoOptions,
   repositoriesGetSourceOptions,
 } from "@/client/@tanstack/react-query.gen"
+import { Skeleton } from "@/components/design-system"
 import CodeViewer from "@/components/Repositories/CodeViewer"
 import RepoBreadcrumbs from "@/components/Repositories/RepoBreadcrumbs"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
@@ -12,7 +13,6 @@ import ReadmeViewer from "@/components/Repository/ReadmeViewer"
 import RepoStats from "@/components/Repository/RepoStats"
 import { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import SourceLoading from "@/components/Repository/SourceLoading"
-import { Skeleton } from "@/components/ui/skeleton"
 
 interface SourceViewProps {
   owner: string
@@ -25,20 +25,21 @@ interface SourceViewProps {
 const readmeNames = new Set(["README.md", "README.MD", "readme.md", "README", "README.txt", "README.rst", "Readme.md"])
 
 const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
+  const revision = mode === "tag" ? `refs/tags/${refName}` : refName
   const {
     data: source,
     isPending,
     isError,
     refetch,
   } = useQuery({
-    ...repositoriesGetSourceOptions({ path: { owner, repo }, query: { ref: refName, source_path: path } }),
+    ...repositoriesGetSourceOptions({ path: { owner, repo }, query: { ref: revision, source_path: path } }),
     retry: false,
   })
   const tree = source && "entries" in source ? source : undefined
   const blob = source && "content" in source ? source : undefined
   const parentPath = path.split("/").slice(0, -1).join("/")
   const { data: parent } = useQuery({
-    ...repositoriesGetSourceOptions({ path: { owner, repo }, query: { ref: refName, source_path: parentPath } }),
+    ...repositoriesGetSourceOptions({ path: { owner, repo }, query: { ref: revision, source_path: parentPath } }),
     enabled: Boolean(path) && isPending,
     retry: false,
   })
@@ -48,15 +49,18 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
       ? parent.entries.find((entry) => entry.path === path)?.type
       : undefined
   const hasReadme = tree?.entries.some((entry) => entry.type === "blob" && readmeNames.has(entry.name)) ?? false
-  const { data: repoInfo, isPending: infoPending } = useQuery(
-    repositoriesGetRepositoryInfoOptions({ path: { owner, repo }, query: { ref: refName } }),
-  )
+  const {
+    data: repoInfo,
+    isPending: infoPending,
+    isError: infoError,
+    refetch: refetchInfo,
+  } = useQuery(repositoriesGetRepositoryInfoOptions({ path: { owner, repo }, query: { ref: revision } }))
   const {
     data: readme,
     isPending: readmePending,
     isFetching: readmeFetching,
   } = useQuery({
-    ...repositoriesGetReadmeOptions({ path: { owner, repo }, query: { ref: refName, tree_path: path } }),
+    ...repositoriesGetReadmeOptions({ path: { owner, repo }, query: { ref: revision, tree_path: path } }),
     retry: false,
     enabled: hasReadme,
   })
@@ -88,7 +92,8 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
         owner={owner}
         repo={repo}
         gitRef={mode === "commit" ? refName.slice(0, 10) : refName}
-        revision={refName}
+        revision={revision}
+        mode={mode}
         showStatistics={!path}
       />
       {isPending || (isError && infoPending) ? (
@@ -104,6 +109,9 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
             refName={refName}
             treePath={path}
             lastCommit={repoInfo?.last_commit}
+            lastCommitLoading={infoPending}
+            lastCommitError={infoError}
+            onRetryLastCommit={() => refetchInfo()}
           />
           {hasReadme && readme ? (
             <ReadmeViewer html={readme.html} content={readme.content} filename={readme.filename} />
@@ -112,9 +120,9 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
             readmePending &&
             readmeFetching && (
               <div role="status" aria-label="Loading README" className="space-y-3 rounded-lg border p-6">
-                <Skeleton className="h-6 w-1/3" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
+                <Skeleton appearance="heading" />
+                <Skeleton appearance="line" />
+                <Skeleton appearance="paragraph" />
               </div>
             )
           )}

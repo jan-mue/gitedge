@@ -1,0 +1,32 @@
+.story-canvas {
+  color: var(--foreground);
+  background: var(--background);
+  min-height: 120px;
+}
+.sbdocs.sbdocs-wrapper {
+  background: var(--background);
+  color: var(--foreground);
+}
+.sbdocs.sbdocs-content {
+  max-width: 1120px;
+}
+.sbdocs :is(h1, h2, h3, p, li):not(.story-canvas *) {
+  color: var(--foreground);
+}
+.sbdocs a:not(.story-canvas *) {
+  color: var(--primary);
+}
+.sbdocs :not(pre) > code:not(.story-canvas *) {
+  background: var(--muted);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.sbdocs-content table:not(.story-canvas *) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.sbdocs [tabindex="0"]:focus-visible:not(.story-canvas *) {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}

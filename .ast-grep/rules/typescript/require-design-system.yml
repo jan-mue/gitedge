@@ -1,0 +1,24 @@
+id: require-design-system
+language: tsx
+severity: error
+message: Import shared controls from @/components/design-system; choose named variants and use layout wrappers for spacing.
+files:
+  - frontend/src/**/*.tsx
+ignores:
+  - frontend/src/components/ui/**
+  - frontend/src/components/design-system/**
+  - frontend/src/**/*.test.tsx
+  - frontend/src/**/*.stories.tsx
+  - frontend/src/components/Storybook/**
+rule:
+  any:
+    - kind: import_statement
+      has:
+        field: source
+        regex: 'components/ui/'
+    - any:
+        - kind: jsx_opening_element
+        - kind: jsx_self_closing_element
+      has:
+        field: name
+        regex: '^(button|input|textarea|select|a)$'

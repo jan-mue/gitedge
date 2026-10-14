@@ -1,7 +1,6 @@
-import { Link } from "@tanstack/react-router"
 import { CircleDot, GitPullRequest } from "lucide-react"
-
 import type { RepositoryActivityStatistics } from "@/client"
+import { Link, SelectField } from "@/components/design-system"
 import ActivityChart from "@/components/Repository/ActivityChart"
 
 const formatDate = (value: string) =>
@@ -44,7 +43,7 @@ const ActivityPulse = ({ data, owner, repo, days, setDays }: ActivityPulseProps)
       total: overview.active_issues,
       first: overview.closed_issues,
       second: overview.new_issues,
-      color: "bg-destructive",
+      color: "bg-destructive-emphasis",
     },
   ]
 
@@ -54,20 +53,21 @@ const ActivityPulse = ({ data, owner, repo, days, setDays }: ActivityPulseProps)
         <h2 className="text-lg font-medium text-foreground sm:text-xl">
           {formatDate(data.start)} - {formatDate(data.end)}
         </h2>
-        <select
+        <SelectField
           aria-label="Activity period"
-          value={days}
-          onChange={(event) => setDays(Number(event.target.value))}
-          className="rounded border border-border bg-secondary px-3 py-1.5 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-        >
-          <option value={1}>1 day</option>
-          <option value={3}>3 days</option>
-          <option value={7}>1 week</option>
-          <option value={30}>1 month</option>
-          <option value={90}>3 months</option>
-          <option value={180}>6 months</option>
-          <option value={365}>1 year</option>
-        </select>
+          value={String(days)}
+          onValueChange={(value) => setDays(Number(value))}
+          appearance="compact"
+          options={[
+            { value: "1", label: "1 day" },
+            { value: "3", label: "3 days" },
+            { value: "7", label: "1 week" },
+            { value: "30", label: "1 month" },
+            { value: "90", label: "3 months" },
+            { value: "180", label: "6 months" },
+            { value: "365", label: "1 year" },
+          ]}
+        />
       </div>
       <div className="overflow-hidden rounded-lg border border-border">
         <div className="border-b border-border bg-secondary px-4 py-3 text-sm font-medium text-foreground">
@@ -83,7 +83,7 @@ const ActivityPulse = ({ data, owner, repo, days, setDays }: ActivityPulseProps)
                     style={{ width: `${bar.first + bar.second ? (100 * bar.first) / (bar.first + bar.second) : 0}%` }}
                   />
                   <div
-                    className="bg-success"
+                    className="bg-success-emphasis"
                     style={{ width: `${bar.first + bar.second ? (100 * bar.second) / (bar.first + bar.second) : 0}%` }}
                   />
                 </div>
@@ -138,7 +138,7 @@ const ActivityPulse = ({ data, owner, repo, days, setDays }: ActivityPulseProps)
                 <Link
                   to="/$owner/$repo/pulls/$number"
                   params={{ owner, repo, number: String(pr.target_number) }}
-                  className="min-w-0 truncate text-primary hover:underline"
+                  appearance="truncated"
                 >
                   {pr.title || `Pull request #${pr.target_number}`}
                 </Link>

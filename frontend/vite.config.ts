@@ -26,12 +26,12 @@ function resolveApiUrl(): string {
   if (vercelEnv === "preview") {
     const resolved = withRelatedProject({
       projectName: BACKEND_PROJECT_NAME,
-      defaultHost: DEV_API_URL,
+      defaultHost: process.env.VITE_API_URL || DEV_API_URL,
     })
     if (!resolved || resolved === DEV_API_URL) {
       throw new Error(
         `Could not resolve the preview URL for related project "${BACKEND_PROJECT_NAME}". ` +
-          "Ensure the backend project is listed in frontend/vercel.json's relatedProjects and redeploy.",
+          "Ensure the backend project is listed in frontend/vercel.ts's relatedProjects, or set a branch-scoped VITE_API_URL to its backend preview.",
       )
     }
     return normalizeApiUrl(resolved)

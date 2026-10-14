@@ -1,0 +1,16 @@
+id: no-native-select
+language: tsx
+severity: error
+message: Use the shadcn/ui-based SelectField for selections and BranchSelector for branch choices.
+files:
+  - frontend/src/**/*.tsx
+ignores:
+  - frontend/src/components/ui/**
+  - frontend/src/client/**
+rule:
+  any:
+    - kind: jsx_opening_element
+    - kind: jsx_self_closing_element
+  has:
+    field: name
+    regex: '^select$'

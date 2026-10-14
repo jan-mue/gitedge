@@ -1,6 +1,6 @@
 import { BookOpen } from "lucide-react"
 
-import MarkdownContent from "@/components/Common/MarkdownContent"
+import { MarkdownContent } from "@/components/design-system"
 
 interface ReadmeViewerProps {
   html: string

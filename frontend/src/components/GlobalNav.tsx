@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
-import { ChevronDown, GitFork, Inbox, LogOut, Plus, Settings, ShieldCheck, User } from "lucide-react"
-import { useState } from "react"
-
+import { useNavigate } from "@tanstack/react-router"
+import { ChevronDown, Inbox, LogOut, Plus, Settings, ShieldCheck, User } from "lucide-react"
+import { useRef, useState } from "react"
 import {
   organizationsCreateOrganizationMutation,
   organizationsListOrganizationsOptions,
@@ -10,14 +9,26 @@ import {
   repositoriesCreateRepositoryMutation,
   repositoriesListRepositoriesQueryKey,
 } from "@/client/@tanstack/react-query.gen"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
+  Button,
+  ChoiceInput,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  Input,
+  Label,
+  Logo,
+  Link as RouterLink,
+  SelectField,
+  Textarea,
+} from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -29,6 +40,7 @@ const GlobalNav = () => {
   const { showErrorToast } = useCustomToast()
 
   const [showNewRepo, setShowNewRepo] = useState(false)
+  const repoNameInput = useRef<HTMLInputElement>(null)
   const [showNewOrg, setShowNewOrg] = useState(false)
   const [repoName, setRepoName] = useState("")
   const [repoDesc, setRepoDesc] = useState("")
@@ -70,70 +82,69 @@ const GlobalNav = () => {
     <>
       <nav className="border-b border-border bg-secondary">
         <div className="container mx-auto flex h-12 max-w-7xl items-center justify-between gap-2 px-4">
-          <RouterLink to="/" className="flex items-center gap-2 text-foreground transition-colors hover:text-primary">
-            <div className="flex h-7 w-7 items-center justify-center rounded bg-primary">
-              <GitFork className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="text-sm font-bold">GitEdge</span>
+          <RouterLink to="/" appearance="brand">
+            <Logo size="compact" asLink={false} />
           </RouterLink>
 
           <div className="flex items-center gap-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button
+                <Button
                   type="button"
                   data-testid="create-menu"
-                  className="flex items-center gap-1 rounded border border-border bg-background px-2 py-1 text-sm text-foreground transition-colors hover:bg-accent"
+                  aria-label="Create repository or organization"
+                  variant="create"
+                  size="create"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                </button>
+                </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" appearance="create">
                 <DropdownMenuItem onClick={() => setShowNewRepo(true)}>New Repository</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowNewOrg(true)}>New Organization</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <button
+            <Button
               type="button"
-              className="relative rounded p-1.5 text-foreground transition-colors hover:bg-accent"
+              variant="notification"
+              size="icon-sm"
               title="Notifications"
+              aria-label="Notifications, 0 unread"
             >
               <Inbox className="h-5 w-5" />
               <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
                 0
               </span>
-            </button>
+            </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button
+                <Button
                   type="button"
                   data-testid="user-menu"
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                  aria-label="Open user menu"
+                  variant="avatar"
+                  size="icon-sm"
                 >
                   {(user?.display_name || username || "U").slice(0, 1).toUpperCase()}
-                </button>
+                </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuContent align="end" appearance="account">
                 <div className="px-3 py-2 text-sm">
                   <p className="font-medium text-foreground">{user?.display_name || username}</p>
                   <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <RouterLink
-                    to="/profile/$username"
-                    params={{ username }}
-                    className="flex cursor-pointer items-center gap-2"
-                  >
+                  <RouterLink to="/profile/$username" params={{ username }} appearance="item">
                     <User className="h-4 w-4" />
                     Profile
                   </RouterLink>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <RouterLink to="/settings" className="flex cursor-pointer items-center gap-2">
+                  <RouterLink to="/settings" appearance="item">
                     <Settings className="h-4 w-4" />
                     Settings
                   </RouterLink>
@@ -142,7 +153,7 @@ const GlobalNav = () => {
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <RouterLink to="/admin" className="flex cursor-pointer items-center gap-2">
+                      <RouterLink to="/admin" appearance="item">
                         <ShieldCheck className="h-4 w-4" />
                         Site Administration
                       </RouterLink>
@@ -150,10 +161,7 @@ const GlobalNav = () => {
                   </>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="flex cursor-pointer items-center gap-2 text-destructive focus:text-destructive"
-                  onClick={logout}
-                >
+                <DropdownMenuItem appearance="destructive" onClick={logout}>
                   <LogOut className="h-4 w-4" />
                   Sign Out
                 </DropdownMenuItem>
@@ -164,80 +172,81 @@ const GlobalNav = () => {
       </nav>
 
       <Dialog open={showNewRepo} onOpenChange={setShowNewRepo}>
-        <DialogContent>
+        <DialogContent
+          onOpenAutoFocus={(event) => {
+            event.preventDefault()
+            repoNameInput.current?.focus()
+          }}
+        >
           <DialogHeader>
             <DialogTitle>New Repository</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label htmlFor="new-repo-owner" className="mb-1 block text-sm font-medium text-foreground">
+              <Label htmlFor="new-repo-owner" appearance="field">
                 Owner
-              </label>
-              <select
+              </Label>
+              <SelectField
+                appearance="owner"
                 id="new-repo-owner"
+                aria-label="Owner"
                 data-testid="new-repo-owner"
                 value={selectedOwner}
-                onChange={(e) => setRepoOwner(e.target.value)}
-                className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                {ownerOptions.map((owner) => (
-                  <option key={owner} value={owner}>
-                    {owner}
-                  </option>
-                ))}
-              </select>
+                onValueChange={setRepoOwner}
+                placeholder="Select an owner"
+                disabled={!ownerOptions.length}
+                options={ownerOptions.map((owner) => ({ value: owner, label: owner }))}
+              />
             </div>
             <div>
-              <label htmlFor="new-repo-name" className="mb-1 block text-sm font-medium text-foreground">
+              <Label htmlFor="new-repo-name" appearance="field">
                 Repository name *
-              </label>
-              <input
+              </Label>
+              <Input
+                appearance="repository"
+                ref={repoNameInput}
                 id="new-repo-name"
                 data-testid="new-repo-name"
                 value={repoName}
                 onChange={(e) => setRepoName(e.target.value)}
-                className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="my-awesome-project"
               />
             </div>
             <div>
-              <label htmlFor="new-repo-desc" className="mb-1 block text-sm font-medium text-foreground">
+              <Label htmlFor="new-repo-desc" appearance="field">
                 Description
-              </label>
-              <textarea
+              </Label>
+              <Textarea
+                appearance="repository"
                 id="new-repo-desc"
                 value={repoDesc}
                 onChange={(e) => setRepoDesc(e.target.value)}
-                className="h-20 w-full resize-none rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="Short description (optional)"
               />
             </div>
             <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <input type="radio" name="visibility" defaultChecked className="accent-primary" /> Public
-              </label>
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <input type="radio" name="visibility" className="accent-primary" /> Private
-              </label>
+              <Label appearance="inline">
+                <ChoiceInput type="radio" name="visibility" defaultChecked /> Public
+              </Label>
+              <Label appearance="inline">
+                <ChoiceInput type="radio" name="visibility" /> Private
+              </Label>
             </div>
           </div>
           <DialogFooter>
-            <button
-              type="button"
-              onClick={() => setShowNewRepo(false)}
-              className="rounded border border-border bg-secondary px-4 py-2 text-sm text-foreground hover:bg-accent"
-            >
+            <Button type="button" onClick={() => setShowNewRepo(false)} variant="repository" size="form">
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               data-testid="new-repo-submit"
               disabled={!repoName.trim() || createRepoMutation.isPending}
               onClick={() => createRepoMutation.mutate({ body: { owner: selectedOwner, name: repoName.trim() } })}
-              className="rounded bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:opacity-90 disabled:opacity-50"
+              variant="success"
+              size="form"
             >
               Create Repository
-            </button>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -249,36 +258,33 @@ const GlobalNav = () => {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label htmlFor="new-org-name" className="mb-1 block text-sm font-medium text-foreground">
+              <Label htmlFor="new-org-name" appearance="field">
                 Organization name *
-              </label>
-              <input
+              </Label>
+              <Input
+                appearance="repository"
                 id="new-org-name"
                 data-testid="new-org-name"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
-                className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="my-org"
               />
             </div>
           </div>
           <DialogFooter>
-            <button
-              type="button"
-              onClick={() => setShowNewOrg(false)}
-              className="rounded border border-border bg-secondary px-4 py-2 text-sm text-foreground hover:bg-accent"
-            >
+            <Button type="button" onClick={() => setShowNewOrg(false)} variant="repository" size="form">
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               data-testid="new-org-submit"
               disabled={!orgName.trim() || createOrgMutation.isPending}
               onClick={() => createOrgMutation.mutate({ body: { name: orgName.trim() } })}
-              className="rounded bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:opacity-90 disabled:opacity-50"
+              variant="success"
+              size="form"
             >
               Create Organization
-            </button>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

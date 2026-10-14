@@ -1,5 +1,4 @@
-import { Link } from "@tanstack/react-router"
-import { Button } from "@/components/ui/button"
+import { Button, Link } from "@/components/design-system"
 
 const ErrorComponent = () => {
   return (
@@ -12,9 +11,11 @@ const ErrorComponent = () => {
       </div>
 
       <p className="text-lg text-muted-foreground mb-4 text-center z-10">Something went wrong. Please try again.</p>
-      <Link to="/">
-        <Button>Go Home</Button>
-      </Link>
+      <Button asChild>
+        <Link to="/" appearance="inherited">
+          Go Home
+        </Link>
+      </Button>
     </div>
   )
 }

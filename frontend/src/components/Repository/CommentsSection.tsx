@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { MessageSquare } from "lucide-react"
 import { useState } from "react"
-
 import {
   activityGetFeedQueryKey,
   commentsCreateCommentMutation,
@@ -10,8 +9,7 @@ import {
   commentsListCommentsQueryKey,
   commentsUpdateCommentMutation,
 } from "@/client/@tanstack/react-query.gen"
-import MarkdownContent from "@/components/Common/MarkdownContent"
-import { Button } from "@/components/ui/button"
+import { Button, MarkdownContent, Textarea } from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -87,9 +85,10 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                 <span>commented {new Date(comment.created_at).toLocaleString()}</span>
                 {comment.author_username === user?.name && editingId !== comment.id && (
                   <div className="ml-auto flex items-center gap-2">
-                    <button
+                    <Button
                       type="button"
-                      className="text-xs text-muted-foreground hover:text-foreground"
+                      variant="text"
+                      size="text"
                       onClick={() => {
                         setEditingId(comment.id)
                         setEditBody(comment.body)
@@ -97,10 +96,11 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                       data-testid={`edit-comment-${comment.id}`}
                     >
                       Edit
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="text-xs text-muted-foreground hover:text-destructive"
+                      variant="textDanger"
+                      size="text"
                       disabled={deleteMutation.isPending}
                       onClick={() => {
                         if (window.confirm("Delete this comment?"))
@@ -109,22 +109,21 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                       data-testid={`delete-comment-${comment.id}`}
                     >
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
               {editingId === comment.id ? (
                 <div className="space-y-2 px-4 py-3">
-                  <textarea
+                  <Textarea
                     value={editBody}
                     onChange={(e) => setEditBody(e.target.value)}
                     data-testid={`edit-comment-input-${comment.id}`}
-                    className="w-full rounded border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none resize-y"
                   />
                   <div className="flex justify-end gap-2">
                     <Button
-                      size="sm"
-                      variant="outline"
+                      size="text"
+                      variant="text"
                       onClick={() => {
                         setEditingId(null)
                         setEditBody("")
@@ -134,7 +133,7 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                       Cancel
                     </Button>
                     <Button
-                      size="sm"
+                      size="text"
                       disabled={!editBody.trim() || editMutation.isPending}
                       onClick={() =>
                         editMutation.mutate({ path: { comment_id: comment.id }, body: { body: editBody } })
@@ -156,7 +155,7 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
       )}
 
       <div className="border border-border rounded-lg overflow-hidden">
-        <textarea
+        <Textarea
           id="comment-body"
           name="comment-body"
           rows={4}
@@ -164,11 +163,10 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           data-testid="comment-input"
-          className="w-full px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:outline-none resize-y"
         />
         <div className="flex items-center justify-end px-3 py-2 border-t border-border bg-secondary/50">
           <Button
-            size="sm"
+            size="compact"
             disabled={!body.trim() || mutation.isPending}
             onClick={() => mutation.mutate({ path: { owner, repo, number }, body: { body } })}
             data-testid="comment-submit"

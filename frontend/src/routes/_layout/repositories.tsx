@@ -2,9 +2,9 @@ import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { GitBranch } from "lucide-react"
 import { Suspense } from "react"
-
 import { repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
 import { DataTable } from "@/components/Common/DataTable"
+import { EmptyState, Page, PageHeader } from "@/components/design-system"
 import PendingItems from "@/components/Pending/PendingItems"
 import CreateRepository from "@/components/Repositories/CreateRepository"
 import { columns } from "@/components/Repositories/columns"
@@ -25,13 +25,11 @@ function RepositoriesTableContent() {
 
   if (repositories.data.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center text-center py-12">
-        <div className="rounded-full bg-muted p-4 mb-4">
-          <GitBranch className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <h3 className="text-lg font-semibold">No repositories yet</h3>
-        <p className="text-muted-foreground">Create a repository or push one to get started</p>
-      </div>
+      <EmptyState
+        title="No repositories yet"
+        description="Create a repository or push one to get started"
+        icon={GitBranch}
+      />
     )
   }
 
@@ -48,15 +46,13 @@ function RepositoriesTable() {
 
 function Repositories() {
   return (
-    <div className="container mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Repositories</h1>
-          <p className="text-muted-foreground">View and manage your Git repositories</p>
-        </div>
-        <CreateRepository />
-      </div>
+    <Page>
+      <PageHeader
+        title="Repositories"
+        description="View and manage your Git repositories"
+        actions={<CreateRepository />}
+      />
       <RepositoriesTable />
-    </div>
+    </Page>
   )
 }

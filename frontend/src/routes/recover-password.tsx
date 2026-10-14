@@ -1,14 +1,26 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation } from "@tanstack/react-query"
-import { createFileRoute, Link as RouterLink, redirect } from "@tanstack/react-router"
+import { createFileRoute, redirect } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-
 import { loginRecoverPasswordMutation } from "@/client/@tanstack/react-query.gen"
 import { AuthLayout } from "@/components/Common/AuthLayout"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { LoadingButton } from "@/components/ui/loading-button"
+import {
+  AuthFooter,
+  AuthForm,
+  AuthHeading,
+  AuthTitle,
+  FieldStack,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  LoadingButton,
+  Link as RouterLink,
+} from "@/components/design-system"
 import { isLoggedIn } from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -63,12 +75,12 @@ function RecoverPassword() {
   return (
     <AuthLayout>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-2xl font-bold">Password Recovery</h1>
-          </div>
+        <AuthForm onSubmit={form.handleSubmit(onSubmit)}>
+          <AuthHeading>
+            <AuthTitle>Password Recovery</AuthTitle>
+          </AuthHeading>
 
-          <div className="grid gap-4">
+          <FieldStack>
             <FormField
               control={form.control}
               name="email"
@@ -83,18 +95,18 @@ function RecoverPassword() {
               )}
             />
 
-            <LoadingButton type="submit" className="w-full" loading={mutation.isPending}>
+            <LoadingButton type="submit" fullWidth loading={mutation.isPending}>
               Continue
             </LoadingButton>
-          </div>
+          </FieldStack>
 
-          <div className="text-center text-sm">
+          <AuthFooter>
             Remember your password?{" "}
-            <RouterLink to="/login" className="underline underline-offset-4">
+            <RouterLink to="/login" appearance="underline">
               Log in
             </RouterLink>
-          </div>
-        </form>
+          </AuthFooter>
+        </AuthForm>
       </Form>
     </AuthLayout>
   )

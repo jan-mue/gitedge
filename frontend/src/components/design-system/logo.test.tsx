@@ -1,15 +1,14 @@
-import { render, screen } from "@testing-library/react"
 import React from "react"
 import { describe, expect, test, vi } from "vitest"
+import { render, screen } from "@/test/test-utils"
 
-// Mock TanStack Router's Link component
 vi.mock("@tanstack/react-router", () => ({
   Link: vi.fn(({ children, to }: { children: React.ReactNode; to: string }) =>
     React.createElement("a", { href: to }, children),
   ),
 }))
 
-import { Logo } from "./Logo"
+import { Logo } from "./logo"
 
 describe("Logo", () => {
   test("renders full variant by default", () => {
@@ -51,18 +50,18 @@ describe("Logo", () => {
     expect(screen.getByText("GitEdge")).toBeInTheDocument()
   })
 
-  test("applies custom className to full variant", () => {
-    render(<Logo variant="full" className="custom-class" asLink={false} />)
+  test("supports the hero size for the full variant", () => {
+    render(<Logo variant="full" size="hero" asLink={false} />)
 
     const container = screen.getByText("GitEdge").parentElement
-    expect(container).toHaveClass("custom-class")
+    expect(container).toHaveClass("h-16")
   })
 
-  test("applies custom className to icon variant", () => {
-    render(<Logo variant="icon" className="custom-icon-class" asLink={false} />)
+  test("supports the hero size for the icon variant", () => {
+    render(<Logo variant="icon" size="hero" asLink={false} />)
 
     const svg = document.querySelector("svg")
-    expect(svg).toHaveClass("custom-icon-class")
+    expect(svg).toHaveClass("size-16")
   })
 
   test("full variant has correct flex layout", () => {
@@ -82,11 +81,12 @@ describe("Logo", () => {
     expect(text).toHaveClass("text-lg")
   })
 
-  test("icon has primary color", () => {
+  test("icon uses the primary badge and contrasting foreground", () => {
     render(<Logo variant="icon" asLink={false} />)
 
     const svg = document.querySelector("svg")
-    expect(svg).toHaveClass("text-primary")
+    expect(svg).toHaveClass("text-primary-foreground")
+    expect(svg?.parentElement).toHaveClass("bg-primary")
   })
 
   test("full variant icon has correct size", () => {

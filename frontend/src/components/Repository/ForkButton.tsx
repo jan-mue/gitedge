@@ -1,19 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
+import { useNavigate } from "@tanstack/react-router"
 import { GitFork } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-
 import {
   forksForkRepositoryMutation,
   forksListForksOptions,
   forksListForksQueryKey,
   repositoriesListRepositoriesQueryKey,
 } from "@/client/@tanstack/react-query.gen"
-import { Button } from "@/components/ui/button"
 import {
+  Button,
   Dialog,
   DialogClose,
   DialogContent,
@@ -22,10 +21,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { LoadingButton } from "@/components/ui/loading-button"
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  LoadingButton,
+  Link as RouterLink,
+} from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -81,25 +86,16 @@ const ForkButton = ({ owner, repo }: ForkButtonProps) => {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <div className="flex items-stretch">
         <DialogTrigger asChild>
-          <button
-            type="button"
-            data-testid="fork-button"
-            className="flex items-center gap-1.5 rounded-l border border-border bg-secondary px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
-          >
+          <Button type="button" data-testid="fork-button" variant="repository" size="compact" shape="start">
             <GitFork className="h-3.5 w-3.5" />
             Fork
-          </button>
+          </Button>
         </DialogTrigger>
-        <RouterLink
-          to="/$owner/$repo/forks"
-          params={{ owner, repo }}
-          data-testid="fork-count"
-          className="flex items-center rounded-r border border-l-0 border-border bg-secondary px-2.5 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
-        >
+        <RouterLink to="/$owner/$repo/forks" params={{ owner, repo }} data-testid="fork-count" appearance="count">
           {forks?.count ?? 0}
         </RouterLink>
       </div>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent appearance="compact">
         <DialogHeader>
           <DialogTitle>Fork repository</DialogTitle>
           <DialogDescription>Create a copy of {`${owner}/${repo}`} in your account.</DialogDescription>
@@ -125,7 +121,7 @@ const ForkButton = ({ owner, repo }: ForkButtonProps) => {
             </div>
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="outline" disabled={mutation.isPending}>
+                <Button variant="repository" disabled={mutation.isPending}>
                   Cancel
                 </Button>
               </DialogClose>

@@ -13,7 +13,7 @@ afterEach(() => {
 beforeAll(() => {
   // Node's fetch requires an absolute URL; use the same origin as jsdom.
   client.setConfig({ baseUrl: window.location.origin })
-  server.listen({ onUnhandledRequest: "error" })
+  server.listen({ onUnhandledFrame: "error" })
   Object.defineProperty(window, "matchMedia", {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({
@@ -33,6 +33,11 @@ beforeAll(() => {
     unobserve = vi.fn()
     disconnect = vi.fn()
   }
+
+  HTMLElement.prototype.hasPointerCapture ??= vi.fn(() => false)
+  HTMLElement.prototype.setPointerCapture ??= vi.fn()
+  HTMLElement.prototype.releasePointerCapture ??= vi.fn()
+  HTMLElement.prototype.scrollIntoView ??= vi.fn()
 
   global.IntersectionObserver = class {
     observe = vi.fn()

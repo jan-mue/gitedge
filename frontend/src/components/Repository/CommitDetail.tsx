@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query"
-import { Link as RouterLink, useParams } from "@tanstack/react-router"
+import { useParams } from "@tanstack/react-router"
 import { ArrowLeft, GitCommitHorizontal } from "lucide-react"
 import type { CommitFileChange } from "@/client"
 import { repositoriesGetCommitOptions } from "@/client/@tanstack/react-query.gen"
+import { Link as RouterLink } from "@/components/design-system"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 
 const changeBadge: Record<string, string> = {
@@ -87,11 +88,7 @@ const CommitDetail = () => {
 
   return (
     <div className="space-y-4" data-testid="commit-detail">
-      <RouterLink
-        to="/$owner/$repo/commits"
-        params={{ owner, repo }}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
+      <RouterLink to="/$owner/$repo/commits" params={{ owner, repo }} appearance="muted">
         <ArrowLeft className="h-4 w-4" />
         Back to commits
       </RouterLink>
@@ -120,7 +117,7 @@ const CommitDetail = () => {
                 key={parent}
                 to="/$owner/$repo/commit/$hash"
                 params={{ owner, repo, hash: parent }}
-                className="font-mono text-primary hover:underline"
+                appearance="revision"
               >
                 {parent.slice(0, 10)}
               </RouterLink>

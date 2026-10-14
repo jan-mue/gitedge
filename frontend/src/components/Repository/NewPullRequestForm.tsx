@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link as RouterLink, useNavigate } from "@tanstack/react-router"
+import { useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 import { useState } from "react"
-
 import {
   repositoriesCreatePullRequestMutation,
   repositoriesListBranchesOptions,
   repositoriesListPullRequestsQueryKey,
 } from "@/client/@tanstack/react-query.gen"
+import { Button, Input, Label, Link as RouterLink, SelectField, Textarea } from "@/components/design-system"
 
 interface NewPullRequestFormProps {
   owner: string
@@ -23,7 +23,12 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
   const [headBranch, setHeadBranch] = useState("")
   const [baseBranch, setBaseBranch] = useState("main")
 
-  const { data: branches } = useQuery({
+  const {
+    data: branches,
+    isPending: branchesPending,
+    isError: branchesError,
+    refetch: refetchBranches,
+  } = useQuery({
     ...repositoriesListBranchesOptions({ path: { owner, repo } }),
   })
 
@@ -49,11 +54,7 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <RouterLink
-          to="/$owner/$repo/pulls"
-          params={{ owner, repo }}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
+        <RouterLink to="/$owner/$repo/pulls" params={{ owner, repo }} appearance="muted">
           <ArrowLeft className="w-4 h-4" />
           Back to pull requests
         </RouterLink>
@@ -63,93 +64,89 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
 
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <label htmlFor="head-branch" className="block text-sm font-medium text-foreground mb-1.5">
+          <div className="min-w-0 flex-1">
+            <Label htmlFor="head-branch" appearance="field">
               Source branch
-            </label>
-            <select
+            </Label>
+            <SelectField
               id="head-branch"
+              aria-label="Source branch"
               value={headBranch}
-              onChange={(e) => setHeadBranch(e.target.value)}
+              onValueChange={setHeadBranch}
+              options={(branches ?? []).map((branch) => ({ value: branch.name, label: branch.name }))}
+              placeholder="Select a branch"
+              disabled={branchesPending || branchesError}
               data-testid="pr-source-branch"
-              className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="">Select a branch</option>
-              {branches?.map((branch) => (
-                <option key={branch.name} value={branch.name}>
-                  {branch.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <span className="mt-6 text-muted-foreground">&rarr;</span>
-          <div className="flex-1">
-            <label htmlFor="base-branch" className="block text-sm font-medium text-foreground mb-1.5">
+          <div className="min-w-0 flex-1">
+            <Label htmlFor="base-branch" appearance="field">
               Target branch
-            </label>
-            <select
+            </Label>
+            <SelectField
               id="base-branch"
+              aria-label="Target branch"
               value={baseBranch}
-              onChange={(e) => setBaseBranch(e.target.value)}
+              onValueChange={setBaseBranch}
+              options={(branches ?? []).map((branch) => ({ value: branch.name, label: branch.name }))}
+              disabled={branchesPending || branchesError}
               data-testid="pr-target-branch"
-              className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              {branches?.map((branch) => (
-                <option key={branch.name} value={branch.name}>
-                  {branch.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         </div>
 
+        {branchesError && (
+          <div role="alert" className="flex items-center gap-2 text-sm text-destructive">
+            Unable to load branches.
+            <Button variant="text" size="text" onClick={() => refetchBranches()}>
+              Try again
+            </Button>
+          </div>
+        )}
+
         <div>
-          <label htmlFor="pr-title" className="block text-sm font-medium text-foreground mb-1.5">
+          <Label htmlFor="pr-title" appearance="field">
             Title
-          </label>
-          <input
+          </Label>
+          <Input
             id="pr-title"
             type="text"
             placeholder="Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             data-testid="pr-title-input"
-            className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
 
         <div>
-          <label htmlFor="pr-body" className="block text-sm font-medium text-foreground mb-1.5">
+          <Label htmlFor="pr-body" appearance="field">
             Description
-          </label>
-          <textarea
+          </Label>
+          <Textarea
             id="pr-body"
             rows={12}
             placeholder="Leave a comment"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             data-testid="pr-body-input"
-            className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-y"
           />
         </div>
 
         <div className="flex items-center justify-end gap-3">
-          <RouterLink
-            to="/$owner/$repo/pulls"
-            params={{ owner, repo }}
-            className="px-4 py-2 text-sm rounded border border-border bg-secondary text-foreground hover:bg-accent transition-colors"
-          >
+          <RouterLink to="/$owner/$repo/pulls" params={{ owner, repo }} appearance="formAction">
             Cancel
           </RouterLink>
-          <button
+          <Button
             type="button"
             onClick={handleSubmit}
             disabled={!title.trim() || !headBranch.trim() || createPRMutation.isPending}
             data-testid="submit-pr-btn"
-            className="px-4 py-2 text-sm rounded bg-success text-success-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+            variant="success"
+            size="form"
           >
             {createPRMutation.isPending ? "Creating..." : "Create pull request"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

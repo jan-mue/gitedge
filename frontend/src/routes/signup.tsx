@@ -1,12 +1,25 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { createFileRoute, Link as RouterLink, redirect } from "@tanstack/react-router"
+import { createFileRoute, redirect } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { AuthLayout } from "@/components/Common/AuthLayout"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { LoadingButton } from "@/components/ui/loading-button"
-import { PasswordInput } from "@/components/ui/password-input"
+import {
+  AuthFooter,
+  AuthForm,
+  AuthHeading,
+  AuthTitle,
+  FieldStack,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  LoadingButton,
+  PasswordInput,
+  Link as RouterLink,
+} from "@/components/design-system"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
 import { signupsEnabled } from "@/utils"
 
@@ -75,12 +88,12 @@ function SignUp() {
   return (
     <AuthLayout>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-2xl font-bold">Create an account</h1>
-          </div>
+        <AuthForm onSubmit={form.handleSubmit(onSubmit)}>
+          <AuthHeading>
+            <AuthTitle>Create an account</AuthTitle>
+          </AuthHeading>
 
-          <div className="grid gap-4">
+          <FieldStack>
             <FormField
               control={form.control}
               name="display_name"
@@ -137,18 +150,18 @@ function SignUp() {
               )}
             />
 
-            <LoadingButton type="submit" className="w-full" loading={signUpMutation.isPending}>
+            <LoadingButton type="submit" fullWidth loading={signUpMutation.isPending}>
               Sign Up
             </LoadingButton>
-          </div>
+          </FieldStack>
 
-          <div className="text-center text-sm">
+          <AuthFooter>
             Already have an account?{" "}
-            <RouterLink to="/login" className="underline underline-offset-4">
+            <RouterLink to="/login" appearance="underline">
               Log in
             </RouterLink>
-          </div>
-        </form>
+          </AuthFooter>
+        </AuthForm>
       </Form>
     </AuthLayout>
   )

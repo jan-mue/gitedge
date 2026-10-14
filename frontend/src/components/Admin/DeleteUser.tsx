@@ -2,10 +2,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Trash2 } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-
 import { usersDeleteUserMutation } from "@/client/@tanstack/react-query.gen"
-import { Button } from "@/components/ui/button"
 import {
+  Button,
   Dialog,
   DialogClose,
   DialogContent,
@@ -13,9 +12,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
-import { LoadingButton } from "@/components/ui/loading-button"
+  DropdownMenuItem,
+  LoadingButton,
+} from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -53,7 +52,7 @@ const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
         <Trash2 />
         Delete User
       </DropdownMenuItem>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent appearance="compact">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>Delete User</DialogTitle>
@@ -63,9 +62,9 @@ const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="mt-4">
+          <DialogFooter appearance="spaced">
             <DialogClose asChild>
-              <Button variant="outline" disabled={mutation.isPending}>
+              <Button variant="repository" disabled={mutation.isPending}>
                 Cancel
               </Button>
             </DialogClose>

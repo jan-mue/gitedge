@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
-
 import type { ActivitySeriesPoint, ContributorActivity } from "@/client"
+import { SelectField } from "@/components/design-system"
 import ActivityChart, { type ActivityMetric } from "@/components/Repository/ActivityChart"
 
 interface ActivityContributorsProps {
@@ -33,16 +33,17 @@ const ActivityContributors = ({ contributors, series }: ActivityContributorsProp
             ? `${dateLabel(series[0].date)} - ${dateLabel(series[series.length - 1].date)}`
             : "Contributors"}
         </h2>
-        <select
+        <SelectField
           aria-label="Contribution metric"
           value={metric}
-          onChange={(event) => setMetric(event.target.value as ActivityMetric)}
-          className="rounded border border-border bg-secondary px-3 py-1.5 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-        >
-          <option value="commits">Commits</option>
-          <option value="additions">Additions</option>
-          <option value="deletions">Deletions</option>
-        </select>
+          onValueChange={(value) => setMetric(value as ActivityMetric)}
+          appearance="compact"
+          options={[
+            { value: "commits", label: "Commits" },
+            { value: "additions", label: "Additions" },
+            { value: "deletions", label: "Deletions" },
+          ]}
+        />
       </div>
       <div className="rounded-lg border border-border p-4">
         {series.length ? (
