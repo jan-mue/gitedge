@@ -4,6 +4,7 @@ import type { FileContent } from "@/client"
 import { Button, ExternalLink, Link } from "@/components/design-system"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
 import SourceLink from "@/components/Repositories/SourceLink"
+import RepositoryCommitHeader from "@/components/Repository/RepositoryCommitHeader"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import { useSyntaxHighlightCSS } from "@/hooks/useSyntaxHighlightCSS"
 import { formatSize } from "@/utils"
@@ -29,6 +30,7 @@ const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
 
   return (
     <div className="file-viewer border rounded-lg overflow-hidden" data-testid="file-viewer">
+      <RepositoryCommitHeader owner={backLink.owner} repo={backLink.repo} commit={file.last_commit} />
       <FileHeader file={file} backLink={backLink} />
       <div className="flex flex-wrap items-center justify-end gap-1 border-b bg-secondary/50 px-4 py-2">
         <ExternalLink href={rawUrl} appearance="codeAction">
@@ -115,9 +117,12 @@ const FileHeader = ({ file, backLink }: { file: FileContent; backLink: CodeViewe
 )
 
 const HighlightedContent = ({ html }: { html: string }) => (
-  <div
-    className="overflow-x-auto text-sm"
+  <section
+    className="overflow-x-auto text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
     data-testid="highlighted-content"
+    aria-label="File contents"
+    // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to focus the scrollable code pane.
+    tabIndex={0}
     // biome-ignore lint/security/noDangerouslySetInnerHtml: Pygments server-rendered HTML
     dangerouslySetInnerHTML={{ __html: html }}
   />

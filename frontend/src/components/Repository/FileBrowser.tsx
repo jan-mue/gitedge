@@ -3,7 +3,7 @@ import { FileText, Folder } from "lucide-react"
 import type { CommitInfo, TreeEntry } from "@/client"
 import { Button } from "@/components/design-system"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
-import { formatSize } from "@/utils"
+import { formatRelativeTime } from "@/utils"
 import RepositoryCommitHeader from "./RepositoryCommitHeader"
 
 interface FileBrowserProps {
@@ -79,20 +79,35 @@ const FileBrowser = ({
           key={entry.path}
           type="button"
           onClick={() => handleEntryClick(entry)}
-          variant="row"
+          variant="fileRow"
           size="file-row"
           data-testid={`tree-entry-${entry.name}`}
         >
-          {entry.type === "tree" ? (
-            <Folder className="w-4 h-4 text-primary flex-shrink-0" />
-          ) : (
-            <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-          )}
-          <span data-slot="file-name" className="truncate text-left">
-            {entry.name}
+          <span className="flex min-w-0 items-center gap-3">
+            {entry.type === "tree" ? (
+              <Folder className="size-4 shrink-0 text-primary" />
+            ) : (
+              <FileText className="size-4 shrink-0 text-muted-foreground" />
+            )}
+            <span data-slot="file-name" className="truncate" title={entry.name}>
+              {entry.name}
+            </span>
           </span>
-          {entry.size != null && (
-            <span className="ml-auto text-xs text-muted-foreground">{formatSize(entry.size)}</span>
+          <span
+            className="order-last col-span-2 min-w-0 truncate text-sm text-muted-foreground sm:order-none sm:col-span-1"
+            title={entry.last_commit?.message}
+            data-testid={`entry-commit-${entry.name}`}
+          >
+            {entry.last_commit?.message.split("\n")[0] ?? "Commit information unavailable"}
+          </span>
+          {entry.last_commit && (
+            <time
+              className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm"
+              dateTime={new Date(entry.last_commit.timestamp * 1000).toISOString()}
+              title={new Date(entry.last_commit.timestamp * 1000).toLocaleString()}
+            >
+              {formatRelativeTime(entry.last_commit.timestamp)}
+            </time>
           )}
         </Button>
       ))}

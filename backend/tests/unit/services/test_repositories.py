@@ -111,6 +111,31 @@ def _populate_single_file(backend: BlobBackend, key: str, name: str, data: bytes
     _load_repository(backend, key, [blob, tree, commit], commit.id)
 
 
+def _populate_path_history(backend: BlobBackend) -> dict[str, Commit]:
+    objects: list[ShaFile] = []
+
+    def snapshot(readme: bytes, code: bytes, parents: list[ObjectID], message: str, timestamp: int) -> Commit:
+        readme_blob = Blob.from_string(readme)
+        code_blob = Blob.from_string(code)
+        src_tree = _write_tree({"main.py": (stat.S_IFREG | 0o644, code_blob.id)})
+        tree = _write_tree({"README.md": (stat.S_IFREG | 0o644, readme_blob.id), "src": (stat.S_IFDIR, src_tree.id)})
+        commit = _make_commit(tree.id, message)
+        commit.parents = parents
+        commit.commit_time = commit.author_time = timestamp
+        objects.extend([readme_blob, code_blob, src_tree, tree, commit])
+        return commit
+
+    initial = snapshot(b"Original README", b"original code", [], "Initial files", 1_700_000_000)
+    code = snapshot(b"Original README", b"updated code", [initial.id], "Update source", 1_700_001_000)
+    docs = snapshot(b"Updated README", b"updated code", [code.id], "Update documentation", 1_700_002_000)
+    feature = snapshot(b"Original README", b"feature code", [initial.id], "Implement feature", 1_700_003_000)
+    merge = snapshot(b"Updated README", b"feature code", [docs.id, feature.id], "Merge feature", 1_700_004_000)
+    repo = _load_repository(backend, "owner/repo.git", list({obj.id: obj for obj in objects}.values()), docs.id)
+    repo.refs[Ref(b"refs/heads/merged")] = merge.id
+    repo.refs[Ref(b"refs/tags/v1")] = initial.id
+    return {"initial": initial, "code": code, "docs": docs, "feature": feature, "merge": merge}
+
+
 def _stores() -> tuple[FakeUserStore, FakeOrganizationStore, FakeRepositoryStore]:
     users = FakeUserStore()
     owner = User(name=OWNER, lower_name=OWNER.lower(), email="owner@example.com", hashed_password="x")
@@ -267,6 +292,52 @@ async def test_get_tree_subdirectory(service: RepositoryService) -> None:
     listing = await service.get_tree(OWNER, REPO, "main", "src")
     assert [entry.name for entry in listing.entries] == ["main.py"]
     assert listing.entries[0].path == "src/main.py"
+
+
+async def test_source_last_commits_are_specific_to_files_and_directories(service: RepositoryService) -> None:
+    commits = _populate_path_history(service.backend)
+
+    listing = await service.get_tree(OWNER, REPO, "main", "")
+    by_name = {entry.name: entry for entry in listing.entries}
+    assert by_name["src"].last_commit is not None
+    assert by_name["src"].last_commit.sha == commits["code"].id.decode()
+    assert by_name["README.md"].last_commit is not None
+    assert by_name["README.md"].last_commit.sha == commits["docs"].id.decode()
+
+    nested = await service.get_tree(OWNER, REPO, "main", "src")
+    file = await service.get_blob(OWNER, REPO, "main", "src/main.py")
+    assert file.last_commit == nested.entries[0].last_commit == by_name["src"].last_commit
+    assert file.last_commit is not None
+    assert file.last_commit.message == "Update source"
+    assert file.last_commit.timestamp == commits["code"].author_time
+
+
+@pytest.mark.parametrize("ref", ["refs/tags/v1", "initial"])
+async def test_source_last_commits_follow_the_selected_revision(service: RepositoryService, ref: str) -> None:
+    commits = _populate_path_history(service.backend)
+    revision = commits["initial"].id.decode() if ref == "initial" else ref
+
+    listing = await service.get_tree(OWNER, REPO, revision, "")
+    assert all(
+        entry.last_commit and entry.last_commit.sha == commits["initial"].id.decode() for entry in listing.entries
+    )
+    file = await service.get_blob(OWNER, REPO, revision, "src/main.py")
+    assert file.last_commit is not None
+    assert file.last_commit.sha == commits["initial"].id.decode()
+    assert file.content == "original code"
+
+
+async def test_source_last_commits_follow_unchanged_merge_parents(service: RepositoryService) -> None:
+    commits = _populate_path_history(service.backend)
+
+    listing = await service.get_tree(OWNER, REPO, "merged", "")
+    by_name = {entry.name: entry for entry in listing.entries}
+    assert by_name["src"].last_commit is not None
+    assert by_name["src"].last_commit.sha == commits["feature"].id.decode()
+    assert by_name["README.md"].last_commit is not None
+    assert by_name["README.md"].last_commit.sha == commits["docs"].id.decode()
+    file = await service.get_blob(OWNER, REPO, "merged", "src/main.py")
+    assert file.last_commit == by_name["src"].last_commit
 
 
 async def test_get_tree_unknown_ref(service: RepositoryService) -> None:

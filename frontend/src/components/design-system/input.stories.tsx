@@ -13,7 +13,15 @@ export const Default: Story = {}
 export const Filled: Story = { args: { defaultValue: "gitedge" } }
 export const Disabled: Story = { args: { disabled: true } }
 export const ReadOnly: Story = {
-  args: { readOnly: true, value: "https://gitedge-app.vercel.app/jan/gitedge.git", appearance: "clone" },
+  args: { readOnly: true, value: "https://gitedge-app.vercel.app/jan/gitedge.git" },
+}
+export const CloneURL: Story = {
+  args: {
+    disabled: true,
+    value: "https://gitedge-app.vercel.app/jan/gitedge.git",
+    appearance: "clone",
+    "aria-label": "HTTPS clone URL",
+  },
 }
 export const Invalid: Story = {
   args: { "aria-invalid": true, "aria-describedby": "field-error", defaultValue: "invalid name" },
