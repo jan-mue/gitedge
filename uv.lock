@@ -824,7 +824,7 @@ requires-dist = [
     { name = "tenacity", specifier = "==9.2.1" },
     { name = "upstash-redis", specifier = "==1.8.0" },
     { name = "uvicorn", specifier = "==0.54.0" },
-    { name = "vercel", specifier = "==0.11.5" },
+    { name = "vercel", specifier = "==0.11.6" },
 ]
 
 [package.metadata.requires-dev]
@@ -2046,7 +2046,7 @@ wheels = [
 
 [[package]]
 name = "vercel"
-version = "0.11.5"
+version = "0.11.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -2063,9 +2063,9 @@ dependencies = [
     { name = "vercel-workflow" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/30/9b/b61d29aa306413c0b9b7ae0d7a274aa2cb409b5ad38f3af739099712c5fe/vercel-0.11.5.tar.gz", hash = "sha256:fac9b4b9b99b7cf7ac902fda632f578824c70c52137676da085206d8cc5490d8", size = 87824, upload-time = "2026-10-06T18:38:53.428Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2a/36/0dd7a2774a07510aeecd6dcada8e8f33a529f2f8ed56f357df6d9980eede/vercel-0.11.6.tar.gz", hash = "sha256:af96132f898e0bc8421e5ae16a0d16fd973aaebaf3f0852d3ffef076af7a22ed", size = 87825, upload-time = "2026-10-07T22:39:53.754Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e8/43/79cbe45bf460e99043866a88fec48613135340023daa77ba570838240d36/vercel-0.11.5-py3-none-any.whl", hash = "sha256:cfb3354952ebca3d629eafe29bc57109a89114090a7715478403e2246cf9c60c", size = 62660, upload-time = "2026-10-06T18:38:52.267Z" },
+    { url = "https://files.pythonhosted.org/packages/da/ee/6ca522b9c04ecc160b5fcc163b16355122e67280cab1592a651525926d18/vercel-0.11.6-py3-none-any.whl", hash = "sha256:3dfad0bfc6a6ba380246acec7346ed89020247e16e4294d88f3d9a296d2d5f43", size = 62662, upload-time = "2026-10-07T22:39:52.685Z" },
 ]
 
 [[package]]
@@ -2151,7 +2151,7 @@ wheels = [
 
 [[package]]
 name = "vercel-sandbox"
-version = "0.8.0"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -2160,9 +2160,9 @@ dependencies = [
     { name = "vercel-internal-core" },
     { name = "vercel-oidc" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/04/a5/9e5054a15cd16a4ad35d8f71e29a7bdcf5023030550e76176aded6bbfe68/vercel_sandbox-0.8.0.tar.gz", hash = "sha256:e84b5d3b696bdacec6749f70976602bf20f7aa7252b19b23db11b0955c56bc80", size = 90893, upload-time = "2026-10-06T18:38:23.102Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4e/ce/bc2191251689490858d30b21144fc0b445e074cc59f600866ce39fead7b3/vercel_sandbox-0.9.0.tar.gz", hash = "sha256:5b75e3aead43f9b9dea6c74d5fabdf5539b874c6d9e65cb6570ee0ac077848fb", size = 91309, upload-time = "2026-10-07T22:39:50.788Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a8/d7/f3adb2edd3d517ebe43733db2c9ff7c1bde2e9cedfb16c25717a39691975/vercel_sandbox-0.8.0-py3-none-any.whl", hash = "sha256:edfe36d87fe047f8f87aab3404898838e3855e8ded4afbbab697e963355c6c2f", size = 103136, upload-time = "2026-10-06T18:38:22.049Z" },
+    { url = "https://files.pythonhosted.org/packages/41/a0/68077fa79f432e21b4c4151e718ee358b95cb12ea149211d95274d1e5c1b/vercel_sandbox-0.9.0-py3-none-any.whl", hash = "sha256:eebc4ecd430ff3845f4f5a36c18d7ba80405f459533bb0d206caed9b2a3ed5ab", size = 103755, upload-time = "2026-10-07T22:39:47.453Z" },
 ]
 
 [[package]]
