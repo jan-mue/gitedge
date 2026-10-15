@@ -732,18 +732,27 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
 
     async def list_recent(self, offset: int = 0, limit: int = 50) -> list[Activity]:
         """List recent activity across all repositories, newest first."""
-        return [self._hydrate(activity) for activity in self._sorted()[offset : offset + limit]]
+        activities = [activity for activity in self._sorted() if activity.kind != ActivityKind.REACTION]
+        return [self._hydrate(activity) for activity in activities[offset : offset + limit]]
 
     async def list_by_repo(self, repo_id: uuid.UUID, offset: int = 0, limit: int = 50) -> list[Activity]:
         """List activity for a repository, newest first."""
-        activities = [activity for activity in self._sorted() if activity.repo_id == repo_id]
+        activities = [
+            activity
+            for activity in self._sorted()
+            if activity.repo_id == repo_id and activity.kind != ActivityKind.REACTION
+        ]
         return [self._hydrate(activity) for activity in activities[offset : offset + limit]]
 
     async def list_by_repos(self, repo_ids: list[uuid.UUID], offset: int = 0, limit: int = 50) -> list[Activity]:
         """List activity for a set of repositories, newest first."""
         if not repo_ids:
             return []
-        activities = [activity for activity in self._sorted() if activity.repo_id in repo_ids]
+        activities = [
+            activity
+            for activity in self._sorted()
+            if activity.repo_id in repo_ids and activity.kind != ActivityKind.REACTION
+        ]
         return [self._hydrate(activity) for activity in activities[offset : offset + limit]]
 
 

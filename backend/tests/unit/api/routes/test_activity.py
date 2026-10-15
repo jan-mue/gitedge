@@ -118,6 +118,39 @@ def test_comment_previews_follow_the_specific_reply(
     assert all(event["preview"]["comments_count"] == 1 for event in deleted)
 
 
+@pytest.mark.parametrize("personalized", [True, False])
+def test_reactions_are_excluded_before_feed_pagination(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    personalized: bool,
+) -> None:
+    issue = client.post(ISSUES_URL, headers=normal_user_token_headers, json={"title": "Discussion"}).json()
+    comment = client.post(
+        f"{ISSUES_URL}/{issue['number']}/comments",
+        headers=superuser_token_headers,
+        json={"body": "A comment"},
+    ).json()
+    reaction = client.put(
+        f"{settings.API_V1_STR}/comments/{comment['id']}/reactions",
+        headers=normal_user_token_headers,
+        json={"emoji": "👍"},
+    )
+    assert reaction.status_code == 200
+
+    # The owner has a personalized feed; the other user falls back to global activity.
+    headers = superuser_token_headers if personalized else normal_user_token_headers
+    for offset, kind in enumerate(["comment", "issue_open"]):
+        page = client.get(FEED_URL, headers=headers, params={"limit": 1, "offset": offset}).json()
+        assert [event["kind"] for event in page["data"]] == [kind]
+    assert client.get(FEED_URL, headers=headers, params={"limit": 1, "offset": 2}).json() == {"data": [], "count": 0}
+    repository_page = client.get(ACTIVITY_URL, params={"limit": 1}).json()
+    assert [event["kind"] for event in repository_page["data"]] == ["comment"]
+
+    notifications = client.get(f"{settings.API_V1_STR}/notifications/", headers=superuser_token_headers).json()
+    assert any(notification["kind"] == "reaction" for notification in notifications["data"])
+
+
 def test_feed_pagination_does_not_switch_to_global_activity(
     client: TestClient,
     superuser_token_headers: dict[str, str],
