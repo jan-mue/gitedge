@@ -1,8 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useParams } from "@tanstack/react-router"
-import { ArrowLeft, CircleCheck, GitMerge, GitPullRequest } from "lucide-react"
+import {
+  ArrowLeft,
+  CircleCheck,
+  FileText,
+  GitCommitHorizontal,
+  GitMerge,
+  GitPullRequest,
+  MessageSquare,
+} from "lucide-react"
 import { useState } from "react"
 import {
+  commentsListCommentsOptions,
+  repositoriesGetPullRequestCommitsOptions,
   repositoriesGetPullRequestFilesOptions,
   repositoriesGetPullRequestOptions,
   repositoriesGetPullRequestQueryKey,
@@ -14,7 +24,6 @@ import {
   Badge,
   Button,
   Input,
-  MarkdownContent,
   Link as RouterLink,
   Tabs,
   TabsContent,
@@ -22,12 +31,13 @@ import {
   TabsTrigger,
   Textarea,
 } from "@/components/design-system"
-import CommentsSection from "@/components/Repository/CommentsSection"
-import { PullRequestFiles, ReviewTimeline } from "@/components/Repository/PullRequestFiles"
+import { PullRequestFiles } from "@/components/Repository/PullRequestFiles"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
+import { PullRequestCommits } from "./PullRequestCommits"
+import { PullRequestConversation } from "./PullRequestConversation"
 
 const stateBadge = (state: string) => {
   if (state === "merged") {
@@ -53,7 +63,10 @@ const stateBadge = (state: string) => {
 
 const PullRequestDetail = () => {
   const { owner, repo, number } = useParams({ from: "/_layout/$owner/$repo/pulls/$number" })
-  const prNumber = Number(number)
+  return <PullRequestDetailView owner={owner} repo={repo} prNumber={Number(number)} />
+}
+
+export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string; repo: string; prNumber: number }) => {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const { showErrorToast } = useCustomToast()
@@ -77,6 +90,13 @@ const PullRequestDetail = () => {
     }),
   })
 
+  const commitsQuery = useQuery(
+    repositoriesGetPullRequestCommitsOptions({
+      path: { owner, repo, number: prNumber },
+      query: { offset: 0, limit: 50 },
+    }),
+  )
+  const commentsQuery = useQuery(commentsListCommentsOptions({ path: { owner, repo, number: prNumber } }))
   const changes = changesQuery.data
   const reviewsQuery = useQuery(reviewsListReviewsOptions({ path: { owner, repo, number: prNumber } }))
 
@@ -95,6 +115,7 @@ const PullRequestDetail = () => {
         }).queryKey,
       })
     },
+    onError: handleError.bind(showErrorToast),
   })
 
   const editMutation = useMutation({
@@ -159,7 +180,7 @@ const PullRequestDetail = () => {
       ) : (
         <div className="space-y-3">
           <div className="flex items-start justify-between gap-4">
-            <h1 className="text-xl font-bold text-foreground">
+            <h1 className="text-xl font-semibold text-foreground sm:text-2xl">
               {pull.title} <span className="text-muted-foreground font-normal">#{pull.number}</span>
             </h1>
             <div className="flex items-center gap-2">
@@ -177,44 +198,91 @@ const PullRequestDetail = () => {
                   Edit
                 </Button>
               )}
-              {stateBadge(pull.state)}
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">{pull.author_username ?? "unknown"}</span>
-            {pull.created_at && ` opened ${new Date(pull.created_at).toLocaleString()}`}
-            {" · "}
-            <span className="font-mono text-foreground">{pull.head_branch}</span> &rarr;{" "}
-            <span className="font-mono text-foreground">{pull.base_branch}</span>
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {stateBadge(pull.state)}
+            <p className="text-sm text-muted-foreground">
+              <strong className="font-medium text-foreground">{pull.author_username}</strong> wants to merge{" "}
+              {commitsQuery.data?.count ?? "…"} commits from{" "}
+              <code className="rounded bg-primary/10 px-1 py-0.5 text-xs text-primary">{pull.head_branch}</code> into{" "}
+              <code className="rounded bg-primary/10 px-1 py-0.5 text-xs text-primary">{pull.base_branch}</code>
+            </p>
+          </div>
         </div>
       )}
 
       <Tabs defaultValue="conversation">
         <div className="border-b border-border">
-          <TabsList appearance="branchPicker">
-            <TabsTrigger value="conversation" appearance="branchPicker">
-              Conversation
+          <TabsList appearance="pullRequest">
+            <TabsTrigger value="conversation" appearance="pullRequest" aria-label="Conversation">
+              <MessageSquare className="size-4" />
+              Conversation{" "}
+              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs">{commentsQuery.data?.count ?? 0}</span>
             </TabsTrigger>
-            <TabsTrigger value="files" appearance="branchPicker">
-              Files Changed {changes && <span className="rounded bg-muted px-1.5 text-xs">{changes.files.length}</span>}
+            <TabsTrigger value="commits" appearance="pullRequest">
+              <GitCommitHorizontal className="size-4" />
+              Commits{" "}
+              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs">{commitsQuery.data?.count ?? 0}</span>
+            </TabsTrigger>
+            <TabsTrigger value="files" appearance="pullRequest" aria-label="Files Changed">
+              <FileText className="size-4" />
+              <span className="hidden sm:inline">Files Changed</span>
+              <span className="sm:hidden">Files</span>
+              {changes && (
+                <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs">{changes.files.length}</span>
+              )}
             </TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value="conversation" appearance="spaced">
-          {pull.body && (
-            <div className="rounded-lg border border-border bg-card px-4 py-3">
-              <MarkdownContent html={pull.body_html} />
-            </div>
-          )}
-          {reviewsQuery.isPending && <p className="text-sm text-muted-foreground">Loading reviews…</p>}
+        <TabsContent value="conversation" appearance="pullRequest">
           {reviewsQuery.isError && (
             <RepositoryError message="Unable to load reviews." retry={() => reviewsQuery.refetch()} />
           )}
-          <ReviewTimeline reviews={reviewsQuery.data ?? []} changes={changes} />
-          <CommentsSection owner={owner} repo={repo} number={prNumber} />
+          <PullRequestConversation
+            owner={owner}
+            repo={repo}
+            pull={pull}
+            reviews={reviewsQuery.data ?? []}
+            changes={changes}
+            mergeActions={
+              isOpen ? (
+                <Button
+                  size="compact"
+                  variant="success"
+                  disabled={mutation.isPending}
+                  onClick={() =>
+                    mutation.mutate({ path: { owner, repo, number: prNumber }, body: { state: "merged" } })
+                  }
+                  data-testid="merge-pr"
+                >
+                  <GitMerge className="size-4" />
+                  Create merge commit
+                </Button>
+              ) : null
+            }
+            closeActions={
+              <Button
+                variant="repository"
+                size="compact"
+                disabled={mutation.isPending}
+                onClick={() =>
+                  mutation.mutate({
+                    path: { owner, repo, number: prNumber },
+                    body: { state: isOpen ? "closed" : "open" },
+                  })
+                }
+                data-testid={isOpen ? "close-pr" : "reopen-pr"}
+              >
+                {isOpen ? "Close pull request" : "Reopen"}
+              </Button>
+            }
+          />
         </TabsContent>
-        <TabsContent value="files" appearance="spaced">
+        <TabsContent value="commits" appearance="pullRequest">
+          <PullRequestCommits owner={owner} repo={repo} number={prNumber} />
+        </TabsContent>
+        <TabsContent value="files" appearance="pullRequest">
           {changesQuery.isPending ? (
             <RepositoryLoading label="Loading changed files" />
           ) : changesQuery.isError || !changes ? (
@@ -234,41 +302,6 @@ const PullRequestDetail = () => {
           )}
         </TabsContent>
       </Tabs>
-
-      <div className="flex items-center gap-2">
-        {isOpen ? (
-          <>
-            <Button
-              size="compact"
-              disabled={mutation.isPending}
-              onClick={() => mutation.mutate({ path: { owner, repo, number: prNumber }, body: { state: "merged" } })}
-              data-testid="merge-pr"
-            >
-              <GitMerge className="w-3.5 h-3.5" />
-              Merge
-            </Button>
-            <Button
-              variant="repository"
-              size="compact"
-              disabled={mutation.isPending}
-              onClick={() => mutation.mutate({ path: { owner, repo, number: prNumber }, body: { state: "closed" } })}
-              data-testid="close-pr"
-            >
-              Close
-            </Button>
-          </>
-        ) : (
-          <Button
-            variant="repository"
-            size="compact"
-            disabled={mutation.isPending}
-            onClick={() => mutation.mutate({ path: { owner, repo, number: prNumber }, body: { state: "open" } })}
-            data-testid="reopen-pr"
-          >
-            Reopen
-          </Button>
-        )}
-      </div>
     </div>
   )
 }

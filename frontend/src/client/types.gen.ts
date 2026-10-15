@@ -230,6 +230,16 @@ export type Body_login_login_access_token = {
 };
 
 /**
+ * Body_utils-preview_markdown
+ */
+export type Body_utils_preview_markdown = {
+    /**
+     * Body
+     */
+    body: string;
+};
+
+/**
  * BranchInfo
  *
  * Information about a branch.
@@ -4447,6 +4457,53 @@ export type repositoriesUpdatePullRequestResponses = {
 
 export type repositoriesUpdatePullRequestResponse = repositoriesUpdatePullRequestResponses[keyof repositoriesUpdatePullRequestResponses];
 
+export type repositoriesGetPullRequestCommitsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: {
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/commits';
+};
+
+export type repositoriesGetPullRequestCommitsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetPullRequestCommitsError = repositoriesGetPullRequestCommitsErrors[keyof repositoriesGetPullRequestCommitsErrors];
+
+export type repositoriesGetPullRequestCommitsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommitsPublic;
+};
+
+export type repositoriesGetPullRequestCommitsResponse = repositoriesGetPullRequestCommitsResponses[keyof repositoriesGetPullRequestCommitsResponses];
+
 export type repositoriesGetPullRequestFilesData = {
     body?: never;
     path: {
@@ -4877,6 +4934,33 @@ export type reviewsMarkReviewedResponses = {
 };
 
 export type reviewsMarkReviewedResponse = reviewsMarkReviewedResponses[keyof reviewsMarkReviewedResponses];
+
+export type utilsPreviewMarkdownData = {
+    body: Body_utils_preview_markdown;
+    path?: never;
+    query?: never;
+    url: '/api/v1/utils/markdown-preview';
+};
+
+export type utilsPreviewMarkdownErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type utilsPreviewMarkdownError = utilsPreviewMarkdownErrors[keyof utilsPreviewMarkdownErrors];
+
+export type utilsPreviewMarkdownResponses = {
+    /**
+     * Response Utils-Preview Markdown
+     *
+     * Successful Response
+     */
+    200: string;
+};
+
+export type utilsPreviewMarkdownResponse = utilsPreviewMarkdownResponses[keyof utilsPreviewMarkdownResponses];
 
 export type utilsTestEmailData = {
     body?: never;

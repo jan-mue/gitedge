@@ -1,0 +1,66 @@
+.code-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--card);
+  padding-block: 12px;
+}
+.code-skeleton-lines {
+  max-width: 720px;
+  opacity: 0.65;
+}
+.code-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 22px;
+}
+.code-skeleton-gutter {
+  width: 20px;
+  height: 8px;
+  margin-inline: 18px 10px;
+  border-radius: 3px;
+  background: var(--muted);
+}
+.code-skeleton-token {
+  width: 26%;
+  height: 9px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--muted-foreground) 18%, transparent);
+}
+.code-skeleton-token:last-child {
+  width: 16%;
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+.code-skeleton-row:nth-child(3n) .code-skeleton-token {
+  width: 12%;
+}
+.code-skeleton-row:nth-child(4n) .code-skeleton-token {
+  width: 34%;
+}
+.code-skeleton-row:nth-child(2n) .code-skeleton-token:nth-child(2) {
+  margin-left: 16px;
+}
+.code-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in srgb, var(--foreground) 5%, transparent) 50%,
+    transparent 80%
+  );
+  animation: code-shimmer 1.7s ease-in-out infinite;
+}
+@keyframes code-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .code-skeleton::after {
+    animation: none;
+    display: none;
+  }
+}

@@ -53,7 +53,7 @@ export const DiffViewer = ({
   const [filter, setFilter] = useState("")
   const [layout, setLayout] = useState<"unified" | "split">("unified")
   const [wrap, setWrap] = useState(false)
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [collapsed, setCollapsed] = useState<Map<string, { reviewed: boolean; collapsed: boolean }>>(new Map())
   const [editingPaths, setEditingPaths] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState(files[0]?.path)
   const listRef = useRef<HTMLDivElement>(null)
@@ -63,6 +63,10 @@ export const DiffViewer = ({
     [files, filter],
   )
   const reviewed = useMemo(() => new Set(reviewedPaths), [reviewedPaths])
+  const isCollapsed = (path: string) => {
+    const override = collapsed.get(path)
+    return override?.reviewed === reviewed.has(path) ? override.collapsed : reviewed.has(path)
+  }
   const byFile = useMemo(() => {
     const map = new Map<string, DiffAnnotation[]>()
     for (const annotation of annotations) {
@@ -78,7 +82,7 @@ export const DiffViewer = ({
     enabled: useVirtualFiles,
     scrollMargin: offset,
     estimateSize: (index) =>
-      collapsed.has(visibleFiles[index].path)
+      isCollapsed(visibleFiles[index].path)
         ? 70
         : 110 + Math.max(1, Math.ceil(lineCount(visibleFiles[index]) / (layout === "split" ? 2 : 1))) * 22,
     getItemKey: (index) => visibleFiles[index].path,
@@ -110,12 +114,24 @@ export const DiffViewer = ({
   const toggle = useCallback(
     (path: string) =>
       setCollapsed((previous) => {
-        const next = new Set(previous)
-        if (next.has(path)) next.delete(path)
-        else next.add(path)
+        const next = new Map(previous)
+        const value = previous.get(path)
+        const current = value?.reviewed === reviewed.has(path) ? value.collapsed : reviewed.has(path)
+        next.set(path, { reviewed: reviewed.has(path), collapsed: !current })
         return next
       }),
-    [],
+    [reviewed],
+  )
+  const markReviewed = useCallback(
+    (path: string, value: boolean) => {
+      setCollapsed((previous) => {
+        const next = new Map(previous)
+        next.delete(path)
+        return next
+      })
+      onReviewed?.(path, value)
+    },
+    [onReviewed],
   )
   const renderFile = (file: CommitFileChange) => (
     <DiffFile
@@ -124,11 +140,11 @@ export const DiffViewer = ({
       id={fileId(file.path)}
       source={diffSource}
       layout={layout}
-      collapsed={collapsed.has(file.path)}
+      collapsed={isCollapsed(file.path)}
       reviewed={reviewed.has(file.path)}
       annotations={byFile.get(file.path)}
       onToggle={toggle}
-      onReviewed={onReviewed}
+      onReviewed={onReviewed ? markReviewed : undefined}
       reviewBusy={reviewBusy}
       onAddComment={onAddComment}
       onDeleteComment={onDeleteComment}
@@ -203,8 +219,8 @@ export const DiffViewer = ({
               onSelect={(file) => {
                 setSelected(file.path)
                 setCollapsed((previous) => {
-                  const next = new Set(previous)
-                  next.delete(file.path)
+                  const next = new Map(previous)
+                  next.set(file.path, { reviewed: reviewed.has(file.path), collapsed: false })
                   return next
                 })
                 if (useVirtualFiles) virtualizer.scrollToIndex(visibleFiles.indexOf(file), { align: "start" })

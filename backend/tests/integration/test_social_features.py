@@ -457,6 +457,9 @@ class TestPullRequestCommentsAndMerge:
         expect(page.get_by_test_id("pr-state")).to_contain_text("Open")
 
         page.get_by_test_id("comment-input").fill("Looks **good** to me.")
+        page.get_by_role("button", name="Preview", exact=True).click()
+        expect(page.get_by_test_id("comments-section").get_by_text("Looks good to me.", exact=True)).to_be_visible()
+        page.get_by_role("button", name="Write", exact=True).click()
         page.get_by_test_id("comment-submit").click()
 
         expect(page.get_by_test_id("comment-input")).to_have_value("", timeout=15000)
@@ -468,7 +471,7 @@ class TestPullRequestCommentsAndMerge:
         expect(description).not_to_contain_text("## PR details")
         expect(description).not_to_contain_text("**body**")
 
-        comment = page.get_by_test_id("comments-section").locator(".markdown-body")
+        comment = page.get_by_test_id("comments-section").locator(".markdown-body").filter(has_text="Looks good to me.")
         expect(comment).to_have_text("Looks good to me.", timeout=15000)
         expect(comment.locator("strong")).to_have_text("good")
         expect(comment).not_to_contain_text("**good**")

@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, FileCode2, Plus } from "lucide-react"
 import { Fragment, memo, type ReactNode, useMemo, useRef, useState } from "react"
 import type { CommitFileChange, DiffLine, ReviewLineComment } from "@/client"
 import { repositoriesGetDiffFileOptions } from "@/client/@tanstack/react-query.gen"
-import { Button, Checkbox, Textarea } from "@/components/design-system"
+import { Button, Checkbox, CodeSkeleton, Textarea } from "@/components/design-system"
 import type { DiffAnnotation, DiffSource } from "./DiffViewer"
 import { useDocumentOffset } from "./diff-virtualization"
 
@@ -271,13 +271,7 @@ export const DiffFile = memo(
             ) : data ? (
               <DiffBody file={data} layout={layout} renderCell={cell} editor={editor} />
             ) : (
-              <div
-                role="status"
-                className="p-6 text-sm text-muted-foreground"
-                style={{ minHeight: Math.max(60, ((file.diff_line_count ?? 0) * 22) / (layout === "split" ? 2 : 1)) }}
-              >
-                Loading file diff…
-              </div>
+              <CodeSkeleton lineCount={Math.ceil((file.diff_line_count ?? 8) / (layout === "split" ? 2 : 1))} />
             )}
           </div>
         )}

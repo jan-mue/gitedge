@@ -91,6 +91,43 @@ hunks, and unequal replacement blocks.
 
 ## Reproduction
 
+### Backend loading improvements
+
+The follow-up profiling compared the previous implementation at `8977b70` with
+the optimized backend, in the same Python environment. These are CPU-only local
+medians, excluding storage and HTTP latency:
+
+| Fixture | Before | After |
+| --- | ---: | ---: |
+| 500 files with unique contents, compact index (7 runs) | 64.55 ms | 19.99 ms |
+| 500 files repeating the same contents, compact index (7 runs) | 61.07 ms | 3.50 ms |
+| 20,000-line file, one hunk near line 121, diff and highlighting (5 runs) | 2,418.07 ms | 24.62 ms |
+
+Compact indexes now count changed ranges directly instead of constructing and
+parsing every unified patch. Statistics for identical blob pairs are reused within
+the request. Highlighting preserves multiline lexer context but retains tokens
+only for displayed lines and stops after the last displayed line. Changes near
+the end of a file still require lexing earlier content. Lazy file responses omit
+the redundant raw patch. Cold repository loading downloads pack/index pairs
+concurrently, with at most eight object-storage reads at once.
+
+The final full-stack 500-file run observed a 24 ms file-index request and a first
+highlighted file in 470 ms, with two initial per-file requests. This remains a
+local development-server measurement with warmed repository data.
+
+The follow-up verification passed 272 backend tests, 273 frontend tests, 13
+full-stack browser tests, and 12 Storybook interaction checks across light/dark
+desktop/mobile layouts. The browser checks cover the commits tab (excluding base
+history), review dropdown placement and Escape/focus behavior, saved drafts,
+automatic collapse of viewed files after reload, Markdown preview, comment
+editing/deletion, and merging. Application and Storybook production builds pass.
+
+Reproduce with `cd backend && PYTHONPATH=. uv run python benchmarks/diff_loading.py`.
+For the baseline, check out `8977b70` into a separate worktree and set `PYTHONPATH`
+to that worktree's `backend` directory while running the same benchmark script.
+
+### Full application and renderer checks
+
 From `backend/`, with Docker available:
 
 ```sh

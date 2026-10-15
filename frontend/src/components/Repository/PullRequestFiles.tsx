@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { MessageSquare, ShieldCheck } from "lucide-react"
+import { ChevronDown, MessageSquare, ShieldCheck, X } from "lucide-react"
 import { useState } from "react"
 import type { CompareResult, ReviewDraft, ReviewLineComment, ReviewPublic, ReviewState } from "@/client"
 import {
@@ -12,11 +12,11 @@ import {
 } from "@/client/@tanstack/react-query.gen"
 import {
   Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  ConversationCard,
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTrigger,
   Textarea,
 } from "@/components/design-system"
 import { type DiffAnnotation, DiffViewer } from "@/components/Repository/DiffViewer"
@@ -49,6 +49,7 @@ export const PullRequestFiles = ({
   const { showErrorToast, showSuccessToast } = useCustomToast()
   const [reviewOpen, setReviewOpen] = useState(false)
   const [reviewBody, setReviewBody] = useState("")
+  const [reviewBodyTouched, setReviewBodyTouched] = useState(false)
   const {
     data: workspace,
     isPending,
@@ -79,6 +80,7 @@ export const PullRequestFiles = ({
     onSuccess: async () => {
       setReviewOpen(false)
       setReviewBody("")
+      setReviewBodyTouched(false)
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: reviewsGetWorkspaceQueryKey({ path }) }),
         queryClient.invalidateQueries({ queryKey: reviewsListReviewsQueryKey({ path }) }),
@@ -195,89 +197,107 @@ export const PullRequestFiles = ({
             : undefined
         }
         toolbar={
-          <Button
-            size="compact"
-            disabled={!canReview || busy}
-            onClick={() => {
-              setReviewBody(draft?.body ?? "")
-              setReviewOpen(true)
+          <Popover
+            open={reviewOpen}
+            onOpenChange={(open) => {
+              if (!open && submitReview.isPending) return
+              if (!open && reviewBody !== (draft?.body ?? ""))
+                saveDraft.mutate({ path, body: draftBody(comments, reviewBody) })
+              setReviewOpen(open)
             }}
           >
-            <MessageSquare className="size-4" />
-            Review{comments.length > 0 && ` (${comments.length})`}
-          </Button>
+            <PopoverTrigger asChild>
+              <Button
+                size="compact"
+                disabled={!canReview}
+                aria-disabled={busy}
+                onClick={(event) => {
+                  if (busy) {
+                    event.preventDefault()
+                    return
+                  }
+                  if (!reviewBodyTouched) setReviewBody(draft?.body ?? "")
+                  setReviewOpen(true)
+                }}
+              >
+                <MessageSquare className="size-4" />
+                Review{comments.length > 0 && ` (${comments.length})`}
+                <ChevronDown className="size-3" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent appearance="review" aria-label="Submit review">
+              <div className="mb-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-medium">Submit review</h2>
+                  <PopoverClose asChild>
+                    <Button variant="ghost" size="icon-xs" aria-label="Close review">
+                      <X className="size-4" />
+                    </Button>
+                  </PopoverClose>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {comments.length} pending line {comments.length === 1 ? "comment" : "comments"}. Add an overall
+                  comment and choose your review outcome.
+                </p>
+              </div>
+              <Textarea
+                aria-label="Review comment"
+                placeholder="Leave an overall review comment…"
+                rows={6}
+                maxLength={20000}
+                value={reviewBody}
+                onChange={(event) => {
+                  setReviewBody(event.target.value)
+                  setReviewBodyTouched(true)
+                }}
+              />
+              {username === author && (
+                <p className="text-xs text-muted-foreground">You cannot approve your own pull request.</p>
+              )}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  size="compact"
+                  variant="success"
+                  disabled={username === author || busy}
+                  onClick={() => submit("approved")}
+                >
+                  <ShieldCheck className="size-4" />
+                  Approve
+                </Button>
+                <Button
+                  size="compact"
+                  variant="repository"
+                  disabled={busy || (!reviewBody.trim() && !comments.length)}
+                  onClick={() => submit("comment")}
+                >
+                  Comment
+                </Button>
+                <Button
+                  size="compact"
+                  variant="destructive"
+                  disabled={busy || (!reviewBody.trim() && !comments.length)}
+                  onClick={() => submit("changes_requested")}
+                >
+                  Request changes
+                </Button>
+                <Button
+                  size="compact"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() =>
+                    saveDraft.mutate(
+                      { path, body: draftBody(comments, reviewBody) },
+                      { onSuccess: () => setReviewOpen(false) },
+                    )
+                  }
+                >
+                  Save draft
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         }
       />
-      <Dialog
-        open={reviewOpen}
-        onOpenChange={(open) => {
-          if (!open && submitReview.isPending) return
-          if (!open && reviewBody !== (draft?.body ?? ""))
-            saveDraft.mutate({ path, body: draftBody(comments, reviewBody) })
-          setReviewOpen(open)
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Submit review</DialogTitle>
-            <DialogDescription>
-              {comments.length} pending line {comments.length === 1 ? "comment" : "comments"}. Add an overall comment
-              and choose your review outcome.
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            aria-label="Review comment"
-            placeholder="Leave an overall review comment…"
-            rows={6}
-            maxLength={20000}
-            value={reviewBody}
-            onChange={(event) => setReviewBody(event.target.value)}
-          />
-          {username === author && (
-            <p className="text-xs text-muted-foreground">You cannot approve your own pull request.</p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="compact"
-              variant="success"
-              disabled={username === author || busy}
-              onClick={() => submit("approved")}
-            >
-              <ShieldCheck className="size-4" />
-              Approve
-            </Button>
-            <Button
-              size="compact"
-              variant="repository"
-              disabled={busy || (!reviewBody.trim() && !comments.length)}
-              onClick={() => submit("comment")}
-            >
-              Comment
-            </Button>
-            <Button
-              size="compact"
-              variant="destructive"
-              disabled={busy || (!reviewBody.trim() && !comments.length)}
-              onClick={() => submit("changes_requested")}
-            >
-              Request changes
-            </Button>
-            <Button
-              size="compact"
-              variant="ghost"
-              disabled={busy}
-              onClick={() =>
-                saveDraft.mutate(
-                  { path, body: draftBody(comments, reviewBody) },
-                  { onSuccess: () => setReviewOpen(false) },
-                )
-              }
-            >
-              Save draft
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
@@ -291,9 +311,8 @@ const stateLabel = {
 export const ReviewTimeline = ({ reviews, changes }: { reviews: ReviewPublic[]; changes?: CompareResult }) => (
   <div className="space-y-4">
     {reviews.map((review) => (
-      <article key={review.id} className="rounded-lg border border-border bg-card p-4">
+      <ConversationCard key={review.id} author={review.author_username} date={review.created_at} badge="Reviewer">
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <strong>{review.author_username}</strong>
           <span
             className={
               review.state === "approved"
@@ -305,9 +324,6 @@ export const ReviewTimeline = ({ reviews, changes }: { reviews: ReviewPublic[]; 
           >
             {stateLabel[review.state]}
           </span>
-          <time className="ml-auto text-xs text-muted-foreground" dateTime={review.created_at}>
-            {new Date(review.created_at).toLocaleString()}
-          </time>
         </div>
         {changes && (review.head_commit !== changes.head_commit || review.base_commit !== changes.base_commit) && (
           <p className="mt-2 text-xs text-muted-foreground">
@@ -323,7 +339,7 @@ export const ReviewTimeline = ({ reviews, changes }: { reviews: ReviewPublic[]; 
             <p className="mt-2 whitespace-pre-wrap">{comment.body}</p>
           </div>
         ))}
-      </article>
+      </ConversationCard>
     ))}
   </div>
 )

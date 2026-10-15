@@ -57,6 +57,11 @@ def _create_pull(page: Page, app_url: str, name: str) -> None:
     page.wait_for_url(f"{app_url}/admin/{name}/pulls")
     page.get_by_role("link", name="Review configuration changes", exact=True).click()
     expect(page.get_by_test_id("pull-detail")).to_be_visible()
+    page.get_by_role("tab", name="Commits", exact=False).click()
+    expect(page.get_by_test_id("pr-commits")).to_be_visible()
+    expect(page.get_by_role("link", name="Update configuration", exact=True)).to_be_visible()
+    expect(page.get_by_role("link", name="Base files", exact=True)).not_to_be_visible()
+    page.get_by_role("tab", name="Conversation", exact=True).click()
 
 
 def _headers(page: Page) -> dict[str, str]:
@@ -76,7 +81,7 @@ def test_review_lifecycle(page: Page, app_url: str, tmp_path: Path, random_email
     expect(page.get_by_role("button", name="Approve", exact=True)).to_be_disabled()
     response = page.request.post(f"{pull}/reviews", headers=_headers(page), data={**snapshot, "state": "approved"})
     assert response.status == 403
-    page.get_by_role("button", name="Close", exact=True).click()
+    page.get_by_role("button", name="Close review", exact=True).click()
 
     create_user_via_api(app_url, random_email, random_password)
     page.evaluate("localStorage.removeItem('access_token')")
@@ -92,6 +97,8 @@ def test_review_lifecycle(page: Page, app_url: str, tmp_path: Path, random_email
     assert page.request.get(f"{pull}/reviews").json() == []
     page.reload()
     page.get_by_role("tab", name="Files Changed", exact=False).click()
+    expect(page.get_by_role("button", name="Expand file-0000.py", exact=True)).to_be_visible()
+    page.get_by_role("button", name="Expand file-0000.py", exact=True).click()
     expect(page.get_by_text("Please preserve the original behavior.", exact=True)).to_be_visible()
     expect(page.get_by_text("1 / 3 files viewed")).to_be_visible()
 

@@ -8,10 +8,12 @@ import logging
 import re
 import stat
 import time
+from difflib import SequenceMatcher
 from typing import TYPE_CHECKING, Protocol, cast
 
 from dulwich.annotate import annotate_lines
-from dulwich.objects import Blob, Commit, ObjectID, Tag, Tree
+from dulwich.diff_tree import tree_changes
+from dulwich.objects import S_ISGITLINK, Blob, Commit, ObjectID, Tag, Tree
 from dulwich.patch import write_object_diff, write_tree_diff
 from dulwich.refs import SYMREF, Ref, check_ref_format
 from fastapi import HTTPException, status
@@ -1142,10 +1144,51 @@ class RepositoryService:
             )
 
         return await self._cached_model(
-            key=f"commit:v3:{sha}:{include_diff}",
+            key=f"commit:v4:{sha}:{include_diff}",
             group=self._cache_group(owner, name),
             ttl=settings.CACHE_IMMUTABLE_TTL,
             model=CommitDetail,
+            compute=compute,
+        )
+
+    async def compare_commits(
+        self, owner: str, name: str, base_ref: str, head_ref: str, offset: int = 0, limit: int = 50
+    ) -> CommitsPublic:
+        """List only commits reachable from the head and absent from the base, with pagination."""
+
+        async def compute() -> CommitsPublic:
+            repo = await self.load_repository(owner, name)
+            base = self._try_resolve_ref(repo, base_ref)
+            head = self._try_resolve_ref(repo, head_ref)
+            if base is None or head is None:
+                return CommitsPublic(data=[], count=0, ref=head_ref)
+
+            def walk() -> CommitsPublic:
+                commits = []
+                count = 0
+                for entry in repo.get_walker(include=[ObjectID(head)], exclude=[ObjectID(base)]):
+                    if offset <= count < offset + limit:
+                        commit = entry.commit
+                        author, email = _split_author(commit.author.decode("utf-8", errors="replace"))
+                        commits.append(
+                            CommitListItem(
+                                sha=commit.id.decode(),
+                                message=commit.message.decode("utf-8", errors="replace").strip(),
+                                author=author,
+                                author_email=email,
+                                timestamp=commit.author_time,
+                            )
+                        )
+                    count += 1
+                return CommitsPublic(data=commits, count=count, ref=head_ref)
+
+            return await run_in_threadpool(walk)
+
+        return await self._cached_model(
+            key=f"compare-commits:v1:{base_ref}:{head_ref}:{offset}:{limit}",
+            group=self._cache_group(owner, name),
+            ttl=settings.CACHE_TTL,
+            model=CommitsPublic,
             compute=compute,
         )
 
@@ -1194,7 +1237,7 @@ class RepositoryService:
             settings.CACHE_IMMUTABLE_TTL if is_commit_sha(base_ref) and is_commit_sha(head_ref) else settings.CACHE_TTL
         )
         return await self._cached_model(
-            key=f"compare:v3:{base_ref}:{head_ref}:{include_diff}",
+            key=f"compare:v4:{base_ref}:{head_ref}:{include_diff}",
             group=self._cache_group(owner, name),
             ttl=ttl,
             model=CompareResult,
@@ -1206,6 +1249,8 @@ class RepositoryService:
         cls, store: BaseObjectStore, old_tree: ObjectID | None, new_tree: ObjectID, include_diff: bool
     ) -> list[CommitFileChange]:
         """Calculate patches outside the event loop and optionally highlight them."""
+        if not include_diff:
+            return cls._diff_index(store, old_tree, new_tree)
         buffer = io.BytesIO()
         write_tree_diff(buffer, store, old_tree, new_tree)
         files = cls._parse_patch(buffer.getvalue().decode("utf-8", errors="replace"))
@@ -1222,6 +1267,57 @@ class RepositoryService:
         else:
             for file in files:
                 file.patch = ""
+        return files
+
+    @staticmethod
+    def _diff_index(store: BaseObjectStore, old_tree: ObjectID | None, new_tree: ObjectID) -> list[CommitFileChange]:
+        """Count changed ranges directly, without allocating or parsing unified patches."""
+
+        def content(mode: int | None, oid: ObjectID | None) -> bytes:
+            if oid is None:
+                return b""
+            if mode is not None and S_ISGITLINK(mode):
+                return b"Subproject commit " + oid + b"\n"
+            obj = store[oid]
+            return obj.data if isinstance(obj, Blob) else obj.as_raw_string()
+
+        files = []
+        # Copies of the same content share statistics within this comparison.
+        statistics: dict[tuple[ObjectID | None, ObjectID | None], tuple[int, int, int, bool]] = {}
+        for change in tree_changes(store, old_tree, new_tree):
+            old_entry, new_entry = change.old, change.new
+            key = (old_entry.sha if old_entry else None, new_entry.sha if new_entry else None)
+            if key not in statistics:
+                old = content(old_entry.mode, old_entry.sha) if old_entry else b""
+                new = content(new_entry.mode, new_entry.sha) if new_entry else b""
+                binary = b"\0" in old[:8000] or b"\0" in new[:8000]
+                additions = deletions = line_count = 0
+                if not binary:
+                    matcher = SequenceMatcher(None, old.splitlines(keepends=True), new.splitlines(keepends=True))
+                    for group in matcher.get_grouped_opcodes(3):
+                        for kind, a, b, c, d in group:
+                            if kind != "equal":
+                                deletions += b - a
+                                additions += d - c
+                            line_count += (b - a) if kind == "equal" else (b - a) + (d - c)
+                statistics[key] = additions, deletions, line_count, binary
+            additions, deletions, line_count, binary = statistics[key]
+            entry = new_entry or old_entry
+            path = entry.path if entry else None
+            if path is None:
+                continue
+            files.append(
+                CommitFileChange(
+                    path=path.decode("utf-8", errors="replace"),
+                    change_type=CommitChangeType(change.type),
+                    additions=additions,
+                    deletions=deletions,
+                    patch="",
+                    diff_loaded=False,
+                    diff_line_count=line_count,
+                    is_binary=binary,
+                )
+            )
         return files
 
     async def get_diff_file(self, owner: str, name: str, head: str, file_path: str, base: str = "") -> CommitFileChange:
@@ -1241,7 +1337,7 @@ class RepositoryService:
             return await run_in_threadpool(self._diff_file, store, old_tree, head_commit.tree, file_path)
 
         return await self._cached_model(
-            key=f"diff-file:v1:{base}:{head}:{file_path}",
+            key=f"diff-file:v2:{base}:{head}:{file_path}",
             group=self._cache_group(owner, name),
             ttl=settings.CACHE_IMMUTABLE_TTL,
             model=CommitFileChange,
@@ -1275,6 +1371,7 @@ class RepositoryService:
         enrich_diff(files, store, old_tree, new_tree)
         file = files[0]
         file.diff_line_count = sum(len(hunk.lines) for hunk in file.hunks)
+        file.patch = ""
         return file
 
     @staticmethod

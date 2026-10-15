@@ -2,7 +2,7 @@
 
 import { http, type HttpHandler, HttpResponse, type HttpResponseResolver, type RequestHandlerOptions as RequestHandlerOptions2 } from 'msw';
 
-import type { activityGetFeedResponses, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsResponses, ClientOptions, commentsCreateCommentData, commentsCreateCommentResponses, commentsDeleteCommentResponses, commentsListCommentsResponses, commentsUpdateCommentData, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryResponses, forksListForksResponses, gitGetHeadResponses, gitGetInfoPacksResponses, gitGetInfoRefsResponses, gitGetLooseObjectResponses, gitGetPackFileResponses, gitGitReceivePackResponses, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenResponses, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordResponses, loginTestTokenResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationResponses, organizationsListOrganizationsResponses, privateCreateUserData, privateCreateUserResponses, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseResponses, releasesGetReleaseResponses, releasesListReleasesResponses, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseResponses, repositoriesCompareRevisionsResponses, repositoriesCreateIssueData, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryResponses, repositoriesGetBlameResponses, repositoriesGetBlobResponses, repositoriesGetCommitResponses, repositoriesGetDiffFileResponses, repositoriesGetFileIndexResponses, repositoriesGetIssueResponses, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestResponses, repositoriesGetRawResponses, repositoriesGetReadmeResponses, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceResponses, repositoriesGetStatisticsResponses, repositoriesGetTreeResponses, repositoriesListBranchesResponses, repositoriesListCommitsResponses, repositoriesListIssuesResponses, repositoriesListPullRequestsResponses, repositoriesListRepositoriesResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryResponses, reviewsGetWorkspaceResponses, reviewsListReviewsResponses, reviewsMarkReviewedData, reviewsMarkReviewedResponses, reviewsSaveDraftData, reviewsSaveDraftResponses, reviewsSubmitReviewData, reviewsSubmitReviewResponses, starsGetStarStateResponses, starsListStargazersResponses, starsListStarredRepositoriesResponses, starsStarRepositoryResponses, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserResponses, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeResponses, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserMeData, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckResponses, utilsTestEmailResponses, watchersGetWatchStateResponses, watchersListWatchersResponses, watchersUnwatchRepositoryResponses, watchersWatchRepositoryResponses } from './types.gen';
+import type { activityGetFeedResponses, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsResponses, ClientOptions, commentsCreateCommentData, commentsCreateCommentResponses, commentsDeleteCommentResponses, commentsListCommentsResponses, commentsUpdateCommentData, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryResponses, forksListForksResponses, gitGetHeadResponses, gitGetInfoPacksResponses, gitGetInfoRefsResponses, gitGetLooseObjectResponses, gitGetPackFileResponses, gitGitReceivePackResponses, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenResponses, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordResponses, loginTestTokenResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationResponses, organizationsListOrganizationsResponses, privateCreateUserData, privateCreateUserResponses, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseResponses, releasesGetReleaseResponses, releasesListReleasesResponses, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseResponses, repositoriesCompareRevisionsResponses, repositoriesCreateIssueData, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryResponses, repositoriesGetBlameResponses, repositoriesGetBlobResponses, repositoriesGetCommitResponses, repositoriesGetDiffFileResponses, repositoriesGetFileIndexResponses, repositoriesGetIssueResponses, repositoriesGetPullRequestCommitsResponses, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestResponses, repositoriesGetRawResponses, repositoriesGetReadmeResponses, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceResponses, repositoriesGetStatisticsResponses, repositoriesGetTreeResponses, repositoriesListBranchesResponses, repositoriesListCommitsResponses, repositoriesListIssuesResponses, repositoriesListPullRequestsResponses, repositoriesListRepositoriesResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryResponses, reviewsGetWorkspaceResponses, reviewsListReviewsResponses, reviewsMarkReviewedData, reviewsMarkReviewedResponses, reviewsSaveDraftData, reviewsSaveDraftResponses, reviewsSubmitReviewData, reviewsSubmitReviewResponses, starsGetStarStateResponses, starsListStargazersResponses, starsListStarredRepositoriesResponses, starsStarRepositoryResponses, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserResponses, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeResponses, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserMeData, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckResponses, utilsPreviewMarkdownData, utilsPreviewMarkdownResponses, utilsTestEmailResponses, watchersGetWatchStateResponses, watchersListWatchersResponses, watchersUnwatchRepositoryResponses, watchersWatchRepositoryResponses } from './types.gen';
 
 export type RequestHandlerOptions = RequestHandlerOptions2 & {
     baseUrl?: ClientOptions['baseUrl'];
@@ -2248,6 +2248,41 @@ export function handleRepositoriesUpdatePullRequest(response?: HandleRepositorie
     }, options);
 }
 
+export type HandleRepositoriesGetPullRequestCommitsResponse = {
+    body: repositoriesGetPullRequestCommitsResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/repositories/{owner}/{repo}/pulls/{number}/commits` operation.
+ */
+export function handleRepositoriesGetPullRequestCommits(response?: HandleRepositoriesGetPullRequestCommitsResponse | HttpResponseResolver<{
+    owner: string;
+    repo: string;
+    number: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        owner: string;
+        repo: string;
+        number: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/repositories/:owner/:repo/pulls/:number/commits`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
 export type HandleRepositoriesGetPullRequestFilesResponse = {
     body: repositoriesGetPullRequestFilesResponses[200];
     status?: 200;
@@ -2606,6 +2641,33 @@ export function handleReviewsMarkReviewed(response?: HandleReviewsMarkReviewedRe
         repo: string;
         number: string;
     }, reviewsMarkReviewedData['body']>(`${options?.baseUrl ?? '*'}/api/v1/repositories/:owner/:repo/pulls/:number/reviewed-files`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleUtilsPreviewMarkdownResponse = {
+    body: utilsPreviewMarkdownResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `POST /api/v1/utils/markdown-preview` operation.
+ */
+export function handleUtilsPreviewMarkdown(response?: HandleUtilsPreviewMarkdownResponse | HttpResponseResolver<never, utilsPreviewMarkdownData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.post<never, utilsPreviewMarkdownData['body']>(`${options?.baseUrl ?? '*'}/api/v1/utils/markdown-preview`, info => {
         if (typeof response === 'function') {
             return response(info);
         }
@@ -2990,6 +3052,10 @@ export type MswHandlerFactories = {
      */
     repositoriesUpdatePullRequest: typeof handleRepositoriesUpdatePullRequest;
     /**
+     * Handler for the `GET /api/v1/repositories/{owner}/{repo}/pulls/{number}/commits` operation.
+     */
+    repositoriesGetPullRequestCommits: typeof handleRepositoriesGetPullRequestCommits;
+    /**
      * Handler for the `GET /api/v1/repositories/{owner}/{repo}/pulls/{number}/files` operation.
      */
     repositoriesGetPullRequestFiles: typeof handleRepositoriesGetPullRequestFiles;
@@ -3033,6 +3099,10 @@ export type MswHandlerFactories = {
      * Handler for the `PUT /api/v1/repositories/{owner}/{repo}/pulls/{number}/reviewed-files` operation.
      */
     reviewsMarkReviewed: typeof handleReviewsMarkReviewed;
+    /**
+     * Handler for the `POST /api/v1/utils/markdown-preview` operation.
+     */
+    utilsPreviewMarkdown: typeof handleUtilsPreviewMarkdown;
     /**
      * Handler for the `POST /api/v1/utils/test-email/` operation.
      */
@@ -3133,6 +3203,7 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
         repositoriesCreatePullRequest: wrap(handleRepositoriesCreatePullRequest),
         repositoriesGetPullRequest: wrap(handleRepositoriesGetPullRequest),
         repositoriesUpdatePullRequest: wrap(handleRepositoriesUpdatePullRequest),
+        repositoriesGetPullRequestCommits: wrap(handleRepositoriesGetPullRequestCommits),
         repositoriesGetPullRequestFiles: wrap(handleRepositoriesGetPullRequestFiles),
         repositoriesCompareRevisions: wrap(handleRepositoriesCompareRevisions),
         repositoriesGetDiffFile: wrap(handleRepositoriesGetDiffFile),
@@ -3144,6 +3215,7 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
         reviewsGetWorkspace: wrap(handleReviewsGetWorkspace),
         reviewsSaveDraft: wrap(handleReviewsSaveDraft),
         reviewsMarkReviewed: wrap(handleReviewsMarkReviewed),
+        utilsPreviewMarkdown: wrap(handleUtilsPreviewMarkdown),
         utilsTestEmail: wrap(handleUtilsTestEmail),
         utilsHealthCheck: wrap(handleUtilsHealthCheck),
         privateCreateUser: wrap(handlePrivateCreateUser)
@@ -3160,6 +3232,7 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
         return [
             invoke(pick.commentsListComments, overrides.commentsListComments),
             invoke(pick.commentsCreateComment, overrides.commentsCreateComment),
+            invoke(pick.repositoriesGetPullRequestCommits, overrides.repositoriesGetPullRequestCommits),
             invoke(pick.repositoriesGetPullRequestFiles, overrides.repositoriesGetPullRequestFiles),
             invoke(pick.reviewsListReviews, overrides.reviewsListReviews),
             invoke(pick.reviewsSubmitReview, overrides.reviewsSubmitReview),
@@ -3223,6 +3296,7 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.usersReadUserMe, overrides.usersReadUserMe),
             invoke(pick.usersUpdateUserMe, overrides.usersUpdateUserMe),
             invoke(pick.usersRegisterUser, overrides.usersRegisterUser),
+            invoke(pick.utilsPreviewMarkdown, overrides.utilsPreviewMarkdown),
             invoke(pick.utilsTestEmail, overrides.utilsTestEmail),
             invoke(pick.utilsHealthCheck, overrides.utilsHealthCheck),
             invoke(pick.privateCreateUser, overrides.privateCreateUser),

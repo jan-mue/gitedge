@@ -1,4 +1,5 @@
 import { HttpResponse } from "msw"
+import { useState } from "react"
 import { describe, expect, test, vi } from "vitest"
 import { handleRepositoriesGetDiffFile } from "@/client/msw.gen"
 import { server } from "@/test/server"
@@ -7,6 +8,27 @@ import { DiffViewer } from "./DiffViewer"
 import { comparisonFixture } from "./diff-fixtures"
 
 describe("DiffViewer", () => {
+  test("viewed files collapse, allow manual expansion, and expand when unmarked", async () => {
+    const Review = () => {
+      const [paths, setPaths] = useState<string[]>([])
+      return (
+        <DiffViewer
+          {...comparisonFixture}
+          reviewedPaths={paths}
+          onReviewed={(path, viewed) => setPaths(viewed ? [path] : [])}
+        />
+      )
+    }
+    const { user } = render(<Review />)
+    await user.click(screen.getByRole("checkbox", { name: "Mark src/config.py as viewed" }))
+    expect(screen.getByRole("button", { name: "Expand src/config.py" })).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Expand src/config.py" }))
+    expect(screen.getByRole("button", { name: "Collapse src/config.py" })).toBeInTheDocument()
+    await user.click(screen.getByRole("checkbox", { name: "Mark src/config.py as viewed" }))
+    expect(screen.getByRole("button", { name: "Collapse src/config.py" })).toBeInTheDocument()
+    await user.click(screen.getByRole("checkbox", { name: "Mark src/config.py as viewed" }))
+    expect(screen.getByRole("button", { name: "Expand src/config.py" })).toBeInTheDocument()
+  })
   test("renders backend syntax and inline tokens in both layouts", async () => {
     const { user, container } = render(<DiffViewer {...comparisonFixture} />)
     expect(container.querySelector('[data-syntax="literal-number"][data-changed]')).toHaveTextContent("12")

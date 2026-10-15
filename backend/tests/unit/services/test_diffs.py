@@ -91,6 +91,38 @@ def test_crlf_tokens_do_not_add_extra_visual_lines() -> None:
     assert not any("\r" in token.text for line in file.hunks[0].lines for token in line.tokens)
 
 
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        (None, b"new file\n"),
+        (b"deleted\n", None),
+        (b"a\r\nb\r\n", b"a\r\nc\r\n"),
+        (b"\0old", b"\0new"),
+        (b"old", b"new"),
+        (b"one\n" * 300, b"two\n" * 300),
+        (b"context\n" * 8 + b"old\n" + b"context\n" * 8, b"context\n" * 8 + b"new\n" + b"context\n" * 8),
+    ],
+)
+def test_compact_index_statistics_match_highlighted_patch(before: bytes | None, after: bytes | None) -> None:
+    store = MemoryObjectStore()
+    trees = []
+    for source in (before, after):
+        tree = Tree()
+        if source is not None:
+            blob = Blob.from_string(source)
+            store.add_object(blob)
+            tree.add(b"example.py", 0o100644, blob.id)
+        store.add_object(tree)
+        trees.append(tree)
+    summary = RepositoryService._diff_files(store, trees[0].id, trees[1].id, False)[0]  # noqa: SLF001
+    full = RepositoryService._diff_files(store, trees[0].id, trees[1].id, True)[0]  # noqa: SLF001
+    fields = {"path", "change_type", "additions", "deletions", "diff_line_count", "is_binary"}
+    assert summary.model_dump(include=fields) == full.model_dump(include=fields)
+    assert not summary.patch
+    assert not summary.hunks
+    assert not summary.diff_loaded
+
+
 def test_submodule_commit_does_not_need_to_exist_in_parent_object_store() -> None:
     store = MemoryObjectStore()
     old, new = Tree(), Tree()

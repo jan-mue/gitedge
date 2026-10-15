@@ -11,6 +11,7 @@ from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.issues import IssueState
 from app.entities.pull_requests import PullRequest
 from app.schemas.repositories import (
+    CommitsPublic,
     CompareResult,
     PullRequestCreate,
     PullRequestPublic,
@@ -136,6 +137,15 @@ class PullRequestService:
         """
         pull_request = await self._find_pull_request(owner, name, number)
         return self._to_public(pull_request, owner, name)
+
+    async def get_pull_request_commits(
+        self, owner: str, name: str, number: int, offset: int = 0, limit: int = 50
+    ) -> CommitsPublic:
+        """Return the head branch's commits that are not already in the base branch."""
+        pull = await self._find_pull_request(owner, name, number)
+        return await self.repository_service.compare_commits(
+            owner, name, pull.base_branch, pull.head_branch, offset, limit
+        )
 
     async def get_pull_request_files(
         self, owner: str, name: str, number: int, *, include_diff: bool = True

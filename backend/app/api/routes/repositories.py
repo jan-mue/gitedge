@@ -318,6 +318,21 @@ async def get_pull_request(
     return await pull_request_service.get_pull_request(owner, repo, number)
 
 
+@router.get("/{owner}/{repo}/pulls/{number}/commits")
+async def get_pull_request_commits(
+    owner: str,
+    repo: str,
+    number: int,
+    response: Response,
+    pull_request_service: PullRequestServiceDep,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> CommitsPublic:
+    """List commits unique to the PR branch, excluding the base's history."""
+    response.headers["Cache-Control"] = "no-store"
+    return await pull_request_service.get_pull_request_commits(owner, repo, number, offset, limit)
+
+
 @router.get("/{owner}/{repo}/pulls/{number}/files")
 async def get_pull_request_files(
     owner: str,

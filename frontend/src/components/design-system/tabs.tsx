@@ -10,6 +10,8 @@ export const Tabs = component(PrimitiveTabs, { spaced: "flex flex-col gap-4" }, 
 export const TabsList = component(
   PrimitiveTabsList,
   {
+    pullRequest:
+      "flex h-auto w-full justify-start overflow-x-auto rounded-none border-b border-border bg-transparent p-0",
     branchPicker:
       "flex h-auto w-full items-stretch rounded-none border-b border-border bg-transparent p-0 text-muted-foreground",
   },
@@ -18,6 +20,8 @@ export const TabsList = component(
 const StyledTabsTrigger = component(
   PrimitiveTabsTrigger,
   {
+    pullRequest:
+      "h-auto shrink-0 flex-none gap-1.5 rounded-none border-0 border-b-2 border-transparent px-3 py-2.5 text-sm font-normal text-muted-foreground shadow-none hover:text-foreground hover:border-border data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent data-[pointer-focus]:focus-visible:ring-0 data-[pointer-focus]:focus-visible:ring-offset-0 sm:px-4",
     branchPicker:
       "flex-1 gap-1.5 rounded-none border-0 px-0 py-2 text-sm font-normal transition-colors hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary dark:data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent data-[pointer-focus]:outline-none data-[pointer-focus]:focus-visible:ring-0 data-[pointer-focus]:focus-visible:ring-offset-0 data-[pointer-focus]:focus-visible:outline-none",
   },
@@ -35,7 +39,9 @@ export const TabsTrigger = ({
     <StyledTabsTrigger
       {...props}
       appearance={appearance}
-      data-pointer-focus={appearance === "branchPicker" && pointerFocus ? "" : undefined}
+      data-pointer-focus={
+        (appearance === "branchPicker" || appearance === "pullRequest") && pointerFocus ? "" : undefined
+      }
       onPointerDown={(event) => {
         setPointerFocus(true)
         onPointerDown?.(event)
@@ -51,4 +57,8 @@ export const TabsTrigger = ({
     />
   )
 }
-export const TabsContent = component(PrimitiveTabsContent, { spaced: "mt-0 space-y-4", branchPicker: "mt-0" }, "mt-2")
+export const TabsContent = component(
+  PrimitiveTabsContent,
+  { spaced: "mt-0 space-y-4", pullRequest: "mt-6 space-y-4", branchPicker: "mt-0" },
+  "mt-2",
+)

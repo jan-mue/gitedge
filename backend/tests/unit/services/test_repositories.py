@@ -748,3 +748,15 @@ async def test_lazy_diff_rejects_unchanged_paths_directories_and_missing_revisio
     with pytest.raises(HTTPException) as error:
         await service.get_diff_file(OWNER, REPO, "0" * 40, "src/main.py")
     assert error.value.status_code == 404
+
+
+async def test_pr_commit_range_excludes_base_ancestors_and_paginates(service: RepositoryService) -> None:
+    commits = _populate_path_history(service.backend)
+    first = await service.compare_commits(OWNER, REPO, "main", "merged", limit=1)
+    second = await service.compare_commits(OWNER, REPO, "main", "merged", offset=1, limit=1)
+    assert first.count == second.count == 2
+    assert [item.sha for item in first.data + second.data] == [
+        commits["merge"].id.decode(),
+        commits["feature"].id.decode(),
+    ]
+    assert not (await service.compare_commits(OWNER, REPO, "merged", "main")).data

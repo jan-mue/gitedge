@@ -41,8 +41,8 @@ def _source(store: BaseObjectStore, tree_id: ObjectID | None, path: str) -> str:
     return blob.data.decode("utf-8", errors="replace") if isinstance(blob, Blob) else ""
 
 
-def _syntax_lines(path: str, source: str) -> tuple[str, list[list[DiffToken]]]:
-    """Lex the whole source so multiline strings and comments retain context."""
+def _syntax_lines(path: str, source: str, wanted: set[int]) -> tuple[str, dict[int, list[DiffToken]]]:
+    """Preserve lexer context, retaining tokens only for lines displayed in the diff."""
     source = source.replace("\r\n", "\n")
     try:
         lexer = get_lexer_for_filename(path, stripnl=False, ensurenl=False)
@@ -50,14 +50,19 @@ def _syntax_lines(path: str, source: str) -> tuple[str, list[list[DiffToken]]]:
         lexer = TextLexer(stripnl=False, ensurenl=False)
     if len(source) > MAX_HIGHLIGHT_BYTES:
         lexer = TextLexer(stripnl=False, ensurenl=False)
-    lines: list[list[DiffToken]] = [[]]
+    lines: dict[int, list[DiffToken]] = {number: [] for number in wanted}
+    if not wanted:
+        return lexer.name, lines
+    number, last = 1, max(wanted)
     for _, token_type, value in lexer.get_tokens_unprocessed(source):
+        if number > last:
+            break
         syntax = str(token_type).removeprefix("Token.").lower().replace(".", "-")
         for index, part in enumerate(value.split("\n")):
             if index:
-                lines.append([])
-            if part:
-                lines[-1].append(DiffToken(text=part, syntax=syntax))
+                number += 1
+            if part and number in wanted:
+                lines[number].append(DiffToken(text=part, syntax=syntax))
     return lexer.name, lines
 
 
@@ -140,8 +145,6 @@ def enrich_diff(
         file.is_binary = any(line.startswith("Binary files ") for line in file.patch.split("\n"))
         if file.is_binary:
             continue
-        _, old_tokens = _syntax_lines(file.old_path or file.path, _source(store, old_tree, file.old_path or file.path))
-        file.language, new_tokens = _syntax_lines(file.path, _source(store, new_tree, file.path))
         hunk: DiffHunk | None = None
         old_number = new_number = 0
         for raw in file.patch.split("\n"):
@@ -155,19 +158,31 @@ def enrich_diff(
                     hunk.lines[-1].no_newline = True
             elif hunk is not None and raw[:1] in (" ", "+", "-"):
                 kind = {" ": "context", "+": "add", "-": "delete"}[raw[0]]
-                source_tokens = old_tokens if kind == "delete" else new_tokens
-                number = old_number if kind == "delete" else new_number
-                tokens = source_tokens[number - 1] if 0 < number <= len(source_tokens) else [DiffToken(text=raw[1:])]
                 hunk.lines.append(
                     DiffLine(
                         kind=kind,
                         old_line=old_number if kind != "add" else None,
                         new_line=new_number if kind != "delete" else None,
-                        tokens=[token.model_copy() for token in tokens],
+                        tokens=[DiffToken(text=raw[1:].removesuffix("\r"))],
                     )
                 )
                 old_number += kind != "add"
                 new_number += kind != "delete"
+        lines = [line for hunk in file.hunks for line in hunk.lines]
+        _, old_tokens = _syntax_lines(
+            file.old_path or file.path,
+            _source(store, old_tree, file.old_path or file.path),
+            {line.old_line for line in lines if line.kind == "delete" and line.old_line is not None},
+        )
+        file.language, new_tokens = _syntax_lines(
+            file.path,
+            _source(store, new_tree, file.path),
+            {line.new_line for line in lines if line.kind != "delete" and line.new_line is not None},
+        )
+        for line in lines:
+            tokens = old_tokens.get(line.old_line or 0) if line.kind == "delete" else new_tokens.get(line.new_line or 0)
+            if tokens:
+                line.tokens = tokens
         for hunk in file.hunks:
             _align(hunk)
         file.additions = sum(line.kind == "add" for hunk in file.hunks for line in hunk.lines)
