@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Protocol, cast
 
 from dulwich.annotate import annotate_lines
 from dulwich.objects import Blob, Commit, ObjectID, Tag, Tree
-from dulwich.patch import write_commit_diff, write_tree_diff
+from dulwich.patch import write_object_diff, write_tree_diff
 from dulwich.refs import SYMREF, Ref, check_ref_format
 from fastapi import HTTPException, status
 from fastapi.concurrency import run_in_threadpool
@@ -51,6 +51,7 @@ from app.schemas.repositories import (
 )
 from app.schemas.repository_activity import GitActivityHistory
 from app.services.blob_backend import load_repository_from_storage, save_repository_changes_to_storage
+from app.services.diffs import enrich_diff
 from app.services.languages import source_language
 from app.services.markdown import render_markdown
 from app.services.repository_activity import collect_git_activity
@@ -64,6 +65,8 @@ from app.utils.cache_headers import (
 if TYPE_CHECKING:
     import uuid
     from collections.abc import Awaitable, Callable, Iterator
+
+    from dulwich.object_store import BaseObjectStore
 
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.cache import AbstractCacheClient
@@ -1093,13 +1096,14 @@ class RepositoryService:
             compute=compute,
         )
 
-    async def get_commit(self, owner: str, name: str, sha: str) -> CommitDetail:
+    async def get_commit(self, owner: str, name: str, sha: str, *, include_diff: bool = True) -> CommitDetail:
         """Get detailed information about a single commit, including its diff.
 
         Args:
             owner: Owner name.
             name: Repository name.
             sha: Full commit SHA.
+            include_diff: Include highlighted hunks, or return a compact file index.
 
         Returns:
             CommitDetail with metadata and per-file unified diffs.
@@ -1118,9 +1122,10 @@ class RepositoryService:
             if not isinstance(obj, Commit):
                 raise HTTPException(status_code=404, detail="Commit not found")
 
-            buffer = io.BytesIO()
-            write_commit_diff(buffer, store, obj)
-            files = self._parse_patch(buffer.getvalue().decode("utf-8", errors="replace"))
+            parent = store[obj.parents[0]] if obj.parents else None
+            files = await run_in_threadpool(
+                self._diff_files, store, parent.tree if isinstance(parent, Commit) else None, obj.tree, include_diff
+            )
 
             author, author_email = _split_author(obj.author.decode("utf-8", errors="replace"))
             sha_str = obj.id.decode() if isinstance(obj.id, bytes) else str(obj.id)
@@ -1137,14 +1142,16 @@ class RepositoryService:
             )
 
         return await self._cached_model(
-            key=f"commit:{sha}",
+            key=f"commit:v3:{sha}:{include_diff}",
             group=self._cache_group(owner, name),
             ttl=settings.CACHE_IMMUTABLE_TTL,
             model=CommitDetail,
             compute=compute,
         )
 
-    async def compare(self, owner: str, name: str, base_ref: str, head_ref: str) -> CompareResult:
+    async def compare(
+        self, owner: str, name: str, base_ref: str, head_ref: str, *, include_diff: bool = True
+    ) -> CompareResult:
         """List the files changed between two refs.
 
         Args:
@@ -1152,6 +1159,7 @@ class RepositoryService:
             name: Repository name.
             base_ref: Base ref (branch, tag, or commit SHA).
             head_ref: Head ref (branch, tag, or commit SHA).
+            include_diff: Include highlighted hunks, or return a compact file index.
 
         Returns:
             CompareResult with the changed files and the resolved head commit.
@@ -1170,9 +1178,7 @@ class RepositoryService:
             if not isinstance(base_commit, Commit) or not isinstance(head_commit, Commit):
                 return CompareResult(files=[], additions=0, deletions=0)
 
-            buffer = io.BytesIO()
-            write_tree_diff(buffer, store, base_commit.tree, head_commit.tree)
-            files = self._parse_patch(buffer.getvalue().decode("utf-8", errors="replace"))
+            files = await run_in_threadpool(self._diff_files, store, base_commit.tree, head_commit.tree, include_diff)
 
             base_str = base_commit.id.decode() if isinstance(base_commit.id, bytes) else str(base_commit.id)
             head_str = head_commit.id.decode() if isinstance(head_commit.id, bytes) else str(head_commit.id)
@@ -1188,12 +1194,88 @@ class RepositoryService:
             settings.CACHE_IMMUTABLE_TTL if is_commit_sha(base_ref) and is_commit_sha(head_ref) else settings.CACHE_TTL
         )
         return await self._cached_model(
-            key=f"compare:{base_ref}:{head_ref}",
+            key=f"compare:v3:{base_ref}:{head_ref}:{include_diff}",
             group=self._cache_group(owner, name),
             ttl=ttl,
             model=CompareResult,
             compute=compute,
         )
+
+    @classmethod
+    def _diff_files(
+        cls, store: BaseObjectStore, old_tree: ObjectID | None, new_tree: ObjectID, include_diff: bool
+    ) -> list[CommitFileChange]:
+        """Calculate patches outside the event loop and optionally highlight them."""
+        buffer = io.BytesIO()
+        write_tree_diff(buffer, store, old_tree, new_tree)
+        files = cls._parse_patch(buffer.getvalue().decode("utf-8", errors="replace"))
+        for file in files:
+            hunk_lines = file.patch.split("\n")
+            start = next((index for index, line in enumerate(hunk_lines) if line.startswith("@@")), len(hunk_lines))
+            file.diff_line_count = sum(line[:1] in (" ", "+", "-") for line in hunk_lines[start:])
+            file.additions = sum(line.startswith("+") for line in hunk_lines[start:])
+            file.deletions = sum(line.startswith("-") for line in hunk_lines[start:])
+            file.is_binary = any(line.startswith("Binary files ") for line in hunk_lines)
+            file.diff_loaded = include_diff
+        if include_diff:
+            enrich_diff(files, store, old_tree, new_tree)
+        else:
+            for file in files:
+                file.patch = ""
+        return files
+
+    async def get_diff_file(self, owner: str, name: str, head: str, file_path: str, base: str = "") -> CommitFileChange:
+        """Return one highlighted file at immutable comparison revisions."""
+
+        async def compute() -> CommitFileChange:
+            repo = await self.load_repository(owner, name)
+            store = repo.object_store
+            try:
+                head_commit = store[ObjectID(head.encode())]
+                base_commit = store[ObjectID(base.encode())] if base else None
+            except (KeyError, ValueError) as error:
+                raise HTTPException(status_code=404, detail="Comparison revision not found") from error
+            if not isinstance(head_commit, Commit) or (base_commit is not None and not isinstance(base_commit, Commit)):
+                raise HTTPException(status_code=404, detail="Comparison revision not found")
+            old_tree = base_commit.tree if isinstance(base_commit, Commit) else None
+            return await run_in_threadpool(self._diff_file, store, old_tree, head_commit.tree, file_path)
+
+        return await self._cached_model(
+            key=f"diff-file:v1:{base}:{head}:{file_path}",
+            group=self._cache_group(owner, name),
+            ttl=settings.CACHE_IMMUTABLE_TTL,
+            model=CommitFileChange,
+            compute=compute,
+        )
+
+    @classmethod
+    def _diff_file(
+        cls, store: BaseObjectStore, old_tree: ObjectID | None, new_tree: ObjectID, path: str
+    ) -> CommitFileChange:
+        """Read and diff only the requested path, without diffing sibling files."""
+
+        def entry(tree_id: ObjectID | None) -> tuple[bytes | None, int | None, ObjectID | None]:
+            if tree_id is not None:
+                tree = store[tree_id]
+                if isinstance(tree, Tree):
+                    try:
+                        mode, oid = tree.lookup_path(store.__getitem__, path.encode())
+                    except KeyError:
+                        return None, None, None
+                    if not stat.S_ISDIR(mode):
+                        return path.encode(), mode, oid
+            return None, None, None
+
+        old_entry, new_entry = entry(old_tree), entry(new_tree)
+        if old_entry == new_entry:
+            raise HTTPException(status_code=404, detail="File is not changed in this comparison")
+        buffer = io.BytesIO()
+        write_object_diff(buffer, store, old_entry, new_entry)
+        files = cls._parse_patch(buffer.getvalue().decode("utf-8", errors="replace"))
+        enrich_diff(files, store, old_tree, new_tree)
+        file = files[0]
+        file.diff_line_count = sum(len(hunk.lines) for hunk in file.hunks)
+        return file
 
     @staticmethod
     def _parse_patch(patch_text: str) -> list[CommitFileChange]:

@@ -194,6 +194,39 @@ class CommitsPublic(GitEdgeBaseModel):
     ref: str
 
 
+class DiffToken(GitEdgeBaseModel):
+    """A syntax token, optionally emphasized as an inline change."""
+
+    text: str
+    syntax: str = "text"
+    changed: bool = False
+
+
+class DiffLine(GitEdgeBaseModel):
+    """A numbered line with server-generated syntax and change tokens."""
+
+    kind: str
+    old_line: int | None = None
+    new_line: int | None = None
+    tokens: list[DiffToken]
+    no_newline: bool = False
+
+
+class DiffRow(GitEdgeBaseModel):
+    """Server-aligned line indexes for the split layout."""
+
+    old: int | None = None
+    new: int | None = None
+
+
+class DiffHunk(GitEdgeBaseModel):
+    """A unified hunk and its split layout."""
+
+    header: str
+    lines: list[DiffLine]
+    rows: list[DiffRow]
+
+
 class CommitFileChange(GitEdgeBaseModel):
     """A file changed by a commit, with its unified diff."""
 
@@ -203,6 +236,11 @@ class CommitFileChange(GitEdgeBaseModel):
     additions: int
     deletions: int
     patch: str
+    hunks: list[DiffHunk] = Field(default_factory=list)
+    language: str = "Text"
+    is_binary: bool = False
+    diff_loaded: bool = True
+    diff_line_count: int = 0
 
 
 class CommitDetail(GitEdgeBaseModel):

@@ -16,6 +16,7 @@ from app.schemas.repositories import (
     BlameContent,
     BranchInfo,
     CommitDetail,
+    CommitFileChange,
     CommitsPublic,
     CompareResult,
     CreateRepositoryRequest,
@@ -240,10 +241,15 @@ async def list_commits(
 
 @router.get("/{owner}/{repo}/commits/{sha}")
 async def get_commit(
-    owner: str, repo: str, sha: str, response: Response, repository_service: RepositoryServiceDep
+    owner: str,
+    repo: str,
+    sha: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    include_diff: bool = True,
 ) -> CommitDetail:
     """Get a single commit with its diff."""
-    result = await repository_service.get_commit(owner, repo, sha)
+    result = await repository_service.get_commit(owner, repo, sha, include_diff=include_diff)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=True)
     return result
 
@@ -319,11 +325,11 @@ async def get_pull_request_files(
     number: int,
     response: Response,
     pull_request_service: PullRequestServiceDep,
-    repository_service: RepositoryServiceDep,
+    include_diff: bool = True,
 ) -> CompareResult:
     """List the files changed by a pull request, diffed against its base branch."""
-    result = await pull_request_service.get_pull_request_files(owner, repo, number)
-    await _apply_cache_headers(response, repository_service, owner, repo, immutable=False)
+    result = await pull_request_service.get_pull_request_files(owner, repo, number, include_diff=include_diff)
+    response.headers["Cache-Control"] = "no-store"
     return result
 
 
@@ -338,6 +344,41 @@ async def update_pull_request(
 ) -> PullRequestPublic:
     """Update a pull request."""
     return await pull_request_service.update_pull_request(owner, repo, number, body, current_user)
+
+
+@router.get("/{owner}/{repo}/compare")
+async def compare_revisions(
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    base: str = "main",
+    head: str = "HEAD",
+    include_diff: bool = True,
+) -> CompareResult:
+    """Compare two branches, tags or commits using the shared diff response."""
+    result = await repository_service.compare(owner, repo, base, head, include_diff=include_diff)
+    if is_commit_sha(base) and is_commit_sha(head):
+        await _apply_cache_headers(response, repository_service, owner, repo, immutable=True)
+    else:
+        response.headers["Cache-Control"] = "no-store"
+    return result
+
+
+@router.get("/{owner}/{repo}/diff-file")
+async def get_diff_file(
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    head: Annotated[str, Query(pattern=r"^[0-9a-f]{40}$")],
+    file_path: Annotated[str, Query(min_length=1, max_length=4096)],
+    base: Annotated[str, Query(pattern=r"^(?:[0-9a-f]{40})?$")] = "",
+) -> CommitFileChange:
+    """Load one highlighted file at immutable base and head revisions."""
+    result = await repository_service.get_diff_file(owner, repo, head, file_path, base)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=True)
+    return result
 
 
 @router.get("/{owner}/{repo}")

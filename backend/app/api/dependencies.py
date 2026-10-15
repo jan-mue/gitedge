@@ -32,6 +32,7 @@ from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
 from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClient
 from app.clients.releases import ReleaseStore, SQLReleaseStore
 from app.clients.repositories import RepositoryStore, SQLRepositoryStore
+from app.clients.reviews import ReviewStore, SQLReviewStore
 from app.clients.stars import SQLStarStore, StarStore
 from app.clients.users import SQLUserStore, UserStore
 from app.clients.watchers import SQLWatcherStore, WatcherStore
@@ -48,6 +49,7 @@ from app.services.organizations import OrganizationService
 from app.services.pull_requests import PullRequestService
 from app.services.releases import ReleaseService
 from app.services.repositories import RepositoryService
+from app.services.reviews import ReviewService
 from app.services.stars import StarService
 from app.services.watchers import WatcherService
 from app.utils import security
@@ -495,6 +497,27 @@ def get_pull_request_service(
 
 
 PullRequestServiceDep = Annotated[PullRequestService, Depends(get_pull_request_service)]
+
+
+def get_review_store(session: SessionDep) -> ReviewStore:
+    """Get the review persistence dependency."""
+    return SQLReviewStore(session)
+
+
+ReviewStoreDep = Annotated[ReviewStore, Depends(get_review_store)]
+
+
+def get_review_service(
+    store: ReviewStoreDep,
+    pull_requests: PullRequestStoreDep,
+    repositories: RepositoryStoreDep,
+    repository_service: RepositoryServiceDep,
+) -> ReviewService:
+    """Get the pull request review service."""
+    return ReviewService(store, pull_requests, repositories, repository_service)
+
+
+ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
 
 
 def get_star_service(

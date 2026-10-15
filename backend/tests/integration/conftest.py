@@ -43,6 +43,13 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args: dict[str, Any]) -> dict[str, Any]:
+    """Allow local verification with a system Chromium installation."""
+    executable = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
+    return {**browser_type_launch_args, **({"executable_path": executable} if executable else {})}
+
+
+@pytest.fixture(scope="session")
 def browser_context_args(browser_context_args: dict[str, Any]) -> dict[str, Any]:
     """Configure browser context with desktop viewport.
 

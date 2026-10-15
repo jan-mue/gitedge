@@ -395,6 +395,26 @@ export type CommitFileChange = {
      * Patch
      */
     patch: string;
+    /**
+     * Hunks
+     */
+    hunks?: Array<DiffHunk>;
+    /**
+     * Language
+     */
+    language?: string;
+    /**
+     * Is Binary
+     */
+    is_binary?: boolean;
+    /**
+     * Diff Loaded
+     */
+    diff_loaded?: boolean;
+    /**
+     * Diff Line Count
+     */
+    diff_line_count?: number;
 };
 
 /**
@@ -539,6 +559,90 @@ export type CreateRepositoryRequest = {
      * Owner
      */
     owner: string;
+};
+
+/**
+ * DiffHunk
+ *
+ * A unified hunk and its split layout.
+ */
+export type DiffHunk = {
+    /**
+     * Header
+     */
+    header: string;
+    /**
+     * Lines
+     */
+    lines: Array<DiffLine>;
+    /**
+     * Rows
+     */
+    rows: Array<DiffRow>;
+};
+
+/**
+ * DiffLine
+ *
+ * A numbered line with server-generated syntax and change tokens.
+ */
+export type DiffLine = {
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Old Line
+     */
+    old_line?: number | null;
+    /**
+     * New Line
+     */
+    new_line?: number | null;
+    /**
+     * Tokens
+     */
+    tokens: Array<DiffToken>;
+    /**
+     * No Newline
+     */
+    no_newline?: boolean;
+};
+
+/**
+ * DiffRow
+ *
+ * Server-aligned line indexes for the split layout.
+ */
+export type DiffRow = {
+    /**
+     * Old
+     */
+    old?: number | null;
+    /**
+     * New
+     */
+    new?: number | null;
+};
+
+/**
+ * DiffToken
+ *
+ * A syntax token, optionally emphasized as an inline change.
+ */
+export type DiffToken = {
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Syntax
+     */
+    syntax?: string;
+    /**
+     * Changed
+     */
+    changed?: boolean;
 };
 
 /**
@@ -1431,6 +1535,160 @@ export type RepositoryUpdate = {
      * Default Branch
      */
     default_branch?: string | null;
+};
+
+/**
+ * ReviewDraft
+ *
+ * The exact comparison and comments being reviewed.
+ */
+export type ReviewDraft = {
+    /**
+     * Base Commit
+     */
+    base_commit: string;
+    /**
+     * Head Commit
+     */
+    head_commit: string;
+    /**
+     * Body
+     */
+    body?: string;
+    /**
+     * Comments
+     */
+    comments?: Array<ReviewLineComment>;
+};
+
+/**
+ * ReviewLineComment
+ *
+ * A review comment anchored to a side and line of a compared file.
+ */
+export type ReviewLineComment = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Side
+     */
+    side: 'old' | 'new';
+    /**
+     * Line
+     */
+    line: number;
+    /**
+     * Body
+     */
+    body: string;
+};
+
+/**
+ * ReviewPublic
+ *
+ * An immutable submitted review.
+ */
+export type ReviewPublic = {
+    /**
+     * Base Commit
+     */
+    base_commit: string;
+    /**
+     * Head Commit
+     */
+    head_commit: string;
+    /**
+     * Body
+     */
+    body?: string;
+    /**
+     * Comments
+     */
+    comments?: Array<ReviewLineComment>;
+    state: ReviewState;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Author Username
+     */
+    author_username: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * ReviewState
+ *
+ * The outcome of a submitted review.
+ */
+export type ReviewState = 'approved' | 'comment' | 'changes_requested';
+
+/**
+ * ReviewSubmit
+ *
+ * A review submitted with an outcome and optional overall comment.
+ */
+export type ReviewSubmit = {
+    /**
+     * Base Commit
+     */
+    base_commit: string;
+    /**
+     * Head Commit
+     */
+    head_commit: string;
+    /**
+     * Body
+     */
+    body?: string;
+    /**
+     * Comments
+     */
+    comments?: Array<ReviewLineComment>;
+    state: ReviewState;
+};
+
+/**
+ * ReviewWorkspacePublic
+ *
+ * A user's private draft and viewed files for the current comparison.
+ */
+export type ReviewWorkspacePublic = {
+    draft?: ReviewDraft | null;
+    /**
+     * Reviewed Paths
+     */
+    reviewed_paths?: Array<string>;
+};
+
+/**
+ * ReviewedFileUpdate
+ *
+ * Mark a file viewed at an exact comparison.
+ */
+export type ReviewedFileUpdate = {
+    /**
+     * Base Commit
+     */
+    base_commit: string;
+    /**
+     * Head Commit
+     */
+    head_commit: string;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Reviewed
+     */
+    reviewed: boolean;
 };
 
 /**
@@ -3860,7 +4118,12 @@ export type repositoriesGetCommitData = {
          */
         sha: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Include Diff
+         */
+        include_diff?: boolean;
+    };
     url: '/api/v1/repositories/{owner}/{repo}/commits/{sha}';
 };
 
@@ -4200,7 +4463,12 @@ export type repositoriesGetPullRequestFilesData = {
          */
         number: number;
     };
-    query?: never;
+    query?: {
+        /**
+         * Include Diff
+         */
+        include_diff?: boolean;
+    };
     url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/files';
 };
 
@@ -4221,6 +4489,100 @@ export type repositoriesGetPullRequestFilesResponses = {
 };
 
 export type repositoriesGetPullRequestFilesResponse = repositoriesGetPullRequestFilesResponses[keyof repositoriesGetPullRequestFilesResponses];
+
+export type repositoriesCompareRevisionsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Base
+         */
+        base?: string;
+        /**
+         * Head
+         */
+        head?: string;
+        /**
+         * Include Diff
+         */
+        include_diff?: boolean;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/compare';
+};
+
+export type repositoriesCompareRevisionsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesCompareRevisionsError = repositoriesCompareRevisionsErrors[keyof repositoriesCompareRevisionsErrors];
+
+export type repositoriesCompareRevisionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CompareResult;
+};
+
+export type repositoriesCompareRevisionsResponse = repositoriesCompareRevisionsResponses[keyof repositoriesCompareRevisionsResponses];
+
+export type repositoriesGetDiffFileData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query: {
+        /**
+         * Head
+         */
+        head: string;
+        /**
+         * File Path
+         */
+        file_path: string;
+        /**
+         * Base
+         */
+        base?: string;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/diff-file';
+};
+
+export type repositoriesGetDiffFileErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetDiffFileError = repositoriesGetDiffFileErrors[keyof repositoriesGetDiffFileErrors];
+
+export type repositoriesGetDiffFileResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommitFileChange;
+};
+
+export type repositoriesGetDiffFileResponse = repositoriesGetDiffFileResponses[keyof repositoriesGetDiffFileResponses];
 
 export type repositoriesDeleteRepositoryData = {
     body?: never;
@@ -4323,6 +4685,198 @@ export type repositoriesUpdateRepositoryResponses = {
 };
 
 export type repositoriesUpdateRepositoryResponse = repositoriesUpdateRepositoryResponses[keyof repositoriesUpdateRepositoryResponses];
+
+export type reviewsListReviewsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviews';
+};
+
+export type reviewsListReviewsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsListReviewsError = reviewsListReviewsErrors[keyof reviewsListReviewsErrors];
+
+export type reviewsListReviewsResponses = {
+    /**
+     * Response Reviews-List Reviews
+     *
+     * Successful Response
+     */
+    200: Array<ReviewPublic>;
+};
+
+export type reviewsListReviewsResponse = reviewsListReviewsResponses[keyof reviewsListReviewsResponses];
+
+export type reviewsSubmitReviewData = {
+    body: ReviewSubmit;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviews';
+};
+
+export type reviewsSubmitReviewErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsSubmitReviewError = reviewsSubmitReviewErrors[keyof reviewsSubmitReviewErrors];
+
+export type reviewsSubmitReviewResponses = {
+    /**
+     * Successful Response
+     */
+    201: ReviewPublic;
+};
+
+export type reviewsSubmitReviewResponse = reviewsSubmitReviewResponses[keyof reviewsSubmitReviewResponses];
+
+export type reviewsGetWorkspaceData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/review-workspace';
+};
+
+export type reviewsGetWorkspaceErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsGetWorkspaceError = reviewsGetWorkspaceErrors[keyof reviewsGetWorkspaceErrors];
+
+export type reviewsGetWorkspaceResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReviewWorkspacePublic;
+};
+
+export type reviewsGetWorkspaceResponse = reviewsGetWorkspaceResponses[keyof reviewsGetWorkspaceResponses];
+
+export type reviewsSaveDraftData = {
+    body: ReviewDraft;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/review-draft';
+};
+
+export type reviewsSaveDraftErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsSaveDraftError = reviewsSaveDraftErrors[keyof reviewsSaveDraftErrors];
+
+export type reviewsSaveDraftResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReviewWorkspacePublic;
+};
+
+export type reviewsSaveDraftResponse = reviewsSaveDraftResponses[keyof reviewsSaveDraftResponses];
+
+export type reviewsMarkReviewedData = {
+    body: ReviewedFileUpdate;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviewed-files';
+};
+
+export type reviewsMarkReviewedErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsMarkReviewedError = reviewsMarkReviewedErrors[keyof reviewsMarkReviewedErrors];
+
+export type reviewsMarkReviewedResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReviewWorkspacePublic;
+};
+
+export type reviewsMarkReviewedResponse = reviewsMarkReviewedResponses[keyof reviewsMarkReviewedResponses];
 
 export type utilsTestEmailData = {
     body?: never;

@@ -137,13 +137,16 @@ class PullRequestService:
         pull_request = await self._find_pull_request(owner, name, number)
         return self._to_public(pull_request, owner, name)
 
-    async def get_pull_request_files(self, owner: str, name: str, number: int) -> CompareResult:
+    async def get_pull_request_files(
+        self, owner: str, name: str, number: int, *, include_diff: bool = True
+    ) -> CompareResult:
         """List the files changed between a pull request's base and head branches.
 
         Args:
             owner: Owner name.
             name: Repository name.
             number: Pull request number.
+            include_diff: Include highlighted hunks or only the compact file index.
 
         Returns:
             CompareResult with the changed files and the resolved head commit.
@@ -152,7 +155,9 @@ class PullRequestService:
             HTTPException: If the pull request is not found.
         """
         pull_request = await self._find_pull_request(owner, name, number)
-        return await self.repository_service.compare(owner, name, pull_request.base_branch, pull_request.head_branch)
+        return await self.repository_service.compare(
+            owner, name, pull_request.base_branch, pull_request.head_branch, include_diff=include_diff
+        )
 
     async def update_pull_request(
         self, owner: str, name: str, number: int, body: PullRequestUpdate, current_user: User

@@ -24,6 +24,7 @@ from app.clients.pull_requests import PullRequestStore
 from app.clients.redis import AbstractRedisClient
 from app.clients.releases import ReleaseStore
 from app.clients.repositories import RepositoryStore
+from app.clients.reviews import ReviewStore
 from app.clients.stars import StarStore
 from app.clients.users import UserStore
 from app.clients.watchers import WatcherStore
@@ -37,6 +38,7 @@ from app.entities.principals import Principal, PrincipalType
 from app.entities.pull_requests import PullRequest
 from app.entities.releases import Release
 from app.entities.repositories import Repository
+from app.entities.reviews import PullRequestReview, PullRequestReviewWorkspace
 from app.entities.stars import Star
 from app.entities.users import User
 from app.entities.watchers import Watcher
@@ -723,6 +725,38 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
         return [self._hydrate(activity) for activity in activities[offset : offset + limit]]
 
 
+class FakeReviewStore(ReviewStore):
+    """In-memory reviews and per-user workspaces."""
+
+    def __init__(self) -> None:
+        """Initialize isolated review state."""
+        self.reviews = FakeCrudStore[PullRequestReview]()
+        self.workspaces: dict[tuple[uuid.UUID, uuid.UUID], PullRequestReviewWorkspace] = {}
+
+    async def list_reviews(self, pull_request_id: uuid.UUID) -> list[PullRequestReview]:
+        """List only submitted reviews for a pull request."""
+        return [review for review in self.reviews.items.values() if review.pull_request_id == pull_request_id]
+
+    async def workspace(
+        self, pull_request_id: uuid.UUID, author_id: uuid.UUID, *, for_update: bool = False
+    ) -> PullRequestReviewWorkspace:
+        """Find a private workspace or return an empty one."""
+        workspace = PullRequestReviewWorkspace(pull_request_id=pull_request_id, author_id=author_id, reviewed_paths=[])
+        if for_update:
+            return self.workspaces.setdefault((pull_request_id, author_id), workspace)
+        return self.workspaces.get((pull_request_id, author_id)) or workspace
+
+    async def save_workspace(self, workspace: PullRequestReviewWorkspace) -> None:
+        """Save private state under the pull request and author."""
+        self.workspaces[workspace.pull_request_id, workspace.author_id] = workspace
+
+    async def submit(self, review: PullRequestReview, workspace: PullRequestReviewWorkspace) -> None:
+        """Publish all review comments and clear the draft together."""
+        self.reviews.persist(review)
+        workspace.draft = None
+        await self.save_workspace(workspace)
+
+
 @dataclass
 class FakeStores:
     """Container for the in-memory store fakes."""
@@ -730,6 +764,7 @@ class FakeStores:
     users: FakeUserStore
     issues: FakeIssueStore
     pull_requests: FakePullRequestStore
+    reviews: FakeReviewStore
     repository: FakeRepositoryStore
     organizations: FakeOrganizationStore
     stars: FakeStarStore
@@ -779,6 +814,7 @@ def build_fake_stores() -> FakeStores:
         users=users,
         issues=issues,
         pull_requests=pull_requests,
+        reviews=FakeReviewStore(),
         repository=repository,
         organizations=organizations,
         stars=FakeStarStore(users),

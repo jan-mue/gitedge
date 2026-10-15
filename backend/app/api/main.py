@@ -13,6 +13,7 @@ from app.api.routes import (
     profiles,
     releases,
     repositories,
+    reviews,
     stars,
     users,
     utils,
@@ -36,6 +37,7 @@ api_router.include_router(activity.router)
 api_router.include_router(activity.user_router)
 api_router.include_router(profiles.router)
 api_router.include_router(repositories.router)
+api_router.include_router(reviews.router)
 api_router.include_router(utils.router)
 
 
