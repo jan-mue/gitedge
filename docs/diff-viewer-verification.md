@@ -65,7 +65,7 @@ of equal performance or a network latency guarantee.
 
 The 500-file PR integration test observed a 96,161-byte file-index response,
 initially requested only two highlighted files, and displayed the first
-highlighted file in 436–831 ms across the local verification runs. The index was
+highlighted file in 436–1,338 ms across the local verification runs. The index was
 already warmed by loading the PR conversation; this is not a cold-cache API
 benchmark. The test enforces bounded DOM, bounded rendered rows, and fewer than
 ten initial per-file requests instead of fragile wall-clock limits.
