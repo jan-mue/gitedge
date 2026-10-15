@@ -195,8 +195,8 @@ class TestFork:
 
         page.wait_for_url(f"{app_url}/{SUPERUSER_USERNAME}/{fork_name}")
         expect(page.get_by_role("heading", name="Test Repository", exact=True)).to_be_visible(timeout=15000)
-        expect(page.get_by_role("button", name="README.md")).to_be_visible()
-        expect(page.get_by_role("button", name="src", exact=True)).to_be_visible()
+        expect(page.get_by_role("link", name="README.md", exact=True)).to_be_visible()
+        expect(page.get_by_role("link", name="src", exact=True)).to_be_visible()
 
         fork_url = f"{app_url}/{SUPERUSER_USERNAME}/{fork_name}.git"
         with tempfile.TemporaryDirectory() as tmpdir:

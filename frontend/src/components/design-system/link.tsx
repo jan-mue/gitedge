@@ -38,6 +38,9 @@ const appearances = {
   repositoryOwner: "text-foreground hover:text-primary hover:underline",
   repositoryName: "font-bold text-foreground hover:text-primary hover:underline",
   file: "text-foreground hover:text-primary hover:underline",
+  fileEntry: "flex min-w-0 items-center gap-3 text-foreground hover:text-primary hover:underline",
+  fileCommit:
+    "order-last col-span-2 min-w-0 truncate text-sm text-muted-foreground hover:text-primary hover:underline sm:order-none sm:col-span-1",
   muted: "inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground",
   underline: "text-sm underline underline-offset-4",
   recovery: "ml-auto text-sm underline-offset-4 hover:underline",
