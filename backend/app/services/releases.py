@@ -106,13 +106,15 @@ class ReleaseService:
         )
         await self.release_store.add(release)
         release.author = current_user
-        await self.activity_service.record(
-            actor=current_user,
-            repo=repository,
-            kind=ActivityKind.RELEASE,
-            title=body.name or body.tag_name,
-            target_type=ActivityTargetType.RELEASE,
-        )
+        if not release.is_draft:
+            await self.activity_service.record(
+                actor=current_user,
+                repo=repository,
+                kind=ActivityKind.RELEASE,
+                title=body.name or body.tag_name,
+                target_type=ActivityTargetType.RELEASE,
+                text=release.body or "",
+            )
         return self._to_public(release, owner, name)
 
     async def update_release(
@@ -138,6 +140,7 @@ class ReleaseService:
         if release.author_id != current_user.id and not current_user.is_superuser:
             raise HTTPException(status_code=403, detail="You can only edit your own releases")
 
+        was_draft = release.is_draft
         if body.name is not None:
             release.name = body.name
         if body.body is not None:
@@ -151,6 +154,16 @@ class ReleaseService:
 
         release.updated_at = datetime.now(UTC)
         await self.release_store.update(release)
+        if was_draft and not release.is_draft:
+            repository = await self.repository_store.get_by_owner_and_name(owner, name)
+            await self.activity_service.record(
+                actor=current_user,
+                repo=repository,
+                kind=ActivityKind.RELEASE,
+                title=release.name or release.tag_name,
+                target_type=ActivityTargetType.RELEASE,
+                text=release.body or "",
+            )
         return self._to_public(release, owner, name)
 
     async def _find_release(self, owner: str, name: str, tag_name: str) -> Release:

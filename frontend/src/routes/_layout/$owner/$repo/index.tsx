@@ -28,6 +28,11 @@ function RepositoryIndexRedirect() {
   }
 
   return (
-    <Navigate to="/$owner/$repo/src/branch/$branch" params={{ owner, repo, branch: data.default_branch }} replace />
+    <Navigate
+      to="/$owner/$repo/src/branch/$branch"
+      params={{ owner, repo, branch: data.default_branch }}
+      search={(previous) => previous}
+      replace
+    />
   )
 }

@@ -19,6 +19,7 @@ from app.clients.comments import CommentStore
 from app.clients.database import CrudStore
 from app.clients.email import EmailClient
 from app.clients.issues import IssueStore
+from app.clients.notifications import NotificationPage, NotificationStore, notification_thread
 from app.clients.organizations import OrganizationStore
 from app.clients.pull_requests import PullRequestStore
 from app.clients.redis import AbstractRedisClient
@@ -32,9 +33,11 @@ from app.entities.activity import Activity, ActivityKind
 from app.entities.base import Base
 from app.entities.comments import Comment
 from app.entities.issues import Issue, IssueState
+from app.entities.notifications import Notification
 from app.entities.organizations import Organization
 from app.entities.principals import Principal, PrincipalType
 from app.entities.pull_requests import PullRequest
+from app.entities.reactions import CommentReaction
 from app.entities.releases import Release
 from app.entities.repositories import Repository
 from app.entities.stars import Star
@@ -48,6 +51,7 @@ from app.exceptions import (
     RepositoryNotFoundError,
 )
 from app.schemas.activity import ActivityTargetPreview
+from app.schemas.notifications import NOTIFICATION_CATEGORIES, NotificationFilter
 from app.utils.security import get_password_hash
 
 if TYPE_CHECKING:
@@ -563,6 +567,8 @@ class FakeCommentStore(FakeCrudStore[Comment], CommentStore):
         self.users = users
         self.issues = issues
         self.pull_requests = pull_requests
+        self.repository: FakeRepositoryStore | None = None
+        self.reaction_items: dict[tuple[uuid.UUID, uuid.UUID, str], CommentReaction] = {}
 
     def _hydrate(self, comment: Comment) -> Comment:
         """Populate the comment's author and issue from the other fake stores."""
@@ -594,6 +600,24 @@ class FakeCommentStore(FakeCrudStore[Comment], CommentStore):
         comments = [comment for comment in self.items.values() if comment.issue_id == issue_id]
         comments.sort(key=lambda comment: comment.created_at or datetime.min.replace(tzinfo=UTC))
         return [self._hydrate(comment) for comment in comments]
+
+    async def context(self, comment: Comment) -> tuple[Issue, Repository]:
+        issue = self._hydrate(comment).issue
+        assert self.repository is not None
+        return issue, await self.repository.get(issue.repo_id)
+
+    async def reactions(self, comment_id: uuid.UUID) -> list[CommentReaction]:
+        return [reaction for reaction in self.reaction_items.values() if reaction.comment_id == comment_id]
+
+    async def set_reaction(self, comment_id: uuid.UUID, user_id: uuid.UUID, emoji: str, *, enabled: bool) -> bool:
+        key = (comment_id, user_id, emoji)
+        if not enabled:
+            self.reaction_items.pop(key, None)
+            return False
+        if key in self.reaction_items:
+            return False
+        self.reaction_items[key] = CommentReaction(comment_id=comment_id, user_id=user_id, emoji=emoji)
+        return True
 
 
 class FakeReleaseStore(FakeCrudStore[Release], ReleaseStore):
@@ -671,7 +695,7 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
             if issue is None:
                 continue
             body = issue.body
-            if activity.kind == ActivityKind.COMMENT:
+            if activity.kind in (ActivityKind.COMMENT, ActivityKind.COMMENT_EDIT, ActivityKind.REACTION):
                 comment = stores.comments.items.get(activity.comment_id) if activity.comment_id else None
                 body = comment.body if comment is not None and comment.issue_id == issue.id else None
             previews[activity.id] = ActivityTargetPreview(
@@ -723,6 +747,147 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
         return [self._hydrate(activity) for activity in activities[offset : offset + limit]]
 
 
+class FakeNotificationStore(FakeCrudStore[Notification], NotificationStore):
+    """In-memory inbox, including recipient and privacy rules."""
+
+    def __init__(self, repository: FakeRepositoryStore) -> None:
+        super().__init__()
+        self.repository = repository
+        self.email_preferences: dict[uuid.UUID, bool] = {}
+        self.repository_preferences: dict[tuple[uuid.UUID, uuid.UUID], list[str]] = {}
+        self.muted: set[tuple[uuid.UUID, uuid.UUID, str]] = set()
+        self.subscribed: set[tuple[uuid.UUID, uuid.UUID, str]] = set()
+
+    async def audience(self, activity: Activity, mentions: set[str]) -> list[tuple[User, str]]:
+        stores = self.repository.stores
+        assert stores is not None
+        assert activity.repo_id is not None
+        repo = self.repository.items[activity.repo_id]
+        reasons = {repo.owner_id: "subscribed"}
+        reasons.update(
+            {watcher.user_id: "subscribed" for watcher in stores.watchers.items.values() if watcher.repo_id == repo.id}
+        )
+        reasons.update(
+            {
+                user_id: "participating"
+                for user_id, repo_id, thread in self.subscribed
+                if repo_id == repo.id and thread == notification_thread(activity)
+            }
+        )
+        issue = next(
+            (
+                issue
+                for issue in [*stores.issues.items.values(), *stores.pull_requests.items.values()]
+                if issue.repo_id == repo.id and issue.number == activity.target_number
+            ),
+            None,
+        )
+        if issue is not None:
+            reasons.update(
+                {
+                    comment.author_id: "participating"
+                    for comment in stores.comments.items.values()
+                    if comment.issue_id == issue.id
+                }
+            )
+            reasons[issue.author_id] = "author"
+        if (
+            activity.kind == "reaction"
+            and activity.comment_id is not None
+            and activity.comment_id in stores.comments.items
+        ):
+            reasons[stores.comments.items[activity.comment_id].author_id] = "reaction"
+        reasons.update({user.id: "mentioned" for user in stores.users.items.values() if user.lower_name in mentions})
+        return [
+            (user, reasons[user.id])
+            for user in stores.users.items.values()
+            if user.id in reasons
+            and user.id != activity.actor_id
+            and user.is_active
+            and (not repo.is_private or repo.owner_id == user.id or user.is_superuser)
+        ]
+
+    async def list_for_user(self, user: User, ids: list[uuid.UUID] | None = None) -> list[Notification]:
+        return sorted(
+            [
+                n
+                for n in self.items.values()
+                if n.user_id == user.id
+                and (ids is None or n.id in ids)
+                and n.activity.repo is not None
+                and (not n.activity.repo.is_private or n.activity.repo.owner_id == user.id or user.is_superuser)
+            ],
+            key=lambda n: n.created_at,
+            reverse=True,
+        )
+
+    async def page(self, user: User, filters: NotificationFilter) -> NotificationPage:
+        notifications = await self.list_for_user(user)
+        base = [n for n in notifications if n.is_archived == (filters.view == "archived")]
+        reasons: dict[str, int] = {}
+        repos: dict[str, int] = {}
+        visible = []
+        for n in base:
+            repo = n.activity.repo
+            assert repo is not None
+            repository = f"{repo.owner.name}/{repo.name}"
+            reasons[n.reason] = reasons.get(n.reason, 0) + 1
+            repos[repository] = repos.get(repository, 0) + 1
+            if filters.read == "unread" and n.is_read and n.id != filters.focus:
+                continue
+            if (filters.reason and n.reason != filters.reason) or (filters.repo and repository != filters.repo):
+                continue
+            text = f"{n.activity.title} {repository} {n.activity.target_number or ''}".lower()
+            if filters.query.strip().lower() not in text:
+                continue
+            visible.append(n)
+        return NotificationPage(
+            visible[filters.offset : filters.offset + filters.limit],
+            len(visible),
+            sum(not n.is_read and not n.is_archived for n in notifications),
+            sum(not n.is_archived for n in notifications),
+            sum(n.is_archived for n in notifications),
+            repos,
+            reasons,
+        )
+
+    async def mark_all_read(self, user: User) -> None:
+        for n in await self.list_for_user(user):
+            if not n.is_archived:
+                n.is_read = True
+
+    async def archive_repository(self, user: User, repo_id: uuid.UUID) -> None:
+        for n in await self.list_for_user(user):
+            if n.activity.repo_id == repo_id:
+                n.is_read = True
+                n.is_archived = True
+
+    async def email_enabled(self, user_id: uuid.UUID) -> bool:
+        return self.email_preferences.get(user_id, False)
+
+    async def set_email(self, user_id: uuid.UUID, enabled: bool) -> None:
+        self.email_preferences[user_id] = enabled
+
+    async def categories(self, user_id: uuid.UUID, repo_id: uuid.UUID) -> list[str]:
+        return self.repository_preferences.get((user_id, repo_id), list(NOTIFICATION_CATEGORIES))
+
+    async def set_categories(self, user_id: uuid.UUID, repo_id: uuid.UUID, categories: list[str]) -> None:
+        self.repository_preferences[(user_id, repo_id)] = categories
+
+    async def muted_threads(self, user_id: uuid.UUID) -> set[tuple[uuid.UUID, str]]:
+        return {(repo_id, thread) for owner_id, repo_id, thread in self.muted if owner_id == user_id}
+
+    async def set_muted(self, user_id: uuid.UUID, activity: Activity, muted: bool) -> None:
+        assert activity.repo_id is not None
+        key = (user_id, activity.repo_id, notification_thread(activity))
+        if muted:
+            self.muted.add(key)
+            self.subscribed.discard(key)
+        else:
+            self.muted.discard(key)
+            self.subscribed.add(key)
+
+
 @dataclass
 class FakeStores:
     """Container for the in-memory store fakes."""
@@ -737,6 +902,7 @@ class FakeStores:
     comments: FakeCommentStore
     releases: FakeReleaseStore
     activity: FakeActivityStore
+    notifications: FakeNotificationStore
     cache: FakeCacheClient
     blob: FakeBlobStorageClient
     redis: FakeRedisClient
@@ -761,6 +927,7 @@ def build_fake_stores() -> FakeStores:
     pull_requests = FakePullRequestStore(users)
     comments = FakeCommentStore(users, issues, pull_requests)
     releases = FakeReleaseStore(users)
+    comments.repository = repository
     issues.comment_store = comments
     pull_requests.comment_store = comments
     repository.release_store = releases
@@ -786,6 +953,7 @@ def build_fake_stores() -> FakeStores:
         comments=comments,
         releases=releases,
         activity=FakeActivityStore(users, repository),
+        notifications=FakeNotificationStore(repository),
         cache=FakeCacheClient(),
         blob=FakeBlobStorageClient(),
         redis=FakeRedisClient(),

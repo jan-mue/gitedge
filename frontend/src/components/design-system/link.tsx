@@ -3,6 +3,12 @@ import type { ComponentProps } from "react"
 import { cn } from "@/lib/utils"
 
 const appearances = {
+  notificationReturn:
+    "flex items-center gap-1.5 px-2.5 py-1 rounded border border-border bg-background text-foreground hover:bg-accent shrink-0 font-medium",
+  notificationNav: "relative p-1.5 rounded text-foreground hover:bg-accent transition-colors",
+  notificationTarget: "flex-1 min-w-0 group",
+  notificationRepository: "text-sm font-semibold text-foreground hover:text-primary truncate",
+
   avatar:
     "flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-foreground",
   author: "font-semibold hover:text-primary",

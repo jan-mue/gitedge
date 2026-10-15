@@ -17,6 +17,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutExploreRouteImport } from './routes/_layout/explore'
+import { Route as LayoutNotificationsRouteImport } from './routes/_layout/notifications'
 import { Route as LayoutRepositoriesRouteImport } from './routes/_layout/repositories'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutProfileUsernameRouteImport } from './routes/_layout/profile.$username'
@@ -90,6 +91,11 @@ const LayoutAdminRoute = LayoutAdminRouteImport.update({
 const LayoutExploreRoute = LayoutExploreRouteImport.update({
   id: '/explore',
   path: '/explore',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutNotificationsRoute = LayoutNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutRepositoriesRoute = LayoutRepositoriesRouteImport.update({
@@ -295,6 +301,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
   '/explore': typeof LayoutExploreRoute
+  '/notifications': typeof LayoutNotificationsRoute
   '/repositories': typeof LayoutRepositoriesRoute
   '/settings': typeof LayoutSettingsRoute
   '/profile/$username': typeof LayoutProfileUsernameRoute
@@ -338,6 +345,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
   '/explore': typeof LayoutExploreRoute
+  '/notifications': typeof LayoutNotificationsRoute
   '/repositories': typeof LayoutRepositoriesRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
@@ -378,6 +386,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_layout/admin': typeof LayoutAdminRoute
   '/_layout/explore': typeof LayoutExploreRoute
+  '/_layout/notifications': typeof LayoutNotificationsRoute
   '/_layout/repositories': typeof LayoutRepositoriesRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
@@ -425,6 +434,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/admin'
     | '/explore'
+    | '/notifications'
     | '/repositories'
     | '/settings'
     | '/profile/$username'
@@ -468,6 +478,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/admin'
     | '/explore'
+    | '/notifications'
     | '/repositories'
     | '/settings'
     | '/'
@@ -507,6 +518,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_layout/admin'
     | '/_layout/explore'
+    | '/_layout/notifications'
     | '/_layout/repositories'
     | '/_layout/settings'
     | '/_layout/'
@@ -609,6 +621,13 @@ declare module '@tanstack/react-router' {
       path: '/explore'
       fullPath: '/explore'
       preLoaderRoute: typeof LayoutExploreRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/notifications': {
+      id: '/_layout/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof LayoutNotificationsRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/repositories': {
@@ -978,6 +997,7 @@ const LayoutOwnerRepoSrcTagTagRouteWithChildren =
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
   LayoutExploreRoute: typeof LayoutExploreRoute
+  LayoutNotificationsRoute: typeof LayoutNotificationsRoute
   LayoutRepositoriesRoute: typeof LayoutRepositoriesRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
@@ -1003,6 +1023,7 @@ interface LayoutRouteChildren {
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
   LayoutExploreRoute: LayoutExploreRoute,
+  LayoutNotificationsRoute: LayoutNotificationsRoute,
   LayoutRepositoriesRoute: LayoutRepositoriesRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,

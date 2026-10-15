@@ -9,6 +9,19 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
+        notificationSidebar:
+          "w-full justify-between gap-2 px-3 py-1.5 rounded text-sm text-left font-normal text-foreground hover:bg-accent aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:font-medium",
+        notificationChip:
+          "px-2.5 py-1 rounded-full text-xs border font-normal border-border text-foreground bg-background aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:border-primary",
+        notificationTab:
+          "rounded-none px-3 py-1 text-sm capitalize font-normal bg-secondary text-foreground hover:bg-accent aria-pressed:bg-primary aria-pressed:text-primary-foreground",
+        notificationAction:
+          "flex items-center gap-1 px-2 py-1 text-xs rounded border border-border bg-background text-foreground hover:bg-accent font-normal",
+        notificationIcon:
+          "p-2 rounded hover:bg-accent text-muted-foreground hover:text-foreground aria-pressed:text-warning",
+        reaction:
+          "gap-1 rounded-full border border-border bg-background text-muted-foreground hover:bg-accent aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-primary",
+
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
         success: "bg-success text-success-foreground hover:opacity-90",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
@@ -41,6 +54,12 @@ export const buttonVariants = cva(
         branchItem: "w-full justify-start gap-2 rounded-none text-left font-normal text-foreground hover:bg-accent",
       },
       size: {
+        notificationSidebar: "h-auto px-3 py-1.5",
+        notificationChip: "h-auto px-2.5 py-1",
+        notificationTab: "h-auto px-3 py-1",
+        notificationAction: "h-auto px-2 py-1",
+        notificationIcon: "h-auto p-2",
+
         default: "h-10 px-4 py-2",
         sm: "h-9 px-3 text-sm",
         compact: "h-8 px-3 text-sm",

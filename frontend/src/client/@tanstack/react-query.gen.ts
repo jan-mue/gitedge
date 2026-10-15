@@ -3,8 +3,257 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { ActivityService, CommentsService, ForksService, GitService, LoginService, type Options, OrganizationsService, PrivateService, ProfilesService, ReleasesService, RepositoriesService, StarsService, UsersService, UtilsService, WatchersService } from '../sdk.gen';
-import type { activityGetFeedData, activityGetFeedError, activityGetFeedResponse, activityGetRepositoryActivityData, activityGetRepositoryActivityError, activityGetRepositoryActivityResponse, activityGetRepositoryActivityStatisticsData, activityGetRepositoryActivityStatisticsError, activityGetRepositoryActivityStatisticsResponse, commentsCreateCommentData, commentsCreateCommentError, commentsCreateCommentResponse, commentsDeleteCommentData, commentsDeleteCommentError, commentsDeleteCommentResponse, commentsListCommentsData, commentsListCommentsError, commentsListCommentsResponse, commentsUpdateCommentData, commentsUpdateCommentError, commentsUpdateCommentResponse, forksForkRepositoryData, forksForkRepositoryError, forksForkRepositoryResponse, forksListForksData, forksListForksError, forksListForksResponse, gitGetHeadData, gitGetHeadError, gitGetInfoPacksData, gitGetInfoPacksError, gitGetInfoRefsData, gitGetInfoRefsError, gitGetLooseObjectData, gitGetLooseObjectError, gitGetPackFileData, gitGetPackFileError, gitGitReceivePackData, gitGitReceivePackError, gitGitUploadPackData, gitGitUploadPackError, loginLoginAccessTokenData, loginLoginAccessTokenError, loginLoginAccessTokenResponse, loginRecoverPasswordData, loginRecoverPasswordError, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentError, loginRecoverPasswordResponse, loginResetPasswordData, loginResetPasswordError, loginResetPasswordResponse, loginTestTokenData, loginTestTokenResponse, organizationsCreateOrganizationData, organizationsCreateOrganizationError, organizationsCreateOrganizationResponse, organizationsListOrganizationsData, organizationsListOrganizationsError, organizationsListOrganizationsResponse, privateCreateUserData, privateCreateUserError, privateCreateUserResponse, profilesListUserRepositoriesData, profilesListUserRepositoriesError, profilesListUserRepositoriesResponse, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesError, profilesListUserStarredRepositoriesResponse, profilesReadUserByUsernameData, profilesReadUserByUsernameError, profilesReadUserByUsernameResponse, releasesCreateReleaseData, releasesCreateReleaseError, releasesCreateReleaseResponse, releasesGetReleaseData, releasesGetReleaseError, releasesGetReleaseResponse, releasesListReleasesData, releasesListReleasesError, releasesListReleasesResponse, releasesListTagsData, releasesListTagsError, releasesListTagsResponse, releasesUpdateReleaseData, releasesUpdateReleaseError, releasesUpdateReleaseResponse, repositoriesCreateIssueData, repositoriesCreateIssueError, repositoriesCreateIssueResponse, repositoriesCreatePullRequestData, repositoriesCreatePullRequestError, repositoriesCreatePullRequestResponse, repositoriesCreateRepositoryData, repositoriesCreateRepositoryError, repositoriesCreateRepositoryResponse, repositoriesDeleteRepositoryData, repositoriesDeleteRepositoryError, repositoriesDeleteRepositoryResponse, repositoriesGetBlameData, repositoriesGetBlameError, repositoriesGetBlameResponse, repositoriesGetBlobData, repositoriesGetBlobError, repositoriesGetBlobResponse, repositoriesGetCommitData, repositoriesGetCommitError, repositoriesGetCommitResponse, repositoriesGetFileIndexData, repositoriesGetFileIndexError, repositoriesGetFileIndexResponse, repositoriesGetIssueData, repositoriesGetIssueError, repositoriesGetIssueResponse, repositoriesGetPullRequestData, repositoriesGetPullRequestError, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesError, repositoriesGetPullRequestFilesResponse, repositoriesGetPullRequestResponse, repositoriesGetRawData, repositoriesGetRawError, repositoriesGetReadmeData, repositoriesGetReadmeError, repositoriesGetReadmeResponse, repositoriesGetRepositoryData, repositoriesGetRepositoryError, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoError, repositoriesGetRepositoryInfoResponse, repositoriesGetRepositoryResponse, repositoriesGetSourceData, repositoriesGetSourceError, repositoriesGetSourceResponse, repositoriesGetStatisticsData, repositoriesGetStatisticsError, repositoriesGetStatisticsResponse, repositoriesGetTreeData, repositoriesGetTreeError, repositoriesGetTreeResponse, repositoriesListBranchesData, repositoriesListBranchesError, repositoriesListBranchesResponse, repositoriesListCommitsData, repositoriesListCommitsError, repositoriesListCommitsResponse, repositoriesListIssuesData, repositoriesListIssuesError, repositoriesListIssuesResponse, repositoriesListPullRequestsData, repositoriesListPullRequestsError, repositoriesListPullRequestsResponse, repositoriesListRepositoriesData, repositoriesListRepositoriesResponse, repositoriesUpdateIssueData, repositoriesUpdateIssueError, repositoriesUpdateIssueResponse, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestError, repositoriesUpdatePullRequestResponse, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryError, repositoriesUpdateRepositoryResponse, starsGetStarStateData, starsGetStarStateError, starsGetStarStateResponse, starsListStargazersData, starsListStargazersError, starsListStargazersResponse, starsListStarredRepositoriesData, starsListStarredRepositoriesError, starsListStarredRepositoriesResponse, starsStarRepositoryData, starsStarRepositoryError, starsStarRepositoryResponse, starsUnstarRepositoryData, starsUnstarRepositoryError, starsUnstarRepositoryResponse, usersCreateUserData, usersCreateUserError, usersCreateUserResponse, usersDeleteUserData, usersDeleteUserError, usersDeleteUserMeData, usersDeleteUserMeResponse, usersDeleteUserResponse, usersReadUserMeData, usersReadUserMeResponse, usersReadUsersData, usersReadUsersError, usersReadUsersResponse, usersRegisterUserData, usersRegisterUserError, usersRegisterUserResponse, usersUpdatePasswordMeData, usersUpdatePasswordMeError, usersUpdatePasswordMeResponse, usersUpdateUserData, usersUpdateUserError, usersUpdateUserMeData, usersUpdateUserMeError, usersUpdateUserMeResponse, usersUpdateUserResponse, utilsHealthCheckData, utilsHealthCheckResponse, utilsTestEmailData, utilsTestEmailError, utilsTestEmailResponse, watchersGetWatchStateData, watchersGetWatchStateError, watchersGetWatchStateResponse, watchersListWatchersData, watchersListWatchersError, watchersListWatchersResponse, watchersUnwatchRepositoryData, watchersUnwatchRepositoryError, watchersUnwatchRepositoryResponse, watchersWatchRepositoryData, watchersWatchRepositoryError, watchersWatchRepositoryResponse } from '../types.gen';
+import { ActivityService, CommentsService, ForksService, GitService, LoginService, NotificationsService, type Options, OrganizationsService, PrivateService, ProfilesService, ReleasesService, RepositoriesService, StarsService, UsersService, UtilsService, WatchersService } from '../sdk.gen';
+import type { activityGetFeedData, activityGetFeedError, activityGetFeedResponse, activityGetRepositoryActivityData, activityGetRepositoryActivityError, activityGetRepositoryActivityResponse, activityGetRepositoryActivityStatisticsData, activityGetRepositoryActivityStatisticsError, activityGetRepositoryActivityStatisticsResponse, commentsAddReactionData, commentsAddReactionError, commentsAddReactionResponse, commentsCreateCommentData, commentsCreateCommentError, commentsCreateCommentResponse, commentsDeleteCommentData, commentsDeleteCommentError, commentsDeleteCommentResponse, commentsListCommentsData, commentsListCommentsError, commentsListCommentsResponse, commentsListReactionsData, commentsListReactionsError, commentsListReactionsResponse, commentsRemoveReactionData, commentsRemoveReactionError, commentsRemoveReactionResponse, commentsUpdateCommentData, commentsUpdateCommentError, commentsUpdateCommentResponse, forksForkRepositoryData, forksForkRepositoryError, forksForkRepositoryResponse, forksListForksData, forksListForksError, forksListForksResponse, gitGetHeadData, gitGetHeadError, gitGetInfoPacksData, gitGetInfoPacksError, gitGetInfoRefsData, gitGetInfoRefsError, gitGetLooseObjectData, gitGetLooseObjectError, gitGetPackFileData, gitGetPackFileError, gitGitReceivePackData, gitGitReceivePackError, gitGitUploadPackData, gitGitUploadPackError, loginLoginAccessTokenData, loginLoginAccessTokenError, loginLoginAccessTokenResponse, loginRecoverPasswordData, loginRecoverPasswordError, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentError, loginRecoverPasswordResponse, loginResetPasswordData, loginResetPasswordError, loginResetPasswordResponse, loginTestTokenData, loginTestTokenResponse, notificationsArchiveRepositoryData, notificationsArchiveRepositoryError, notificationsArchiveRepositoryResponse, notificationsGetPreferencesData, notificationsGetPreferencesResponse, notificationsGetRepositoryPreferencesData, notificationsGetRepositoryPreferencesError, notificationsGetRepositoryPreferencesResponse, notificationsListNotificationsData, notificationsListNotificationsError, notificationsListNotificationsResponse, notificationsMarkAllReadData, notificationsMarkAllReadResponse, notificationsSetPreferencesData, notificationsSetPreferencesError, notificationsSetPreferencesResponse, notificationsSetRepositoryPreferencesData, notificationsSetRepositoryPreferencesError, notificationsSetRepositoryPreferencesResponse, notificationsUpdateNotificationsData, notificationsUpdateNotificationsError, notificationsUpdateNotificationsResponse, organizationsCreateOrganizationData, organizationsCreateOrganizationError, organizationsCreateOrganizationResponse, organizationsListOrganizationsData, organizationsListOrganizationsError, organizationsListOrganizationsResponse, privateCreateUserData, privateCreateUserError, privateCreateUserResponse, profilesListUserRepositoriesData, profilesListUserRepositoriesError, profilesListUserRepositoriesResponse, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesError, profilesListUserStarredRepositoriesResponse, profilesReadUserByUsernameData, profilesReadUserByUsernameError, profilesReadUserByUsernameResponse, releasesCreateReleaseData, releasesCreateReleaseError, releasesCreateReleaseResponse, releasesGetReleaseData, releasesGetReleaseError, releasesGetReleaseResponse, releasesListReleasesData, releasesListReleasesError, releasesListReleasesResponse, releasesListTagsData, releasesListTagsError, releasesListTagsResponse, releasesUpdateReleaseData, releasesUpdateReleaseError, releasesUpdateReleaseResponse, repositoriesCreateIssueData, repositoriesCreateIssueError, repositoriesCreateIssueResponse, repositoriesCreatePullRequestData, repositoriesCreatePullRequestError, repositoriesCreatePullRequestResponse, repositoriesCreateRepositoryData, repositoriesCreateRepositoryError, repositoriesCreateRepositoryResponse, repositoriesDeleteRepositoryData, repositoriesDeleteRepositoryError, repositoriesDeleteRepositoryResponse, repositoriesGetBlameData, repositoriesGetBlameError, repositoriesGetBlameResponse, repositoriesGetBlobData, repositoriesGetBlobError, repositoriesGetBlobResponse, repositoriesGetCommitData, repositoriesGetCommitError, repositoriesGetCommitResponse, repositoriesGetFileIndexData, repositoriesGetFileIndexError, repositoriesGetFileIndexResponse, repositoriesGetIssueData, repositoriesGetIssueError, repositoriesGetIssueResponse, repositoriesGetPullRequestData, repositoriesGetPullRequestError, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesError, repositoriesGetPullRequestFilesResponse, repositoriesGetPullRequestResponse, repositoriesGetRawData, repositoriesGetRawError, repositoriesGetReadmeData, repositoriesGetReadmeError, repositoriesGetReadmeResponse, repositoriesGetRepositoryData, repositoriesGetRepositoryError, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoError, repositoriesGetRepositoryInfoResponse, repositoriesGetRepositoryResponse, repositoriesGetSourceData, repositoriesGetSourceError, repositoriesGetSourceResponse, repositoriesGetStatisticsData, repositoriesGetStatisticsError, repositoriesGetStatisticsResponse, repositoriesGetTreeData, repositoriesGetTreeError, repositoriesGetTreeResponse, repositoriesListBranchesData, repositoriesListBranchesError, repositoriesListBranchesResponse, repositoriesListCommitsData, repositoriesListCommitsError, repositoriesListCommitsResponse, repositoriesListIssuesData, repositoriesListIssuesError, repositoriesListIssuesResponse, repositoriesListPullRequestsData, repositoriesListPullRequestsError, repositoriesListPullRequestsResponse, repositoriesListRepositoriesData, repositoriesListRepositoriesResponse, repositoriesUpdateIssueData, repositoriesUpdateIssueError, repositoriesUpdateIssueResponse, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestError, repositoriesUpdatePullRequestResponse, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryError, repositoriesUpdateRepositoryResponse, starsGetStarStateData, starsGetStarStateError, starsGetStarStateResponse, starsListStargazersData, starsListStargazersError, starsListStargazersResponse, starsListStarredRepositoriesData, starsListStarredRepositoriesError, starsListStarredRepositoriesResponse, starsStarRepositoryData, starsStarRepositoryError, starsStarRepositoryResponse, starsUnstarRepositoryData, starsUnstarRepositoryError, starsUnstarRepositoryResponse, usersCreateUserData, usersCreateUserError, usersCreateUserResponse, usersDeleteUserData, usersDeleteUserError, usersDeleteUserMeData, usersDeleteUserMeResponse, usersDeleteUserResponse, usersReadUserMeData, usersReadUserMeResponse, usersReadUsersData, usersReadUsersError, usersReadUsersResponse, usersRegisterUserData, usersRegisterUserError, usersRegisterUserResponse, usersUpdatePasswordMeData, usersUpdatePasswordMeError, usersUpdatePasswordMeResponse, usersUpdateUserData, usersUpdateUserError, usersUpdateUserMeData, usersUpdateUserMeError, usersUpdateUserMeResponse, usersUpdateUserResponse, utilsHealthCheckData, utilsHealthCheckResponse, utilsTestEmailData, utilsTestEmailError, utilsTestEmailResponse, watchersGetWatchStateData, watchersGetWatchStateError, watchersGetWatchStateResponse, watchersListWatchersData, watchersListWatchersError, watchersListWatchersResponse, watchersUnwatchRepositoryData, watchersUnwatchRepositoryError, watchersUnwatchRepositoryResponse, watchersWatchRepositoryData, watchersWatchRepositoryError, watchersWatchRepositoryResponse } from '../types.gen';
+
+export type QueryKey<TOptions extends Options> = [
+    Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
+        _id: string;
+        _infinite?: boolean;
+        tags?: ReadonlyArray<string>;
+    }
+];
+
+const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions, infinite?: boolean, tags?: ReadonlyArray<string>): [
+    QueryKey<TOptions>[0]
+] => {
+    const params: QueryKey<TOptions>[0] = { _id: id, baseUrl: options?.baseUrl || (options?.client ?? client).getConfig().baseUrl } as QueryKey<TOptions>[0];
+    if (infinite) {
+        params._infinite = infinite;
+    }
+    if (tags) {
+        params.tags = tags;
+    }
+    if (options?.body) {
+        params.body = options.body;
+    }
+    if (options?.headers) {
+        params.headers = options.headers;
+    }
+    if (options?.path) {
+        params.path = options.path;
+    }
+    if (options?.query) {
+        params.query = options.query;
+    }
+    return [params];
+};
+
+export const notificationsListNotificationsQueryKey = (options?: Options<notificationsListNotificationsData>) => createQueryKey('notificationsListNotifications', options);
+
+/**
+ * List Notifications
+ *
+ * List the current user's notifications, with unread and filter counts.
+ */
+export const notificationsListNotificationsOptions = (options?: Options<notificationsListNotificationsData>) => queryOptions<notificationsListNotificationsResponse, notificationsListNotificationsError, notificationsListNotificationsResponse, ReturnType<typeof notificationsListNotificationsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await NotificationsService.listNotifications({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: notificationsListNotificationsQueryKey(options)
+});
+
+const createInfiniteParams = <K extends Pick<QueryKey<Options>[0], 'body' | 'headers' | 'path' | 'query'>>(queryKey: QueryKey<Options>, page: K) => {
+    const params = { ...queryKey[0] };
+    if (page.body) {
+        params.body = {
+            ...queryKey[0].body as any,
+            ...page.body as any
+        };
+    }
+    if (page.headers) {
+        params.headers = {
+            ...queryKey[0].headers,
+            ...page.headers
+        };
+    }
+    if (page.path) {
+        params.path = {
+            ...queryKey[0].path as any,
+            ...page.path as any
+        };
+    }
+    if (page.query) {
+        params.query = {
+            ...queryKey[0].query as any,
+            ...page.query as any
+        };
+    }
+    return params as unknown as typeof page;
+};
+
+export const notificationsListNotificationsInfiniteQueryKey = (options?: Options<notificationsListNotificationsData>): QueryKey<Options<notificationsListNotificationsData>> => createQueryKey('notificationsListNotifications', options, true);
+
+/**
+ * List Notifications
+ *
+ * List the current user's notifications, with unread and filter counts.
+ */
+export const notificationsListNotificationsInfiniteOptions = (options?: Options<notificationsListNotificationsData>) => {
+    const opts = infiniteQueryOptions<notificationsListNotificationsResponse, notificationsListNotificationsError, InfiniteData<notificationsListNotificationsResponse>, QueryKey<Options<notificationsListNotificationsData>>, number | Pick<QueryKey<Options<notificationsListNotificationsData>>[0], 'body' | 'headers' | 'path' | 'query'>>(
+    // @ts-ignore
+    {
+        queryFn: async ({ pageParam, queryKey, signal }) => {
+            // @ts-ignore
+            const page: Pick<QueryKey<Options<notificationsListNotificationsData>>[0], 'body' | 'headers' | 'path' | 'query'> = typeof pageParam === 'object' ? pageParam : {
+                query: {
+                    offset: pageParam
+                }
+            };
+            const params = createInfiniteParams(queryKey, page);
+            const { data } = await NotificationsService.listNotifications({
+                ...options,
+                ...params,
+                signal,
+                throwOnError: true
+            });
+            return data;
+        },
+        queryKey: notificationsListNotificationsInfiniteQueryKey(options)
+    });
+    return opts as Omit<typeof opts, 'initialData'>;
+};
+
+/**
+ * Update Notifications
+ *
+ * Read, archive, restore, or unsubscribe from selected notifications.
+ */
+export const notificationsUpdateNotificationsMutation = (options?: Partial<Options<notificationsUpdateNotificationsData>>): UseMutationOptions<notificationsUpdateNotificationsResponse, notificationsUpdateNotificationsError, Options<notificationsUpdateNotificationsData>> => {
+    const mutationOptions: UseMutationOptions<notificationsUpdateNotificationsResponse, notificationsUpdateNotificationsError, Options<notificationsUpdateNotificationsData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await NotificationsService.updateNotifications({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const notificationsGetPreferencesQueryKey = (options?: Options<notificationsGetPreferencesData>) => createQueryKey('notificationsGetPreferences', options);
+
+/**
+ * Get Preferences
+ *
+ * Read email versus notification center delivery preferences.
+ */
+export const notificationsGetPreferencesOptions = (options?: Options<notificationsGetPreferencesData>) => queryOptions<notificationsGetPreferencesResponse, DefaultError, notificationsGetPreferencesResponse, ReturnType<typeof notificationsGetPreferencesQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await NotificationsService.getPreferences({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: notificationsGetPreferencesQueryKey(options)
+});
+
+/**
+ * Set Preferences
+ *
+ * Opt in to email in addition to the notification center.
+ */
+export const notificationsSetPreferencesMutation = (options?: Partial<Options<notificationsSetPreferencesData>>): UseMutationOptions<notificationsSetPreferencesResponse, notificationsSetPreferencesError, Options<notificationsSetPreferencesData>> => {
+    const mutationOptions: UseMutationOptions<notificationsSetPreferencesResponse, notificationsSetPreferencesError, Options<notificationsSetPreferencesData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await NotificationsService.setPreferences({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const notificationsGetRepositoryPreferencesQueryKey = (options: Options<notificationsGetRepositoryPreferencesData>) => createQueryKey('notificationsGetRepositoryPreferences', options);
+
+/**
+ * Get Repository Preferences
+ *
+ * Read this user's repository notification categories.
+ */
+export const notificationsGetRepositoryPreferencesOptions = (options: Options<notificationsGetRepositoryPreferencesData>) => queryOptions<notificationsGetRepositoryPreferencesResponse, notificationsGetRepositoryPreferencesError, notificationsGetRepositoryPreferencesResponse, ReturnType<typeof notificationsGetRepositoryPreferencesQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await NotificationsService.getRepositoryPreferences({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: notificationsGetRepositoryPreferencesQueryKey(options)
+});
+
+/**
+ * Set Repository Preferences
+ *
+ * Save this user's repository notification categories.
+ */
+export const notificationsSetRepositoryPreferencesMutation = (options?: Partial<Options<notificationsSetRepositoryPreferencesData>>): UseMutationOptions<notificationsSetRepositoryPreferencesResponse, notificationsSetRepositoryPreferencesError, Options<notificationsSetRepositoryPreferencesData>> => {
+    const mutationOptions: UseMutationOptions<notificationsSetRepositoryPreferencesResponse, notificationsSetRepositoryPreferencesError, Options<notificationsSetRepositoryPreferencesData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await NotificationsService.setRepositoryPreferences({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Mark All Read
+ *
+ * Mark the entire inbox read.
+ */
+export const notificationsMarkAllReadMutation = (options?: Partial<Options<notificationsMarkAllReadData>>): UseMutationOptions<notificationsMarkAllReadResponse, DefaultError, Options<notificationsMarkAllReadData>> => {
+    const mutationOptions: UseMutationOptions<notificationsMarkAllReadResponse, DefaultError, Options<notificationsMarkAllReadData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await NotificationsService.markAllRead({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Archive Repository
+ *
+ * Dismiss all notifications for one repository.
+ */
+export const notificationsArchiveRepositoryMutation = (options?: Partial<Options<notificationsArchiveRepositoryData>>): UseMutationOptions<notificationsArchiveRepositoryResponse, notificationsArchiveRepositoryError, Options<notificationsArchiveRepositoryData>> => {
+    const mutationOptions: UseMutationOptions<notificationsArchiveRepositoryResponse, notificationsArchiveRepositoryError, Options<notificationsArchiveRepositoryData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await NotificationsService.archiveRepository({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
 
 /**
  * Login Access Token
@@ -102,39 +351,6 @@ export const loginRecoverPasswordHtmlContentMutation = (options?: Partial<Option
         }
     };
     return mutationOptions;
-};
-
-export type QueryKey<TOptions extends Options> = [
-    Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
-        _id: string;
-        _infinite?: boolean;
-        tags?: ReadonlyArray<string>;
-    }
-];
-
-const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions, infinite?: boolean, tags?: ReadonlyArray<string>): [
-    QueryKey<TOptions>[0]
-] => {
-    const params: QueryKey<TOptions>[0] = { _id: id, baseUrl: options?.baseUrl || (options?.client ?? client).getConfig().baseUrl } as QueryKey<TOptions>[0];
-    if (infinite) {
-        params._infinite = infinite;
-    }
-    if (tags) {
-        params.tags = tags;
-    }
-    if (options?.body) {
-        params.body = options.body;
-    }
-    if (options?.headers) {
-        params.headers = options.headers;
-    }
-    if (options?.path) {
-        params.path = options.path;
-    }
-    if (options?.query) {
-        params.query = options.query;
-    }
-    return [params];
 };
 
 export const usersReadUsersQueryKey = (options?: Options<usersReadUsersData>) => createQueryKey('usersReadUsers', options);
@@ -526,35 +742,6 @@ export const organizationsListOrganizationsOptions = (options?: Options<organiza
     },
     queryKey: organizationsListOrganizationsQueryKey(options)
 });
-
-const createInfiniteParams = <K extends Pick<QueryKey<Options>[0], 'body' | 'headers' | 'path' | 'query'>>(queryKey: QueryKey<Options>, page: K) => {
-    const params = { ...queryKey[0] };
-    if (page.body) {
-        params.body = {
-            ...queryKey[0].body as any,
-            ...page.body as any
-        };
-    }
-    if (page.headers) {
-        params.headers = {
-            ...queryKey[0].headers,
-            ...page.headers
-        };
-    }
-    if (page.path) {
-        params.path = {
-            ...queryKey[0].path as any,
-            ...page.path as any
-        };
-    }
-    if (page.query) {
-        params.query = {
-            ...queryKey[0].query as any,
-            ...page.query as any
-        };
-    }
-    return params as unknown as typeof page;
-};
 
 export const organizationsListOrganizationsInfiniteQueryKey = (options?: Options<organizationsListOrganizationsData>): QueryKey<Options<organizationsListOrganizationsData>> => createQueryKey('organizationsListOrganizations', options, true);
 
@@ -1017,6 +1204,64 @@ export const commentsUpdateCommentMutation = (options?: Partial<Options<comments
     const mutationOptions: UseMutationOptions<commentsUpdateCommentResponse, commentsUpdateCommentError, Options<commentsUpdateCommentData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await CommentsService.updateComment({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Remove Reaction
+ *
+ * Remove the current user's reaction.
+ */
+export const commentsRemoveReactionMutation = (options?: Partial<Options<commentsRemoveReactionData>>): UseMutationOptions<commentsRemoveReactionResponse, commentsRemoveReactionError, Options<commentsRemoveReactionData>> => {
+    const mutationOptions: UseMutationOptions<commentsRemoveReactionResponse, commentsRemoveReactionError, Options<commentsRemoveReactionData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await CommentsService.removeReaction({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const commentsListReactionsQueryKey = (options: Options<commentsListReactionsData>) => createQueryKey('commentsListReactions', options);
+
+/**
+ * List Reactions
+ *
+ * List comment reactions.
+ */
+export const commentsListReactionsOptions = (options: Options<commentsListReactionsData>) => queryOptions<commentsListReactionsResponse, commentsListReactionsError, commentsListReactionsResponse, ReturnType<typeof commentsListReactionsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await CommentsService.listReactions({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: commentsListReactionsQueryKey(options)
+});
+
+/**
+ * Add Reaction
+ *
+ * Add a reaction once per user and emoji.
+ */
+export const commentsAddReactionMutation = (options?: Partial<Options<commentsAddReactionData>>): UseMutationOptions<commentsAddReactionResponse, commentsAddReactionError, Options<commentsAddReactionData>> => {
+    const mutationOptions: UseMutationOptions<commentsAddReactionResponse, commentsAddReactionError, Options<commentsAddReactionData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await CommentsService.addReaction({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

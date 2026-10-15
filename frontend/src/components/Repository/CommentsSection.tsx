@@ -10,6 +10,7 @@ import {
   commentsUpdateCommentMutation,
 } from "@/client/@tanstack/react-query.gen"
 import { Button, MarkdownContent, Textarea } from "@/components/design-system"
+import { CommentReactions } from "@/components/Repository/CommentReactions"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -77,6 +78,7 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
           {comments.map((comment) => (
             <div
               key={comment.id}
+              id={`comment-${comment.id}`}
               className="border border-border rounded-lg bg-card"
               data-testid={`comment-${comment.id}`}
             >
@@ -149,6 +151,7 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
                   <MarkdownContent html={comment.body_html} />
                 </div>
               )}
+              <CommentReactions commentId={comment.id} />
             </div>
           ))}
         </div>

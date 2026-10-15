@@ -115,7 +115,10 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
         if not event_ids:
             return {}
         comments = select(func.count()).where(Comment.issue_id == Issue.id).correlate(Issue).scalar_subquery()
-        body = case((Activity.kind == ActivityKind.COMMENT, Comment.body), else_=Issue.body)
+        body = case(
+            (Activity.kind.in_((ActivityKind.COMMENT, ActivityKind.COMMENT_EDIT, ActivityKind.REACTION)), Comment.body),
+            else_=Issue.body,
+        )
         rows = await self.db.execute(
             select(
                 Activity.id,
