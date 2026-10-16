@@ -90,17 +90,27 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
       path: { owner, repo, number: prNumber },
       query: { include_diff: false },
     }),
+    enabled: tab === "files",
+    staleTime: 10_000,
   })
 
-  const commitsQuery = useQuery(
-    repositoriesGetPullRequestCommitsOptions({
+  const commitsQuery = useQuery({
+    ...repositoriesGetPullRequestCommitsOptions({
       path: { owner, repo, number: prNumber },
       query: { offset: 0, limit: 50 },
     }),
-  )
-  const commentsQuery = useQuery(commentsListCommentsOptions({ path: { owner, repo, number: prNumber } }))
+    enabled: tab === "commits",
+    staleTime: 10_000,
+  })
+  const commentsQuery = useQuery({
+    ...commentsListCommentsOptions({ path: { owner, repo, number: prNumber } }),
+    staleTime: 10_000,
+  })
   const changes = changesQuery.data
-  const reviewsQuery = useQuery(reviewsListReviewsOptions({ path: { owner, repo, number: prNumber } }))
+  const reviewsQuery = useQuery({
+    ...reviewsListReviewsOptions({ path: { owner, repo, number: prNumber } }),
+    staleTime: 10_000,
+  })
 
   const mutation = useMutation({
     ...repositoriesUpdatePullRequestMutation(),
@@ -209,7 +219,7 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
             {stateBadge(pull.state)}
             <p className="text-sm text-muted-foreground">
               <strong className="font-medium text-foreground">{pull.author_username}</strong> wants to merge{" "}
-              {commitsQuery.data?.count ?? "…"} commits from{" "}
+              {commitsQuery.data ? `${commitsQuery.data.count} commits` : "changes"} from{" "}
               <code className="rounded bg-primary/10 px-1 py-0.5 text-xs text-primary">{pull.head_branch}</code> into{" "}
               <code className="rounded bg-primary/10 px-1 py-0.5 text-xs text-primary">{pull.base_branch}</code>
             </p>
@@ -228,7 +238,9 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
             <TabsTrigger value="commits" appearance="pullRequest">
               <GitCommitHorizontal className="size-4" />
               Commits{" "}
-              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs">{commitsQuery.data?.count ?? 0}</span>
+              {commitsQuery.data && (
+                <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs">{commitsQuery.data.count}</span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="files" appearance="pullRequest" aria-label="Files Changed">
               <FileText className="size-4" />
@@ -254,6 +266,7 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
             owner={owner}
             repo={repo}
             pull={pull}
+            username={user?.name}
             reviews={reviewsQuery.data ?? []}
             changes={changes}
             mergeActions={

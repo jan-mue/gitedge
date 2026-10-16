@@ -1,7 +1,7 @@
 import { HttpResponse } from "msw"
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 import type { ReviewPublic } from "@/client"
-import { handleRepositoriesGetDiffFile } from "@/client/msw.gen"
+import { handleReviewsGetCommentContext } from "@/client/msw.gen"
 import { server } from "@/test/server"
 import { act, render, screen, waitFor } from "@/test/test-utils"
 import { comparisonFixture } from "./diff-fixtures"
@@ -17,6 +17,8 @@ const review: ReviewPublic = {
   created_at: "2026-10-16T12:00:00Z",
 }
 const comment = { path: "src/config.py", side: "old" as const, line: 1, body: "Why change this value?" }
+const context = comparisonFixture.files[0].hunks![0]
+const props = { owner: "owner", repo: "repo", number: 1, review, comment, commentIndex: 0, outdated: true }
 
 describe("review diff context", () => {
   let enter: (() => void)[]
@@ -37,52 +39,53 @@ describe("review diff context", () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  test("loads only near the viewport and shares immutable highlighted context between comments", async () => {
-    const requested: URL[] = []
+  test("snapshots render without Git requests and always end at the anchored line", async () => {
+    const requested = vi.fn()
     server.use(
-      handleRepositoriesGetDiffFile(({ request }) => {
-        requested.push(new URL(request.url))
-        return HttpResponse.json(comparisonFixture.files[0])
+      handleReviewsGetCommentContext(() => {
+        requested()
+        return HttpResponse.json(context)
       }),
     )
-    render(
-      <>
-        <ReviewDiffComment owner="owner" repo="repo" review={review} comment={comment} outdated />
-        <ReviewDiffComment
-          owner="owner"
-          repo="repo"
-          review={review}
-          comment={{ ...comment, side: "new", body: "Add a test." }}
-          outdated
-        />
-      </>,
+    render(<ReviewDiffComment {...props} comment={{ ...comment, context }} />)
+    expect(document.querySelector('[data-comment-anchor="true"] code')).toHaveTextContent("timeout = 12")
+    expect(document.querySelectorAll(".diff-code-row")).toHaveLength(1)
+    expect(document.querySelector(".review-diff-context .diff-cell:last-child")).toHaveAttribute(
+      "data-comment-anchor",
+      "true",
     )
-    expect(screen.getByText(comment.body)).toBeInTheDocument()
-    expect(requested).toHaveLength(0)
-    act(() => {
-      for (const callback of enter) callback()
-    })
-    await waitFor(() => expect(document.querySelectorAll('[data-comment-anchor="true"]')).toHaveLength(2))
-    expect(requested).toHaveLength(1)
-    expect(requested[0].searchParams.get("head")).toBe(review.head_commit)
-    expect(requested[0].searchParams.get("base")).toBe(review.base_commit)
-    expect([...document.querySelectorAll('[data-comment-anchor="true"] code')].map((node) => node.textContent)).toEqual(
-      ["timeout = 12", "timeout = 42"],
-    )
-    expect(screen.getAllByText("Outdated")).toHaveLength(2)
-    expect(document.querySelector('[data-syntax="literal-number"][data-changed="true"]')).toBeInTheDocument()
+    expect(enter).toHaveLength(0)
+    expect(requested).not.toHaveBeenCalled()
+    expect(screen.getByText(comment.body)).toBeVisible()
   })
 
-  test("keeps the comment visible when context fails and supports retry", async () => {
+  test("legacy context loads only when near the viewport and uses the review's immutable identity", async () => {
+    const requested: string[] = []
+    server.use(
+      handleReviewsGetCommentContext(({ request }) => {
+        requested.push(request.url)
+        return HttpResponse.json(context)
+      }),
+    )
+    render(<ReviewDiffComment {...props} />)
+    expect(requested).toHaveLength(0)
+    act(() => enter[0]())
+    await waitFor(() =>
+      expect(document.querySelector('[data-comment-anchor="true"] code')).toHaveTextContent("timeout = 12"),
+    )
+    expect(requested).toHaveLength(1)
+    expect(requested[0]).toContain("/reviews/review-1/comments/0/context")
+    expect(document.querySelectorAll(".diff-code-row")).toHaveLength(1)
+  })
+
+  test("keeps the comment visible on errors and retries without losing the thread", async () => {
     let failed = true
     server.use(
-      handleRepositoriesGetDiffFile(() =>
-        failed ? new HttpResponse(null, { status: 503 }) : HttpResponse.json(comparisonFixture.files[0]),
+      handleReviewsGetCommentContext(() =>
+        failed ? new HttpResponse(null, { status: 503 }) : HttpResponse.json(context),
       ),
     )
-    const { user } = render(
-      <ReviewDiffComment owner="owner" repo="repo" review={review} comment={comment} outdated={false} />,
-    )
+    const { user } = render(<ReviewDiffComment {...props} />)
     act(() => enter[0]())
     expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load diff context")
     expect(screen.getByText(comment.body)).toBeVisible()
@@ -93,12 +96,9 @@ describe("review diff context", () => {
     )
   })
 
-  test("does not substitute a different line if the original anchor is unavailable", async () => {
-    server.use(handleRepositoriesGetDiffFile({ body: comparisonFixture.files[0] }))
-    render(<ReviewDiffComment owner="owner" repo="repo" review={review} comment={{ ...comment, line: 999 }} outdated />)
-    act(() => enter[0]())
-    expect(await screen.findByText("Diff context is unavailable for this line.")).toBeVisible()
+  test("does not substitute another line if the original anchor is unavailable", async () => {
+    render(<ReviewDiffComment {...props} comment={{ ...comment, line: 999, context }} />)
+    expect(screen.getByText("Diff context is unavailable for this line.")).toBeVisible()
     expect(document.querySelector(".diff-code-row")).toBeNull()
-    expect(screen.getByText(comment.body)).toBeVisible()
   })
 })

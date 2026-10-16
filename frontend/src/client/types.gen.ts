@@ -1548,6 +1548,31 @@ export type RepositoryUpdate = {
 };
 
 /**
+ * ReviewCommentPublic
+ *
+ * A submitted line comment with a bounded, backend-highlighted snapshot.
+ */
+export type ReviewCommentPublic = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Side
+     */
+    side: 'old' | 'new';
+    /**
+     * Line
+     */
+    line: number;
+    /**
+     * Body
+     */
+    body: string;
+    context?: DiffHunk | null;
+};
+
+/**
  * ReviewDraft
  *
  * The exact comparison and comments being reviewed.
@@ -1602,6 +1627,23 @@ export type ReviewLineComment = {
  */
 export type ReviewPublic = {
     /**
+     * Id
+     */
+    id: string;
+    /**
+     * Author Username
+     */
+    author_username: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    state: ReviewState;
+    /**
+     * Body
+     */
+    body?: string;
+    /**
      * Base Commit
      */
     base_commit: string;
@@ -1610,14 +1652,49 @@ export type ReviewPublic = {
      */
     head_commit: string;
     /**
-     * Body
-     */
-    body?: string;
-    /**
      * Comments
      */
-    comments?: Array<ReviewLineComment>;
-    state: ReviewState;
+    comments?: Array<ReviewCommentPublic>;
+    /**
+     * Replies
+     */
+    replies?: Array<ReviewReplyPublic>;
+    /**
+     * Outdated
+     */
+    outdated?: boolean | null;
+};
+
+/**
+ * ReviewReplyCreate
+ *
+ * Reply to an individual line comment, or to the overall review body.
+ */
+export type ReviewReplyCreate = {
+    /**
+     * Comment Index
+     */
+    comment_index?: number | null;
+    /**
+     * Body
+     */
+    body: string;
+};
+
+/**
+ * ReviewReplyPublic
+ *
+ * A published reply with server-rendered Markdown.
+ */
+export type ReviewReplyPublic = {
+    /**
+     * Comment Index
+     */
+    comment_index?: number | null;
+    /**
+     * Body
+     */
+    body: string;
     /**
      * Id
      */
@@ -1630,6 +1707,10 @@ export type ReviewPublic = {
      * Created At
      */
     created_at: string;
+    /**
+     * Body Html
+     */
+    body_html: string;
 };
 
 /**
@@ -4898,6 +4979,94 @@ export type reviewsGetWorkspaceResponses = {
 };
 
 export type reviewsGetWorkspaceResponse = reviewsGetWorkspaceResponses[keyof reviewsGetWorkspaceResponses];
+
+export type reviewsGetCommentContextData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+        /**
+         * Review Id
+         */
+        review_id: string;
+        /**
+         * Comment Index
+         */
+        comment_index: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviews/{review_id}/comments/{comment_index}/context';
+};
+
+export type reviewsGetCommentContextErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsGetCommentContextError = reviewsGetCommentContextErrors[keyof reviewsGetCommentContextErrors];
+
+export type reviewsGetCommentContextResponses = {
+    /**
+     * Successful Response
+     */
+    200: DiffHunk;
+};
+
+export type reviewsGetCommentContextResponse = reviewsGetCommentContextResponses[keyof reviewsGetCommentContextResponses];
+
+export type reviewsReplyToReviewData = {
+    body: ReviewReplyCreate;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+        /**
+         * Review Id
+         */
+        review_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviews/{review_id}/replies';
+};
+
+export type reviewsReplyToReviewErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsReplyToReviewError = reviewsReplyToReviewErrors[keyof reviewsReplyToReviewErrors];
+
+export type reviewsReplyToReviewResponses = {
+    /**
+     * Successful Response
+     */
+    201: ReviewReplyPublic;
+};
+
+export type reviewsReplyToReviewResponse = reviewsReplyToReviewResponses[keyof reviewsReplyToReviewResponses];
 
 export type reviewsSaveDraftData = {
     body: ReviewDraft;

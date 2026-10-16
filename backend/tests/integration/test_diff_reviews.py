@@ -117,6 +117,22 @@ def test_review_lifecycle(page: Page, app_url: str, tmp_path: Path, random_email
     expect(thread.get_by_text("Please preserve the original behavior.", exact=True)).to_be_visible()
     expect(thread.locator('[data-comment-anchor="true"] code')).to_contain_text("value_0 = 12")
     expect(thread.locator('[data-syntax="literal-number-integer"]').first).to_be_visible()
+    expect(thread.locator(".review-diff-context .diff-cell").last).to_have_attribute("data-comment-anchor", "true")
+    thread.get_by_role("button", name="Reply", exact=True).click()
+    thread.get_by_role("textbox", name="Reply to review comment").fill("I added a **regression test** for this.")
+    thread.get_by_role("button", name="Reply", exact=True).click()
+    expect(thread.get_by_text("I added a regression test for this.", exact=True)).to_be_visible()
+    expect(thread.locator(".markdown-body strong")).to_have_text("regression test")
+    new_thread = page.get_by_role("region", name="Review comment on file-0000.py new line 1", exact=True)
+    expect(new_thread.get_by_text("I added a regression test for this.", exact=True)).to_have_count(0)
+    requested: list[str] = []
+    page.on("request", lambda request: requested.append(request.url))
+    page.reload()
+    thread = page.get_by_role("region", name="Review comment on file-0000.py old line 1", exact=True)
+    expect(thread.get_by_text("I added a regression test for this.", exact=True)).to_be_visible()
+    expect(thread.locator('[data-comment-anchor="true"] code')).to_contain_text("value_0 = 12")
+    assert not any(f"{pull}/{suffix}" in url for url in requested for suffix in ("files?", "commits?"))
+    assert not any("/diff-file?" in url or url.endswith("/context") for url in requested)
     reviews = page.request.get(f"{pull}/reviews").json()
     assert len(reviews) == 1
     assert len(reviews[0]["comments"]) == 2
@@ -148,11 +164,28 @@ def test_review_lifecycle(page: Page, app_url: str, tmp_path: Path, random_email
     old_thread.scroll_into_view_if_needed()
     expect(old_thread.get_by_text("Outdated", exact=True)).to_be_visible()
     expect(old_thread.locator('[data-comment-anchor="true"] code')).to_contain_text("value_0 = 12")
+    expect(old_thread.get_by_text("I added a regression test for this.", exact=True)).to_be_visible()
     page.get_by_role("tab", name="Files Changed", exact=False).click()
     expect(page.get_by_text("The branches changed since you started this review.")).to_be_visible()
     expect(page.get_by_text("0 / 3 files viewed")).to_be_visible()
     page.get_by_role("button", name="Start review of current changes").click()
     expect(page.get_by_role("button", name="Review", exact=True)).to_be_enabled()
+    page.evaluate("localStorage.removeItem('access_token')")
+    log_in_user(page, app_url, FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD)
+    page.goto(f"{app_url}/admin/{name}/pulls/1")
+    page.get_by_test_id("merge-pr").click()
+    expect(page.get_by_test_id("pr-state")).to_contain_text("Merged")
+    merged_thread = page.get_by_role("region", name="Review comment on file-0000.py old line 1", exact=True)
+    merged_thread.get_by_role("button", name="Reply", exact=True).click()
+    merged_thread.get_by_role("textbox", name="Reply to review comment").fill("Follow-up after merging.")
+    merged_thread.get_by_role("button", name="Reply", exact=True).click()
+    expect(merged_thread.get_by_text("Follow-up after merging.", exact=True)).to_be_visible()
+    page.reload()
+    expect(
+        page.get_by_role("region", name="Review comment on file-0000.py old line 1", exact=True).get_by_text(
+            "Follow-up after merging.", exact=True
+        )
+    ).to_be_visible()
 
 
 def test_large_pr_bounds_rendering_and_fetches(page: Page, app_url: str, tmp_path: Path) -> None:
@@ -240,3 +273,29 @@ def test_large_file_preserves_editor_across_virtual_scroll(page: Page, app_url: 
     page.reload()
     page.get_by_role("tab", name="Files Changed", exact=False).click()
     expect(page.get_by_text("Keep this draft while scrolling.", exact=True)).to_be_visible()
+    page.get_by_role("button", name="Review (1)", exact=True).click()
+    page.get_by_role("button", name="Comment", exact=True).click()
+    expect(page.get_by_role("dialog")).not_to_be_visible()
+    requests: list[str] = []
+    page.on("request", lambda request: requests.append(request.url))
+    started = time.perf_counter()
+    page.reload()
+    thread = page.get_by_role("region", name="Review comment on file-0000.py old line 1", exact=True)
+    expect(thread.get_by_text("Keep this draft while scrolling.", exact=True)).to_be_visible()
+    expect(thread.locator('[data-comment-anchor="true"] code')).to_contain_text("value_0 = 12")
+    assert thread.locator(".diff-code-row").count() <= 4
+    assert not any("/diff-file?" in url or url.endswith("/context") for url in requests)
+    assert not any(f"/pulls/1/{suffix}" in url for url in requests for suffix in ("files?", "commits?"))
+    ready_ms = round((time.perf_counter() - started) * 1000)
+    payload = page.request.get(f"{app_url}/api/v1/repositories/admin/{name}/pulls/1/reviews")
+    assert len(payload.body()) < 10_000
+    print(
+        json.dumps(
+            {
+                "scenario": "10000-row-review-conversation",
+                "ready_ms": ready_ms,
+                "review_bytes": len(payload.body()),
+                "git_requests": 0,
+            }
+        )
+    )

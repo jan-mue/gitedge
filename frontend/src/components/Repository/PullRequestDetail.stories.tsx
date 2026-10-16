@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
+import { useQuery } from "@tanstack/react-query"
 import { HttpResponse } from "msw"
 import type { ReviewPublic } from "@/client"
+import { reviewsListReviewsOptions } from "@/client/@tanstack/react-query.gen"
 import {
   handleCommentsListComments,
   handleRepositoriesGetDiffFile,
@@ -8,15 +10,17 @@ import {
   handleRepositoriesGetPullRequestCommits,
   handleRepositoriesGetPullRequestEvents,
   handleRepositoriesGetPullRequestFiles,
+  handleReviewsGetCommentContext,
   handleReviewsGetWorkspace,
   handleReviewsListReviews,
+  handleReviewsReplyToReview,
   handleReviewsSaveDraft,
   handleUtilsPreviewMarkdown,
 } from "@/client/msw.gen"
 import { repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
 import { comparisonFixture } from "./diff-fixtures"
 import { PullRequestDetailView } from "./PullRequestDetail"
-import { PullRequestFiles } from "./PullRequestFiles"
+import { PullRequestFiles, ReviewTimeline } from "./PullRequestFiles"
 import { trackerPulls } from "./tracker-story-fixtures"
 
 const pull = {
@@ -67,6 +71,7 @@ const meta = {
           },
         }),
         handleReviewsListReviews({ body: [] }),
+        handleReviewsGetCommentContext({ body: comparisonFixture.files[0].hunks![0] }),
         handleReviewsGetWorkspace({ body: { draft: null, reviewed_paths: [] } }),
         handleReviewsSaveDraft(async ({ request }) =>
           HttpResponse.json({ draft: await request.json(), reviewed_paths: [] }),
@@ -182,6 +187,7 @@ export const ReviewComments: Story = {
               ...reviews[1],
               id: "outdated-review",
               head_commit: "c".repeat(40),
+              outdated: true,
               comments: [
                 { path: "src/config.py", side: "new", line: 1, body: "This was reviewed on the earlier revision." },
               ],
@@ -217,4 +223,47 @@ export const ReviewDropdown: Story = {
       isOpen
     />
   ),
+}
+
+const DiscussionExample = () => {
+  const { data } = useQuery(reviewsListReviewsOptions({ path: { owner: "jan-mue", repo: "gitedge", number: 1 } }))
+  return <ReviewTimeline owner="jan-mue" repo="gitedge" number={1} reviews={data ?? []} username="alice" />
+}
+let replyReview: ReviewPublic = {
+  ...reviews[0],
+  id: "reply-review",
+  body: "Please explain the timeout change.",
+  comments: [
+    {
+      path: "src/config.py",
+      side: "new",
+      line: 1,
+      body: "Please cover this in a test.",
+      context: comparisonFixture.files[0].hunks![0],
+    },
+  ],
+  replies: [],
+}
+export const ReviewDiscussion: Story = {
+  render: () => <DiscussionExample />,
+  parameters: {
+    msw: {
+      handlers: [
+        handleReviewsListReviews(() => HttpResponse.json([replyReview])),
+        handleReviewsReplyToReview(async ({ request }) => {
+          const body = (await request.json()) as { body: string; comment_index: number | null }
+          const reply = {
+            ...body,
+            id: `reply-${replyReview.replies?.length ?? 0}`,
+            author_username: "alice",
+            created_at: "2026-10-16T12:00:00Z",
+            body_html: `<p>${body.body.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</p>`,
+          }
+          replyReview = { ...replyReview, replies: [...(replyReview.replies ?? []), reply] }
+          return HttpResponse.json(reply, { status: 201 })
+        }),
+        ...meta.parameters.msw.handlers,
+      ],
+    },
+  },
 }

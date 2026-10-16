@@ -153,6 +153,9 @@
 .review-diff-context [data-comment-anchor="true"] {
   box-shadow: inset 3px 0 var(--primary);
 }
+.review-diff-context {
+  padding-bottom: 0;
+}
 .review-diff-context .diff-code-row {
   grid-template-columns: 0 40px 40px 20px minmax(0, 1fr);
   min-width: 0;

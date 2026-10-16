@@ -103,9 +103,22 @@ test("review events use Gitea's check and diff markers, and merged PRs have no r
   await expect(page.getByTestId("reopen-pr")).toHaveCount(0)
   await expect(page.getByTestId("close-pr")).toHaveCount(0)
   const timeline = page.getByTestId("comments-section")
-  await expect(timeline.locator('[data-review-state="approved"]')).toHaveClass(/lucide-check/)
-  await expect(timeline.locator('[data-review-state="changes_requested"]')).toHaveClass(/lucide-diff/)
-  await expect(timeline.locator('[data-review-state="merged"]').first()).toHaveClass(/lucide-git-merge/)
+  await expect(timeline.locator('[data-review-state="approved"] svg')).toHaveClass(/lucide-check/)
+  await expect(timeline.locator('[data-review-state="changes_requested"] svg')).toHaveClass(/lucide-diff/)
+  await expect(timeline.locator('[data-review-state="merged"] svg').first()).toHaveClass(/lucide-git-merge/)
+  if (!testInfo.project.name.endsWith("mobile")) {
+    const bounds = await timeline.locator('[data-review-state="approved"]').evaluate((node) => {
+      const outer = node.getBoundingClientRect()
+      const icon = node.querySelector("svg")!.getBoundingClientRect()
+      return {
+        outer: outer.width,
+        icon: icon.width,
+        gap: icon.left - outer.left,
+        padding: getComputedStyle(node.querySelector("svg")!).padding,
+      }
+    })
+    expect(bounds).toEqual({ outer: 32, icon: 16, gap: 8, padding: "0px" })
+  }
   await page.screenshot({ path: `visual-review/pr-merged-${testInfo.project.name}.png`, fullPage: true })
   await page.goto(
     `/iframe.html?id=patterns-repository-pull-request-detail--closed&viewMode=story&globals=theme:${theme}`,
@@ -183,7 +196,7 @@ test("review comments display highlighted diff context from their original revis
   const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"
   const requests: string[] = []
   page.on("request", (request) => {
-    if (request.url().includes("/diff-file?")) requests.push(request.url())
+    if (request.url().includes("/context")) requests.push(request.url())
   })
   await page.goto(
     `/iframe.html?id=patterns-repository-pull-request-detail--review-comments&viewMode=story&globals=theme:${theme}`,
@@ -198,8 +211,34 @@ test("review comments display highlighted diff context from their original revis
   await outdated.scrollIntoViewIfNeeded()
   await expect(outdated.getByText("Outdated", { exact: true })).toBeVisible()
   await expect(outdated.locator('[data-comment-anchor="true"] code')).toHaveText("timeout = 42")
-  expect(requests.filter((url) => new URL(url).searchParams.get("head") === "b".repeat(40))).toHaveLength(1)
-  expect(requests.filter((url) => new URL(url).searchParams.get("head") === "c".repeat(40))).toHaveLength(1)
+  expect(requests.filter((url) => url.includes("/reviews/outdated-review/comments/0/context"))).toHaveLength(1)
+  await expect(old.locator(".review-diff-context .diff-cell:last-child")).toHaveAttribute("data-comment-anchor", "true")
+  await expect(current.locator(".review-diff-context .diff-cell:last-child")).toHaveAttribute(
+    "data-comment-anchor",
+    "true",
+  )
+  expect(await old.locator(".review-diff-context").evaluate((node) => getComputedStyle(node).paddingBottom)).toBe("0px")
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: `visual-review/pr-review-context-${testInfo.project.name}.png`, fullPage: true })
+})
+
+test("conversation loads without inactive Git tabs and review replies stay in their thread", async ({
+  page,
+}, testInfo) => {
+  const requested: string[] = []
+  page.on("request", (request) => requested.push(request.url()))
+  await page.goto("/iframe.html?id=patterns-repository-pull-request-detail--conversation-and-commits&viewMode=story")
+  await expect(page.getByTestId("pr-conversation")).toBeVisible()
+  expect(requested.filter((url) => /\/pulls\/1\/(files|commits)(\?|$)/.test(url))).toEqual([])
+  await page.getByRole("tab", { name: /^Commits/ }).click()
+  await expect(page.getByTestId("pr-commits")).toBeVisible()
+  expect(requested.filter((url) => /\/pulls\/1\/commits(\?|$)/.test(url))).toHaveLength(1)
+  await page.goto("/iframe.html?id=patterns-repository-pull-request-detail--review-discussion&viewMode=story")
+  const thread = page.getByRole("region", { name: "Review comment on src/config.py new line 1", exact: true })
+  await thread.getByRole("button", { name: "Reply", exact: true }).click()
+  await thread.getByRole("textbox", { name: "Reply to review comment" }).fill("The new test covers this value.")
+  await thread.getByRole("button", { name: "Reply", exact: true }).click()
+  await expect(thread.getByText("The new test covers this value.", { exact: true })).toBeVisible()
+  await expect(thread.getByRole("textbox", { name: "Reply to review comment" })).toHaveCount(0)
+  await page.screenshot({ path: `visual-review/pr-thread-replies-${testInfo.project.name}.png`, fullPage: true })
 })

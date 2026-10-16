@@ -6,7 +6,7 @@ from app.entities.principals import Principal
 from app.entities.pull_requests import PullRequest
 from app.entities.releases import Release
 from app.entities.repositories import Repository
-from app.entities.reviews import PullRequestReview, PullRequestReviewWorkspace
+from app.entities.reviews import PullRequestReview, PullRequestReviewReply, PullRequestReviewWorkspace
 from app.entities.stars import Star
 from app.entities.users import User
 from app.entities.watchers import Watcher
@@ -19,6 +19,7 @@ __all__ = [
     "Principal",
     "PullRequest",
     "PullRequestReview",
+    "PullRequestReviewReply",
     "PullRequestReviewWorkspace",
     "Release",
     "Repository",

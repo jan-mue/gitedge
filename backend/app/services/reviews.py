@@ -7,25 +7,32 @@ from typing import TYPE_CHECKING
 from fastapi import HTTPException
 
 from app.entities.issues import IssueState
-from app.entities.reviews import PullRequestReview
+from app.entities.reviews import PullRequestReview, PullRequestReviewReply
 from app.schemas.reviews import (
+    ReviewCommentPublic,
     ReviewDraft,
     ReviewedFileUpdate,
     ReviewLineComment,
     ReviewPublic,
+    ReviewReplyCreate,
+    ReviewReplyPublic,
     ReviewState,
     ReviewSubmit,
     ReviewWorkspacePublic,
 )
+from app.services.diffs import comment_context
+from app.services.markdown import render_markdown
 
 if TYPE_CHECKING:
+    import uuid
+
     from app.clients.pull_requests import PullRequestStore
     from app.clients.repositories import RepositoryStore
     from app.clients.reviews import ReviewStore
     from app.entities.pull_requests import PullRequest
     from app.entities.reviews import PullRequestReviewWorkspace
     from app.entities.users import User
-    from app.schemas.repositories import CompareResult
+    from app.schemas.repositories import CommitFileChange, CompareResult, DiffHunk
     from app.services.repositories import RepositoryService
 
 
@@ -63,9 +70,9 @@ class ReviewService:
 
     async def _validate_comments(
         self, owner: str, repo: str, comments: list[ReviewLineComment], comparison: CompareResult
-    ) -> None:
+    ) -> dict[str, CommitFileChange]:
         if not comments:
-            return
+            return {}
         paths = {comment.path for comment in comments}
         files = {file.path: file for file in comparison.files if file.path in paths}
         if paths - files.keys():
@@ -88,6 +95,7 @@ class ReviewService:
                 raise HTTPException(
                     status_code=422, detail="Line comments must have text and refer to a visible diff line."
                 )
+        return files
 
     @staticmethod
     def _workspace_public(workspace: PullRequestReviewWorkspace, comparison: CompareResult) -> ReviewWorkspacePublic:
@@ -107,13 +115,78 @@ class ReviewService:
             body=review.body,
             base_commit=review.base_commit,
             head_commit=review.head_commit,
-            comments=[ReviewLineComment.model_validate(comment) for comment in review.comments],
+            comments=[ReviewCommentPublic.model_validate(comment) for comment in review.comments],
+            replies=[ReviewService._reply_public(reply) for reply in review.replies],
+        )
+
+    @staticmethod
+    def _reply_public(reply: PullRequestReviewReply) -> ReviewReplyPublic:
+        return ReviewReplyPublic(
+            id=reply.id,
+            author_username=reply.author.name,
+            created_at=reply.created_at,
+            comment_index=reply.comment_index,
+            body=reply.body,
+            body_html=render_markdown(reply.body),
         )
 
     async def list_reviews(self, owner: str, repo: str, number: int) -> list[ReviewPublic]:
         """List public submitted reviews; private drafts are never included."""
         pull = await self._pull(owner, repo, number)
-        return [self._public(review) for review in await self.store.list_reviews(pull.id)]
+        reviews = await self.store.list_reviews(pull.id)
+        if not reviews:
+            return []
+        base, head = await self.repository_service.branch_heads(owner, repo, pull.base_branch, pull.head_branch)
+        return [
+            self._public(review).model_copy(
+                update={
+                    "outdated": (review.base_commit != base or review.head_commit != head) if base and head else None
+                }
+            )
+            for review in reviews
+        ]
+
+    async def _review(self, owner: str, repo: str, number: int, review_id: uuid.UUID) -> PullRequestReview:
+        pull = await self._pull(owner, repo, number)
+        review = await self.store.get_review(pull.id, review_id)
+        if review is None:
+            raise HTTPException(status_code=404, detail="Review not found")
+        return review
+
+    async def get_comment_context(
+        self, owner: str, repo: str, number: int, review_id: uuid.UUID, index: int
+    ) -> DiffHunk:
+        """Serve legacy comments without sending the entire highlighted file to the browser."""
+        review = await self._review(owner, repo, number, review_id)
+        if index >= len(review.comments):
+            raise HTTPException(status_code=404, detail="Review comment not found")
+        comment = ReviewCommentPublic.model_validate(review.comments[index])
+        if comment.context is not None:
+            return comment.context
+        return await self.repository_service.get_diff_context(
+            owner, repo, review.base_commit, review.head_commit, comment.path, comment.side, comment.line
+        )
+
+    async def reply(
+        self, owner: str, repo: str, number: int, review_id: uuid.UUID, body: ReviewReplyCreate, user: User
+    ) -> ReviewReplyPublic:
+        """Publish a reply on its original thread, including after merging or new pushes."""
+        review = await self._review(owner, repo, number, review_id)
+        if not body.body.strip():
+            raise HTTPException(status_code=422, detail="Add a reply before submitting")
+        if body.comment_index is not None and body.comment_index >= len(review.comments):
+            raise HTTPException(status_code=404, detail="Review comment not found")
+        if body.comment_index is None and not review.body.strip():
+            raise HTTPException(status_code=422, detail="This review has no overall comment to reply to")
+        reply = PullRequestReviewReply(
+            review_id=review.id,
+            author_id=user.id,
+            author=user,
+            comment_index=body.comment_index,
+            body=body.body.strip(),
+        )
+        await self.store.add_reply(reply)
+        return self._reply_public(reply)
 
     async def get_workspace(self, owner: str, repo: str, number: int, user: User) -> ReviewWorkspacePublic:
         """Read the current user's draft and comparison-scoped viewed files."""
@@ -161,7 +234,7 @@ class ReviewService:
             raise HTTPException(status_code=409, detail="Only open pull requests can be reviewed")
         comparison = await self._comparison(owner, repo, pull)
         self._validate_revision(body, comparison)
-        await self._validate_comments(owner, repo, body.comments, comparison)
+        files = await self._validate_comments(owner, repo, body.comments, comparison)
         if body.state != ReviewState.APPROVED and not body.body.strip() and not body.comments:
             raise HTTPException(status_code=422, detail="Add an overall comment or a line comment before submitting")
         review = PullRequestReview(
@@ -170,7 +243,16 @@ class ReviewService:
             author=user,
             state=body.state.value,
             body=body.body.strip(),
-            comments=[comment.model_dump() for comment in body.comments],
+            comments=[
+                {
+                    **comment.model_dump(),
+                    "context": context.model_dump(mode="json")
+                    if (context := comment_context(files[comment.path].hunks, comment.side, comment.line)) is not None
+                    else None,
+                }
+                for comment in body.comments
+            ],
+            replies=[],
             base_commit=body.base_commit,
             head_commit=body.head_commit,
         )

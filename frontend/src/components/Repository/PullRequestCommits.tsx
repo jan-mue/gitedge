@@ -6,9 +6,10 @@ import RepositoryLoading, { RepositoryError } from "./RepositoryLoading"
 
 export const PullRequestCommits = ({ owner, repo, number }: { owner: string; repo: string; number: number }) => {
   const [offset, setOffset] = useState(0)
-  const { data, isPending, isError, refetch } = useQuery(
-    repositoriesGetPullRequestCommitsOptions({ path: { owner, repo, number }, query: { offset, limit: 50 } }),
-  )
+  const { data, isPending, isError, refetch } = useQuery({
+    ...repositoriesGetPullRequestCommitsOptions({ path: { owner, repo, number }, query: { offset, limit: 50 } }),
+    staleTime: 10_000,
+  })
   if (isPending) return <RepositoryLoading label="Loading pull request commits" />
   if (isError) return <RepositoryError message="Unable to load commits." retry={() => refetch()} />
   return (

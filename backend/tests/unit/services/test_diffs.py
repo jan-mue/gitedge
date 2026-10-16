@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import io
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import pytest
 from dulwich.object_store import MemoryObjectStore
 from dulwich.objects import Blob, ObjectID, Tree
 from dulwich.patch import write_tree_diff
 
-from app.services.diffs import enrich_diff
+from app.services.diffs import comment_context, enrich_diff
 from app.services.repositories import RepositoryService
 
 if TYPE_CHECKING:
@@ -44,6 +44,33 @@ def test_only_changed_tokens_are_emphasized_and_split_rows_are_aligned() -> None
     assert not any(token.changed for token in context.tokens)
     assert [row.model_dump() for row in file.hunks[0].rows] == [{"old": 0, "new": 1}, {"old": 2, "new": 2}]
     assert (file.additions, file.deletions, file.language) == (1, 1, "Python")
+
+
+@pytest.mark.parametrize("side", ["old", "new"])
+def test_compact_context_ends_at_anchor_and_preserves_token_changes(side: Literal["old", "new"]) -> None:
+    store = MemoryObjectStore()
+    trees = []
+    for value in (12, 42):
+        blob = Blob.from_string(f"value = {value}\nprint(value)\n".encode())
+        store.add_object(blob)
+        tree = Tree()
+        tree.add(b"code.py", 0o100644, blob.id)
+        store.add_object(tree)
+        trees.append(tree)
+    file = RepositoryService._diff_file(store, trees[0].id, trees[1].id, "code.py", (side, 1))  # noqa: SLF001
+    lines = file.hunks[0].lines
+    assert (lines[-1].old_line if side == "old" else lines[-1].new_line) == 1
+    assert len(lines) <= 4
+    assert any(token.changed for token in lines[-1].tokens)
+    assert all("print" not in token.text for line in lines for token in line.tokens)
+
+
+def test_context_snapshots_bound_long_lines_without_mutating_the_full_diff() -> None:
+    file = make_diff(b"x = 1\n", b"x = '" + b"a" * 5000 + b"'\n")[0]
+    context = comment_context(file.hunks, "new", 1)
+    assert context is not None
+    assert len("".join(token.text for token in context.lines[-1].tokens)) <= 2050
+    assert len("".join(token.text for token in file.hunks[0].lines[-1].tokens)) > 5000
 
 
 def test_multiline_syntax_is_lexed_from_whole_blob_outside_hunk() -> None:

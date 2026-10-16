@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
-from app.entities.reviews import PullRequestReview, PullRequestReviewWorkspace
+from app.entities.reviews import PullRequestReview, PullRequestReviewReply, PullRequestReviewWorkspace
 
 if TYPE_CHECKING:
     import uuid
@@ -19,6 +19,14 @@ if TYPE_CHECKING:
 
 class ReviewStore(ABC):
     """Persistence boundary for pull request reviews."""
+
+    @abstractmethod
+    async def get_review(self, pull_request_id: uuid.UUID, review_id: uuid.UUID) -> PullRequestReview | None:
+        """Find a published review within this pull request."""
+
+    @abstractmethod
+    async def add_reply(self, reply: PullRequestReviewReply) -> None:
+        """Persist a reply without changing the original review."""
 
     @abstractmethod
     async def list_reviews(self, pull_request_id: uuid.UUID) -> list[PullRequestReview]:
@@ -50,11 +58,28 @@ class SQLReviewStore(ReviewStore):
         """Load submitted reviews in chronological order."""
         result = await self.db.scalars(
             select(PullRequestReview)
-            .options(selectinload(PullRequestReview.author))
+            .options(
+                joinedload(PullRequestReview.author),
+                selectinload(PullRequestReview.replies).joinedload(PullRequestReviewReply.author),
+            )
             .where(PullRequestReview.pull_request_id == pull_request_id)
             .order_by(PullRequestReview.created_at, PullRequestReview.id)
         )
         return list(result.all())
+
+    async def get_review(self, pull_request_id: uuid.UUID, review_id: uuid.UUID) -> PullRequestReview | None:
+        """Scope lookups so reviews cannot be addressed through another PR."""
+        return await self.db.scalar(
+            select(PullRequestReview).where(
+                PullRequestReview.id == review_id, PullRequestReview.pull_request_id == pull_request_id
+            )
+        )
+
+    async def add_reply(self, reply: PullRequestReviewReply) -> None:
+        """Save the reply and load server-generated dates."""
+        self.db.add(reply)
+        await self.db.commit()
+        await self.db.refresh(reply, attribute_names=["id", "created_at", "updated_at"])
 
     async def workspace(
         self, pull_request_id: uuid.UUID, author_id: uuid.UUID, *, for_update: bool = False

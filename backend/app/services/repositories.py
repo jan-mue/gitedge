@@ -9,7 +9,7 @@ import re
 import stat
 import time
 from difflib import SequenceMatcher
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 from dulwich.annotate import annotate_lines
 from dulwich.diff_tree import tree_changes
@@ -38,6 +38,7 @@ from app.schemas.repositories import (
     CommitListItem,
     CommitsPublic,
     CompareResult,
+    DiffHunk,
     FileContent,
     FileIndex,
     LanguageStatistic,
@@ -1151,6 +1152,13 @@ class RepositoryService:
             compute=compute,
         )
 
+    async def branch_heads(self, owner: str, name: str, base: str, head: str) -> tuple[str | None, str | None]:
+        """Read two branch tips without opening packs, walking history, or calculating a diff."""
+        prefix = f"{repo_key(owner, name)}/refs/refs/heads/"
+        values = await asyncio.gather(self.redis_client.get(prefix + base), self.redis_client.get(prefix + head))
+        before, after = values
+        return (before.decode() if before else None, after.decode() if after else None)
+
     async def compare_commits(
         self, owner: str, name: str, base_ref: str, head_ref: str, offset: int = 0, limit: int = 50
     ) -> CommitsPublic:
@@ -1344,9 +1352,41 @@ class RepositoryService:
             compute=compute,
         )
 
+    async def get_diff_context(
+        self, owner: str, name: str, base: str, head: str, path: str, side: Literal["old", "new"], line: int
+    ) -> DiffHunk:
+        """Highlight and transfer only the bounded context needed for one legacy review comment."""
+
+        async def compute() -> DiffHunk:
+            repo = await self.load_repository(owner, name)
+            store = repo.object_store
+            try:
+                before, after = store[ObjectID(base.encode())], store[ObjectID(head.encode())]
+            except KeyError as error:
+                raise HTTPException(status_code=404, detail="Comparison revision not found") from error
+            if not isinstance(before, Commit) or not isinstance(after, Commit):
+                raise HTTPException(status_code=404, detail="Comparison revision not found")
+            file = await run_in_threadpool(self._diff_file, store, before.tree, after.tree, path, (side, line))
+            if not file.hunks:
+                raise HTTPException(status_code=404, detail="Diff context is unavailable for this line")
+            return file.hunks[0]
+
+        return await self._cached_model(
+            key=f"review-context:v1:{base}:{head}:{path}:{side}:{line}",
+            group=self._cache_group(owner, name),
+            ttl=settings.CACHE_IMMUTABLE_TTL,
+            model=DiffHunk,
+            compute=compute,
+        )
+
     @classmethod
     def _diff_file(
-        cls, store: BaseObjectStore, old_tree: ObjectID | None, new_tree: ObjectID, path: str
+        cls,
+        store: BaseObjectStore,
+        old_tree: ObjectID | None,
+        new_tree: ObjectID,
+        path: str,
+        anchor: tuple[Literal["old", "new"], int] | None = None,
     ) -> CommitFileChange:
         """Read and diff only the requested path, without diffing sibling files."""
 
@@ -1368,7 +1408,7 @@ class RepositoryService:
         buffer = io.BytesIO()
         write_object_diff(buffer, store, old_entry, new_entry)
         files = cls._parse_patch(buffer.getvalue().decode("utf-8", errors="replace"))
-        enrich_diff(files, store, old_tree, new_tree)
+        enrich_diff(files, store, old_tree, new_tree, anchor)
         file = files[0]
         file.diff_line_count = sum(len(hunk.lines) for hunk in file.hunks)
         file.patch = ""

@@ -38,7 +38,7 @@ from app.entities.principals import Principal, PrincipalType
 from app.entities.pull_requests import PullRequest
 from app.entities.releases import Release
 from app.entities.repositories import Repository
-from app.entities.reviews import PullRequestReview, PullRequestReviewWorkspace
+from app.entities.reviews import PullRequestReview, PullRequestReviewReply, PullRequestReviewWorkspace
 from app.entities.stars import Star
 from app.entities.users import User
 from app.entities.watchers import Watcher
@@ -552,6 +552,13 @@ class FakeWatcherStore(FakeCrudStore[Watcher], WatcherStore):
 class FakeCommentStore(FakeCrudStore[Comment], CommentStore):
     """In-memory comment store."""
 
+    async def list_by_issue(self, issue_id: uuid.UUID) -> list[Comment]:
+        """Read hydrated comments for one discussion."""
+        return sorted(
+            [self._hydrate(comment) for comment in self.items.values() if comment.issue_id == issue_id],
+            key=lambda comment: (comment.created_at, comment.id),
+        )
+
     entity_name = "Comment"
 
     def __init__(
@@ -748,6 +755,16 @@ class FakeReviewStore(ReviewStore):
     async def list_reviews(self, pull_request_id: uuid.UUID) -> list[PullRequestReview]:
         """List only submitted reviews for a pull request."""
         return [review for review in self.reviews.items.values() if review.pull_request_id == pull_request_id]
+
+    async def get_review(self, pull_request_id: uuid.UUID, review_id: uuid.UUID) -> PullRequestReview | None:
+        """Find published reviews within the requested PR."""
+        review = self.reviews.items.get(review_id)
+        return review if review is not None and review.pull_request_id == pull_request_id else None
+
+    async def add_reply(self, reply: PullRequestReviewReply) -> None:
+        """Persist a reply on the parent review."""
+        FakeCrudStore[PullRequestReviewReply]().persist(reply)
+        self.reviews.items[reply.review_id].replies.append(reply)
 
     async def workspace(
         self, pull_request_id: uuid.UUID, author_id: uuid.UUID, *, for_update: bool = False

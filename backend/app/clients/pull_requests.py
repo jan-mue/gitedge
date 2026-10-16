@@ -6,10 +6,9 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.clients.database import CrudStore, SQLStore
-from app.entities.comments import Comment
 from app.entities.issues import Issue, IssueState
 from app.entities.pull_requests import PullRequest
 from app.exceptions import PullRequestNotFoundError
@@ -59,7 +58,7 @@ class SQLPullRequestStore(PullRequestStore, SQLStore[PullRequest]):
         """Get a pull request by repository id and number, raising when absent."""
         pull_request = await self.db.scalar(
             select(PullRequest)
-            .options(selectinload(PullRequest.author), selectinload(PullRequest.comments).selectinload(Comment.author))
+            .options(joinedload(PullRequest.author))
             .where(PullRequest.repo_id == repo_id, PullRequest.number == number)
         )
         if pull_request is None:

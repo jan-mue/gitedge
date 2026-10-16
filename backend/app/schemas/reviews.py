@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import Field
 
 from app.schemas.base import GitEdgeBaseModel
+from app.schemas.repositories import DiffHunk
 
 
 class ReviewState(StrEnum):
@@ -42,12 +43,41 @@ class ReviewSubmit(ReviewDraft):
     state: ReviewState
 
 
-class ReviewPublic(ReviewSubmit):
+class ReviewCommentPublic(ReviewLineComment):
+    """A submitted line comment with a bounded, backend-highlighted snapshot."""
+
+    context: DiffHunk | None = None
+
+
+class ReviewReplyCreate(GitEdgeBaseModel):
+    """Reply to an individual line comment, or to the overall review body."""
+
+    comment_index: int | None = Field(default=None, ge=0)
+    body: str = Field(min_length=1, max_length=20000)
+
+
+class ReviewReplyPublic(ReviewReplyCreate):
+    """A published reply with server-rendered Markdown."""
+
+    id: uuid.UUID
+    author_username: str
+    created_at: datetime
+    body_html: str
+
+
+class ReviewPublic(GitEdgeBaseModel):
     """An immutable submitted review."""
 
     id: uuid.UUID
     author_username: str
     created_at: datetime
+    state: ReviewState
+    body: str = ""
+    base_commit: str
+    head_commit: str
+    comments: list[ReviewCommentPublic] = Field(default_factory=list)
+    replies: list[ReviewReplyPublic] = Field(default_factory=list)
+    outdated: bool | None = None
 
 
 class ReviewedFileUpdate(GitEdgeBaseModel):

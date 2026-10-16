@@ -9,7 +9,7 @@ export const ConversationTimeline = ({ children }: { children: ReactNode }) => (
 
 export const ConversationItem = ({
   children,
-  icon = <MessageSquare className="size-2.5" />,
+  icon = <MessageSquare className="size-4 shrink-0" />,
   marker = "comment",
   terminal = false,
 }: {
@@ -30,7 +30,7 @@ export const ConversationItem = ({
       className={
         marker === "status"
           ? "absolute left-1 top-0 z-10 hidden size-8 items-center justify-center sm:flex"
-          : "absolute left-[10px] top-4 z-10 hidden size-[19px] items-center justify-center rounded-full border-2 border-border bg-secondary text-muted-foreground sm:flex"
+          : "absolute left-1 top-[10px] z-10 hidden size-8 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground sm:flex"
       }
     >
       {icon}

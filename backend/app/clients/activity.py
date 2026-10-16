@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from sqlalchemy import and_, case, func, or_, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.activity import Activity, ActivityKind, ActivityTargetType
@@ -76,7 +76,7 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
         """Read immutable transition dates independently of later description edits."""
         result = await self.db.scalars(
             select(Activity)
-            .options(*_ACTIVITY_OPTIONS)
+            .options(joinedload(Activity.actor), joinedload(Activity.repo).joinedload(Repository.owner))
             .where(
                 Activity.repo_id == repo_id,
                 Activity.target_type == ActivityTargetType.PULL_REQUEST,

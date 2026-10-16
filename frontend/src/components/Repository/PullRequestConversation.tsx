@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { GitMerge, GitPullRequest, GitPullRequestClosed, MessageSquare, Users } from "lucide-react"
+import { GitMerge, MessageSquare, Users } from "lucide-react"
 import type { ReactNode } from "react"
 import type { CompareResult, PullRequestPublic, ReviewPublic } from "@/client"
 import {
@@ -24,6 +24,7 @@ export const PullRequestConversation = ({
   changes,
   mergeActions,
   closeActions,
+  username,
 }: {
   owner: string
   repo: string
@@ -32,17 +33,25 @@ export const PullRequestConversation = ({
   changes?: CompareResult
   mergeActions: ReactNode
   closeActions: ReactNode
+  username?: string
 }) => {
-  const { data: comments } = useQuery(commentsListCommentsOptions({ path: { owner, repo, number: pull.number } }))
+  const { data: comments } = useQuery({
+    ...commentsListCommentsOptions({ path: { owner, repo, number: pull.number } }),
+    staleTime: 10_000,
+  })
   const {
     data: stateEvents = [],
     isError: eventsError,
     refetch: retryEvents,
-  } = useQuery(repositoriesGetPullRequestEventsOptions({ path: { owner, repo, number: pull.number } }))
+  } = useQuery({
+    ...repositoriesGetPullRequestEventsOptions({ path: { owner, repo, number: pull.number } }),
+    staleTime: 10_000,
+  })
   const participants = [
     ...new Set([
       pull.author_username,
       ...reviews.map((review) => review.author_username),
+      ...reviews.flatMap((review) => (review.replies ?? []).map((reply) => reply.author_username)),
       ...(comments?.data ?? []).map((comment) => comment.author_username),
     ]),
   ]
@@ -71,7 +80,16 @@ export const PullRequestConversation = ({
               id: `review-${review.id}`,
               created_at: review.created_at,
               icon: <ReviewStatusIcon state={review.state} />,
-              content: <ReviewTimeline owner={owner} repo={repo} reviews={[review]} changes={changes} />,
+              content: (
+                <ReviewTimeline
+                  owner={owner}
+                  repo={repo}
+                  number={pull.number}
+                  username={username}
+                  reviews={[review]}
+                  changes={changes}
+                />
+              ),
             })),
             ...stateEvents.map((event) => ({
               id: event.id,
@@ -80,9 +98,9 @@ export const PullRequestConversation = ({
                 event.kind === "pull_request_merge" ? (
                   <ReviewStatusIcon state="merged" />
                 ) : event.kind === "pull_request_close" ? (
-                  <GitPullRequestClosed className="size-8 rounded-full bg-destructive p-1.5 text-destructive-foreground" />
+                  <ReviewStatusIcon state="closed" />
                 ) : (
-                  <GitPullRequest className="size-8 rounded-full bg-success p-1.5 text-success-foreground" />
+                  <ReviewStatusIcon state="reopened" />
                 ),
               content: (
                 <div
@@ -113,7 +131,7 @@ export const PullRequestConversation = ({
                 </p>
               )}
               {pull.state === "open" && (
-                <ConversationItem icon={<GitMerge className="size-2.5" />}>
+                <ConversationItem icon={<GitMerge className="size-4 shrink-0" />}>
                   <div className="rounded-lg border border-border bg-secondary/30 p-4">
                     <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
                       <GitMerge className="size-4 text-success" />

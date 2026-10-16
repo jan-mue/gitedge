@@ -1,28 +1,35 @@
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
-import type { ReviewLineComment, ReviewPublic } from "@/client"
-import { repositoriesGetDiffFileOptions } from "@/client/@tanstack/react-query.gen"
+import type { ReviewCommentPublic, ReviewPublic } from "@/client"
+import { reviewsGetCommentContextOptions } from "@/client/@tanstack/react-query.gen"
 import { Button, CodeSkeleton, ConversationCard, ExternalLink } from "@/components/design-system"
 import { DiffCodeRow } from "./DiffCodeRow"
+import { ReviewReplies } from "./ReviewReplies"
 import "./diff-viewer.css"
 
 export const ReviewDiffComment = ({
   owner,
   repo,
+  number,
   review,
   comment,
+  commentIndex,
   outdated,
+  username,
 }: {
   owner: string
   repo: string
+  number: number
   review: ReviewPublic
-  comment: ReviewLineComment
+  comment: ReviewCommentPublic
+  commentIndex: number
   outdated: boolean
+  username?: string
 }) => {
   const ref = useRef<HTMLElement>(null)
   const [visible, setVisible] = useState(false)
   useEffect(() => {
-    if (!ref.current) return
+    if (comment.context || !ref.current) return
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -30,31 +37,23 @@ export const ReviewDiffComment = ({
           observer.disconnect()
         }
       },
-      { rootMargin: "400px" },
+      { rootMargin: "100px" },
     )
     observer.observe(ref.current)
     return () => observer.disconnect()
-  }, [])
-  const {
-    data: file,
-    isError,
-    refetch,
-  } = useQuery({
-    ...repositoriesGetDiffFileOptions({
-      path: { owner, repo },
-      query: { base: review.base_commit, head: review.head_commit, file_path: comment.path },
+  }, [comment.context])
+  const { data, isError, refetch } = useQuery({
+    ...reviewsGetCommentContextOptions({
+      path: { owner, repo, number, review_id: review.id, comment_index: commentIndex },
     }),
-    enabled: visible,
+    enabled: !comment.context && visible,
     staleTime: Infinity,
   })
-  const hunk = file?.hunks?.find((hunk) =>
-    hunk.lines.some((line) => (comment.side === "old" ? line.old_line : line.new_line) === comment.line),
-  )
+  const context = comment.context ?? data
   const anchor =
-    hunk?.lines.findIndex((line) => (comment.side === "old" ? line.old_line : line.new_line) === comment.line) ?? -1
-  const lines = hunk?.lines.slice(Math.max(0, anchor - 3), anchor + 3)
+    context?.lines.findIndex((line) => (comment.side === "old" ? line.old_line : line.new_line) === comment.line) ?? -1
+  const lines = anchor >= 0 ? context?.lines.slice(Math.max(0, anchor - 3), anchor + 1) : undefined
   const revision = comment.side === "old" ? review.base_commit : review.head_commit
-  const path = comment.side === "old" ? file?.old_path || comment.path : comment.path
   return (
     <section
       ref={ref}
@@ -65,7 +64,7 @@ export const ReviewDiffComment = ({
         <span className="min-w-0 break-all font-mono">
           <ExternalLink
             appearance="muted"
-            href={`/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/src/commit/${revision}/${path.split("/").map(encodeURIComponent).join("/")}`}
+            href={`/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/src/commit/${revision}/${comment.path.split("/").map(encodeURIComponent).join("/")}`}
           >
             {comment.path}
           </ExternalLink>
@@ -83,19 +82,17 @@ export const ReviewDiffComment = ({
               Retry
             </Button>
           </p>
-        ) : !file ? (
+        ) : !context ? (
           <CodeSkeleton lineCount={4} />
-        ) : hunk && lines?.length ? (
+        ) : lines?.length ? (
           <>
-            <div className="diff-hunk">{hunk.header}</div>
+            <div className="diff-hunk">{context.header}</div>
             {lines.map((line, index) => (
               <div
                 key={index}
                 className="diff-cell"
                 data-kind={line.kind}
-                data-comment-anchor={
-                  (comment.side === "old" ? line.old_line : line.new_line) === comment.line ? "true" : undefined
-                }
+                data-comment-anchor={index === lines.length - 1 ? "true" : undefined}
               >
                 <DiffCodeRow line={line} />
               </div>
@@ -108,6 +105,14 @@ export const ReviewDiffComment = ({
       <ConversationCard author={review.author_username} date={review.created_at} badge="Reviewer" embedded>
         <p className="whitespace-pre-wrap">{comment.body}</p>
       </ConversationCard>
+      <ReviewReplies
+        owner={owner}
+        repo={repo}
+        number={number}
+        review={review}
+        commentIndex={commentIndex}
+        username={username}
+      />
     </section>
   )
 }

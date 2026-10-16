@@ -1,9 +1,21 @@
 """Pull request review and private workspace endpoints."""
 
-from fastapi import APIRouter, Response
+import uuid
+from typing import Annotated
+
+from fastapi import APIRouter, Path, Response
 
 from app.api.dependencies import CurrentUser, ReviewServiceDep
-from app.schemas.reviews import ReviewDraft, ReviewedFileUpdate, ReviewPublic, ReviewSubmit, ReviewWorkspacePublic
+from app.schemas.repositories import DiffHunk
+from app.schemas.reviews import (
+    ReviewDraft,
+    ReviewedFileUpdate,
+    ReviewPublic,
+    ReviewReplyCreate,
+    ReviewReplyPublic,
+    ReviewSubmit,
+    ReviewWorkspacePublic,
+)
 
 router = APIRouter(prefix="/repositories/{owner}/{repo}/pulls/{number}", tags=["reviews"])
 
@@ -21,6 +33,33 @@ async def get_workspace(
     """Read only the authenticated user's private draft and viewed status."""
     response.headers["Cache-Control"] = "private, no-store"
     return await service.get_workspace(owner, repo, number, current_user)
+
+
+@router.get("/reviews/{review_id}/comments/{comment_index}/context")
+async def get_comment_context(
+    owner: str,
+    repo: str,
+    number: int,
+    review_id: uuid.UUID,
+    comment_index: Annotated[int, Path(ge=0)],
+    service: ReviewServiceDep,
+) -> DiffHunk:
+    """Read a short highlighted snippet ending at the original comment anchor."""
+    return await service.get_comment_context(owner, repo, number, review_id, comment_index)
+
+
+@router.post("/reviews/{review_id}/replies", status_code=201)
+async def reply_to_review(
+    owner: str,
+    repo: str,
+    number: int,
+    review_id: uuid.UUID,
+    body: ReviewReplyCreate,
+    service: ReviewServiceDep,
+    current_user: CurrentUser,
+) -> ReviewReplyPublic:
+    """Reply to a published line comment or overall review comment."""
+    return await service.reply(owner, repo, number, review_id, body, current_user)
 
 
 @router.put("/review-draft")

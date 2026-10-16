@@ -284,7 +284,7 @@ def app_url(infrastructure: dict[str, str], xprocess: XProcess) -> Generator[str
         max_read_lines = 1000
 
     backend_base_url = f"http://127.0.0.1:{backend_port}"
-    xprocess.ensure("backend", BackendStarter)
+    xprocess.ensure("backend", BackendStarter, restart=True)
 
     # 2. Start Frontend (Vite)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -305,7 +305,7 @@ def app_url(infrastructure: dict[str, str], xprocess: XProcess) -> Generator[str
         max_read_lines = 1000
 
     frontend_base_url = f"http://localhost:{frontend_port}"
-    xprocess.ensure("frontend", FrontendStarter)
+    xprocess.ensure("frontend", FrontendStarter, restart=True)
 
     yield frontend_base_url
 

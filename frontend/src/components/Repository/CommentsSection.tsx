@@ -61,6 +61,7 @@ const CommentsSection = ({
 
   const { data, isError, isPending, refetch } = useQuery({
     ...commentsListCommentsOptions({ path: { owner, repo, number } }),
+    staleTime: 10_000,
   })
 
   const invalidate = () =>

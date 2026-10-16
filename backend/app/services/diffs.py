@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from difflib import SequenceMatcher
 from itertools import pairwise
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from dulwich.objects import S_ISGITLINK, Blob, Tree
 from pygments.lexers import TextLexer, get_lexer_for_filename
@@ -116,7 +116,7 @@ def _inline(old: DiffLine, new: DiffLine) -> None:
     _emphasize(new, new_ranges)
 
 
-def _align(hunk: DiffHunk) -> None:
+def _align(hunk: DiffHunk, *, inline: bool = True) -> None:
     """Pair each consecutive replacement block for split rendering and token diffs."""
     index = 0
     while index < len(hunk.lines):
@@ -133,42 +133,76 @@ def _align(hunk: DiffHunk) -> None:
             old = removed[pair] if pair < len(removed) else None
             new = added[pair] if pair < len(added) else None
             hunk.rows.append(DiffRow(old=old, new=new))
-            if old is not None and new is not None:
+            if inline and old is not None and new is not None:
                 _inline(hunk.lines[old], hunk.lines[new])
 
 
+def _parse_hunks(file: CommitFileChange) -> None:
+    """Parse numbered unified lines before deciding which ones need highlighting."""
+    hunk: DiffHunk | None = None
+    old_number = new_number = 0
+    for raw in file.patch.split("\n"):
+        match = HUNK_HEADER.match(raw)
+        if match:
+            hunk = DiffHunk(header=raw, lines=[], rows=[])
+            file.hunks.append(hunk)
+            old_number, new_number = int(match[1]), int(match[2])
+        elif hunk is not None and raw.startswith("\\"):
+            if hunk.lines:
+                hunk.lines[-1].no_newline = True
+        elif hunk is not None and raw[:1] in (" ", "+", "-"):
+            kind = {" ": "context", "+": "add", "-": "delete"}[raw[0]]
+            hunk.lines.append(
+                DiffLine(
+                    kind=kind,
+                    old_line=old_number if kind != "add" else None,
+                    new_line=new_number if kind != "delete" else None,
+                    tokens=[DiffToken(text=raw[1:].removesuffix("\r"))],
+                )
+            )
+            old_number += kind != "add"
+            new_number += kind != "delete"
+
+
+def _context_pairs(
+    file: CommitFileChange, anchor: tuple[Literal["old", "new"], int]
+) -> list[tuple[DiffLine, DiffLine]]:
+    """Keep the visible rows and their replacement counterparts for inline token changes."""
+    context = comment_context(file.hunks, *anchor)
+    visible = {(line.old_line, line.new_line): line for line in context.lines} if context else {}
+    pairs = []
+    for original in file.hunks:
+        _align(original, inline=False)
+        for row in original.rows:
+            if row.old is None or row.new is None or row.old == row.new:
+                continue
+            old, new = original.lines[row.old], original.lines[row.new]
+            old_key, new_key = (old.old_line, old.new_line), (new.old_line, new.new_line)
+            if old_key in visible or new_key in visible:
+                pairs.append(
+                    (visible.get(old_key, old.model_copy(deep=True)), visible.get(new_key, new.model_copy(deep=True)))
+                )
+    file.hunks = [context] if context is not None else []
+    return pairs
+
+
 def enrich_diff(
-    files: list[CommitFileChange], store: BaseObjectStore, old_tree: ObjectID | None, new_tree: ObjectID
+    files: list[CommitFileChange],
+    store: BaseObjectStore,
+    old_tree: ObjectID | None,
+    new_tree: ObjectID,
+    anchor: tuple[Literal["old", "new"], int] | None = None,
 ) -> None:
     """Add syntax tokens, line numbers and split alignment to a parsed Git patch."""
     for file in files:
         file.is_binary = any(line.startswith("Binary files ") for line in file.patch.split("\n"))
         if file.is_binary:
             continue
-        hunk: DiffHunk | None = None
-        old_number = new_number = 0
-        for raw in file.patch.split("\n"):
-            match = HUNK_HEADER.match(raw)
-            if match:
-                hunk = DiffHunk(header=raw, lines=[], rows=[])
-                file.hunks.append(hunk)
-                old_number, new_number = int(match[1]), int(match[2])
-            elif hunk is not None and raw.startswith("\\"):
-                if hunk.lines:
-                    hunk.lines[-1].no_newline = True
-            elif hunk is not None and raw[:1] in (" ", "+", "-"):
-                kind = {" ": "context", "+": "add", "-": "delete"}[raw[0]]
-                hunk.lines.append(
-                    DiffLine(
-                        kind=kind,
-                        old_line=old_number if kind != "add" else None,
-                        new_line=new_number if kind != "delete" else None,
-                        tokens=[DiffToken(text=raw[1:].removesuffix("\r"))],
-                    )
-                )
-                old_number += kind != "add"
-                new_number += kind != "delete"
+        _parse_hunks(file)
+        pairs = _context_pairs(file, anchor) if anchor is not None else []
         lines = [line for hunk in file.hunks for line in hunk.lines]
+        if anchor is not None:
+            lines = list({id(line): line for line in [*lines, *(line for pair in pairs for line in pair)]}.values())
         _, old_tokens = _syntax_lines(
             file.old_path or file.path,
             _source(store, old_tree, file.old_path or file.path),
@@ -183,7 +217,34 @@ def enrich_diff(
             tokens = old_tokens.get(line.old_line or 0) if line.kind == "delete" else new_tokens.get(line.new_line or 0)
             if tokens:
                 line.tokens = tokens
-        for hunk in file.hunks:
-            _align(hunk)
+        if anchor is not None:
+            for old, new in pairs:
+                _inline(old, new)
+        else:
+            for hunk in file.hunks:
+                _align(hunk)
         file.additions = sum(line.kind == "add" for hunk in file.hunks for line in hunk.lines)
         file.deletions = sum(line.kind == "delete" for hunk in file.hunks for line in hunk.lines)
+        if anchor is not None:
+            context = comment_context(file.hunks, *anchor)
+            file.hunks = [context] if context is not None else []
+
+
+def comment_context(hunks: list[DiffHunk], side: Literal["old", "new"], number: int) -> DiffHunk | None:
+    """Return up to four existing diff lines, ending exactly at the comment anchor."""
+    for hunk in hunks:
+        for index, line in enumerate(hunk.lines):
+            if (line.old_line if side == "old" else line.new_line) == number:
+                lines = [line.model_copy(deep=True) for line in hunk.lines[max(0, index - 3) : index + 1]]
+                for context_line in lines:
+                    remaining = 2048
+                    tokens = []
+                    for token in context_line.tokens:
+                        tokens.append(token.model_copy(update={"text": token.text[:remaining]}))
+                        remaining -= len(token.text)
+                        if remaining <= 0:
+                            tokens.append(DiffToken(text=" …"))
+                            break
+                    context_line.tokens = tokens
+                return DiffHunk(header=hunk.header, lines=lines, rows=[])
+    return None

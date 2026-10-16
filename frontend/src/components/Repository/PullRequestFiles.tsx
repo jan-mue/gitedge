@@ -23,6 +23,7 @@ import { type DiffAnnotation, DiffViewer } from "@/components/Repository/DiffVie
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 import { ReviewDiffComment } from "./ReviewDiffComment"
+import { ReviewReplies } from "./ReviewReplies"
 
 interface PullRequestFilesProps {
   owner: string
@@ -314,11 +315,15 @@ export const ReviewTimeline = ({
   repo,
   reviews,
   changes,
+  number,
+  username,
 }: {
   owner: string
   repo: string
   reviews: ReviewPublic[]
   changes?: CompareResult
+  number: number
+  username?: string
 }) => (
   <div className="space-y-4">
     {reviews.map((review) => (
@@ -328,15 +333,19 @@ export const ReviewTimeline = ({
           <span>{stateLabel[review.state]}</span>
           <time dateTime={review.created_at}>{new Date(review.created_at).toLocaleString()}</time>
         </div>
-        {changes && (review.head_commit !== changes.head_commit || review.base_commit !== changes.base_commit) && (
+        {(review.outdated ??
+          (changes && (review.head_commit !== changes.head_commit || review.base_commit !== changes.base_commit))) && (
           <p className="text-xs text-muted-foreground">
             Review of an earlier revision · {review.head_commit.slice(0, 10)}
           </p>
         )}
         {review.body && (
-          <ConversationCard author={review.author_username} date={review.created_at} badge="Reviewer">
-            <p className="whitespace-pre-wrap text-sm">{review.body}</p>
-          </ConversationCard>
+          <section className="overflow-hidden rounded-lg border border-border" aria-label="Review comment">
+            <ConversationCard author={review.author_username} date={review.created_at} badge="Reviewer" embedded>
+              <p className="whitespace-pre-wrap text-sm">{review.body}</p>
+            </ConversationCard>
+            <ReviewReplies owner={owner} repo={repo} number={number} review={review} username={username} />
+          </section>
         )}
         {(review.comments ?? []).map((comment, index) => (
           <ReviewDiffComment
@@ -345,8 +354,12 @@ export const ReviewTimeline = ({
             repo={repo}
             review={review}
             comment={comment}
+            number={number}
+            commentIndex={index}
+            username={username}
             outdated={
-              !!changes && (review.head_commit !== changes.head_commit || review.base_commit !== changes.base_commit)
+              review.outdated ??
+              (!!changes && (review.head_commit !== changes.head_commit || review.base_commit !== changes.base_commit))
             }
           />
         ))}
