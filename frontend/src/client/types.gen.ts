@@ -25,7 +25,7 @@ export type ActivitiesPublic = {
  *
  * Kinds of activity recorded in the feed.
  */
-export type ActivityKind = 'star' | 'watch' | 'fork' | 'issue_open' | 'issue_close' | 'issue_reopen' | 'comment' | 'pull_request_open' | 'pull_request_merge' | 'pull_request_close' | 'pull_request_reopen' | 'release';
+export type ActivityKind = 'star' | 'watch' | 'fork' | 'issue_open' | 'issue_close' | 'issue_reopen' | 'comment' | 'comment_edit' | 'reaction' | 'issue_edit' | 'pull_request_edit' | 'pull_request_open' | 'pull_request_merge' | 'pull_request_close' | 'pull_request_reopen' | 'release';
 
 /**
  * ActivityOverview
@@ -830,6 +830,163 @@ export type NewPassword = {
 };
 
 /**
+ * NotificationPreferences
+ *
+ * Email is opt-in; every delivered event also remains in the center.
+ */
+export type NotificationPreferences = {
+    /**
+     * Email
+     */
+    email?: boolean;
+};
+
+/**
+ * NotificationPreferencesPublic
+ *
+ * Saved preference and installation delivery capability.
+ */
+export type NotificationPreferencesPublic = {
+    /**
+     * Email
+     */
+    email?: boolean;
+    /**
+     * Email Available
+     */
+    email_available: boolean;
+};
+
+/**
+ * NotificationPublic
+ *
+ * An inbox entry and its destination.
+ */
+export type NotificationPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Repo Id
+     */
+    repo_id: string;
+    /**
+     * Repo
+     */
+    repo: string;
+    /**
+     * Number
+     */
+    number: number | null;
+    /**
+     * Title
+     */
+    title: string;
+    kind: ActivityKind;
+    /**
+     * Category
+     */
+    category: 'issue' | 'pull' | 'mention' | 'release' | 'repository';
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Actor
+     */
+    actor: string;
+    /**
+     * Url
+     */
+    url: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Is Read
+     */
+    is_read: boolean;
+    /**
+     * Is Archived
+     */
+    is_archived: boolean;
+    /**
+     * Unsubscribed
+     */
+    unsubscribed: boolean;
+};
+
+/**
+ * NotificationUpdate
+ *
+ * Apply explicit states to selected notifications, never to another user's inbox.
+ */
+export type NotificationUpdate = {
+    /**
+     * Ids
+     */
+    ids: Array<string>;
+    /**
+     * Is Read
+     */
+    is_read?: boolean | null;
+    /**
+     * Is Archived
+     */
+    is_archived?: boolean | null;
+    /**
+     * Unsubscribed
+     */
+    unsubscribed?: boolean | null;
+};
+
+/**
+ * NotificationsPublic
+ *
+ * A filtered notification page with inbox navigation counts.
+ */
+export type NotificationsPublic = {
+    /**
+     * Data
+     */
+    data: Array<NotificationPublic>;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Inbox Count
+     */
+    inbox_count: number;
+    /**
+     * Archived Count
+     */
+    archived_count: number;
+    /**
+     * Repository Counts
+     */
+    repository_counts: {
+        [key: string]: number;
+    };
+    /**
+     * Unread Count
+     */
+    unread_count: number;
+    /**
+     * Repositories
+     */
+    repositories: Array<string>;
+    /**
+     * Reasons
+     */
+    reasons: {
+        [key: string]: number;
+    };
+};
+
+/**
  * OrganizationCreate
  *
  * Request to create a new organization.
@@ -1077,6 +1234,50 @@ export type PullRequestsListPublic = {
      * Closed Count
      */
     closed_count: number;
+};
+
+/**
+ * ReactionCreate
+ *
+ * Supported comment reactions.
+ */
+export type ReactionCreate = {
+    /**
+     * Emoji
+     */
+    emoji: '👍' | '👎' | '😄' | '🎉' | '😕' | '❤️' | '🚀' | '👀';
+};
+
+/**
+ * ReactionPublic
+ *
+ * A comment reaction with the current user's selection.
+ */
+export type ReactionPublic = {
+    /**
+     * Emoji
+     */
+    emoji: string;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Reacted
+     */
+    reacted: boolean;
+};
+
+/**
+ * ReactionsPublic
+ *
+ * All reaction counts for one comment.
+ */
+export type ReactionsPublic = {
+    /**
+     * Data
+     */
+    data: Array<ReactionPublic>;
 };
 
 /**
@@ -1391,6 +1592,18 @@ export type RepositoryInfo = {
      */
     fork_of?: string | null;
     last_commit?: CommitInfo | null;
+};
+
+/**
+ * RepositoryNotificationPreferences
+ *
+ * Allowed categories for future events from a repository.
+ */
+export type RepositoryNotificationPreferences = {
+    /**
+     * Categories
+     */
+    categories?: Array<'issue' | 'pull' | 'mention' | 'release' | 'repository'>;
 };
 
 /**
@@ -1797,6 +2010,248 @@ export type WatchersPublic = {
      */
     count: number;
 };
+
+export type notificationsListNotificationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * View
+         */
+        view?: 'inbox' | 'archived';
+        /**
+         * Read
+         */
+        read?: 'all' | 'unread';
+        /**
+         * Reason
+         */
+        reason?: string;
+        /**
+         * Repo
+         */
+        repo?: string;
+        /**
+         * Query
+         */
+        query?: string;
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Focus
+         */
+        focus?: string | null;
+    };
+    url: '/api/v1/notifications/';
+};
+
+export type notificationsListNotificationsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type notificationsListNotificationsError = notificationsListNotificationsErrors[keyof notificationsListNotificationsErrors];
+
+export type notificationsListNotificationsResponses = {
+    /**
+     * Successful Response
+     */
+    200: NotificationsPublic;
+};
+
+export type notificationsListNotificationsResponse = notificationsListNotificationsResponses[keyof notificationsListNotificationsResponses];
+
+export type notificationsUpdateNotificationsData = {
+    body: NotificationUpdate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/notifications/';
+};
+
+export type notificationsUpdateNotificationsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type notificationsUpdateNotificationsError = notificationsUpdateNotificationsErrors[keyof notificationsUpdateNotificationsErrors];
+
+export type notificationsUpdateNotificationsResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type notificationsUpdateNotificationsResponse = notificationsUpdateNotificationsResponses[keyof notificationsUpdateNotificationsResponses];
+
+export type notificationsGetPreferencesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/notifications/preferences';
+};
+
+export type notificationsGetPreferencesResponses = {
+    /**
+     * Successful Response
+     */
+    200: NotificationPreferencesPublic;
+};
+
+export type notificationsGetPreferencesResponse = notificationsGetPreferencesResponses[keyof notificationsGetPreferencesResponses];
+
+export type notificationsSetPreferencesData = {
+    body: NotificationPreferences;
+    path?: never;
+    query?: never;
+    url: '/api/v1/notifications/preferences';
+};
+
+export type notificationsSetPreferencesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type notificationsSetPreferencesError = notificationsSetPreferencesErrors[keyof notificationsSetPreferencesErrors];
+
+export type notificationsSetPreferencesResponses = {
+    /**
+     * Successful Response
+     */
+    200: NotificationPreferencesPublic;
+};
+
+export type notificationsSetPreferencesResponse = notificationsSetPreferencesResponses[keyof notificationsSetPreferencesResponses];
+
+export type notificationsGetRepositoryPreferencesData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/notifications/repositories/{owner}/{repo}';
+};
+
+export type notificationsGetRepositoryPreferencesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type notificationsGetRepositoryPreferencesError = notificationsGetRepositoryPreferencesErrors[keyof notificationsGetRepositoryPreferencesErrors];
+
+export type notificationsGetRepositoryPreferencesResponses = {
+    /**
+     * Successful Response
+     */
+    200: RepositoryNotificationPreferences;
+};
+
+export type notificationsGetRepositoryPreferencesResponse = notificationsGetRepositoryPreferencesResponses[keyof notificationsGetRepositoryPreferencesResponses];
+
+export type notificationsSetRepositoryPreferencesData = {
+    body: RepositoryNotificationPreferences;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/notifications/repositories/{owner}/{repo}';
+};
+
+export type notificationsSetRepositoryPreferencesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type notificationsSetRepositoryPreferencesError = notificationsSetRepositoryPreferencesErrors[keyof notificationsSetRepositoryPreferencesErrors];
+
+export type notificationsSetRepositoryPreferencesResponses = {
+    /**
+     * Successful Response
+     */
+    200: RepositoryNotificationPreferences;
+};
+
+export type notificationsSetRepositoryPreferencesResponse = notificationsSetRepositoryPreferencesResponses[keyof notificationsSetRepositoryPreferencesResponses];
+
+export type notificationsMarkAllReadData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/notifications/read-all';
+};
+
+export type notificationsMarkAllReadResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type notificationsMarkAllReadResponse = notificationsMarkAllReadResponses[keyof notificationsMarkAllReadResponses];
+
+export type notificationsArchiveRepositoryData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/notifications/repositories/{owner}/{repo}/archive';
+};
+
+export type notificationsArchiveRepositoryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type notificationsArchiveRepositoryError = notificationsArchiveRepositoryErrors[keyof notificationsArchiveRepositoryErrors];
+
+export type notificationsArchiveRepositoryResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type notificationsArchiveRepositoryResponse = notificationsArchiveRepositoryResponses[keyof notificationsArchiveRepositoryResponses];
 
 export type loginLoginAccessTokenData = {
     body: Body_login_login_access_token;
@@ -2951,6 +3406,96 @@ export type commentsUpdateCommentResponses = {
 };
 
 export type commentsUpdateCommentResponse = commentsUpdateCommentResponses[keyof commentsUpdateCommentResponses];
+
+export type commentsRemoveReactionData = {
+    body: ReactionCreate;
+    path: {
+        /**
+         * Comment Id
+         */
+        comment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/comments/{comment_id}/reactions';
+};
+
+export type commentsRemoveReactionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type commentsRemoveReactionError = commentsRemoveReactionErrors[keyof commentsRemoveReactionErrors];
+
+export type commentsRemoveReactionResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReactionsPublic;
+};
+
+export type commentsRemoveReactionResponse = commentsRemoveReactionResponses[keyof commentsRemoveReactionResponses];
+
+export type commentsListReactionsData = {
+    body?: never;
+    path: {
+        /**
+         * Comment Id
+         */
+        comment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/comments/{comment_id}/reactions';
+};
+
+export type commentsListReactionsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type commentsListReactionsError = commentsListReactionsErrors[keyof commentsListReactionsErrors];
+
+export type commentsListReactionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReactionsPublic;
+};
+
+export type commentsListReactionsResponse = commentsListReactionsResponses[keyof commentsListReactionsResponses];
+
+export type commentsAddReactionData = {
+    body: ReactionCreate;
+    path: {
+        /**
+         * Comment Id
+         */
+        comment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/comments/{comment_id}/reactions';
+};
+
+export type commentsAddReactionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type commentsAddReactionError = commentsAddReactionErrors[keyof commentsAddReactionErrors];
+
+export type commentsAddReactionResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReactionsPublic;
+};
+
+export type commentsAddReactionResponse = commentsAddReactionResponses[keyof commentsAddReactionResponses];
 
 export type releasesListReleasesData = {
     body?: never;

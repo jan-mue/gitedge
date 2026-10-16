@@ -10,7 +10,14 @@ from fastapi import HTTPException
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.comments import Comment
 from app.exceptions import IssueNotFoundError, PullRequestNotFoundError
-from app.schemas.comments import CommentCreate, CommentPublic, CommentsPublic, CommentUpdate
+from app.schemas.comments import (
+    CommentCreate,
+    CommentPublic,
+    CommentsPublic,
+    CommentUpdate,
+    ReactionPublic,
+    ReactionsPublic,
+)
 from app.services.markdown import render_markdown
 
 if TYPE_CHECKING:
@@ -21,6 +28,7 @@ if TYPE_CHECKING:
     from app.clients.pull_requests import PullRequestStore
     from app.clients.repositories import RepositoryStore
     from app.entities.issues import Issue
+    from app.entities.repositories import Repository
     from app.entities.users import User
     from app.services.activity import ActivityService
 
@@ -103,6 +111,7 @@ class CommentService:
             target_type=ActivityTargetType(issue.kind),
             target_number=issue.number,
             comment_id=comment.id,
+            text=comment.body,
         )
 
         return self._to_public(comment)
@@ -126,9 +135,23 @@ class CommentService:
         if comment.author_id != current_user.id and not current_user.is_superuser:
             raise HTTPException(status_code=403, detail="You can only edit your own comments")
 
+        previous_body = comment.body
         comment.body = body.body
         comment.updated_at = datetime.now(UTC)
         await self.comment_store.update(comment)
+        if comment.body != previous_body:
+            issue, repository = await self.comment_store.context(comment)
+            await self.activity_service.record(
+                actor=current_user,
+                repo=repository,
+                kind=ActivityKind.COMMENT_EDIT,
+                title=issue.title,
+                target_type=ActivityTargetType(issue.kind),
+                target_number=issue.number,
+                comment_id=comment.id,
+                text=comment.body,
+                previous_text=previous_body,
+            )
         return self._to_public(comment)
 
     async def delete_comment(self, comment_id: uuid.UUID, current_user: User) -> None:
@@ -147,6 +170,49 @@ class CommentService:
             raise HTTPException(status_code=403, detail="You can only delete your own comments")
 
         await self.comment_store.delete(comment)
+
+    async def list_reactions(self, comment_id: uuid.UUID, current_user: User) -> ReactionsPublic:
+        """Read reaction totals after checking the comment is accessible."""
+        comment = await self.comment_store.get(comment_id)
+        await self._reaction_context(comment, current_user)
+        reactions = await self.comment_store.reactions(comment_id)
+        emojis = list(dict.fromkeys(reaction.emoji for reaction in reactions))
+        return ReactionsPublic(
+            data=[
+                ReactionPublic(
+                    emoji=emoji,
+                    count=sum(reaction.emoji == emoji for reaction in reactions),
+                    reacted=any(
+                        reaction.emoji == emoji and reaction.user_id == current_user.id for reaction in reactions
+                    ),
+                )
+                for emoji in emojis
+            ]
+        )
+
+    async def react(self, comment_id: uuid.UUID, emoji: str, current_user: User, *, enabled: bool) -> ReactionsPublic:
+        """Add or remove a reaction; only new reactions create activity."""
+        comment = await self.comment_store.get(comment_id)
+        issue, repository = await self._reaction_context(comment, current_user)
+        added = await self.comment_store.set_reaction(comment_id, current_user.id, emoji, enabled=enabled)
+        if added:
+            await self.activity_service.record(
+                actor=current_user,
+                repo=repository,
+                kind=ActivityKind.REACTION,
+                title=f"{emoji} {issue.title}",
+                target_type=ActivityTargetType(issue.kind),
+                target_number=issue.number,
+                comment_id=comment.id,
+            )
+        return await self.list_reactions(comment_id, current_user)
+
+    async def _reaction_context(self, comment: Comment, user: User) -> tuple[Issue, Repository]:
+        """Protect private discussion reactions."""
+        issue, repo = await self.comment_store.context(comment)
+        if repo.is_private and repo.owner_id != user.id and not user.is_superuser:
+            raise HTTPException(status_code=404, detail="Comment not found")
+        return issue, repo
 
     async def _find_issue(self, owner: str, name: str, number: int) -> Issue:
         """Find an issue or pull request by repository and number.

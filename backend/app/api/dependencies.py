@@ -7,7 +7,7 @@ from functools import cache
 from typing import TYPE_CHECKING, Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
@@ -27,6 +27,7 @@ from app.clients.cache import (
 from app.clients.comments import CommentStore, SQLCommentStore
 from app.clients.email import EmailClient, SMTPClient
 from app.clients.issues import IssueStore, SQLIssueStore
+from app.clients.notifications import NotificationStore, SQLNotificationStore
 from app.clients.organizations import OrganizationStore, SQLOrganizationStore
 from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
 from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClient
@@ -44,6 +45,7 @@ from app.services.comments import CommentService
 from app.services.crud import CrudService
 from app.services.forks import ForkService
 from app.services.issues import IssueService
+from app.services.notifications import NotificationService
 from app.services.organizations import OrganizationService
 from app.services.pull_requests import PullRequestService
 from app.services.releases import ReleaseService
@@ -432,10 +434,32 @@ def get_activity_store(session: SessionDep) -> ActivityStore:
 ActivityStoreDep = Annotated[ActivityStore, Depends(get_activity_store)]
 
 
+def get_notification_store(session: SessionDep) -> NotificationStore:
+    """Get notification persistence for the request."""
+    return SQLNotificationStore(session)
+
+
+NotificationStoreDep = Annotated[NotificationStore, Depends(get_notification_store)]
+
+
+def get_notification_service(
+    store: NotificationStoreDep,
+    repository_store: RepositoryStoreDep,
+    email_client: EmailClientDep,
+    background_tasks: BackgroundTasks,
+) -> NotificationService:
+    """Get the activity delivery and inbox service."""
+    return NotificationService(store, repository_store, email_client, background_tasks)
+
+
+NotificationServiceDep = Annotated[NotificationService, Depends(get_notification_service)]
+
+
 def get_activity_service(
     activity_store: ActivityStoreDep,
     repository_store: RepositoryStoreDep,
     star_store: StarStoreDep,
+    notification_service: NotificationServiceDep,
 ) -> ActivityService:
     """Get the activity service dependency.
 
@@ -443,11 +467,12 @@ def get_activity_service(
         activity_store: Activity store dependency.
         repository_store: Repository store dependency.
         star_store: Star store dependency.
+        notification_service: Notification delivery service.
 
     Returns:
         Activity service instance.
     """
-    return ActivityService(activity_store, repository_store, star_store)
+    return ActivityService(activity_store, repository_store, star_store, notification_service)
 
 
 ActivityServiceDep = Annotated[ActivityService, Depends(get_activity_service)]

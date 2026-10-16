@@ -95,6 +95,14 @@ Email sending is disabled unless both `SMTP_HOST` and `EMAILS_FROM_EMAIL` are
 set. In development, default secrets only produce warnings; in preview and
 production they raise an error at startup.
 
+Activity notifications are available from the inbox icon or `/notifications`.
+Repository owners and watchers, discussion authors and participants, and mentioned
+users receive relevant updates; users do not receive their own activity.
+In **Settings → Notifications**, choose notification center only (the default) or
+email and notification center. Email uses the SMTP settings above and links back
+to the discussion. **Manage** in the inbox configures repository categories;
+unsubscribing mutes a thread, while dismissing archives an entry for later restore.
+
 ### Dynamic CORS origins
 
 The allowed CORS origins are computed by a single property,

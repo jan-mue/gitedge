@@ -97,6 +97,7 @@ class IssueService:
             title=issue.title,
             target_type=ActivityTargetType.ISSUE,
             target_number=issue.number,
+            text=f"{issue.title}\n{issue.body or ''}",
         )
 
         return self._to_public(issue, owner, name)
@@ -145,6 +146,9 @@ class IssueService:
         ):
             raise HTTPException(status_code=403, detail="You can only edit your own issues")
 
+        previous_state = issue.state
+        previous_text = f"{issue.title}\n{issue.body or ''}"
+
         if body.title is not None:
             issue.title = body.title
         if body.body is not None:
@@ -157,7 +161,7 @@ class IssueService:
         issue.updated_at = datetime.now(UTC)
         await self.issue_store.update(issue)
 
-        if body.state is not None:
+        if body.state is not None and body.state != previous_state:
             kind = ActivityKind.ISSUE_CLOSE if body.state == IssueState.CLOSED else ActivityKind.ISSUE_REOPEN
             repository = await self.repository_store.get_by_owner_and_name(owner, name)
             await self.activity_service.record(
@@ -167,6 +171,20 @@ class IssueService:
                 title=issue.title,
                 target_type=ActivityTargetType.ISSUE,
                 target_number=issue.number,
+            )
+
+        updated_text = f"{issue.title}\n{issue.body or ''}"
+        if updated_text != previous_text:
+            repository = await self.repository_store.get_by_owner_and_name(owner, name)
+            await self.activity_service.record(
+                actor=current_user,
+                repo=repository,
+                kind=ActivityKind.ISSUE_EDIT,
+                title=issue.title,
+                target_type=ActivityTargetType.ISSUE,
+                target_number=issue.number,
+                text=updated_text,
+                previous_text=previous_text,
             )
 
         return self._to_public(issue, owner, name)

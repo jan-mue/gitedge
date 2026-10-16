@@ -116,6 +116,7 @@ class PullRequestService:
             title=pull_request.title,
             target_type=ActivityTargetType.PULL_REQUEST,
             target_number=pull_request.number,
+            text=f"{pull_request.title}\n{pull_request.body or ''}",
         )
 
         return self._to_public(pull_request, owner, name)
@@ -181,6 +182,9 @@ class PullRequestService:
         ):
             raise HTTPException(status_code=403, detail="You can only edit your own pull requests")
 
+        previous_state = pull_request.state
+        previous_text = f"{pull_request.title}\n{pull_request.body or ''}"
+
         if body.title is not None:
             pull_request.title = body.title
         if body.body is not None:
@@ -193,7 +197,7 @@ class PullRequestService:
         pull_request.updated_at = datetime.now(UTC)
         await self.pull_request_store.update(pull_request)
 
-        if body.state is not None:
+        if body.state is not None and body.state != previous_state:
             kind = {
                 IssueState.MERGED: ActivityKind.PULL_REQUEST_MERGE,
                 IssueState.CLOSED: ActivityKind.PULL_REQUEST_CLOSE,
@@ -206,6 +210,20 @@ class PullRequestService:
                 title=pull_request.title,
                 target_type=ActivityTargetType.PULL_REQUEST,
                 target_number=pull_request.number,
+            )
+
+        updated_text = f"{pull_request.title}\n{pull_request.body or ''}"
+        if updated_text != previous_text:
+            repository = await self.repository_store.get_by_owner_and_name(owner, name)
+            await self.activity_service.record(
+                actor=current_user,
+                repo=repository,
+                kind=ActivityKind.PULL_REQUEST_EDIT,
+                title=pull_request.title,
+                target_type=ActivityTargetType.PULL_REQUEST,
+                target_number=pull_request.number,
+                text=updated_text,
+                previous_text=previous_text,
             )
 
         return self._to_public(pull_request, owner, name)

@@ -48,7 +48,7 @@ class SMTPClient(EmailClient):
             html_content: Email body in HTML format.
 
         Raises:
-            RuntimeError: If email settings are not configured.
+            RuntimeError: If email settings are not configured or the server rejects delivery.
         """
         from_name = settings.EMAILS_FROM_NAME
         from_email = settings.EMAILS_FROM_EMAIL
@@ -60,4 +60,6 @@ class SMTPClient(EmailClient):
             mail_from=(from_name, str(from_email)),
         )
         response = message.send(to=email_to, smtp=self.smtp_options)
-        logger.info("send email result: %s", response)
+        if not response.success:
+            raise RuntimeError(f"SMTP delivery failed with status {response.status_code}")
+        logger.info("Email delivered successfully")

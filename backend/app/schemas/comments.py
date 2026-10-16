@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import Field
 
@@ -36,3 +37,23 @@ class CommentsPublic(GitEdgeBaseModel):
 
     data: list[CommentPublic]
     count: int
+
+
+class ReactionPublic(GitEdgeBaseModel):
+    """A comment reaction with the current user's selection."""
+
+    emoji: str
+    count: int
+    reacted: bool
+
+
+class ReactionsPublic(GitEdgeBaseModel):
+    """All reaction counts for one comment."""
+
+    data: list[ReactionPublic]
+
+
+class ReactionCreate(GitEdgeBaseModel):
+    """Supported comment reactions."""
+
+    emoji: Literal["👍", "👎", "😄", "🎉", "😕", "❤️", "🚀", "👀"]

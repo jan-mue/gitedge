@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { ChevronDown, Inbox, LogOut, Plus, Settings, ShieldCheck, User } from "lucide-react"
 import { useRef, useState } from "react"
 import {
+  notificationsListNotificationsOptions,
   organizationsCreateOrganizationMutation,
   organizationsListOrganizationsOptions,
   organizationsListOrganizationsQueryKey,
@@ -48,6 +49,12 @@ const GlobalNav = () => {
   const [orgName, setOrgName] = useState("")
 
   const username = user?.name ?? ""
+  const { data: notifications } = useQuery({
+    ...notificationsListNotificationsOptions({ query: { limit: 1 } }),
+    enabled: !!user,
+    refetchInterval: 30_000,
+  })
+  const unread = notifications?.unread_count ?? 0
 
   const { data: organizations } = useQuery({
     ...organizationsListOrganizationsOptions(),
@@ -106,18 +113,19 @@ const GlobalNav = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button
-              type="button"
-              variant="notification"
-              size="icon-sm"
+            <RouterLink
+              to="/notifications"
+              appearance="notificationNav"
               title="Notifications"
-              aria-label="Notifications, 0 unread"
+              aria-label={`Notifications, ${unread} unread`}
             >
               <Inbox className="h-5 w-5" />
-              <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
-                0
-              </span>
-            </Button>
+              {unread > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              )}
+            </RouterLink>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
