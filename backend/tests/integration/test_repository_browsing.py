@@ -105,7 +105,15 @@ class TestRepositoryBrowsing:
         expect(page.get_by_test_id("entry-commit-src")).to_have_text("Initial commit with test files", timeout=15000)
         expect(page.get_by_test_id("entry-commit-README.md")).to_have_text("Update repository documentation")
         expect(page.get_by_test_id("clone-url")).to_be_disabled()
-        expect(page.get_by_test_id("tree-entry-src").locator("time")).to_be_visible()
+        expect(page.get_by_test_id("file-row-src").locator("time")).to_be_visible()
+
+        commit = page.get_by_test_id("entry-commit-src")
+        commit_url = commit.get_attribute("href")
+        assert commit_url is not None
+        commit.click()
+        page.wait_for_url(f"{app_url}{commit_url}")
+        expect(page.get_by_role("heading", name="Initial commit with test files", exact=True)).to_be_visible()
+        page.go_back()
 
         page.get_by_test_id("tree-entry-src").click()
         expect(page.get_by_test_id("entry-commit-main.py")).to_have_text("Initial commit with test files")

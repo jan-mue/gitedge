@@ -40,12 +40,14 @@ const RepositoryCommitHeader = ({
           >
             {commit.sha.slice(0, 10)}
           </Link>
-          <span
-            className="order-last w-full truncate text-sm text-foreground md:order-none md:w-auto md:min-w-0 md:flex-1"
+          <Link
+            to="/$owner/$repo/commit/$hash"
+            params={{ owner, repo, hash: commit.sha }}
+            appearance="commitMessage"
             title={commit.message}
           >
             {commit.message.split("\n")[0]}
-          </span>
+          </Link>
           <time
             className="ml-auto whitespace-nowrap text-sm text-muted-foreground"
             dateTime={new Date(commit.timestamp * 1000).toISOString()}

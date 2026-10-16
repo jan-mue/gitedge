@@ -3,7 +3,7 @@ import { GitMerge, MessageSquare, Users } from "lucide-react"
 import type { ReactNode } from "react"
 import type { CompareResult, PullRequestPublic, ReviewPublic } from "@/client"
 import { commentsListCommentsOptions } from "@/client/@tanstack/react-query.gen"
-import { ConversationCard, ConversationItem, MarkdownContent } from "@/components/design-system"
+import { ConversationCard, ConversationItem, MarkdownContent, ReviewStatusIcon } from "@/components/design-system"
 import CommentsSection from "./CommentsSection"
 import { ReviewTimeline } from "./PullRequestFiles"
 
@@ -34,7 +34,10 @@ export const PullRequestConversation = ({
   ]
   const reviewers = [...new Map(reviews.map((review) => [review.author_username, review])).values()]
   return (
-    <div className="flex flex-col gap-6 lg:flex-row" data-testid="pr-conversation">
+    <div
+      className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_13rem] lg:grid-cols-[minmax(0,1fr)_16rem]"
+      data-testid="pr-conversation"
+    >
       <div className="min-w-0 flex-1">
         <CommentsSection
           owner={owner}
@@ -52,13 +55,21 @@ export const PullRequestConversation = ({
           events={reviews.map((review) => ({
             id: `review-${review.id}`,
             created_at: review.created_at,
+            icon: <ReviewStatusIcon state={review.state} />,
             content: <ReviewTimeline reviews={[review]} changes={changes} />,
           }))}
           beforeComposer={
-            <ConversationItem icon={<GitMerge className="size-2.5" />}>
+            <ConversationItem
+              marker={pull.state === "merged" ? "status" : "comment"}
+              icon={pull.state === "merged" ? <ReviewStatusIcon state="merged" /> : <GitMerge className="size-2.5" />}
+            >
               <div className="rounded-lg border border-border bg-secondary/30 p-4">
                 <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
-                  <GitMerge className="size-4 text-success" />
+                  {pull.state === "merged" ? (
+                    <ReviewStatusIcon state="merged" inline />
+                  ) : (
+                    <GitMerge className="size-4 text-success" />
+                  )}
                   {pull.state === "open"
                     ? "Merge pull request"
                     : pull.state === "merged"
@@ -75,12 +86,15 @@ export const PullRequestConversation = ({
           actions={closeActions}
         />
       </div>
-      <aside className="w-full shrink-0 space-y-4 lg:w-64" aria-label="Pull request details">
+      <aside className="min-w-0 space-y-4" aria-label="Pull request details">
         <SidebarSection title="Reviewers">
           {reviewers.length ? (
             reviewers.map((review) => (
               <div key={review.author_username} className="flex items-center justify-between gap-2 py-1 text-sm">
-                <span>{review.author_username}</span>
+                <span className="flex items-center gap-2">
+                  <ReviewStatusIcon state={review.state} inline />
+                  {review.author_username}
+                </span>
                 <span
                   className={
                     review.state === "approved"

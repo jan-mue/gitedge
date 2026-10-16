@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { HttpResponse } from "msw"
+import type { ReviewPublic } from "@/client"
 import {
   handleCommentsListComments,
   handleRepositoriesGetPullRequest,
@@ -75,6 +76,55 @@ export default meta
 type Story = StoryObj
 export const ConversationAndCommits: Story = {
   render: () => <PullRequestDetailView owner="jan-mue" repo="gitedge" prNumber={1} />,
+}
+const reviews: ReviewPublic[] = [
+  {
+    id: "requested",
+    author_username: "bob",
+    state: "changes_requested",
+    body: "",
+    comments: [],
+    base_commit: comparisonFixture.base_commit!,
+    head_commit: comparisonFixture.head_commit!,
+    created_at: "2026-10-14T12:00:00Z",
+  },
+  {
+    id: "approved",
+    author_username: "carol",
+    state: "approved",
+    body: "",
+    comments: [],
+    base_commit: comparisonFixture.base_commit!,
+    head_commit: comparisonFixture.head_commit!,
+    created_at: "2026-10-15T12:00:00Z",
+  },
+]
+export const ReviewStatuses: Story = {
+  ...ConversationAndCommits,
+  parameters: { msw: { handlers: [handleReviewsListReviews({ body: reviews }), ...meta.parameters.msw.handlers] } },
+}
+export const Merged: Story = {
+  ...ConversationAndCommits,
+  parameters: {
+    msw: {
+      handlers: [
+        handleRepositoriesGetPullRequest({ body: { ...pull, state: "merged" } }),
+        handleReviewsListReviews({ body: reviews }),
+        ...meta.parameters.msw.handlers,
+      ],
+    },
+  },
+}
+export const Closed: Story = {
+  ...ConversationAndCommits,
+  parameters: {
+    msw: {
+      handlers: [
+        handleRepositoriesGetPullRequest({ body: { ...pull, state: "closed" } }),
+        ...meta.parameters.msw.handlers,
+      ],
+    },
+  },
 }
 export const ReviewDropdown: Story = {
   render: () => (

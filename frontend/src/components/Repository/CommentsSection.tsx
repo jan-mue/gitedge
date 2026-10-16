@@ -29,9 +29,16 @@ interface CommentsSectionProps {
   timeline?: boolean
   author?: string
   intro?: ReactNode
-  events?: { id: string; created_at: string; content: ReactNode }[]
+  events?: ConversationEntry[]
   beforeComposer?: ReactNode
   actions?: ReactNode
+}
+
+interface ConversationEntry {
+  id: string
+  created_at: string
+  content: ReactNode
+  icon?: ReactNode
 }
 
 const CommentsSection = ({
@@ -88,7 +95,7 @@ const CommentsSection = ({
   })
 
   const comments = data?.data ?? []
-  const entries = [
+  const entries: ConversationEntry[] = [
     ...comments.map((comment) => ({
       id: comment.id,
       created_at: comment.created_at,
@@ -196,7 +203,9 @@ const CommentsSection = ({
       )}
       {entries.map((entry) =>
         timeline ? (
-          <ConversationItem key={entry.id}>{entry.content}</ConversationItem>
+          <ConversationItem key={entry.id} icon={entry.icon} marker={entry.icon ? "status" : "comment"}>
+            {entry.content}
+          </ConversationItem>
         ) : (
           <div key={entry.id}>{entry.content}</div>
         ),

@@ -2,11 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useParams } from "@tanstack/react-router"
 import {
   ArrowLeft,
-  CircleCheck,
   FileText,
   GitCommitHorizontal,
   GitMerge,
   GitPullRequest,
+  GitPullRequestClosed,
   MessageSquare,
 } from "lucide-react"
 import { useState } from "react"
@@ -49,8 +49,8 @@ const stateBadge = (state: string) => {
   }
   if (state === "closed") {
     return (
-      <Badge variant="secondary" data-testid="pr-state">
-        <CircleCheck className="w-3 h-3" /> Closed
+      <Badge variant="destructive" data-testid="pr-state">
+        <GitPullRequestClosed className="w-3 h-3" /> Closed
       </Badge>
     )
   }
@@ -71,6 +71,7 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
   const { user } = useAuth()
   const { showErrorToast } = useCustomToast()
   const [editing, setEditing] = useState(false)
+  const [tab, setTab] = useState("conversation")
   const [editTitle, setEditTitle] = useState("")
   const [editBody, setEditBody] = useState("")
 
@@ -212,8 +213,8 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
         </div>
       )}
 
-      <Tabs defaultValue="conversation">
-        <div className="border-b border-border">
+      <Tabs value={tab} onValueChange={setTab}>
+        <div>
           <TabsList appearance="pullRequest">
             <TabsTrigger value="conversation" appearance="pullRequest" aria-label="Conversation">
               <MessageSquare className="size-4" />
@@ -227,12 +228,18 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
             </TabsTrigger>
             <TabsTrigger value="files" appearance="pullRequest" aria-label="Files Changed">
               <FileText className="size-4" />
-              <span className="hidden sm:inline">Files Changed</span>
+              <span className="hidden sm:inline">Files changed</span>
               <span className="sm:hidden">Files</span>
               {changes && (
                 <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs">{changes.files.length}</span>
               )}
             </TabsTrigger>
+            {tab === "files" && changes && (
+              <div className="ml-auto flex items-center gap-1 pr-2 text-sm" data-testid="pr-tab-diff-stats">
+                <span className="text-primary">+{changes.additions}</span>
+                <span className="text-destructive">-{changes.deletions}</span>
+              </div>
+            )}
           </TabsList>
         </div>
         <TabsContent value="conversation" appearance="pullRequest">
@@ -262,20 +269,22 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
               ) : null
             }
             closeActions={
-              <Button
-                variant="repository"
-                size="compact"
-                disabled={mutation.isPending}
-                onClick={() =>
-                  mutation.mutate({
-                    path: { owner, repo, number: prNumber },
-                    body: { state: isOpen ? "closed" : "open" },
-                  })
-                }
-                data-testid={isOpen ? "close-pr" : "reopen-pr"}
-              >
-                {isOpen ? "Close pull request" : "Reopen"}
-              </Button>
+              pull.state !== "merged" ? (
+                <Button
+                  variant="repository"
+                  size="compact"
+                  disabled={mutation.isPending}
+                  onClick={() =>
+                    mutation.mutate({
+                      path: { owner, repo, number: prNumber },
+                      body: { state: isOpen ? "closed" : "open" },
+                    })
+                  }
+                  data-testid={isOpen ? "close-pr" : "reopen-pr"}
+                >
+                  {isOpen ? "Close pull request" : "Reopen"}
+                </Button>
+              ) : null
             }
           />
         </TabsContent>

@@ -10,12 +10,20 @@ export const ConversationTimeline = ({ children }: { children: ReactNode }) => (
 export const ConversationItem = ({
   children,
   icon = <MessageSquare className="size-2.5" />,
+  marker = "comment",
 }: {
   children: ReactNode
   icon?: ReactNode
+  marker?: "comment" | "status"
 }) => (
   <div className="relative pb-4 sm:pl-10">
-    <div className="absolute left-[10px] top-4 z-10 hidden size-[19px] items-center justify-center rounded-full border-2 border-border bg-secondary text-muted-foreground sm:flex">
+    <div
+      className={
+        marker === "status"
+          ? "absolute left-1 top-0 z-10 hidden size-8 items-center justify-center sm:flex"
+          : "absolute left-[10px] top-4 z-10 hidden size-[19px] items-center justify-center rounded-full border-2 border-border bg-secondary text-muted-foreground sm:flex"
+      }
+    >
       {icon}
     </div>
     {children}

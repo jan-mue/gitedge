@@ -8,6 +8,28 @@ import { DiffViewer } from "./DiffViewer"
 import { comparisonFixture } from "./diff-fixtures"
 
 describe("DiffViewer", () => {
+  test("file links use the displayed head, or the base revision for deleted files", () => {
+    const head = "b".repeat(40)
+    const base = "a".repeat(40)
+    render(
+      <DiffViewer
+        {...comparisonFixture}
+        files={[
+          comparisonFixture.files[0],
+          { ...comparisonFixture.files[1], path: "old file #1.py", change_type: "delete" },
+        ]}
+        diffSource={{ owner: "owner", repo: "repo", base, head }}
+      />,
+    )
+    expect(screen.getByRole("link", { name: "View file src/config.py" })).toHaveAttribute(
+      "href",
+      `/owner/repo/src/commit/${head}/src/config.py`,
+    )
+    expect(screen.getByRole("link", { name: "View original file old file #1.py" })).toHaveAttribute(
+      "href",
+      `/owner/repo/src/commit/${base}/old%20file%20%231.py`,
+    )
+  })
   test("viewed files collapse, allow manual expansion, and expand when unmarked", async () => {
     const Review = () => {
       const [paths, setPaths] = useState<string[]>([])

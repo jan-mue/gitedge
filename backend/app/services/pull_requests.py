@@ -189,6 +189,9 @@ class PullRequestService:
         """
         pull_request = await self._find_pull_request(owner, name, number)
 
+        if pull_request.state == IssueState.MERGED and body.state is not None and body.state != IssueState.MERGED:
+            raise HTTPException(status_code=409, detail="A merged pull request cannot be reopened or closed")
+
         if (
             (body.title is not None or body.body is not None)
             and pull_request.author_id != current_user.id

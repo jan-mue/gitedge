@@ -195,8 +195,8 @@ class TestFork:
 
         page.wait_for_url(f"{app_url}/{SUPERUSER_USERNAME}/{fork_name}")
         expect(page.get_by_role("heading", name="Test Repository", exact=True)).to_be_visible(timeout=15000)
-        expect(page.get_by_role("button", name="README.md")).to_be_visible()
-        expect(page.get_by_role("button", name="src", exact=True)).to_be_visible()
+        expect(page.get_by_role("link", name="README.md", exact=True)).to_be_visible()
+        expect(page.get_by_role("link", name="src", exact=True)).to_be_visible()
 
         fork_url = f"{app_url}/{SUPERUSER_USERNAME}/{fork_name}.git"
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -478,6 +478,8 @@ class TestPullRequestCommentsAndMerge:
 
         page.get_by_test_id("merge-pr").click()
         expect(page.get_by_test_id("pr-state")).to_contain_text("Merged", timeout=15000)
+        expect(page.get_by_test_id("reopen-pr")).to_have_count(0)
+        expect(page.get_by_test_id("close-pr")).to_have_count(0)
 
     def test_edit_pull_request(self, app_url: str, page: Page) -> None:
         """A pull request's title and body can be edited by its author.

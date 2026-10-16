@@ -165,3 +165,34 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium \
 The online GitHub Actions advisory lookup is blocked by the environment's network
 policy. The remaining repository checks, including zizmor's offline audits, can
 run normally with `ZIZMOR_OFFLINE=true pre-commit run -a`.
+
+## 2026-10-16 reference and CI corrections
+
+Compared the running reference application with GitEdge at 820 and 1280 pixels,
+including separate tab-strip screenshots. The reference uses 42-pixel tabs with
+a 2-pixel blue active underline (`rgb(60, 140, 221)`). GitEdge previously inherited
+a gray active border and pointer-focus outline from the shared pill-style preset,
+and drew the bottom divider twice. PR tabs now use unstyled Radix primitives with
+the reference's spacing and underline; keyboard focus remains visible. The Files
+Changed tab also displays the reference's addition/deletion summary.
+
+Sidebar geometry is checked at 768, 820, 1024, and 1180 pixels in both themes,
+including portrait iPads. Metadata remains in the right column without page-level
+horizontal overflow. Review events use Gitea's actual icon mapping:
+[check for approvals, diff for requested changes](https://github.com/go-gitea/gitea/blob/main/models/issues/review.go),
+with colored timeline markers and a purple merge marker. Merged PRs have no
+reopen/close action, and the API rejects both transitions with HTTP 409; closed
+PRs remain reopenable.
+
+The [failed GitHub job](https://github.com/jan-mue/gitedge/actions/runs/38809693614)
+had one failure and 126 passes. Its older PR file test expected files on the
+conversation tab. It now opens Files Changed, and the diff header's missing
+View file link is restored. Links address the displayed head revision, or the
+base revision for deleted files, with encoded paths.
+
+After merging main, local validation passed: all 127 integration tests against
+real dependencies, 274 backend unit tests, and 282 frontend tests. The production
+frontend and Storybook builds passed. The built-Storybook PR checks passed 18
+cases; two tablet-only cases are intentionally skipped in the mobile projects.
+Frontend unit tests used one worker and a 15-second timeout to avoid contention
+with the full integration run; no assertions were disabled.

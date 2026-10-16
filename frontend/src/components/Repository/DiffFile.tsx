@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query"
 import { defaultRangeExtractor, useWindowVirtualizer } from "@tanstack/react-virtual"
-import { ChevronDown, ChevronRight, FileCode2, Plus } from "lucide-react"
+import { ChevronDown, ChevronRight, ExternalLink, FileCode2, Plus } from "lucide-react"
 import { Fragment, memo, type ReactNode, useMemo, useRef, useState } from "react"
 import type { CommitFileChange, DiffLine, ReviewLineComment } from "@/client"
 import { repositoriesGetDiffFileOptions } from "@/client/@tanstack/react-query.gen"
-import { Button, Checkbox, CodeSkeleton, Textarea } from "@/components/design-system"
+import { Button, Checkbox, CodeSkeleton, ExternalLink as FileLink, Textarea } from "@/components/design-system"
 import type { DiffAnnotation, DiffSource } from "./DiffViewer"
 import { useDocumentOffset } from "./diff-virtualization"
 
@@ -246,6 +246,16 @@ export const DiffFile = memo(
           <span className={`diff-status diff-status-${file.change_type}`}>{labels[file.change_type]}</span>
           <span className="font-mono text-xs text-success">+{file.additions}</span>
           <span className="font-mono text-xs text-destructive">−{file.deletions}</span>
+          {source && (file.change_type !== "delete" || source.base) && (
+            <FileLink
+              href={`/${encodeURIComponent(source.owner)}/${encodeURIComponent(source.repo)}/src/commit/${file.change_type === "delete" ? source.base : source.head}/${file.path.split("/").map(encodeURIComponent).join("/")}`}
+              appearance="codeAction"
+              data-testid={`view-file-${file.path}`}
+              aria-label={`${file.change_type === "delete" ? "View original file" : "View file"} ${file.path}`}
+            >
+              <ExternalLink className="size-3.5" />
+            </FileLink>
+          )}
           {onReviewed && (
             <label className="ml-2 flex items-center gap-2 text-xs" htmlFor={`${id}-viewed`}>
               <Checkbox

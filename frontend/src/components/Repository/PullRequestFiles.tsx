@@ -311,35 +311,31 @@ const stateLabel = {
 export const ReviewTimeline = ({ reviews, changes }: { reviews: ReviewPublic[]; changes?: CompareResult }) => (
   <div className="space-y-4">
     {reviews.map((review) => (
-      <ConversationCard key={review.id} author={review.author_username} date={review.created_at} badge="Reviewer">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span
-            className={
-              review.state === "approved"
-                ? "text-success"
-                : review.state === "changes_requested"
-                  ? "text-destructive"
-                  : "text-muted-foreground"
-            }
-          >
-            {stateLabel[review.state]}
-          </span>
+      <div key={review.id} data-testid={`review-${review.id}`} className="space-y-3">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 py-1 text-sm text-muted-foreground">
+          <strong className="font-medium text-foreground">{review.author_username}</strong>
+          <span>{stateLabel[review.state]}</span>
+          <time dateTime={review.created_at}>{new Date(review.created_at).toLocaleString()}</time>
         </div>
         {changes && (review.head_commit !== changes.head_commit || review.base_commit !== changes.base_commit) && (
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Review of an earlier revision · {review.head_commit.slice(0, 10)}
           </p>
         )}
-        {review.body && <p className="mt-3 whitespace-pre-wrap text-sm">{review.body}</p>}
-        {(review.comments ?? []).map((comment, index) => (
-          <div key={index} className="mt-3 rounded border border-border bg-secondary/30 p-3 text-sm">
-            <p className="break-all font-mono text-xs text-muted-foreground">
-              {comment.path} · {comment.side === "old" ? "Original" : "Changed"} line {comment.line}
-            </p>
-            <p className="mt-2 whitespace-pre-wrap">{comment.body}</p>
-          </div>
-        ))}
-      </ConversationCard>
+        {(review.body || (review.comments?.length ?? 0) > 0) && (
+          <ConversationCard author={review.author_username} date={review.created_at} badge="Reviewer">
+            {review.body && <p className="whitespace-pre-wrap text-sm">{review.body}</p>}
+            {(review.comments ?? []).map((comment, index) => (
+              <div key={index} className="mt-3 rounded border border-border bg-secondary/30 p-3 text-sm">
+                <p className="break-all font-mono text-xs text-muted-foreground">
+                  {comment.path} · {comment.side === "old" ? "Original" : "Changed"} line {comment.line}
+                </p>
+                <p className="mt-2 whitespace-pre-wrap">{comment.body}</p>
+              </div>
+            ))}
+          </ConversationCard>
+        )}
+      </div>
     ))}
   </div>
 )
