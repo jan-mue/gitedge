@@ -481,6 +481,20 @@ class TestPullRequestCommentsAndMerge:
         expect(page.get_by_test_id("reopen-pr")).to_have_count(0)
         expect(page.get_by_test_id("close-pr")).to_have_count(0)
 
+        page.get_by_test_id("comment-input").fill("Comment after merging.")
+        page.get_by_test_id("comment-submit").click()
+        expect(page.get_by_test_id("comment-input")).to_have_value("", timeout=15000)
+        page.reload()
+        merge_event = page.get_by_test_id("pr-event-pull_request_merge")
+        later_comment = page.get_by_test_id("comments-section").get_by_text("Comment after merging.", exact=True)
+        expect(merge_event).to_be_visible()
+        expect(later_comment).to_be_visible()
+        comment_bounds = later_comment.bounding_box()
+        merge_bounds = merge_event.bounding_box()
+        assert comment_bounds is not None
+        assert merge_bounds is not None
+        assert comment_bounds["y"] > merge_bounds["y"]
+
     def test_edit_pull_request(self, app_url: str, page: Page) -> None:
         """A pull request's title and body can be edited by its author.
 

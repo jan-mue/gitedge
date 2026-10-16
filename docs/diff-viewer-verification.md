@@ -196,3 +196,29 @@ frontend and Storybook builds passed. The built-Storybook PR checks passed 18
 cases; two tablet-only cases are intentionally skipped in the mobile projects.
 Frontend unit tests used one worker and a 15-second timeout to avoid contention
 with the full integration run; no assertions were disabled.
+
+## Conversation ordering and review context
+
+PR state events now come from the recorded activity rows, scoped to the exact
+repository and PR. Merge, close, and reopen events are sorted with reviews and
+comments by their original dates. Editing a description or repeating an unchanged
+state does not move or duplicate the merge event. The final timeline segment
+turns toward the comment composer's border instead of continuing alongside it.
+
+Review comments display a short unified snippet from their immutable base/head
+revisions, including line numbers, syntax tokens, changed-token emphasis, and a
+marker on the commented line. Older comparisons have an Outdated label. Snippets
+share the main viewer's code-row renderer and cached file requests; only previews
+within 400 pixels of the viewport start loading. The browser selects at most six
+existing diff rows without calculating diffs or syntax tokens. Failed or missing
+context leaves the comment visible, with a retry for failed requests.
+
+Regression coverage includes comments before and after merging, later description
+edits, original/deleted versus changed lines, original revision context after a
+new push, request deduplication, and unavailable-context handling. Browser checks
+cover both themes and desktop/mobile layouts, including the connector's endpoint.
+
+Validation for this follow-up passed: 274 backend unit tests, 285 frontend tests,
+five full-stack PR/review regression cases, and 26 built-Storybook browser checks
+(two intentional tablet-only skips on mobile projects). Both production builds
+passed. The full-stack cases include the 500-file and 10,000-row diff checks.

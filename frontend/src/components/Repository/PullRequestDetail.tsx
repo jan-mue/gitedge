@@ -13,6 +13,7 @@ import { useState } from "react"
 import {
   commentsListCommentsOptions,
   repositoriesGetPullRequestCommitsOptions,
+  repositoriesGetPullRequestEventsQueryKey,
   repositoriesGetPullRequestFilesOptions,
   repositoriesGetPullRequestOptions,
   repositoriesGetPullRequestQueryKey,
@@ -109,6 +110,9 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
         response,
       )
       queryClient.invalidateQueries({ queryKey: repositoriesListPullRequestsQueryKey({ path: { owner, repo } }) })
+      queryClient.invalidateQueries({
+        queryKey: repositoriesGetPullRequestEventsQueryKey({ path: { owner, repo, number: prNumber } }),
+      })
       queryClient.invalidateQueries({
         queryKey: repositoriesGetPullRequestFilesOptions({
           path: { owner, repo, number: prNumber },

@@ -5,6 +5,7 @@ import { Fragment, memo, type ReactNode, useMemo, useRef, useState } from "react
 import type { CommitFileChange, DiffLine, ReviewLineComment } from "@/client"
 import { repositoriesGetDiffFileOptions } from "@/client/@tanstack/react-query.gen"
 import { Button, Checkbox, CodeSkeleton, ExternalLink as FileLink, Textarea } from "@/components/design-system"
+import { DiffCodeRow } from "./DiffCodeRow"
 import type { DiffAnnotation, DiffSource } from "./DiffViewer"
 import { useDocumentOffset } from "./diff-virtualization"
 
@@ -174,9 +175,12 @@ export const DiffFile = memo(
       const number = anchorSide === "old" ? line.old_line : line.new_line
       return (
         <div className="diff-cell" data-kind={line.kind}>
-          <div className={`diff-code-row ${side ? "diff-single-side" : ""}`}>
-            <div className="diff-line-action">
-              {onAddComment && number != null && (
+          <DiffCodeRow
+            line={line}
+            side={side}
+            action={
+              onAddComment &&
+              number != null && (
                 <Button
                   variant="ghost"
                   size="icon-xs"
@@ -189,23 +193,9 @@ export const DiffFile = memo(
                 >
                   <Plus className="size-3" />
                 </Button>
-              )}
-            </div>
-            {!side && <span className="diff-number">{line.old_line}</span>}
-            <span className="diff-number">{side === "old" ? line.old_line : line.new_line}</span>
-            <span className="diff-sign" aria-hidden="true">
-              {line.kind === "add" ? "+" : line.kind === "delete" ? "−" : " "}
-            </span>
-            <code className="diff-code">
-              {line.tokens.length
-                ? line.tokens.map((token, index) => (
-                    <span key={index} data-syntax={token.syntax} data-changed={token.changed ? "true" : undefined}>
-                      {token.text}
-                    </span>
-                  ))
-                : " "}
-            </code>
-          </div>
+              )
+            }
+          />
           {line.no_newline && <div className="diff-no-newline">No newline at end of file</div>}
           {side ? (
             threads(file, line, side)

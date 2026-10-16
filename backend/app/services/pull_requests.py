@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from app.clients.pull_requests import PullRequestStore
     from app.clients.repositories import RepositoryStore
     from app.entities.users import User
+    from app.schemas.activity import ActivityPublic
     from app.services.activity import ActivityService
     from app.services.repositories import RepositoryService
 
@@ -138,6 +139,11 @@ class PullRequestService:
         pull_request = await self._find_pull_request(owner, name, number)
         return self._to_public(pull_request, owner, name)
 
+    async def get_pull_request_events(self, owner: str, name: str, number: int) -> list[ActivityPublic]:
+        """Read state events after verifying the pull request exists."""
+        pull = await self._find_pull_request(owner, name, number)
+        return await self.activity_service.pull_request_events(pull.repo_id, number)
+
     async def get_pull_request_commits(
         self, owner: str, name: str, number: int, offset: int = 0, limit: int = 50
     ) -> CommitsPublic:
@@ -199,6 +205,7 @@ class PullRequestService:
         ):
             raise HTTPException(status_code=403, detail="You can only edit your own pull requests")
 
+        state_changed = body.state is not None and body.state != pull_request.state
         if body.title is not None:
             pull_request.title = body.title
         if body.body is not None:
@@ -211,7 +218,7 @@ class PullRequestService:
         pull_request.updated_at = datetime.now(UTC)
         await self.pull_request_store.update(pull_request)
 
-        if body.state is not None:
+        if state_changed:
             kind = {
                 IssueState.MERGED: ActivityKind.PULL_REQUEST_MERGE,
                 IssueState.CLOSED: ActivityKind.PULL_REQUEST_CLOSE,

@@ -211,7 +211,7 @@ const CommentsSection = ({
         ),
       )}
       {beforeComposer}
-      {timeline ? <ConversationItem>{composer}</ConversationItem> : composer}
+      {timeline ? <ConversationItem terminal>{composer}</ConversationItem> : composer}
     </>
   )
   return (

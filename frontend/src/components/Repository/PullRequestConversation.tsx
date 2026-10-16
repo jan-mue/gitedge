@@ -1,9 +1,18 @@
 import { useQuery } from "@tanstack/react-query"
-import { GitMerge, MessageSquare, Users } from "lucide-react"
+import { GitMerge, GitPullRequest, GitPullRequestClosed, MessageSquare, Users } from "lucide-react"
 import type { ReactNode } from "react"
 import type { CompareResult, PullRequestPublic, ReviewPublic } from "@/client"
-import { commentsListCommentsOptions } from "@/client/@tanstack/react-query.gen"
-import { ConversationCard, ConversationItem, MarkdownContent, ReviewStatusIcon } from "@/components/design-system"
+import {
+  commentsListCommentsOptions,
+  repositoriesGetPullRequestEventsOptions,
+} from "@/client/@tanstack/react-query.gen"
+import {
+  Button,
+  ConversationCard,
+  ConversationItem,
+  MarkdownContent,
+  ReviewStatusIcon,
+} from "@/components/design-system"
 import CommentsSection from "./CommentsSection"
 import { ReviewTimeline } from "./PullRequestFiles"
 
@@ -25,6 +34,11 @@ export const PullRequestConversation = ({
   closeActions: ReactNode
 }) => {
   const { data: comments } = useQuery(commentsListCommentsOptions({ path: { owner, repo, number: pull.number } }))
+  const {
+    data: stateEvents = [],
+    isError: eventsError,
+    refetch: retryEvents,
+  } = useQuery(repositoriesGetPullRequestEventsOptions({ path: { owner, repo, number: pull.number } }))
   const participants = [
     ...new Set([
       pull.author_username,
@@ -52,36 +66,67 @@ export const PullRequestConversation = ({
               </ConversationCard>
             </ConversationItem>
           }
-          events={reviews.map((review) => ({
-            id: `review-${review.id}`,
-            created_at: review.created_at,
-            icon: <ReviewStatusIcon state={review.state} />,
-            content: <ReviewTimeline reviews={[review]} changes={changes} />,
-          }))}
+          events={[
+            ...reviews.map((review) => ({
+              id: `review-${review.id}`,
+              created_at: review.created_at,
+              icon: <ReviewStatusIcon state={review.state} />,
+              content: <ReviewTimeline owner={owner} repo={repo} reviews={[review]} changes={changes} />,
+            })),
+            ...stateEvents.map((event) => ({
+              id: event.id,
+              created_at: event.created_at,
+              icon:
+                event.kind === "pull_request_merge" ? (
+                  <ReviewStatusIcon state="merged" />
+                ) : event.kind === "pull_request_close" ? (
+                  <GitPullRequestClosed className="size-8 rounded-full bg-destructive p-1.5 text-destructive-foreground" />
+                ) : (
+                  <GitPullRequest className="size-8 rounded-full bg-success p-1.5 text-success-foreground" />
+                ),
+              content: (
+                <div
+                  className="flex flex-wrap items-center gap-x-1.5 gap-y-1 py-1 text-sm text-muted-foreground"
+                  data-testid={`pr-event-${event.kind}`}
+                >
+                  <strong className="font-medium text-foreground">{event.actor_username}</strong>
+                  <span>
+                    {event.kind === "pull_request_merge"
+                      ? "merged this pull request"
+                      : event.kind === "pull_request_close"
+                        ? "closed this pull request"
+                        : "reopened this pull request"}
+                  </span>
+                  <time dateTime={event.created_at}>{new Date(event.created_at).toLocaleString()}</time>
+                </div>
+              ),
+            })),
+          ]}
           beforeComposer={
-            <ConversationItem
-              marker={pull.state === "merged" ? "status" : "comment"}
-              icon={pull.state === "merged" ? <ReviewStatusIcon state="merged" /> : <GitMerge className="size-2.5" />}
-            >
-              <div className="rounded-lg border border-border bg-secondary/30 p-4">
-                <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
-                  {pull.state === "merged" ? (
-                    <ReviewStatusIcon state="merged" inline />
-                  ) : (
-                    <GitMerge className="size-4 text-success" />
-                  )}
-                  {pull.state === "open"
-                    ? "Merge pull request"
-                    : pull.state === "merged"
-                      ? "Pull request successfully merged"
-                      : "Pull request closed"}
-                </h3>
-                <p className="mb-3 break-words text-sm text-muted-foreground">
-                  Changes from <code>{pull.head_branch}</code> into <code>{pull.base_branch}</code>.
+            <>
+              {eventsError && (
+                <p role="alert" className="mb-4 text-sm">
+                  Unable to load pull request events.{" "}
+                  <Button variant="text" size="text" onClick={() => retryEvents()}>
+                    Retry
+                  </Button>
                 </p>
-                <div className="flex flex-wrap gap-2">{mergeActions}</div>
-              </div>
-            </ConversationItem>
+              )}
+              {pull.state === "open" && (
+                <ConversationItem icon={<GitMerge className="size-2.5" />}>
+                  <div className="rounded-lg border border-border bg-secondary/30 p-4">
+                    <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
+                      <GitMerge className="size-4 text-success" />
+                      Merge pull request
+                    </h3>
+                    <p className="mb-3 break-words text-sm text-muted-foreground">
+                      Changes from <code>{pull.head_branch}</code> into <code>{pull.base_branch}</code>.
+                    </p>
+                    <div className="flex flex-wrap gap-2">{mergeActions}</div>
+                  </div>
+                </ConversationItem>
+              )}
+            </>
           }
           actions={closeActions}
         />

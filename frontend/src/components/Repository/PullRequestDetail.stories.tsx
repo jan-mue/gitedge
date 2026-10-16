@@ -3,8 +3,10 @@ import { HttpResponse } from "msw"
 import type { ReviewPublic } from "@/client"
 import {
   handleCommentsListComments,
+  handleRepositoriesGetDiffFile,
   handleRepositoriesGetPullRequest,
   handleRepositoriesGetPullRequestCommits,
+  handleRepositoriesGetPullRequestEvents,
   handleRepositoriesGetPullRequestFiles,
   handleReviewsGetWorkspace,
   handleReviewsListReviews,
@@ -45,6 +47,8 @@ const meta = {
     msw: {
       handlers: [
         handleRepositoriesGetPullRequest({ body: pull }),
+        handleRepositoriesGetPullRequestEvents({ body: [] }),
+        handleRepositoriesGetDiffFile({ body: comparisonFixture.files[0] }),
         handleRepositoriesGetPullRequestFiles({ body: comparisonFixture }),
         handleRepositoriesGetPullRequestCommits({ body: { data: commits, count: 2, ref: pull.head_branch } }),
         handleCommentsListComments({
@@ -109,7 +113,81 @@ export const Merged: Story = {
     msw: {
       handlers: [
         handleRepositoriesGetPullRequest({ body: { ...pull, state: "merged" } }),
+        handleRepositoriesGetPullRequestEvents({
+          body: [
+            { id: "merge-1", kind: "pull_request_merge", actor_username: "alice", created_at: "2026-10-16T12:00:00Z" },
+          ],
+        }),
         handleReviewsListReviews({ body: reviews }),
+        ...meta.parameters.msw.handlers,
+      ],
+    },
+  },
+}
+export const AfterMerge: Story = {
+  ...ConversationAndCommits,
+  parameters: {
+    msw: {
+      handlers: [
+        handleRepositoriesGetPullRequest({ body: { ...pull, state: "merged", updated_at: "2026-10-18T12:00:00Z" } }),
+        handleRepositoriesGetPullRequestEvents({
+          body: [
+            { id: "merge-1", kind: "pull_request_merge", actor_username: "alice", created_at: "2026-10-16T12:00:00Z" },
+          ],
+        }),
+        handleCommentsListComments({
+          body: {
+            data: [
+              {
+                id: "before-merge",
+                author_username: "bob",
+                body: "Ready to merge.",
+                body_html: "<p>Ready to merge.</p>",
+                created_at: "2026-10-15T12:00:00Z",
+                updated_at: "2026-10-15T12:00:00Z",
+              },
+              {
+                id: "after-merge",
+                author_username: "carol",
+                body: "Thanks for merging!",
+                body_html: "<p>Thanks for merging!</p>",
+                created_at: "2026-10-17T12:00:00Z",
+                updated_at: "2026-10-17T12:00:00Z",
+              },
+            ],
+            count: 2,
+          },
+        }),
+        ...meta.parameters.msw.handlers,
+      ],
+    },
+  },
+}
+export const ReviewComments: Story = {
+  ...ConversationAndCommits,
+  parameters: {
+    msw: {
+      handlers: [
+        handleReviewsListReviews({
+          body: [
+            {
+              ...reviews[0],
+              id: "context-review",
+              comments: [
+                { path: "src/config.py", side: "old", line: 1, body: "Why was the previous timeout changed?" },
+                { path: "src/config.py", side: "new", line: 1, body: "Please cover this value in a test." },
+              ],
+            },
+            {
+              ...reviews[1],
+              id: "outdated-review",
+              head_commit: "c".repeat(40),
+              comments: [
+                { path: "src/config.py", side: "new", line: 1, body: "This was reviewed on the earlier revision." },
+              ],
+            },
+          ],
+        }),
         ...meta.parameters.msw.handlers,
       ],
     },

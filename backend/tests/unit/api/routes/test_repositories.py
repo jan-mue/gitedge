@@ -270,12 +270,18 @@ def test_merged_pull_requests_cannot_be_reopened_or_closed(
     )
     url = f"{PULLS_URL}/{created.json()['number']}"
     assert client.patch(url, headers=superuser_token_headers, json={"state": "merged"}).status_code == 200
+    events = client.get(f"{url}/events").json()
+    assert [event["kind"] for event in events] == ["pull_request_merge"]
+    assert events[0]["actor_username"] == REPO_OWNER
     for state in ("open", "closed"):
         assert client.patch(url, headers=superuser_token_headers, json={"state": state}).status_code == 409
         assert client.get(url).json()["state"] == "merged"
     assert (
         client.patch(url, headers=superuser_token_headers, json={"body": "Correct the description"}).status_code == 200
     )
+    assert client.patch(url, headers=superuser_token_headers, json={"state": "merged"}).status_code == 200
+    assert client.get(f"{url}/events").json() == events
+    assert client.get(f"{PULLS_URL}/999/events").status_code == 404
 
 
 @pytest.mark.usefixtures("fake_stores")
@@ -288,3 +294,9 @@ def test_closed_pull_requests_can_be_reopened(client: TestClient, superuser_toke
     response = client.patch(url, headers=superuser_token_headers, json={"state": "open"})
     assert response.status_code == 200
     assert response.json()["state"] == "open"
+    assert [event["kind"] for event in client.get(f"{url}/events").json()] == [
+        "pull_request_close",
+        "pull_request_reopen",
+    ]
+    other = client.post(PULLS_URL, headers=superuser_token_headers, json={"title": "Other", "head_branch": "other"})
+    assert client.get(f"{PULLS_URL}/{other.json()['number']}/events").json() == []

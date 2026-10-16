@@ -4457,6 +4457,46 @@ export type repositoriesUpdatePullRequestResponses = {
 
 export type repositoriesUpdatePullRequestResponse = repositoriesUpdatePullRequestResponses[keyof repositoriesUpdatePullRequestResponses];
 
+export type repositoriesGetPullRequestEventsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/events';
+};
+
+export type repositoriesGetPullRequestEventsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetPullRequestEventsError = repositoriesGetPullRequestEventsErrors[keyof repositoriesGetPullRequestEventsErrors];
+
+export type repositoriesGetPullRequestEventsResponses = {
+    /**
+     * Response Repositories-Get Pull Request Events
+     *
+     * Successful Response
+     */
+    200: Array<ActivityPublic>;
+};
+
+export type repositoriesGetPullRequestEventsResponse = repositoriesGetPullRequestEventsResponses[keyof repositoriesGetPullRequestEventsResponses];
+
 export type repositoriesGetPullRequestCommitsData = {
     body?: never;
     path: {

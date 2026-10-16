@@ -130,3 +130,76 @@ test("review opens below its trigger, saves on Escape and restores focus", async
   await trigger.click()
   await expect(page.getByRole("textbox", { name: "Review comment" })).toHaveValue("Keep this draft")
 })
+
+test("comments after merging follow the merge event and the timeline ends at the composer border", async ({
+  page,
+}, testInfo) => {
+  const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"
+  await page.goto(
+    `/iframe.html?id=patterns-repository-pull-request-detail--after-merge&viewMode=story&globals=theme:${theme}`,
+  )
+  const before = page.getByTestId("comment-before-merge")
+  const merge = page.getByTestId("pr-event-pull_request_merge")
+  const after = page.getByTestId("comment-after-merge")
+  await expect(after).toBeVisible()
+  await expect(merge).toBeVisible()
+  expect(
+    await before.evaluate(
+      (node) =>
+        !!(
+          node.compareDocumentPosition(document.querySelector('[data-testid="pr-event-pull_request_merge"]')!) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+        ),
+    ),
+  ).toBe(true)
+  expect(
+    await merge.evaluate(
+      (node) =>
+        !!(
+          node.compareDocumentPosition(document.querySelector('[data-testid="comment-after-merge"]')!) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+        ),
+    ),
+  ).toBe(true)
+  const endpoint = await page.locator('[data-timeline-item="composer"]').evaluate((node) => {
+    const line = getComputedStyle(node, "::before")
+    const elbow = getComputedStyle(node, "::after")
+    return {
+      display: elbow.display,
+      height: line.height,
+      right: node.getBoundingClientRect().left + Number.parseFloat(elbow.left) + Number.parseFloat(elbow.width),
+      border: node.lastElementChild!.getBoundingClientRect().left,
+    }
+  })
+  if (testInfo.project.name.endsWith("mobile")) expect(endpoint.display).toBe("none")
+  else {
+    expect(endpoint.height).toBe("25px")
+    expect(Math.abs(endpoint.right - endpoint.border)).toBeLessThan(1)
+  }
+  await page.screenshot({ path: `visual-review/pr-after-merge-${testInfo.project.name}.png`, fullPage: true })
+})
+
+test("review comments display highlighted diff context from their original revision", async ({ page }, testInfo) => {
+  const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"
+  const requests: string[] = []
+  page.on("request", (request) => {
+    if (request.url().includes("/diff-file?")) requests.push(request.url())
+  })
+  await page.goto(
+    `/iframe.html?id=patterns-repository-pull-request-detail--review-comments&viewMode=story&globals=theme:${theme}`,
+  )
+  const old = page.getByRole("region", { name: "Review comment on src/config.py old line 1", exact: true })
+  await old.scrollIntoViewIfNeeded()
+  await expect(old.locator('[data-comment-anchor="true"] code')).toHaveText("timeout = 12")
+  const current = page.getByRole("region", { name: "Review comment on src/config.py new line 1", exact: true }).first()
+  await expect(current.locator('[data-comment-anchor="true"] code')).toHaveText("timeout = 42")
+  await expect(current.locator('[data-syntax="literal-number"][data-changed="true"]').first()).toBeVisible()
+  const outdated = page.getByRole("region", { name: "Review comment on src/config.py new line 1", exact: true }).last()
+  await outdated.scrollIntoViewIfNeeded()
+  await expect(outdated.getByText("Outdated", { exact: true })).toBeVisible()
+  await expect(outdated.locator('[data-comment-anchor="true"] code')).toHaveText("timeout = 42")
+  expect(requests.filter((url) => new URL(url).searchParams.get("head") === "b".repeat(40))).toHaveLength(1)
+  expect(requests.filter((url) => new URL(url).searchParams.get("head") === "c".repeat(40))).toHaveLength(1)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: `visual-review/pr-review-context-${testInfo.project.name}.png`, fullPage: true })
+})

@@ -29,7 +29,7 @@ from app.clients.stars import StarStore
 from app.clients.users import UserStore
 from app.clients.watchers import WatcherStore
 from app.config import settings
-from app.entities.activity import Activity, ActivityKind
+from app.entities.activity import Activity, ActivityKind, ActivityTargetType
 from app.entities.base import Base
 from app.entities.comments import Comment
 from app.entities.issues import Issue, IssueState
@@ -632,6 +632,18 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
     """In-memory activity store."""
 
     entity_name = "Activity"
+
+    async def list_pull_request_events(self, repo_id: uuid.UUID, number: int) -> list[Activity]:
+        """Read only state events belonging to this pull request, oldest first."""
+        return [
+            self._hydrate(activity)
+            for activity in reversed(self._sorted())
+            if activity.repo_id == repo_id
+            and activity.target_type == ActivityTargetType.PULL_REQUEST
+            and activity.target_number == number
+            and activity.kind
+            in (ActivityKind.PULL_REQUEST_MERGE, ActivityKind.PULL_REQUEST_CLOSE, ActivityKind.PULL_REQUEST_REOPEN)
+        ]
 
     async def list_in_period(self, repo_id: uuid.UUID, start: datetime, end: datetime) -> list[Activity]:
         """List all events in the inclusive period for a repository."""

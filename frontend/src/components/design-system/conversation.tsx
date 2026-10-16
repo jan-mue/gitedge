@@ -2,7 +2,7 @@ import { MessageSquare } from "lucide-react"
 import type { ReactNode } from "react"
 
 export const ConversationTimeline = ({ children }: { children: ReactNode }) => (
-  <div className="relative min-w-0 before:absolute before:bottom-0 before:left-[19px] before:top-0 before:hidden before:w-0.5 before:bg-border sm:before:block">
+  <div className="relative min-w-0" data-testid="conversation-timeline">
     {children}
   </div>
 )
@@ -11,12 +11,21 @@ export const ConversationItem = ({
   children,
   icon = <MessageSquare className="size-2.5" />,
   marker = "comment",
+  terminal = false,
 }: {
   children: ReactNode
   icon?: ReactNode
   marker?: "comment" | "status"
+  terminal?: boolean
 }) => (
-  <div className="relative pb-4 sm:pl-10">
+  <div
+    data-timeline-item={terminal ? "composer" : "event"}
+    className={`relative pb-4 sm:pl-10 before:absolute before:left-[19px] before:top-0 before:hidden before:w-0.5 before:bg-border sm:before:block ${
+      terminal
+        ? "before:h-[25px] after:absolute after:left-[19px] after:top-[25px] after:hidden after:h-0.5 after:w-[21px] after:bg-border sm:after:block"
+        : "before:bottom-0"
+    }`}
+  >
     <div
       className={
         marker === "status"
@@ -36,14 +45,16 @@ export const ConversationCard = ({
   badge,
   actions,
   children,
+  embedded = false,
 }: {
   author: string
   date: string
   badge?: string
   actions?: ReactNode
   children: ReactNode
+  embedded?: boolean
 }) => (
-  <article className="overflow-hidden rounded-lg border border-border bg-card">
+  <article className={embedded ? "overflow-hidden bg-card" : "overflow-hidden rounded-lg border border-border bg-card"}>
     <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-secondary px-3 py-2.5 sm:px-4">
       <div className="flex min-w-0 items-center gap-2">
         <span

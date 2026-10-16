@@ -12,6 +12,7 @@ from app.api.dependencies import (
     PullRequestServiceDep,
     RepositoryServiceDep,
 )
+from app.schemas.activity import ActivityPublic
 from app.schemas.repositories import (
     BlameContent,
     BranchInfo,
@@ -316,6 +317,15 @@ async def get_pull_request(
 ) -> PullRequestPublic:
     """Get a single pull request by number."""
     return await pull_request_service.get_pull_request(owner, repo, number)
+
+
+@router.get("/{owner}/{repo}/pulls/{number}/events")
+async def get_pull_request_events(
+    owner: str, repo: str, number: int, response: Response, pull_request_service: PullRequestServiceDep
+) -> list[ActivityPublic]:
+    """Read state transitions at their original event dates."""
+    response.headers["Cache-Control"] = "no-store"
+    return await pull_request_service.get_pull_request_events(owner, repo, number)
 
 
 @router.get("/{owner}/{repo}/pulls/{number}/commits")

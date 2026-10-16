@@ -22,6 +22,7 @@ import {
 import { type DiffAnnotation, DiffViewer } from "@/components/Repository/DiffViewer"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
+import { ReviewDiffComment } from "./ReviewDiffComment"
 
 interface PullRequestFilesProps {
   owner: string
@@ -308,7 +309,17 @@ const stateLabel = {
   changes_requested: "requested changes",
 }
 
-export const ReviewTimeline = ({ reviews, changes }: { reviews: ReviewPublic[]; changes?: CompareResult }) => (
+export const ReviewTimeline = ({
+  owner,
+  repo,
+  reviews,
+  changes,
+}: {
+  owner: string
+  repo: string
+  reviews: ReviewPublic[]
+  changes?: CompareResult
+}) => (
   <div className="space-y-4">
     {reviews.map((review) => (
       <div key={review.id} data-testid={`review-${review.id}`} className="space-y-3">
@@ -322,19 +333,23 @@ export const ReviewTimeline = ({ reviews, changes }: { reviews: ReviewPublic[]; 
             Review of an earlier revision · {review.head_commit.slice(0, 10)}
           </p>
         )}
-        {(review.body || (review.comments?.length ?? 0) > 0) && (
+        {review.body && (
           <ConversationCard author={review.author_username} date={review.created_at} badge="Reviewer">
-            {review.body && <p className="whitespace-pre-wrap text-sm">{review.body}</p>}
-            {(review.comments ?? []).map((comment, index) => (
-              <div key={index} className="mt-3 rounded border border-border bg-secondary/30 p-3 text-sm">
-                <p className="break-all font-mono text-xs text-muted-foreground">
-                  {comment.path} · {comment.side === "old" ? "Original" : "Changed"} line {comment.line}
-                </p>
-                <p className="mt-2 whitespace-pre-wrap">{comment.body}</p>
-              </div>
-            ))}
+            <p className="whitespace-pre-wrap text-sm">{review.body}</p>
           </ConversationCard>
         )}
+        {(review.comments ?? []).map((comment, index) => (
+          <ReviewDiffComment
+            key={index}
+            owner={owner}
+            repo={repo}
+            review={review}
+            comment={comment}
+            outdated={
+              !!changes && (review.head_commit !== changes.head_commit || review.base_commit !== changes.base_commit)
+            }
+          />
+        ))}
       </div>
     ))}
   </div>

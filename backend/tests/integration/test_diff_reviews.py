@@ -113,6 +113,10 @@ def test_review_lifecycle(page: Page, app_url: str, tmp_path: Path, random_email
     page.get_by_role("tab", name="Conversation", exact=True).click()
     expect(page.get_by_text("requested changes", exact=True)).to_be_visible()
     expect(page.get_by_text("Two changes needed before merging.", exact=True)).to_be_visible()
+    thread = page.get_by_role("region", name="Review comment on file-0000.py old line 1", exact=True)
+    expect(thread.get_by_text("Please preserve the original behavior.", exact=True)).to_be_visible()
+    expect(thread.locator('[data-comment-anchor="true"] code')).to_contain_text("value_0 = 12")
+    expect(thread.locator('[data-syntax="literal-number-integer"]').first).to_be_visible()
     reviews = page.request.get(f"{pull}/reviews").json()
     assert len(reviews) == 1
     assert len(reviews[0]["comments"]) == 2
@@ -140,6 +144,10 @@ def test_review_lifecycle(page: Page, app_url: str, tmp_path: Path, random_email
         page.request.post(f"{pull}/reviews", headers=_headers(page), data={**draft, "state": "approved"}).status == 409
     )
     page.reload()
+    old_thread = page.get_by_role("region", name="Review comment on file-0000.py old line 1", exact=True)
+    old_thread.scroll_into_view_if_needed()
+    expect(old_thread.get_by_text("Outdated", exact=True)).to_be_visible()
+    expect(old_thread.locator('[data-comment-anchor="true"] code')).to_contain_text("value_0 = 12")
     page.get_by_role("tab", name="Files Changed", exact=False).click()
     expect(page.get_by_text("The branches changed since you started this review.")).to_be_visible()
     expect(page.get_by_text("0 / 3 files viewed")).to_be_visible()
