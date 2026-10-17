@@ -169,6 +169,10 @@ class ActivityService:
         activities = await self.activity_store.list_by_repo(repository.id, offset, limit)
         return ActivitiesPublic(data=self._to_public_list(activities), count=len(activities))
 
+    async def pull_request_events(self, repo_id: uuid.UUID, number: int) -> list[ActivityPublic]:
+        """Read the recorded state transitions for a pull request."""
+        return self._to_public_list(await self.activity_store.list_pull_request_events(repo_id, number))
+
     async def feed(self, user: User, offset: int = 0, limit: int = 50) -> ActivitiesPublic:
         """Build a personalized feed for a user.
 

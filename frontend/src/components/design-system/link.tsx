@@ -25,6 +25,9 @@ const appearances = {
   revision: "font-mono text-primary hover:underline",
   title: "text-sm font-medium text-foreground hover:text-primary",
   commitHash: "flex-shrink-0 font-mono text-xs text-primary hover:underline",
+  commitPill:
+    "shrink-0 rounded border border-border bg-secondary px-2 py-0.5 font-mono text-xs text-foreground hover:text-primary",
+  commitSubject: "block truncate text-sm font-medium text-foreground hover:text-primary",
   successAction: "rounded bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:opacity-90",
   trackerAction:
     "shrink-0 rounded bg-success px-4 py-1.5 text-sm font-medium text-success-foreground transition-opacity hover:opacity-90",

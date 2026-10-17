@@ -50,7 +50,7 @@ const meta = {
           const update = await request.json()
           repository = {
             ...repository,
-            ...update,
+            ...Object.fromEntries(Object.entries(update).filter(([, value]) => value !== null)),
             name: update.name ?? repository.name,
             default_branch: update.default_branch ?? repository.default_branch,
           }

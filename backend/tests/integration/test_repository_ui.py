@@ -631,6 +631,7 @@ class TestPullRequestFiles:
         expect(page.get_by_test_id("pr-1")).to_be_visible(timeout=15000)
 
         page.goto(f"{app_url}/admin/prfilesrepo/pulls/1")
+        page.get_by_role("tab", name="Files Changed", exact=True).click()
         files = page.get_by_test_id("pr-files")
         expect(files).to_be_visible(timeout=15000)
         expect(files).to_contain_text("dev.txt")

@@ -457,6 +457,9 @@ class TestPullRequestCommentsAndMerge:
         expect(page.get_by_test_id("pr-state")).to_contain_text("Open")
 
         page.get_by_test_id("comment-input").fill("Looks **good** to me.")
+        page.get_by_role("button", name="Preview", exact=True).click()
+        expect(page.get_by_test_id("comments-section").get_by_text("Looks good to me.", exact=True)).to_be_visible()
+        page.get_by_role("button", name="Write", exact=True).click()
         page.get_by_test_id("comment-submit").click()
 
         expect(page.get_by_test_id("comment-input")).to_have_value("", timeout=15000)
@@ -468,13 +471,29 @@ class TestPullRequestCommentsAndMerge:
         expect(description).not_to_contain_text("## PR details")
         expect(description).not_to_contain_text("**body**")
 
-        comment = page.get_by_test_id("comments-section").locator(".markdown-body")
+        comment = page.get_by_test_id("comments-section").locator(".markdown-body").filter(has_text="Looks good to me.")
         expect(comment).to_have_text("Looks good to me.", timeout=15000)
         expect(comment.locator("strong")).to_have_text("good")
         expect(comment).not_to_contain_text("**good**")
 
         page.get_by_test_id("merge-pr").click()
         expect(page.get_by_test_id("pr-state")).to_contain_text("Merged", timeout=15000)
+        expect(page.get_by_test_id("reopen-pr")).to_have_count(0)
+        expect(page.get_by_test_id("close-pr")).to_have_count(0)
+
+        page.get_by_test_id("comment-input").fill("Comment after merging.")
+        page.get_by_test_id("comment-submit").click()
+        expect(page.get_by_test_id("comment-input")).to_have_value("", timeout=15000)
+        page.reload()
+        merge_event = page.get_by_test_id("pr-event-pull_request_merge")
+        later_comment = page.get_by_test_id("comments-section").get_by_text("Comment after merging.", exact=True)
+        expect(merge_event).to_be_visible()
+        expect(later_comment).to_be_visible()
+        comment_bounds = later_comment.bounding_box()
+        merge_bounds = merge_event.bounding_box()
+        assert comment_bounds is not None
+        assert merge_bounds is not None
+        assert comment_bounds["y"] > merge_bounds["y"]
 
     def test_edit_pull_request(self, app_url: str, page: Page) -> None:
         """A pull request's title and body can be edited by its author.

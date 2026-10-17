@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { MessageSquare } from "lucide-react"
-import { useState } from "react"
+import { type ReactNode, useState } from "react"
 import {
   activityGetFeedQueryKey,
   commentsCreateCommentMutation,
@@ -9,7 +9,15 @@ import {
   commentsListCommentsQueryKey,
   commentsUpdateCommentMutation,
 } from "@/client/@tanstack/react-query.gen"
-import { Button, MarkdownContent, Textarea } from "@/components/design-system"
+import {
+  Button,
+  ConversationCard,
+  ConversationItem,
+  ConversationTimeline,
+  MarkdownComposer,
+  MarkdownContent,
+  Textarea,
+} from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -18,9 +26,32 @@ interface CommentsSectionProps {
   owner: string
   repo: string
   number: number
+  timeline?: boolean
+  author?: string
+  intro?: ReactNode
+  events?: ConversationEntry[]
+  beforeComposer?: ReactNode
+  actions?: ReactNode
 }
 
-const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
+interface ConversationEntry {
+  id: string
+  created_at: string
+  content: ReactNode
+  icon?: ReactNode
+}
+
+const CommentsSection = ({
+  owner,
+  repo,
+  number,
+  timeline = false,
+  author,
+  intro,
+  events = [],
+  beforeComposer,
+  actions,
+}: CommentsSectionProps) => {
   const queryClient = useQueryClient()
   const { showErrorToast } = useCustomToast()
   const { user } = useAuth()
@@ -28,8 +59,9 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editBody, setEditBody] = useState("")
 
-  const { data } = useQuery({
+  const { data, isError, isPending, refetch } = useQuery({
     ...commentsListCommentsOptions({ path: { owner, repo, number } }),
+    staleTime: 10_000,
   })
 
   const invalidate = () =>
@@ -64,117 +96,134 @@ const CommentsSection = ({ owner, repo, number }: CommentsSectionProps) => {
   })
 
   const comments = data?.data ?? []
-
-  return (
-    <div className="space-y-4" data-testid="comments-section">
-      <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-        <MessageSquare className="w-4 h-4" />
-        {data?.count ?? 0} {data?.count === 1 ? "comment" : "comments"}
-      </h2>
-
-      {comments.length > 0 && (
-        <div className="space-y-3">
-          {comments.map((comment) => (
-            <div
-              key={comment.id}
-              className="border border-border rounded-lg bg-card"
-              data-testid={`comment-${comment.id}`}
-            >
-              <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-secondary/50 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">{comment.author_username}</span>
-                <span>commented {new Date(comment.created_at).toLocaleString()}</span>
-                {comment.author_username === user?.name && editingId !== comment.id && (
-                  <div className="ml-auto flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="text"
-                      size="text"
-                      onClick={() => {
-                        setEditingId(comment.id)
-                        setEditBody(comment.body)
-                      }}
-                      data-testid={`edit-comment-${comment.id}`}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="textDanger"
-                      size="text"
-                      disabled={deleteMutation.isPending}
-                      onClick={() => {
-                        if (window.confirm("Delete this comment?"))
-                          deleteMutation.mutate({ path: { comment_id: comment.id } })
-                      }}
-                      data-testid={`delete-comment-${comment.id}`}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                )}
-              </div>
-              {editingId === comment.id ? (
-                <div className="space-y-2 px-4 py-3">
-                  <Textarea
-                    value={editBody}
-                    onChange={(e) => setEditBody(e.target.value)}
-                    data-testid={`edit-comment-input-${comment.id}`}
-                  />
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      size="text"
-                      variant="text"
-                      onClick={() => {
-                        setEditingId(null)
-                        setEditBody("")
-                      }}
-                      data-testid={`edit-comment-cancel-${comment.id}`}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="text"
-                      disabled={!editBody.trim() || editMutation.isPending}
-                      onClick={() =>
-                        editMutation.mutate({ path: { comment_id: comment.id }, body: { body: editBody } })
-                      }
-                      data-testid={`edit-comment-submit-${comment.id}`}
-                    >
-                      Save
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="px-4 py-3">
-                  <MarkdownContent html={comment.body_html} />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="border border-border rounded-lg overflow-hidden">
-        <Textarea
-          id="comment-body"
-          name="comment-body"
-          rows={4}
-          placeholder="Leave a comment"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          data-testid="comment-input"
-        />
-        <div className="flex items-center justify-end px-3 py-2 border-t border-border bg-secondary/50">
-          <Button
-            size="compact"
-            disabled={!body.trim() || mutation.isPending}
-            onClick={() => mutation.mutate({ path: { owner, repo, number }, body: { body } })}
-            data-testid="comment-submit"
+  const entries: ConversationEntry[] = [
+    ...comments.map((comment) => ({
+      id: comment.id,
+      created_at: comment.created_at,
+      content: (
+        <div data-testid={`comment-${comment.id}`}>
+          <ConversationCard
+            author={comment.author_username}
+            date={comment.created_at}
+            badge={comment.author_username === author ? "Author" : undefined}
+            actions={
+              comment.author_username === user?.name && editingId !== comment.id ? (
+                <>
+                  <Button
+                    variant="text"
+                    size="text"
+                    onClick={() => {
+                      setEditingId(comment.id)
+                      setEditBody(comment.body)
+                    }}
+                    data-testid={`edit-comment-${comment.id}`}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="textDanger"
+                    size="text"
+                    disabled={deleteMutation.isPending}
+                    onClick={() => {
+                      if (window.confirm("Delete this comment?"))
+                        deleteMutation.mutate({ path: { comment_id: comment.id } })
+                    }}
+                    data-testid={`delete-comment-${comment.id}`}
+                  >
+                    Delete
+                  </Button>
+                </>
+              ) : undefined
+            }
           >
-            {mutation.isPending ? "Commenting..." : "Comment"}
-          </Button>
+            {editingId === comment.id ? (
+              <div className="space-y-3">
+                <Textarea
+                  value={editBody}
+                  onChange={(event) => setEditBody(event.target.value)}
+                  data-testid={`edit-comment-input-${comment.id}`}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    size="compact"
+                    variant="repository"
+                    onClick={() => setEditingId(null)}
+                    data-testid={`edit-comment-cancel-${comment.id}`}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="compact"
+                    disabled={!editBody.trim() || editMutation.isPending}
+                    onClick={() => editMutation.mutate({ path: { comment_id: comment.id }, body: { body: editBody } })}
+                    data-testid={`edit-comment-submit-${comment.id}`}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <MarkdownContent html={comment.body_html} />
+            )}
+          </ConversationCard>
         </div>
-      </div>
+      ),
+    })),
+    ...events,
+  ].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at))
+  const commentActions = (
+    <>
+      {actions}
+      <Button
+        size="compact"
+        variant={timeline ? "success" : "default"}
+        disabled={!body.trim() || mutation.isPending}
+        onClick={() => mutation.mutate({ path: { owner, repo, number }, body: { body } })}
+        data-testid="comment-submit"
+      >
+        {mutation.isPending ? "Commenting..." : "Comment"}
+      </Button>
+    </>
+  )
+  const composer = <MarkdownComposer value={body} onChange={setBody} testId="comment-input" actions={commentActions} />
+  const content = (
+    <>
+      {intro}
+      {isPending && (
+        <p role="status" className="p-4 text-sm text-muted-foreground">
+          Loading conversation…
+        </p>
+      )}
+      {isError && (
+        <p role="alert" className="p-4 text-sm">
+          Unable to load comments.{" "}
+          <Button variant="text" size="text" onClick={() => refetch()}>
+            Retry
+          </Button>
+        </p>
+      )}
+      {entries.map((entry) =>
+        timeline ? (
+          <ConversationItem key={entry.id} icon={entry.icon} marker={entry.icon ? "status" : "comment"}>
+            {entry.content}
+          </ConversationItem>
+        ) : (
+          <div key={entry.id}>{entry.content}</div>
+        ),
+      )}
+      {beforeComposer}
+      {timeline ? <ConversationItem terminal>{composer}</ConversationItem> : composer}
+    </>
+  )
+  return (
+    <div className={timeline ? "min-w-0" : "space-y-4"} data-testid="comments-section">
+      {!timeline && (
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+          <MessageSquare className="size-4" />
+          {data?.count ?? 0} {data?.count === 1 ? "comment" : "comments"}
+        </h2>
+      )}
+      {timeline ? <ConversationTimeline>{content}</ConversationTimeline> : content}
     </div>
   )
 }

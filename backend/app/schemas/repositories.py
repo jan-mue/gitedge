@@ -7,6 +7,7 @@ from enum import StrEnum
 from pydantic import Field
 
 from app.entities.issues import IssueState
+from app.entities.repositories import MergeMessage
 from app.schemas.base import GitEdgeBaseModel
 
 
@@ -26,7 +27,45 @@ class CommitChangeType(StrEnum):
     RENAME = "rename"
 
 
-class Repository(GitEdgeBaseModel):
+class MergeMethod(StrEnum):
+    """Supported Git history strategies."""
+
+    MERGE = "merge"
+    SQUASH = "squash"
+    REBASE = "rebase"
+
+
+class MergeSettings(GitEdgeBaseModel):
+    """Repository merge policies."""
+
+    allow_merge_commit: bool = True
+    allow_squash_merge: bool = True
+    allow_rebase_merge: bool = True
+    merge_commit_message: MergeMessage = MergeMessage.DEFAULT
+    squash_commit_message: MergeMessage = MergeMessage.TITLE_DESCRIPTION
+    rebase_commit_message: MergeMessage = MergeMessage.DEFAULT
+    delete_branch_on_merge: bool = True
+
+
+class PullRequestMerge(GitEdgeBaseModel):
+    """Merge the expected PR revision using an enabled strategy."""
+
+    method: MergeMethod = MergeMethod.MERGE
+    head_commit: str | None = Field(default=None, pattern=r"^[0-9a-f]{40}$")
+    base_commit: str | None = Field(default=None, pattern=r"^[0-9a-f]{40}$")
+
+
+class PullRequestMergeability(GitEdgeBaseModel):
+    """Read-only merge check for an exact pair of branch tips."""
+
+    mergeable: bool
+    base_commit: str | None = None
+    head_commit: str | None = None
+    conflicting_files: list[str] = Field(default_factory=list)
+    reason: str | None = None
+
+
+class Repository(MergeSettings):
     """Repository schema."""
 
     name: str
@@ -101,6 +140,13 @@ class CreateRepositoryRequest(GitEdgeBaseModel):
 class RepositoryUpdate(GitEdgeBaseModel):
     """Editable repository settings."""
 
+    allow_merge_commit: bool | None = None
+    allow_squash_merge: bool | None = None
+    allow_rebase_merge: bool | None = None
+    merge_commit_message: MergeMessage | None = None
+    squash_commit_message: MergeMessage | None = None
+    rebase_commit_message: MergeMessage | None = None
+    delete_branch_on_merge: bool | None = None
     name: str | None = Field(default=None, min_length=1, max_length=255, pattern=r"^[A-Za-z0-9_.-]+$")
     description: str | None = Field(default=None, max_length=10000)
     default_branch: str | None = Field(default=None, min_length=1, max_length=255)
@@ -194,6 +240,39 @@ class CommitsPublic(GitEdgeBaseModel):
     ref: str
 
 
+class DiffToken(GitEdgeBaseModel):
+    """A syntax token, optionally emphasized as an inline change."""
+
+    text: str
+    syntax: str = "text"
+    changed: bool = False
+
+
+class DiffLine(GitEdgeBaseModel):
+    """A numbered line with server-generated syntax and change tokens."""
+
+    kind: str
+    old_line: int | None = None
+    new_line: int | None = None
+    tokens: list[DiffToken]
+    no_newline: bool = False
+
+
+class DiffRow(GitEdgeBaseModel):
+    """Server-aligned line indexes for the split layout."""
+
+    old: int | None = None
+    new: int | None = None
+
+
+class DiffHunk(GitEdgeBaseModel):
+    """A unified hunk and its split layout."""
+
+    header: str
+    lines: list[DiffLine]
+    rows: list[DiffRow]
+
+
 class CommitFileChange(GitEdgeBaseModel):
     """A file changed by a commit, with its unified diff."""
 
@@ -203,6 +282,11 @@ class CommitFileChange(GitEdgeBaseModel):
     additions: int
     deletions: int
     patch: str
+    hunks: list[DiffHunk] = Field(default_factory=list)
+    language: str = "Text"
+    is_binary: bool = False
+    diff_loaded: bool = True
+    diff_line_count: int = 0
 
 
 class CommitDetail(GitEdgeBaseModel):

@@ -43,6 +43,13 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args: dict[str, Any]) -> dict[str, Any]:
+    """Allow local verification with a system Chromium installation."""
+    executable = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
+    return {**browser_type_launch_args, **({"executable_path": executable} if executable else {})}
+
+
+@pytest.fixture(scope="session")
 def browser_context_args(browser_context_args: dict[str, Any]) -> dict[str, Any]:
     """Configure browser context with desktop viewport.
 
@@ -277,7 +284,7 @@ def app_url(infrastructure: dict[str, str], xprocess: XProcess) -> Generator[str
         max_read_lines = 1000
 
     backend_base_url = f"http://127.0.0.1:{backend_port}"
-    xprocess.ensure("backend", BackendStarter)
+    xprocess.ensure("backend", BackendStarter, restart=True)
 
     # 2. Start Frontend (Vite)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -298,7 +305,7 @@ def app_url(infrastructure: dict[str, str], xprocess: XProcess) -> Generator[str
         max_read_lines = 1000
 
     frontend_base_url = f"http://localhost:{frontend_port}"
-    xprocess.ensure("frontend", FrontendStarter)
+    xprocess.ensure("frontend", FrontendStarter, restart=True)
 
     yield frontend_base_url
 

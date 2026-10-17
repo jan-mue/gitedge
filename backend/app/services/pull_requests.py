@@ -5,25 +5,36 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from dulwich.objects import ObjectID
+from dulwich.refs import Ref
 from fastapi import HTTPException
+from fastapi.concurrency import run_in_threadpool
 
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.issues import IssueState
 from app.entities.pull_requests import PullRequest
 from app.schemas.repositories import (
+    CommitsPublic,
     CompareResult,
+    MergeMethod,
+    MergeSettings,
     PullRequestCreate,
+    PullRequestMerge,
+    PullRequestMergeability,
     PullRequestPublic,
     PullRequestsListPublic,
     PullRequestUpdate,
 )
 from app.services.markdown import render_markdown
+from app.services.merging import calculate_merge, merge_message
 from app.services.repositories import ensure_repository
 
 if TYPE_CHECKING:
+    from app.clients.git_merges import GitMergeClient
     from app.clients.pull_requests import PullRequestStore
     from app.clients.repositories import RepositoryStore
     from app.entities.users import User
+    from app.schemas.activity import ActivityPublic
     from app.services.activity import ActivityService
     from app.services.repositories import RepositoryService
 
@@ -37,6 +48,7 @@ class PullRequestService:
         repository_store: RepositoryStore,
         repository_service: RepositoryService,
         activity_service: ActivityService,
+        git_merges: GitMergeClient,
     ) -> None:
         """Initialize the pull request service.
 
@@ -45,11 +57,13 @@ class PullRequestService:
             repository_store: Repository store.
             repository_service: Repository service used to diff refs.
             activity_service: Service used to record activity.
+            git_merges: Durable Git merge storage adapter.
         """
         self.pull_request_store = pull_request_store
         self.repository_store = repository_store
         self.repository_service = repository_service
         self.activity_service = activity_service
+        self.git_merges = git_merges
 
     async def list_pull_requests(self, owner: str, name: str, state: str) -> PullRequestsListPublic:
         """List pull requests for a repository.
@@ -137,13 +151,30 @@ class PullRequestService:
         pull_request = await self._find_pull_request(owner, name, number)
         return self._to_public(pull_request, owner, name)
 
-    async def get_pull_request_files(self, owner: str, name: str, number: int) -> CompareResult:
+    async def get_pull_request_events(self, owner: str, name: str, number: int) -> list[ActivityPublic]:
+        """Read state events after verifying the pull request exists."""
+        pull = await self._find_pull_request(owner, name, number)
+        return await self.activity_service.pull_request_events(pull.repo_id, number)
+
+    async def get_pull_request_commits(
+        self, owner: str, name: str, number: int, offset: int = 0, limit: int = 50
+    ) -> CommitsPublic:
+        """Return the head branch's commits that are not already in the base branch."""
+        pull = await self._find_pull_request(owner, name, number)
+        return await self.repository_service.compare_commits(
+            owner, name, pull.merge_base or pull.base_branch, pull.merged_head_commit or pull.head_branch, offset, limit
+        )
+
+    async def get_pull_request_files(
+        self, owner: str, name: str, number: int, *, include_diff: bool = True
+    ) -> CompareResult:
         """List the files changed between a pull request's base and head branches.
 
         Args:
             owner: Owner name.
             name: Repository name.
             number: Pull request number.
+            include_diff: Include highlighted hunks or only the compact file index.
 
         Returns:
             CompareResult with the changed files and the resolved head commit.
@@ -152,7 +183,123 @@ class PullRequestService:
             HTTPException: If the pull request is not found.
         """
         pull_request = await self._find_pull_request(owner, name, number)
-        return await self.repository_service.compare(owner, name, pull_request.base_branch, pull_request.head_branch)
+        return await self.repository_service.compare(
+            owner,
+            name,
+            pull_request.merge_base or pull_request.base_branch,
+            pull_request.merged_head_commit or pull_request.head_branch,
+            include_diff=include_diff,
+        )
+
+    async def get_mergeability(
+        self, owner: str, name: str, number: int, method: MergeMethod
+    ) -> PullRequestMergeability:
+        """Check current branch tips independently of the PR conversation and file diff."""
+        pull = await self._find_pull_request(owner, name, number)
+        if pull.state != IssueState.OPEN:
+            return PullRequestMergeability(mergeable=False, reason="Only open pull requests can be merged")
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        enabled = {
+            MergeMethod.MERGE: repository.allow_merge_commit,
+            MergeMethod.SQUASH: repository.allow_squash_merge,
+            MergeMethod.REBASE: repository.allow_rebase_merge,
+        }[method]
+        if not enabled:
+            return PullRequestMergeability(
+                mergeable=False, reason="This merge method is disabled in repository settings"
+            )
+        if pull.head_branch == pull.base_branch:
+            return PullRequestMergeability(mergeable=False, reason="The PR must have different base and head branches")
+        completed = await self.git_merges.completed(owner, name, pull.id)
+        if completed:
+            return PullRequestMergeability(mergeable=True, base_commit=completed.base, head_commit=completed.head)
+        base, head = await self.repository_service.branch_heads(owner, name, pull.base_branch, pull.head_branch)
+        if base is None or head is None:
+            return PullRequestMergeability(mergeable=False, reason="The base or PR branch no longer exists")
+        return await self.git_merges.check(owner, name, base, head, method)
+
+    async def merge_pull_request(
+        self, owner: str, name: str, number: int, body: PullRequestMerge, current_user: User
+    ) -> PullRequestPublic:
+        """Apply an enabled Git strategy, then record the immutable merge and timeline event."""
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        if current_user.id != repository.owner_id and not current_user.is_superuser:
+            raise HTTPException(status_code=403, detail="Only the repository owner can merge pull requests")
+        pull = await self.pull_request_store.get_for_merge(repository.id, number)
+        if pull.state == IssueState.MERGED:
+            return self._to_public(pull, owner, name)
+        if pull.state != IssueState.OPEN:
+            raise HTTPException(status_code=409, detail="Only open pull requests can be merged")
+        policies = MergeSettings.model_validate(repository, from_attributes=True)
+        enabled, template = {
+            "merge": (policies.allow_merge_commit, policies.merge_commit_message),
+            "squash": (policies.allow_squash_merge, policies.squash_commit_message),
+            "rebase": (policies.allow_rebase_merge, policies.rebase_commit_message),
+        }[body.method]
+        if not enabled:
+            raise HTTPException(status_code=409, detail="This merge method is disabled in repository settings")
+        if pull.head_branch == pull.base_branch:
+            raise HTTPException(status_code=409, detail="The PR must have different base and head branches")
+        result = await self.git_merges.completed(owner, name, pull.id)
+        if result is None:
+            repo = await self.git_merges.load(owner, name)
+            try:
+                base_ref, head_ref = (
+                    Ref(f"refs/heads/{pull.base_branch}".encode()),
+                    Ref(f"refs/heads/{pull.head_branch}".encode()),
+                )
+                base, head = repo.refs.read_loose_ref(base_ref), repo.refs.read_loose_ref(head_ref)
+                if base is None or head is None:
+                    raise HTTPException(status_code=409, detail="The base or PR branch no longer exists")
+                if body.head_commit and head.decode() != body.head_commit:
+                    raise HTTPException(status_code=409, detail="The PR branch changed. Reload before merging.")
+                if body.base_commit and base.decode() != body.base_commit:
+                    raise HTTPException(status_code=409, detail="The base branch changed. Reload before merging.")
+                commits = await run_in_threadpool(
+                    lambda: [
+                        entry.commit
+                        for entry in repo.get_walker(
+                            include=[ObjectID(head)], exclude=[ObjectID(base)], order="topo", reverse=True
+                        )
+                    ]
+                )
+                if not commits:
+                    raise HTTPException(status_code=409, detail="The PR has no commits to merge")
+                message = merge_message(template, pull.title, pull.body, pull.head_branch, pull.base_branch, commits)
+                identity = f"{current_user.name} <{current_user.email}>".encode()
+                result = await run_in_threadpool(
+                    calculate_merge, repo, ObjectID(base), ObjectID(head), body.method, message, identity
+                )
+                delete_branch = policies.delete_branch_on_merge and pull.head_branch != repository.default_branch
+                if not await self.git_merges.publish(
+                    owner,
+                    name,
+                    number,
+                    repo,
+                    pull.base_branch,
+                    pull.head_branch,
+                    result,
+                    delete_branch,
+                    pull_id=pull.id,
+                ):
+                    raise HTTPException(
+                        status_code=409, detail="A branch changed during merging. Reload and try again."
+                    )
+            finally:
+                repo.object_store.close()
+        pull.state, pull.has_merged = IssueState.MERGED, True
+        pull.merge_base, pull.merged_head_commit, pull.merged_commit_id = result.base, result.head, result.commit
+        pull.merger_id, pull.updated_at = current_user.id, datetime.now(UTC)
+        await self.pull_request_store.update(pull)
+        await self.activity_service.record(
+            actor=current_user,
+            repo=repository,
+            kind=ActivityKind.PULL_REQUEST_MERGE,
+            title=pull.title,
+            target_type=ActivityTargetType.PULL_REQUEST,
+            target_number=number,
+        )
+        return self._to_public(pull, owner, name)
 
     async def update_pull_request(
         self, owner: str, name: str, number: int, body: PullRequestUpdate, current_user: User
@@ -172,7 +319,12 @@ class PullRequestService:
         Raises:
             HTTPException: If the pull request is not found, the state is invalid, or the user is not allowed to edit.
         """
+        if body.state == IssueState.MERGED:
+            return await self.merge_pull_request(owner, name, number, PullRequestMerge(), current_user)
         pull_request = await self._find_pull_request(owner, name, number)
+
+        if pull_request.state == IssueState.MERGED and body.state is not None and body.state != IssueState.MERGED:
+            raise HTTPException(status_code=409, detail="A merged pull request cannot be reopened or closed")
 
         if (
             (body.title is not None or body.body is not None)
@@ -181,6 +333,7 @@ class PullRequestService:
         ):
             raise HTTPException(status_code=403, detail="You can only edit your own pull requests")
 
+        state_changed = body.state is not None and body.state != pull_request.state
         if body.title is not None:
             pull_request.title = body.title
         if body.body is not None:
@@ -193,7 +346,7 @@ class PullRequestService:
         pull_request.updated_at = datetime.now(UTC)
         await self.pull_request_store.update(pull_request)
 
-        if body.state is not None:
+        if state_changed:
             kind = {
                 IssueState.MERGED: ActivityKind.PULL_REQUEST_MERGE,
                 IssueState.CLOSED: ActivityKind.PULL_REQUEST_CLOSE,

@@ -67,7 +67,7 @@ class CommentService:
             HTTPException: If the issue or pull request is not found.
         """
         issue = await self._find_issue(owner, name, number)
-        comments = issue.comments
+        comments = await self.comment_store.list_by_issue(issue.id)
         return CommentsPublic(data=[self._to_public(comment) for comment in comments], count=len(comments))
 
     async def create_comment(

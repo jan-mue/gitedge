@@ -6,6 +6,7 @@ import pytest
 
 from app.config import settings
 from app.utils.cache_headers import CACHE_CONTROL_PRIVATE, CACHE_CONTROL_REVALIDATE
+from tests.unit.utils.git import seed_merge_repository
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -247,7 +248,10 @@ def test_create_pull_request(
 
 
 @pytest.mark.usefixtures("fake_stores")
-def test_list_pull_requests_counts(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
+def test_list_pull_requests_counts(
+    client: TestClient, superuser_token_headers: dict[str, str], fake_stores: FakeStores
+) -> None:
+    seed_merge_repository(fake_stores, REPO_OWNER, REPO_NAME, "b")
     client.post(PULLS_URL, headers=superuser_token_headers, json={"title": "First", "head_branch": "a"})
     client.post(PULLS_URL, headers=superuser_token_headers, json={"title": "Second", "head_branch": "b"})
     client.patch(f"{PULLS_URL}/2", headers=superuser_token_headers, json={"state": "merged"})
@@ -259,3 +263,45 @@ def test_list_pull_requests_counts(client: TestClient, superuser_token_headers: 
     assert payload["count"] == 2
     assert payload["open_count"] == 1
     assert payload["closed_count"] == 1
+
+
+@pytest.mark.usefixtures("fake_stores")
+def test_merged_pull_requests_cannot_be_reopened_or_closed(
+    client: TestClient, superuser_token_headers: dict[str, str], fake_stores: FakeStores
+) -> None:
+    seed_merge_repository(fake_stores, REPO_OWNER, REPO_NAME)
+    created = client.post(
+        PULLS_URL, headers=superuser_token_headers, json={"title": "Merge once", "head_branch": "feature"}
+    )
+    url = f"{PULLS_URL}/{created.json()['number']}"
+    assert client.patch(url, headers=superuser_token_headers, json={"state": "merged"}).status_code == 200
+    events = client.get(f"{url}/events").json()
+    assert [event["kind"] for event in events] == ["pull_request_merge"]
+    assert events[0]["actor_username"] == REPO_OWNER
+    for state in ("open", "closed"):
+        assert client.patch(url, headers=superuser_token_headers, json={"state": state}).status_code == 409
+        assert client.get(url).json()["state"] == "merged"
+    assert (
+        client.patch(url, headers=superuser_token_headers, json={"body": "Correct the description"}).status_code == 200
+    )
+    assert client.patch(url, headers=superuser_token_headers, json={"state": "merged"}).status_code == 200
+    assert client.get(f"{url}/events").json() == events
+    assert client.get(f"{PULLS_URL}/999/events").status_code == 404
+
+
+@pytest.mark.usefixtures("fake_stores")
+def test_closed_pull_requests_can_be_reopened(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
+    created = client.post(
+        PULLS_URL, headers=superuser_token_headers, json={"title": "Close and reopen", "head_branch": "feature"}
+    )
+    url = f"{PULLS_URL}/{created.json()['number']}"
+    assert client.patch(url, headers=superuser_token_headers, json={"state": "closed"}).status_code == 200
+    response = client.patch(url, headers=superuser_token_headers, json={"state": "open"})
+    assert response.status_code == 200
+    assert response.json()["state"] == "open"
+    assert [event["kind"] for event in client.get(f"{url}/events").json()] == [
+        "pull_request_close",
+        "pull_request_reopen",
+    ]
+    other = client.post(PULLS_URL, headers=superuser_token_headers, json={"title": "Other", "head_branch": "other"})
+    assert client.get(f"{PULLS_URL}/{other.json()['number']}/events").json() == []

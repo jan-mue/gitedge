@@ -26,12 +26,14 @@ from app.clients.cache import (
 )
 from app.clients.comments import CommentStore, SQLCommentStore
 from app.clients.email import EmailClient, SMTPClient
+from app.clients.git_merges import GitMergeClient
 from app.clients.issues import IssueStore, SQLIssueStore
 from app.clients.organizations import OrganizationStore, SQLOrganizationStore
 from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
 from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClient
 from app.clients.releases import ReleaseStore, SQLReleaseStore
 from app.clients.repositories import RepositoryStore, SQLRepositoryStore
+from app.clients.reviews import ReviewStore, SQLReviewStore
 from app.clients.stars import SQLStarStore, StarStore
 from app.clients.users import SQLUserStore, UserStore
 from app.clients.watchers import SQLWatcherStore, WatcherStore
@@ -48,6 +50,7 @@ from app.services.organizations import OrganizationService
 from app.services.pull_requests import PullRequestService
 from app.services.releases import ReleaseService
 from app.services.repositories import RepositoryService
+from app.services.reviews import ReviewService
 from app.services.stars import StarService
 from app.services.watchers import WatcherService
 from app.utils import security
@@ -474,7 +477,18 @@ def get_issue_service(
 IssueServiceDep = Annotated[IssueService, Depends(get_issue_service)]
 
 
+def get_git_merge_client(
+    blob: BlobStorageClientDep, redis: RedisClientDep, cache: CacheClientDep, backend: BackendDep
+) -> GitMergeClient:
+    """Create the merge storage adapter."""
+    return GitMergeClient(blob, redis, cache, backend)
+
+
+GitMergeClientDep = Annotated[GitMergeClient, Depends(get_git_merge_client)]
+
+
 def get_pull_request_service(
+    git_merges: GitMergeClientDep,
     pull_request_store: PullRequestStoreDep,
     repository_store: RepositoryStoreDep,
     repository_service: RepositoryServiceDep,
@@ -483,6 +497,7 @@ def get_pull_request_service(
     """Get the pull request service dependency.
 
     Args:
+        git_merges: Durable Git merge storage adapter.
         pull_request_store: Pull request store dependency.
         repository_store: Repository store dependency.
         repository_service: Repository service dependency.
@@ -491,10 +506,31 @@ def get_pull_request_service(
     Returns:
         Pull request service instance.
     """
-    return PullRequestService(pull_request_store, repository_store, repository_service, activity_service)
+    return PullRequestService(pull_request_store, repository_store, repository_service, activity_service, git_merges)
 
 
 PullRequestServiceDep = Annotated[PullRequestService, Depends(get_pull_request_service)]
+
+
+def get_review_store(session: SessionDep) -> ReviewStore:
+    """Get the review persistence dependency."""
+    return SQLReviewStore(session)
+
+
+ReviewStoreDep = Annotated[ReviewStore, Depends(get_review_store)]
+
+
+def get_review_service(
+    store: ReviewStoreDep,
+    pull_requests: PullRequestStoreDep,
+    repositories: RepositoryStoreDep,
+    repository_service: RepositoryServiceDep,
+) -> ReviewService:
+    """Get the pull request review service."""
+    return ReviewService(store, pull_requests, repositories, repository_service)
+
+
+ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
 
 
 def get_star_service(

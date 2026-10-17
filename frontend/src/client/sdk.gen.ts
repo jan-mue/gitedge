@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, type Options as Options2, type RequestResult, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { activityGetFeedData, activityGetFeedErrors, activityGetFeedResponses, activityGetRepositoryActivityData, activityGetRepositoryActivityErrors, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsData, activityGetRepositoryActivityStatisticsErrors, activityGetRepositoryActivityStatisticsResponses, commentsCreateCommentData, commentsCreateCommentErrors, commentsCreateCommentResponses, commentsDeleteCommentData, commentsDeleteCommentErrors, commentsDeleteCommentResponses, commentsListCommentsData, commentsListCommentsErrors, commentsListCommentsResponses, commentsUpdateCommentData, commentsUpdateCommentErrors, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryErrors, forksForkRepositoryResponses, forksListForksData, forksListForksErrors, forksListForksResponses, gitGetHeadData, gitGetHeadErrors, gitGetHeadResponses, gitGetInfoPacksData, gitGetInfoPacksErrors, gitGetInfoPacksResponses, gitGetInfoRefsData, gitGetInfoRefsErrors, gitGetInfoRefsResponses, gitGetLooseObjectData, gitGetLooseObjectErrors, gitGetLooseObjectResponses, gitGetPackFileData, gitGetPackFileErrors, gitGetPackFileResponses, gitGitReceivePackData, gitGitReceivePackErrors, gitGitReceivePackResponses, gitGitUploadPackData, gitGitUploadPackErrors, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationErrors, organizationsCreateOrganizationResponses, organizationsListOrganizationsData, organizationsListOrganizationsErrors, organizationsListOrganizationsResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesListUserRepositoriesData, profilesListUserRepositoriesErrors, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesErrors, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameData, profilesReadUserByUsernameErrors, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseErrors, releasesCreateReleaseResponses, releasesGetReleaseData, releasesGetReleaseErrors, releasesGetReleaseResponses, releasesListReleasesData, releasesListReleasesErrors, releasesListReleasesResponses, releasesListTagsData, releasesListTagsErrors, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseErrors, releasesUpdateReleaseResponses, repositoriesCreateIssueData, repositoriesCreateIssueErrors, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestErrors, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryErrors, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryData, repositoriesDeleteRepositoryErrors, repositoriesDeleteRepositoryResponses, repositoriesGetBlameData, repositoriesGetBlameErrors, repositoriesGetBlameResponses, repositoriesGetBlobData, repositoriesGetBlobErrors, repositoriesGetBlobResponses, repositoriesGetCommitData, repositoriesGetCommitErrors, repositoriesGetCommitResponses, repositoriesGetFileIndexData, repositoriesGetFileIndexErrors, repositoriesGetFileIndexResponses, repositoriesGetIssueData, repositoriesGetIssueErrors, repositoriesGetIssueResponses, repositoriesGetPullRequestData, repositoriesGetPullRequestErrors, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesErrors, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestResponses, repositoriesGetRawData, repositoriesGetRawErrors, repositoriesGetRawResponses, repositoriesGetReadmeData, repositoriesGetReadmeErrors, repositoriesGetReadmeResponses, repositoriesGetRepositoryData, repositoriesGetRepositoryErrors, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoErrors, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceData, repositoriesGetSourceErrors, repositoriesGetSourceResponses, repositoriesGetStatisticsData, repositoriesGetStatisticsErrors, repositoriesGetStatisticsResponses, repositoriesGetTreeData, repositoriesGetTreeErrors, repositoriesGetTreeResponses, repositoriesListBranchesData, repositoriesListBranchesErrors, repositoriesListBranchesResponses, repositoriesListCommitsData, repositoriesListCommitsErrors, repositoriesListCommitsResponses, repositoriesListIssuesData, repositoriesListIssuesErrors, repositoriesListIssuesResponses, repositoriesListPullRequestsData, repositoriesListPullRequestsErrors, repositoriesListPullRequestsResponses, repositoriesListRepositoriesData, repositoriesListRepositoriesResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueErrors, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestErrors, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryErrors, repositoriesUpdateRepositoryResponses, starsGetStarStateData, starsGetStarStateErrors, starsGetStarStateResponses, starsListStargazersData, starsListStargazersErrors, starsListStargazersResponses, starsListStarredRepositoriesData, starsListStarredRepositoriesErrors, starsListStarredRepositoriesResponses, starsStarRepositoryData, starsStarRepositoryErrors, starsStarRepositoryResponses, starsUnstarRepositoryData, starsUnstarRepositoryErrors, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, watchersGetWatchStateData, watchersGetWatchStateErrors, watchersGetWatchStateResponses, watchersListWatchersData, watchersListWatchersErrors, watchersListWatchersResponses, watchersUnwatchRepositoryData, watchersUnwatchRepositoryErrors, watchersUnwatchRepositoryResponses, watchersWatchRepositoryData, watchersWatchRepositoryErrors, watchersWatchRepositoryResponses } from './types.gen';
+import type { activityGetFeedData, activityGetFeedErrors, activityGetFeedResponses, activityGetRepositoryActivityData, activityGetRepositoryActivityErrors, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsData, activityGetRepositoryActivityStatisticsErrors, activityGetRepositoryActivityStatisticsResponses, commentsCreateCommentData, commentsCreateCommentErrors, commentsCreateCommentResponses, commentsDeleteCommentData, commentsDeleteCommentErrors, commentsDeleteCommentResponses, commentsListCommentsData, commentsListCommentsErrors, commentsListCommentsResponses, commentsUpdateCommentData, commentsUpdateCommentErrors, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryErrors, forksForkRepositoryResponses, forksListForksData, forksListForksErrors, forksListForksResponses, gitGetHeadData, gitGetHeadErrors, gitGetHeadResponses, gitGetInfoPacksData, gitGetInfoPacksErrors, gitGetInfoPacksResponses, gitGetInfoRefsData, gitGetInfoRefsErrors, gitGetInfoRefsResponses, gitGetLooseObjectData, gitGetLooseObjectErrors, gitGetLooseObjectResponses, gitGetPackFileData, gitGetPackFileErrors, gitGetPackFileResponses, gitGitReceivePackData, gitGitReceivePackErrors, gitGitReceivePackResponses, gitGitUploadPackData, gitGitUploadPackErrors, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationErrors, organizationsCreateOrganizationResponses, organizationsListOrganizationsData, organizationsListOrganizationsErrors, organizationsListOrganizationsResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesListUserRepositoriesData, profilesListUserRepositoriesErrors, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesErrors, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameData, profilesReadUserByUsernameErrors, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseErrors, releasesCreateReleaseResponses, releasesGetReleaseData, releasesGetReleaseErrors, releasesGetReleaseResponses, releasesListReleasesData, releasesListReleasesErrors, releasesListReleasesResponses, releasesListTagsData, releasesListTagsErrors, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseErrors, releasesUpdateReleaseResponses, repositoriesCompareRevisionsData, repositoriesCompareRevisionsErrors, repositoriesCompareRevisionsResponses, repositoriesCreateIssueData, repositoriesCreateIssueErrors, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestErrors, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryErrors, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryData, repositoriesDeleteRepositoryErrors, repositoriesDeleteRepositoryResponses, repositoriesGetBlameData, repositoriesGetBlameErrors, repositoriesGetBlameResponses, repositoriesGetBlobData, repositoriesGetBlobErrors, repositoriesGetBlobResponses, repositoriesGetCommitData, repositoriesGetCommitErrors, repositoriesGetCommitResponses, repositoriesGetDiffFileData, repositoriesGetDiffFileErrors, repositoriesGetDiffFileResponses, repositoriesGetFileIndexData, repositoriesGetFileIndexErrors, repositoriesGetFileIndexResponses, repositoriesGetIssueData, repositoriesGetIssueErrors, repositoriesGetIssueResponses, repositoriesGetPullRequestCommitsData, repositoriesGetPullRequestCommitsErrors, repositoriesGetPullRequestCommitsResponses, repositoriesGetPullRequestData, repositoriesGetPullRequestErrors, repositoriesGetPullRequestEventsData, repositoriesGetPullRequestEventsErrors, repositoriesGetPullRequestEventsResponses, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesErrors, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestMergeabilityData, repositoriesGetPullRequestMergeabilityErrors, repositoriesGetPullRequestMergeabilityResponses, repositoriesGetPullRequestResponses, repositoriesGetRawData, repositoriesGetRawErrors, repositoriesGetRawResponses, repositoriesGetReadmeData, repositoriesGetReadmeErrors, repositoriesGetReadmeResponses, repositoriesGetRepositoryData, repositoriesGetRepositoryErrors, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoErrors, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceData, repositoriesGetSourceErrors, repositoriesGetSourceResponses, repositoriesGetStatisticsData, repositoriesGetStatisticsErrors, repositoriesGetStatisticsResponses, repositoriesGetTreeData, repositoriesGetTreeErrors, repositoriesGetTreeResponses, repositoriesListBranchesData, repositoriesListBranchesErrors, repositoriesListBranchesResponses, repositoriesListCommitsData, repositoriesListCommitsErrors, repositoriesListCommitsResponses, repositoriesListIssuesData, repositoriesListIssuesErrors, repositoriesListIssuesResponses, repositoriesListPullRequestsData, repositoriesListPullRequestsErrors, repositoriesListPullRequestsResponses, repositoriesListRepositoriesData, repositoriesListRepositoriesResponses, repositoriesMergePullRequestData, repositoriesMergePullRequestErrors, repositoriesMergePullRequestResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueErrors, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestErrors, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryErrors, repositoriesUpdateRepositoryResponses, reviewsGetCommentContextData, reviewsGetCommentContextErrors, reviewsGetCommentContextResponses, reviewsGetWorkspaceData, reviewsGetWorkspaceErrors, reviewsGetWorkspaceResponses, reviewsListReviewsData, reviewsListReviewsErrors, reviewsListReviewsResponses, reviewsMarkReviewedData, reviewsMarkReviewedErrors, reviewsMarkReviewedResponses, reviewsReplyToReviewData, reviewsReplyToReviewErrors, reviewsReplyToReviewResponses, reviewsSaveDraftData, reviewsSaveDraftErrors, reviewsSaveDraftResponses, reviewsSubmitReviewData, reviewsSubmitReviewErrors, reviewsSubmitReviewResponses, starsGetStarStateData, starsGetStarStateErrors, starsGetStarStateResponses, starsListStargazersData, starsListStargazersErrors, starsListStargazersResponses, starsListStarredRepositoriesData, starsListStarredRepositoriesErrors, starsListStarredRepositoriesResponses, starsStarRepositoryData, starsStarRepositoryErrors, starsStarRepositoryResponses, starsUnstarRepositoryData, starsUnstarRepositoryErrors, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsPreviewMarkdownData, utilsPreviewMarkdownErrors, utilsPreviewMarkdownResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, watchersGetWatchStateData, watchersGetWatchStateErrors, watchersGetWatchStateResponses, watchersListWatchersData, watchersListWatchersErrors, watchersListWatchersResponses, watchersUnwatchRepositoryData, watchersUnwatchRepositoryErrors, watchersUnwatchRepositoryResponses, watchersWatchRepositoryData, watchersWatchRepositoryErrors, watchersWatchRepositoryResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -947,12 +947,74 @@ export class RepositoriesService {
     }
     
     /**
+     * Get Pull Request Events
+     *
+     * Read state transitions at their original event dates.
+     */
+    public static getPullRequestEvents<ThrowOnError extends boolean = true>(options: Options<repositoriesGetPullRequestEventsData, ThrowOnError>): RequestResult<repositoriesGetPullRequestEventsResponses, repositoriesGetPullRequestEventsErrors, ThrowOnError> {
+        return (options.client ?? client).get<repositoriesGetPullRequestEventsResponses, repositoriesGetPullRequestEventsErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/events', ...options });
+    }
+    
+    /**
+     * Get Pull Request Commits
+     *
+     * List commits unique to the PR branch, excluding the base's history.
+     */
+    public static getPullRequestCommits<ThrowOnError extends boolean = true>(options: Options<repositoriesGetPullRequestCommitsData, ThrowOnError>): RequestResult<repositoriesGetPullRequestCommitsResponses, repositoriesGetPullRequestCommitsErrors, ThrowOnError> {
+        return (options.client ?? client).get<repositoriesGetPullRequestCommitsResponses, repositoriesGetPullRequestCommitsErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/commits', ...options });
+    }
+    
+    /**
      * Get Pull Request Files
      *
      * List the files changed by a pull request, diffed against its base branch.
      */
     public static getPullRequestFiles<ThrowOnError extends boolean = true>(options: Options<repositoriesGetPullRequestFilesData, ThrowOnError>): RequestResult<repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestFilesErrors, ThrowOnError> {
         return (options.client ?? client).get<repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestFilesErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/files', ...options });
+    }
+    
+    /**
+     * Get Pull Request Mergeability
+     *
+     * Report conflicts before merging, checking fresh tips with immutable calculation caching.
+     */
+    public static getPullRequestMergeability<ThrowOnError extends boolean = true>(options: Options<repositoriesGetPullRequestMergeabilityData, ThrowOnError>): RequestResult<repositoriesGetPullRequestMergeabilityResponses, repositoriesGetPullRequestMergeabilityErrors, ThrowOnError> {
+        return (options.client ?? client).get<repositoriesGetPullRequestMergeabilityResponses, repositoriesGetPullRequestMergeabilityErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/mergeability', ...options });
+    }
+    
+    /**
+     * Merge Pull Request
+     *
+     * Merge Git history and record the PR state only after successful publication.
+     */
+    public static mergePullRequest<ThrowOnError extends boolean = true>(options: Options<repositoriesMergePullRequestData, ThrowOnError>): RequestResult<repositoriesMergePullRequestResponses, repositoriesMergePullRequestErrors, ThrowOnError> {
+        return (options.client ?? client).post<repositoriesMergePullRequestResponses, repositoriesMergePullRequestErrors, ThrowOnError>({
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/merge',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Compare Revisions
+     *
+     * Compare two branches, tags or commits using the shared diff response.
+     */
+    public static compareRevisions<ThrowOnError extends boolean = true>(options: Options<repositoriesCompareRevisionsData, ThrowOnError>): RequestResult<repositoriesCompareRevisionsResponses, repositoriesCompareRevisionsErrors, ThrowOnError> {
+        return (options.client ?? client).get<repositoriesCompareRevisionsResponses, repositoriesCompareRevisionsErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/compare', ...options });
+    }
+    
+    /**
+     * Get Diff File
+     *
+     * Load one highlighted file at immutable base and head revisions.
+     */
+    public static getDiffFile<ThrowOnError extends boolean = true>(options: Options<repositoriesGetDiffFileData, ThrowOnError>): RequestResult<repositoriesGetDiffFileResponses, repositoriesGetDiffFileErrors, ThrowOnError> {
+        return (options.client ?? client).get<repositoriesGetDiffFileResponses, repositoriesGetDiffFileErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/diff-file', ...options });
     }
     
     /**
@@ -995,7 +1057,124 @@ export class RepositoriesService {
     }
 }
 
+export class ReviewsService {
+    /**
+     * List Reviews
+     *
+     * List submitted reviews and their published line comments.
+     */
+    public static listReviews<ThrowOnError extends boolean = true>(options: Options<reviewsListReviewsData, ThrowOnError>): RequestResult<reviewsListReviewsResponses, reviewsListReviewsErrors, ThrowOnError> {
+        return (options.client ?? client).get<reviewsListReviewsResponses, reviewsListReviewsErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviews', ...options });
+    }
+    
+    /**
+     * Submit Review
+     *
+     * Publish a review with a comment, approval or request-changes outcome.
+     */
+    public static submitReview<ThrowOnError extends boolean = true>(options: Options<reviewsSubmitReviewData, ThrowOnError>): RequestResult<reviewsSubmitReviewResponses, reviewsSubmitReviewErrors, ThrowOnError> {
+        return (options.client ?? client).post<reviewsSubmitReviewResponses, reviewsSubmitReviewErrors, ThrowOnError>({
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviews',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Get Workspace
+     *
+     * Read only the authenticated user's private draft and viewed status.
+     */
+    public static getWorkspace<ThrowOnError extends boolean = true>(options: Options<reviewsGetWorkspaceData, ThrowOnError>): RequestResult<reviewsGetWorkspaceResponses, reviewsGetWorkspaceErrors, ThrowOnError> {
+        return (options.client ?? client).get<reviewsGetWorkspaceResponses, reviewsGetWorkspaceErrors, ThrowOnError>({
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/review-workspace',
+            ...options
+        });
+    }
+    
+    /**
+     * Get Comment Context
+     *
+     * Read a short highlighted snippet ending at the original comment anchor.
+     */
+    public static getCommentContext<ThrowOnError extends boolean = true>(options: Options<reviewsGetCommentContextData, ThrowOnError>): RequestResult<reviewsGetCommentContextResponses, reviewsGetCommentContextErrors, ThrowOnError> {
+        return (options.client ?? client).get<reviewsGetCommentContextResponses, reviewsGetCommentContextErrors, ThrowOnError>({ url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviews/{review_id}/comments/{comment_index}/context', ...options });
+    }
+    
+    /**
+     * Reply To Review
+     *
+     * Reply to a published line comment or overall review comment.
+     */
+    public static replyToReview<ThrowOnError extends boolean = true>(options: Options<reviewsReplyToReviewData, ThrowOnError>): RequestResult<reviewsReplyToReviewResponses, reviewsReplyToReviewErrors, ThrowOnError> {
+        return (options.client ?? client).post<reviewsReplyToReviewResponses, reviewsReplyToReviewErrors, ThrowOnError>({
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviews/{review_id}/replies',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Save Draft
+     *
+     * Save a private review draft, including line comments.
+     */
+    public static saveDraft<ThrowOnError extends boolean = true>(options: Options<reviewsSaveDraftData, ThrowOnError>): RequestResult<reviewsSaveDraftResponses, reviewsSaveDraftErrors, ThrowOnError> {
+        return (options.client ?? client).put<reviewsSaveDraftResponses, reviewsSaveDraftErrors, ThrowOnError>({
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/review-draft',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Mark Reviewed
+     *
+     * Update a file's reviewed state for the authenticated user.
+     */
+    public static markReviewed<ThrowOnError extends boolean = true>(options: Options<reviewsMarkReviewedData, ThrowOnError>): RequestResult<reviewsMarkReviewedResponses, reviewsMarkReviewedErrors, ThrowOnError> {
+        return (options.client ?? client).put<reviewsMarkReviewedResponses, reviewsMarkReviewedErrors, ThrowOnError>({
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviewed-files',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+}
+
 export class UtilsService {
+    /**
+     * Preview Markdown
+     *
+     * Render a bounded Markdown preview using the same sanitization as saved comments.
+     */
+    public static previewMarkdown<ThrowOnError extends boolean = true>(options: Options<utilsPreviewMarkdownData, ThrowOnError>): RequestResult<utilsPreviewMarkdownResponses, utilsPreviewMarkdownErrors, ThrowOnError> {
+        return (options.client ?? client).post<utilsPreviewMarkdownResponses, utilsPreviewMarkdownErrors, ThrowOnError>({
+            url: '/api/v1/utils/markdown-preview',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
     /**
      * Test Email
      *

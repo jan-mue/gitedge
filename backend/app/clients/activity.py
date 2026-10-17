@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from sqlalchemy import and_, case, func, or_, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.activity import Activity, ActivityKind, ActivityTargetType
@@ -31,6 +31,10 @@ _PREVIEW_LENGTH = 4000
 
 class ActivityStore(CrudStore[Activity], ABC):
     """Abstract activity store with activity-specific queries."""
+
+    @abstractmethod
+    async def list_pull_request_events(self, repo_id: uuid.UUID, number: int) -> list[Activity]:
+        """List a pull request's state transitions in chronological order."""
 
     @abstractmethod
     async def get_target_previews(self, activities: list[Activity]) -> dict[uuid.UUID, ActivityTargetPreview]:
@@ -67,6 +71,23 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
             db: SQLAlchemy async session.
         """
         super().__init__(db, Activity)
+
+    async def list_pull_request_events(self, repo_id: uuid.UUID, number: int) -> list[Activity]:
+        """Read immutable transition dates independently of later description edits."""
+        result = await self.db.scalars(
+            select(Activity)
+            .options(joinedload(Activity.actor), joinedload(Activity.repo).joinedload(Repository.owner))
+            .where(
+                Activity.repo_id == repo_id,
+                Activity.target_type == ActivityTargetType.PULL_REQUEST,
+                Activity.target_number == number,
+                Activity.kind.in_(
+                    [ActivityKind.PULL_REQUEST_MERGE, ActivityKind.PULL_REQUEST_CLOSE, ActivityKind.PULL_REQUEST_REOPEN]
+                ),
+            )
+            .order_by(Activity.created_at, Activity.id)
+        )
+        return list(result.all())
 
     async def list_in_period(self, repo_id: uuid.UUID, start: datetime, end: datetime) -> list[Activity]:
         """List repository events in the inclusive period, newest first."""

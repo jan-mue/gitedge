@@ -2,13 +2,20 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Body, Depends, status
 from pydantic.networks import EmailStr
 
 from app.api.dependencies import EmailClientDep, check_database_connection, get_current_active_superuser
+from app.services.markdown import render_markdown
 from app.utils.email import generate_test_email
 
 router = APIRouter(prefix="/utils", tags=["utils"])
+
+
+@router.post("/markdown-preview")
+async def preview_markdown(body: Annotated[str, Body(embed=True, max_length=20000)]) -> str:
+    """Render a bounded Markdown preview using the same sanitization as saved comments."""
+    return render_markdown(body)
 
 
 @router.post(

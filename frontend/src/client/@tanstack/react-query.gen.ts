@@ -3,8 +3,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { ActivityService, CommentsService, ForksService, GitService, LoginService, type Options, OrganizationsService, PrivateService, ProfilesService, ReleasesService, RepositoriesService, StarsService, UsersService, UtilsService, WatchersService } from '../sdk.gen';
-import type { activityGetFeedData, activityGetFeedError, activityGetFeedResponse, activityGetRepositoryActivityData, activityGetRepositoryActivityError, activityGetRepositoryActivityResponse, activityGetRepositoryActivityStatisticsData, activityGetRepositoryActivityStatisticsError, activityGetRepositoryActivityStatisticsResponse, commentsCreateCommentData, commentsCreateCommentError, commentsCreateCommentResponse, commentsDeleteCommentData, commentsDeleteCommentError, commentsDeleteCommentResponse, commentsListCommentsData, commentsListCommentsError, commentsListCommentsResponse, commentsUpdateCommentData, commentsUpdateCommentError, commentsUpdateCommentResponse, forksForkRepositoryData, forksForkRepositoryError, forksForkRepositoryResponse, forksListForksData, forksListForksError, forksListForksResponse, gitGetHeadData, gitGetHeadError, gitGetInfoPacksData, gitGetInfoPacksError, gitGetInfoRefsData, gitGetInfoRefsError, gitGetLooseObjectData, gitGetLooseObjectError, gitGetPackFileData, gitGetPackFileError, gitGitReceivePackData, gitGitReceivePackError, gitGitUploadPackData, gitGitUploadPackError, loginLoginAccessTokenData, loginLoginAccessTokenError, loginLoginAccessTokenResponse, loginRecoverPasswordData, loginRecoverPasswordError, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentError, loginRecoverPasswordResponse, loginResetPasswordData, loginResetPasswordError, loginResetPasswordResponse, loginTestTokenData, loginTestTokenResponse, organizationsCreateOrganizationData, organizationsCreateOrganizationError, organizationsCreateOrganizationResponse, organizationsListOrganizationsData, organizationsListOrganizationsError, organizationsListOrganizationsResponse, privateCreateUserData, privateCreateUserError, privateCreateUserResponse, profilesListUserRepositoriesData, profilesListUserRepositoriesError, profilesListUserRepositoriesResponse, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesError, profilesListUserStarredRepositoriesResponse, profilesReadUserByUsernameData, profilesReadUserByUsernameError, profilesReadUserByUsernameResponse, releasesCreateReleaseData, releasesCreateReleaseError, releasesCreateReleaseResponse, releasesGetReleaseData, releasesGetReleaseError, releasesGetReleaseResponse, releasesListReleasesData, releasesListReleasesError, releasesListReleasesResponse, releasesListTagsData, releasesListTagsError, releasesListTagsResponse, releasesUpdateReleaseData, releasesUpdateReleaseError, releasesUpdateReleaseResponse, repositoriesCreateIssueData, repositoriesCreateIssueError, repositoriesCreateIssueResponse, repositoriesCreatePullRequestData, repositoriesCreatePullRequestError, repositoriesCreatePullRequestResponse, repositoriesCreateRepositoryData, repositoriesCreateRepositoryError, repositoriesCreateRepositoryResponse, repositoriesDeleteRepositoryData, repositoriesDeleteRepositoryError, repositoriesDeleteRepositoryResponse, repositoriesGetBlameData, repositoriesGetBlameError, repositoriesGetBlameResponse, repositoriesGetBlobData, repositoriesGetBlobError, repositoriesGetBlobResponse, repositoriesGetCommitData, repositoriesGetCommitError, repositoriesGetCommitResponse, repositoriesGetFileIndexData, repositoriesGetFileIndexError, repositoriesGetFileIndexResponse, repositoriesGetIssueData, repositoriesGetIssueError, repositoriesGetIssueResponse, repositoriesGetPullRequestData, repositoriesGetPullRequestError, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesError, repositoriesGetPullRequestFilesResponse, repositoriesGetPullRequestResponse, repositoriesGetRawData, repositoriesGetRawError, repositoriesGetReadmeData, repositoriesGetReadmeError, repositoriesGetReadmeResponse, repositoriesGetRepositoryData, repositoriesGetRepositoryError, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoError, repositoriesGetRepositoryInfoResponse, repositoriesGetRepositoryResponse, repositoriesGetSourceData, repositoriesGetSourceError, repositoriesGetSourceResponse, repositoriesGetStatisticsData, repositoriesGetStatisticsError, repositoriesGetStatisticsResponse, repositoriesGetTreeData, repositoriesGetTreeError, repositoriesGetTreeResponse, repositoriesListBranchesData, repositoriesListBranchesError, repositoriesListBranchesResponse, repositoriesListCommitsData, repositoriesListCommitsError, repositoriesListCommitsResponse, repositoriesListIssuesData, repositoriesListIssuesError, repositoriesListIssuesResponse, repositoriesListPullRequestsData, repositoriesListPullRequestsError, repositoriesListPullRequestsResponse, repositoriesListRepositoriesData, repositoriesListRepositoriesResponse, repositoriesUpdateIssueData, repositoriesUpdateIssueError, repositoriesUpdateIssueResponse, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestError, repositoriesUpdatePullRequestResponse, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryError, repositoriesUpdateRepositoryResponse, starsGetStarStateData, starsGetStarStateError, starsGetStarStateResponse, starsListStargazersData, starsListStargazersError, starsListStargazersResponse, starsListStarredRepositoriesData, starsListStarredRepositoriesError, starsListStarredRepositoriesResponse, starsStarRepositoryData, starsStarRepositoryError, starsStarRepositoryResponse, starsUnstarRepositoryData, starsUnstarRepositoryError, starsUnstarRepositoryResponse, usersCreateUserData, usersCreateUserError, usersCreateUserResponse, usersDeleteUserData, usersDeleteUserError, usersDeleteUserMeData, usersDeleteUserMeResponse, usersDeleteUserResponse, usersReadUserMeData, usersReadUserMeResponse, usersReadUsersData, usersReadUsersError, usersReadUsersResponse, usersRegisterUserData, usersRegisterUserError, usersRegisterUserResponse, usersUpdatePasswordMeData, usersUpdatePasswordMeError, usersUpdatePasswordMeResponse, usersUpdateUserData, usersUpdateUserError, usersUpdateUserMeData, usersUpdateUserMeError, usersUpdateUserMeResponse, usersUpdateUserResponse, utilsHealthCheckData, utilsHealthCheckResponse, utilsTestEmailData, utilsTestEmailError, utilsTestEmailResponse, watchersGetWatchStateData, watchersGetWatchStateError, watchersGetWatchStateResponse, watchersListWatchersData, watchersListWatchersError, watchersListWatchersResponse, watchersUnwatchRepositoryData, watchersUnwatchRepositoryError, watchersUnwatchRepositoryResponse, watchersWatchRepositoryData, watchersWatchRepositoryError, watchersWatchRepositoryResponse } from '../types.gen';
+import { ActivityService, CommentsService, ForksService, GitService, LoginService, type Options, OrganizationsService, PrivateService, ProfilesService, ReleasesService, RepositoriesService, ReviewsService, StarsService, UsersService, UtilsService, WatchersService } from '../sdk.gen';
+import type { activityGetFeedData, activityGetFeedError, activityGetFeedResponse, activityGetRepositoryActivityData, activityGetRepositoryActivityError, activityGetRepositoryActivityResponse, activityGetRepositoryActivityStatisticsData, activityGetRepositoryActivityStatisticsError, activityGetRepositoryActivityStatisticsResponse, commentsCreateCommentData, commentsCreateCommentError, commentsCreateCommentResponse, commentsDeleteCommentData, commentsDeleteCommentError, commentsDeleteCommentResponse, commentsListCommentsData, commentsListCommentsError, commentsListCommentsResponse, commentsUpdateCommentData, commentsUpdateCommentError, commentsUpdateCommentResponse, forksForkRepositoryData, forksForkRepositoryError, forksForkRepositoryResponse, forksListForksData, forksListForksError, forksListForksResponse, gitGetHeadData, gitGetHeadError, gitGetInfoPacksData, gitGetInfoPacksError, gitGetInfoRefsData, gitGetInfoRefsError, gitGetLooseObjectData, gitGetLooseObjectError, gitGetPackFileData, gitGetPackFileError, gitGitReceivePackData, gitGitReceivePackError, gitGitUploadPackData, gitGitUploadPackError, loginLoginAccessTokenData, loginLoginAccessTokenError, loginLoginAccessTokenResponse, loginRecoverPasswordData, loginRecoverPasswordError, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentError, loginRecoverPasswordResponse, loginResetPasswordData, loginResetPasswordError, loginResetPasswordResponse, loginTestTokenData, loginTestTokenResponse, organizationsCreateOrganizationData, organizationsCreateOrganizationError, organizationsCreateOrganizationResponse, organizationsListOrganizationsData, organizationsListOrganizationsError, organizationsListOrganizationsResponse, privateCreateUserData, privateCreateUserError, privateCreateUserResponse, profilesListUserRepositoriesData, profilesListUserRepositoriesError, profilesListUserRepositoriesResponse, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesError, profilesListUserStarredRepositoriesResponse, profilesReadUserByUsernameData, profilesReadUserByUsernameError, profilesReadUserByUsernameResponse, releasesCreateReleaseData, releasesCreateReleaseError, releasesCreateReleaseResponse, releasesGetReleaseData, releasesGetReleaseError, releasesGetReleaseResponse, releasesListReleasesData, releasesListReleasesError, releasesListReleasesResponse, releasesListTagsData, releasesListTagsError, releasesListTagsResponse, releasesUpdateReleaseData, releasesUpdateReleaseError, releasesUpdateReleaseResponse, repositoriesCompareRevisionsData, repositoriesCompareRevisionsError, repositoriesCompareRevisionsResponse, repositoriesCreateIssueData, repositoriesCreateIssueError, repositoriesCreateIssueResponse, repositoriesCreatePullRequestData, repositoriesCreatePullRequestError, repositoriesCreatePullRequestResponse, repositoriesCreateRepositoryData, repositoriesCreateRepositoryError, repositoriesCreateRepositoryResponse, repositoriesDeleteRepositoryData, repositoriesDeleteRepositoryError, repositoriesDeleteRepositoryResponse, repositoriesGetBlameData, repositoriesGetBlameError, repositoriesGetBlameResponse, repositoriesGetBlobData, repositoriesGetBlobError, repositoriesGetBlobResponse, repositoriesGetCommitData, repositoriesGetCommitError, repositoriesGetCommitResponse, repositoriesGetDiffFileData, repositoriesGetDiffFileError, repositoriesGetDiffFileResponse, repositoriesGetFileIndexData, repositoriesGetFileIndexError, repositoriesGetFileIndexResponse, repositoriesGetIssueData, repositoriesGetIssueError, repositoriesGetIssueResponse, repositoriesGetPullRequestCommitsData, repositoriesGetPullRequestCommitsError, repositoriesGetPullRequestCommitsResponse, repositoriesGetPullRequestData, repositoriesGetPullRequestError, repositoriesGetPullRequestEventsData, repositoriesGetPullRequestEventsError, repositoriesGetPullRequestEventsResponse, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesError, repositoriesGetPullRequestFilesResponse, repositoriesGetPullRequestMergeabilityData, repositoriesGetPullRequestMergeabilityError, repositoriesGetPullRequestMergeabilityResponse, repositoriesGetPullRequestResponse, repositoriesGetRawData, repositoriesGetRawError, repositoriesGetReadmeData, repositoriesGetReadmeError, repositoriesGetReadmeResponse, repositoriesGetRepositoryData, repositoriesGetRepositoryError, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoError, repositoriesGetRepositoryInfoResponse, repositoriesGetRepositoryResponse, repositoriesGetSourceData, repositoriesGetSourceError, repositoriesGetSourceResponse, repositoriesGetStatisticsData, repositoriesGetStatisticsError, repositoriesGetStatisticsResponse, repositoriesGetTreeData, repositoriesGetTreeError, repositoriesGetTreeResponse, repositoriesListBranchesData, repositoriesListBranchesError, repositoriesListBranchesResponse, repositoriesListCommitsData, repositoriesListCommitsError, repositoriesListCommitsResponse, repositoriesListIssuesData, repositoriesListIssuesError, repositoriesListIssuesResponse, repositoriesListPullRequestsData, repositoriesListPullRequestsError, repositoriesListPullRequestsResponse, repositoriesListRepositoriesData, repositoriesListRepositoriesResponse, repositoriesMergePullRequestData, repositoriesMergePullRequestError, repositoriesMergePullRequestResponse, repositoriesUpdateIssueData, repositoriesUpdateIssueError, repositoriesUpdateIssueResponse, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestError, repositoriesUpdatePullRequestResponse, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryError, repositoriesUpdateRepositoryResponse, reviewsGetCommentContextData, reviewsGetCommentContextError, reviewsGetCommentContextResponse, reviewsGetWorkspaceData, reviewsGetWorkspaceError, reviewsGetWorkspaceResponse, reviewsListReviewsData, reviewsListReviewsError, reviewsListReviewsResponse, reviewsMarkReviewedData, reviewsMarkReviewedError, reviewsMarkReviewedResponse, reviewsReplyToReviewData, reviewsReplyToReviewError, reviewsReplyToReviewResponse, reviewsSaveDraftData, reviewsSaveDraftError, reviewsSaveDraftResponse, reviewsSubmitReviewData, reviewsSubmitReviewError, reviewsSubmitReviewResponse, starsGetStarStateData, starsGetStarStateError, starsGetStarStateResponse, starsListStargazersData, starsListStargazersError, starsListStargazersResponse, starsListStarredRepositoriesData, starsListStarredRepositoriesError, starsListStarredRepositoriesResponse, starsStarRepositoryData, starsStarRepositoryError, starsStarRepositoryResponse, starsUnstarRepositoryData, starsUnstarRepositoryError, starsUnstarRepositoryResponse, usersCreateUserData, usersCreateUserError, usersCreateUserResponse, usersDeleteUserData, usersDeleteUserError, usersDeleteUserMeData, usersDeleteUserMeResponse, usersDeleteUserResponse, usersReadUserMeData, usersReadUserMeResponse, usersReadUsersData, usersReadUsersError, usersReadUsersResponse, usersRegisterUserData, usersRegisterUserError, usersRegisterUserResponse, usersUpdatePasswordMeData, usersUpdatePasswordMeError, usersUpdatePasswordMeResponse, usersUpdateUserData, usersUpdateUserError, usersUpdateUserMeData, usersUpdateUserMeError, usersUpdateUserMeResponse, usersUpdateUserResponse, utilsHealthCheckData, utilsHealthCheckResponse, utilsPreviewMarkdownData, utilsPreviewMarkdownError, utilsPreviewMarkdownResponse, utilsTestEmailData, utilsTestEmailError, utilsTestEmailResponse, watchersGetWatchStateData, watchersGetWatchStateError, watchersGetWatchStateResponse, watchersListWatchersData, watchersListWatchersError, watchersListWatchersResponse, watchersUnwatchRepositoryData, watchersUnwatchRepositoryError, watchersUnwatchRepositoryResponse, watchersWatchRepositoryData, watchersWatchRepositoryError, watchersWatchRepositoryResponse } from '../types.gen';
 
 /**
  * Login Access Token
@@ -1779,6 +1779,78 @@ export const repositoriesUpdatePullRequestMutation = (options?: Partial<Options<
     return mutationOptions;
 };
 
+export const repositoriesGetPullRequestEventsQueryKey = (options: Options<repositoriesGetPullRequestEventsData>) => createQueryKey('repositoriesGetPullRequestEvents', options);
+
+/**
+ * Get Pull Request Events
+ *
+ * Read state transitions at their original event dates.
+ */
+export const repositoriesGetPullRequestEventsOptions = (options: Options<repositoriesGetPullRequestEventsData>) => queryOptions<repositoriesGetPullRequestEventsResponse, repositoriesGetPullRequestEventsError, repositoriesGetPullRequestEventsResponse, ReturnType<typeof repositoriesGetPullRequestEventsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await RepositoriesService.getPullRequestEvents({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: repositoriesGetPullRequestEventsQueryKey(options)
+});
+
+export const repositoriesGetPullRequestCommitsQueryKey = (options: Options<repositoriesGetPullRequestCommitsData>) => createQueryKey('repositoriesGetPullRequestCommits', options);
+
+/**
+ * Get Pull Request Commits
+ *
+ * List commits unique to the PR branch, excluding the base's history.
+ */
+export const repositoriesGetPullRequestCommitsOptions = (options: Options<repositoriesGetPullRequestCommitsData>) => queryOptions<repositoriesGetPullRequestCommitsResponse, repositoriesGetPullRequestCommitsError, repositoriesGetPullRequestCommitsResponse, ReturnType<typeof repositoriesGetPullRequestCommitsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await RepositoriesService.getPullRequestCommits({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: repositoriesGetPullRequestCommitsQueryKey(options)
+});
+
+export const repositoriesGetPullRequestCommitsInfiniteQueryKey = (options: Options<repositoriesGetPullRequestCommitsData>): QueryKey<Options<repositoriesGetPullRequestCommitsData>> => createQueryKey('repositoriesGetPullRequestCommits', options, true);
+
+/**
+ * Get Pull Request Commits
+ *
+ * List commits unique to the PR branch, excluding the base's history.
+ */
+export const repositoriesGetPullRequestCommitsInfiniteOptions = (options: Options<repositoriesGetPullRequestCommitsData>) => {
+    const opts = infiniteQueryOptions<repositoriesGetPullRequestCommitsResponse, repositoriesGetPullRequestCommitsError, InfiniteData<repositoriesGetPullRequestCommitsResponse>, QueryKey<Options<repositoriesGetPullRequestCommitsData>>, number | Pick<QueryKey<Options<repositoriesGetPullRequestCommitsData>>[0], 'body' | 'headers' | 'path' | 'query'>>(
+    // @ts-ignore
+    {
+        queryFn: async ({ pageParam, queryKey, signal }) => {
+            // @ts-ignore
+            const page: Pick<QueryKey<Options<repositoriesGetPullRequestCommitsData>>[0], 'body' | 'headers' | 'path' | 'query'> = typeof pageParam === 'object' ? pageParam : {
+                query: {
+                    offset: pageParam
+                }
+            };
+            const params = createInfiniteParams(queryKey, page);
+            const { data } = await RepositoriesService.getPullRequestCommits({
+                ...options,
+                ...params,
+                signal,
+                throwOnError: true
+            });
+            return data;
+        },
+        queryKey: repositoriesGetPullRequestCommitsInfiniteQueryKey(options)
+    });
+    return opts as Omit<typeof opts, 'initialData'>;
+};
+
 export const repositoriesGetPullRequestFilesQueryKey = (options: Options<repositoriesGetPullRequestFilesData>) => createQueryKey('repositoriesGetPullRequestFiles', options);
 
 /**
@@ -1797,6 +1869,85 @@ export const repositoriesGetPullRequestFilesOptions = (options: Options<reposito
         return data;
     },
     queryKey: repositoriesGetPullRequestFilesQueryKey(options)
+});
+
+export const repositoriesGetPullRequestMergeabilityQueryKey = (options: Options<repositoriesGetPullRequestMergeabilityData>) => createQueryKey('repositoriesGetPullRequestMergeability', options);
+
+/**
+ * Get Pull Request Mergeability
+ *
+ * Report conflicts before merging, checking fresh tips with immutable calculation caching.
+ */
+export const repositoriesGetPullRequestMergeabilityOptions = (options: Options<repositoriesGetPullRequestMergeabilityData>) => queryOptions<repositoriesGetPullRequestMergeabilityResponse, repositoriesGetPullRequestMergeabilityError, repositoriesGetPullRequestMergeabilityResponse, ReturnType<typeof repositoriesGetPullRequestMergeabilityQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await RepositoriesService.getPullRequestMergeability({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: repositoriesGetPullRequestMergeabilityQueryKey(options)
+});
+
+/**
+ * Merge Pull Request
+ *
+ * Merge Git history and record the PR state only after successful publication.
+ */
+export const repositoriesMergePullRequestMutation = (options?: Partial<Options<repositoriesMergePullRequestData>>): UseMutationOptions<repositoriesMergePullRequestResponse, repositoriesMergePullRequestError, Options<repositoriesMergePullRequestData>> => {
+    const mutationOptions: UseMutationOptions<repositoriesMergePullRequestResponse, repositoriesMergePullRequestError, Options<repositoriesMergePullRequestData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await RepositoriesService.mergePullRequest({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const repositoriesCompareRevisionsQueryKey = (options: Options<repositoriesCompareRevisionsData>) => createQueryKey('repositoriesCompareRevisions', options);
+
+/**
+ * Compare Revisions
+ *
+ * Compare two branches, tags or commits using the shared diff response.
+ */
+export const repositoriesCompareRevisionsOptions = (options: Options<repositoriesCompareRevisionsData>) => queryOptions<repositoriesCompareRevisionsResponse, repositoriesCompareRevisionsError, repositoriesCompareRevisionsResponse, ReturnType<typeof repositoriesCompareRevisionsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await RepositoriesService.compareRevisions({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: repositoriesCompareRevisionsQueryKey(options)
+});
+
+export const repositoriesGetDiffFileQueryKey = (options: Options<repositoriesGetDiffFileData>) => createQueryKey('repositoriesGetDiffFile', options);
+
+/**
+ * Get Diff File
+ *
+ * Load one highlighted file at immutable base and head revisions.
+ */
+export const repositoriesGetDiffFileOptions = (options: Options<repositoriesGetDiffFileData>) => queryOptions<repositoriesGetDiffFileResponse, repositoriesGetDiffFileError, repositoriesGetDiffFileResponse, ReturnType<typeof repositoriesGetDiffFileQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await RepositoriesService.getDiffFile({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: repositoriesGetDiffFileQueryKey(options)
 });
 
 /**
@@ -1847,6 +1998,161 @@ export const repositoriesUpdateRepositoryMutation = (options?: Partial<Options<r
     const mutationOptions: UseMutationOptions<repositoriesUpdateRepositoryResponse, repositoriesUpdateRepositoryError, Options<repositoriesUpdateRepositoryData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await RepositoriesService.updateRepository({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const reviewsListReviewsQueryKey = (options: Options<reviewsListReviewsData>) => createQueryKey('reviewsListReviews', options);
+
+/**
+ * List Reviews
+ *
+ * List submitted reviews and their published line comments.
+ */
+export const reviewsListReviewsOptions = (options: Options<reviewsListReviewsData>) => queryOptions<reviewsListReviewsResponse, reviewsListReviewsError, reviewsListReviewsResponse, ReturnType<typeof reviewsListReviewsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await ReviewsService.listReviews({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: reviewsListReviewsQueryKey(options)
+});
+
+/**
+ * Submit Review
+ *
+ * Publish a review with a comment, approval or request-changes outcome.
+ */
+export const reviewsSubmitReviewMutation = (options?: Partial<Options<reviewsSubmitReviewData>>): UseMutationOptions<reviewsSubmitReviewResponse, reviewsSubmitReviewError, Options<reviewsSubmitReviewData>> => {
+    const mutationOptions: UseMutationOptions<reviewsSubmitReviewResponse, reviewsSubmitReviewError, Options<reviewsSubmitReviewData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await ReviewsService.submitReview({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const reviewsGetWorkspaceQueryKey = (options: Options<reviewsGetWorkspaceData>) => createQueryKey('reviewsGetWorkspace', options);
+
+/**
+ * Get Workspace
+ *
+ * Read only the authenticated user's private draft and viewed status.
+ */
+export const reviewsGetWorkspaceOptions = (options: Options<reviewsGetWorkspaceData>) => queryOptions<reviewsGetWorkspaceResponse, reviewsGetWorkspaceError, reviewsGetWorkspaceResponse, ReturnType<typeof reviewsGetWorkspaceQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await ReviewsService.getWorkspace({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: reviewsGetWorkspaceQueryKey(options)
+});
+
+export const reviewsGetCommentContextQueryKey = (options: Options<reviewsGetCommentContextData>) => createQueryKey('reviewsGetCommentContext', options);
+
+/**
+ * Get Comment Context
+ *
+ * Read a short highlighted snippet ending at the original comment anchor.
+ */
+export const reviewsGetCommentContextOptions = (options: Options<reviewsGetCommentContextData>) => queryOptions<reviewsGetCommentContextResponse, reviewsGetCommentContextError, reviewsGetCommentContextResponse, ReturnType<typeof reviewsGetCommentContextQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await ReviewsService.getCommentContext({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: reviewsGetCommentContextQueryKey(options)
+});
+
+/**
+ * Reply To Review
+ *
+ * Reply to a published line comment or overall review comment.
+ */
+export const reviewsReplyToReviewMutation = (options?: Partial<Options<reviewsReplyToReviewData>>): UseMutationOptions<reviewsReplyToReviewResponse, reviewsReplyToReviewError, Options<reviewsReplyToReviewData>> => {
+    const mutationOptions: UseMutationOptions<reviewsReplyToReviewResponse, reviewsReplyToReviewError, Options<reviewsReplyToReviewData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await ReviewsService.replyToReview({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Save Draft
+ *
+ * Save a private review draft, including line comments.
+ */
+export const reviewsSaveDraftMutation = (options?: Partial<Options<reviewsSaveDraftData>>): UseMutationOptions<reviewsSaveDraftResponse, reviewsSaveDraftError, Options<reviewsSaveDraftData>> => {
+    const mutationOptions: UseMutationOptions<reviewsSaveDraftResponse, reviewsSaveDraftError, Options<reviewsSaveDraftData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await ReviewsService.saveDraft({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Mark Reviewed
+ *
+ * Update a file's reviewed state for the authenticated user.
+ */
+export const reviewsMarkReviewedMutation = (options?: Partial<Options<reviewsMarkReviewedData>>): UseMutationOptions<reviewsMarkReviewedResponse, reviewsMarkReviewedError, Options<reviewsMarkReviewedData>> => {
+    const mutationOptions: UseMutationOptions<reviewsMarkReviewedResponse, reviewsMarkReviewedError, Options<reviewsMarkReviewedData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await ReviewsService.markReviewed({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Preview Markdown
+ *
+ * Render a bounded Markdown preview using the same sanitization as saved comments.
+ */
+export const utilsPreviewMarkdownMutation = (options?: Partial<Options<utilsPreviewMarkdownData>>): UseMutationOptions<utilsPreviewMarkdownResponse, utilsPreviewMarkdownError, Options<utilsPreviewMarkdownData>> => {
+    const mutationOptions: UseMutationOptions<utilsPreviewMarkdownResponse, utilsPreviewMarkdownError, Options<utilsPreviewMarkdownData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await UtilsService.previewMarkdown({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

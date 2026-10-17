@@ -61,6 +61,16 @@ const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
       </div>
 
       <h1 className="text-xl font-bold text-foreground">New Pull Request</h1>
+      {headBranch && (
+        <RouterLink
+          to="/$owner/$repo/compare"
+          params={{ owner, repo }}
+          search={{ base: baseBranch, head: headBranch }}
+          appearance="muted"
+        >
+          Preview changes
+        </RouterLink>
+      )}
 
       <div className="space-y-4">
         <div className="flex items-center gap-3">

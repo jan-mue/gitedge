@@ -15,6 +15,7 @@ from dulwich.pack import write_pack
 from dulwich.refs import SYMREF, Ref
 from fastapi import HTTPException
 
+import app.services.repositories as repository_module
 from app.entities.users import User
 from app.exceptions import RepositoryNotFoundError
 from app.schemas.repositories import FileContent, RepositoryUpdate, TreeListing
@@ -716,3 +717,46 @@ async def test_delete_evicts_storage_and_cache_without_deleting_neighbor(service
     assert await service.repository_store.find_by_owner_and_name(OWNER, "repo-other") is not None
     with pytest.raises(HTTPException):
         await service.get_statistics(OWNER, REPO, "main")
+
+
+async def test_compact_commit_skips_highlighting_and_lazy_files_are_cached(
+    service: RepositoryService, mocker: MockerFixture
+) -> None:
+    commit_id = _populate_repo(service.backend)
+    highlight = mocker.spy(repository_module, "enrich_diff")
+    summary = await service.get_commit(OWNER, REPO, commit_id.decode(), include_diff=False)
+    assert summary.files
+    assert all(not file.diff_loaded and not file.patch and not file.hunks for file in summary.files)
+    assert all(file.diff_line_count > 0 for file in summary.files)
+    highlight.assert_not_called()
+    file = await service.get_diff_file(OWNER, REPO, commit_id.decode(), "src/main.py")
+    assert file.diff_loaded
+    assert file.language == "Python"
+    assert file.hunks
+    assert file.diff_line_count > 0
+    highlight.assert_called_once()
+    assert await service.get_diff_file(OWNER, REPO, commit_id.decode(), "src/main.py") == file
+    highlight.assert_called_once()
+
+
+async def test_lazy_diff_rejects_unchanged_paths_directories_and_missing_revisions(service: RepositoryService) -> None:
+    commit_id = _populate_repo(service.backend).decode()
+    for path in ("src/main.py", "missing.py", "src"):
+        with pytest.raises(HTTPException) as error:
+            await service.get_diff_file(OWNER, REPO, commit_id, path, commit_id)
+        assert error.value.status_code == 404
+    with pytest.raises(HTTPException) as error:
+        await service.get_diff_file(OWNER, REPO, "0" * 40, "src/main.py")
+    assert error.value.status_code == 404
+
+
+async def test_pr_commit_range_excludes_base_ancestors_and_paginates(service: RepositoryService) -> None:
+    commits = _populate_path_history(service.backend)
+    first = await service.compare_commits(OWNER, REPO, "main", "merged", limit=1)
+    second = await service.compare_commits(OWNER, REPO, "main", "merged", offset=1, limit=1)
+    assert first.count == second.count == 2
+    assert [item.sha for item in first.data + second.data] == [
+        commits["merge"].id.decode(),
+        commits["feature"].id.decode(),
+    ]
+    assert not (await service.compare_commits(OWNER, REPO, "merged", "main")).data

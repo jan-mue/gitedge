@@ -24,11 +24,12 @@ from app.clients.pull_requests import PullRequestStore
 from app.clients.redis import AbstractRedisClient
 from app.clients.releases import ReleaseStore
 from app.clients.repositories import RepositoryStore
+from app.clients.reviews import ReviewStore
 from app.clients.stars import StarStore
 from app.clients.users import UserStore
 from app.clients.watchers import WatcherStore
 from app.config import settings
-from app.entities.activity import Activity, ActivityKind
+from app.entities.activity import Activity, ActivityKind, ActivityTargetType
 from app.entities.base import Base
 from app.entities.comments import Comment
 from app.entities.issues import Issue, IssueState
@@ -37,6 +38,7 @@ from app.entities.principals import Principal, PrincipalType
 from app.entities.pull_requests import PullRequest
 from app.entities.releases import Release
 from app.entities.repositories import Repository
+from app.entities.reviews import PullRequestReview, PullRequestReviewWorkspace
 from app.entities.stars import Star
 from app.entities.users import User
 from app.entities.watchers import Watcher
@@ -92,6 +94,19 @@ class FakeRedisClient(AbstractRedisClient):
     def __init__(self) -> None:
         """Initialize the client."""
         self.values: dict[str, bytes] = {}
+
+    async def compare_and_set(self, expected: dict[str, str | None], updates: dict[str, str | None]) -> bool:
+        """Check and update the fake without yielding between reads and writes."""
+        if any(
+            self.values.get(key) != (value.encode() if value is not None else None) for key, value in expected.items()
+        ):
+            return False
+        for key, value in updates.items():
+            if value is None:
+                self.values.pop(key, None)
+            else:
+                self.values[key] = value.encode()
+        return True
 
     async def get(self, key: str) -> bytes | None:
         """Get a value from Redis."""
@@ -550,6 +565,17 @@ class FakeWatcherStore(FakeCrudStore[Watcher], WatcherStore):
 class FakeCommentStore(FakeCrudStore[Comment], CommentStore):
     """In-memory comment store."""
 
+    async def list_by_issue(self, issue_id: uuid.UUID) -> list[Comment]:
+        """Read hydrated comments for one discussion."""
+        return sorted(
+            [
+                self._hydrate(comment)
+                for comment in self.items.values()
+                if comment.issue_id == issue_id and comment.reply_to is None and comment.pull_request_comment is None
+            ],
+            key=lambda comment: (comment.created_at, comment.id),
+        )
+
     entity_name = "Comment"
 
     def __init__(
@@ -588,6 +614,18 @@ class FakeCommentStore(FakeCrudStore[Comment], CommentStore):
         """Add a comment and populate its relationships."""
         self.persist(obj)
         self._hydrate(obj)
+
+    async def delete(self, obj: Comment) -> None:
+        """Mirror database cascades for a comment thread and its review anchor."""
+        for child in list(self.items.values()):
+            if child.reply_to == obj.id:
+                await self.delete(child)
+        if obj.pull_request_comment is not None:
+            link = obj.pull_request_comment
+            link.review.comments.remove(link)
+        if obj.parent is not None:
+            obj.parent.replies.remove(obj)
+        await super().delete(obj)
 
     def comments_for(self, issue_id: uuid.UUID) -> list[Comment]:
         """Return hydrated comments for an issue, oldest first."""
@@ -630,6 +668,18 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
     """In-memory activity store."""
 
     entity_name = "Activity"
+
+    async def list_pull_request_events(self, repo_id: uuid.UUID, number: int) -> list[Activity]:
+        """Read only state events belonging to this pull request, oldest first."""
+        return [
+            self._hydrate(activity)
+            for activity in reversed(self._sorted())
+            if activity.repo_id == repo_id
+            and activity.target_type == ActivityTargetType.PULL_REQUEST
+            and activity.target_number == number
+            and activity.kind
+            in (ActivityKind.PULL_REQUEST_MERGE, ActivityKind.PULL_REQUEST_CLOSE, ActivityKind.PULL_REQUEST_REOPEN)
+        ]
 
     async def list_in_period(self, repo_id: uuid.UUID, start: datetime, end: datetime) -> list[Activity]:
         """List all events in the inclusive period for a repository."""
@@ -723,6 +773,52 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
         return [self._hydrate(activity) for activity in activities[offset : offset + limit]]
 
 
+class FakeReviewStore(ReviewStore):
+    """In-memory reviews and per-user workspaces."""
+
+    def __init__(self, comments: FakeCommentStore) -> None:
+        """Share the regular comment store with issue discussions."""
+        self.comments = comments
+        self.reviews = FakeCrudStore[PullRequestReview]()
+        self.workspaces: dict[tuple[uuid.UUID, uuid.UUID], PullRequestReviewWorkspace] = {}
+
+    async def list_reviews(self, pull_request_id: uuid.UUID) -> list[PullRequestReview]:
+        """List only submitted reviews for a pull request."""
+        return [review for review in self.reviews.items.values() if review.pull_request_id == pull_request_id]
+
+    async def get_review(self, pull_request_id: uuid.UUID, review_id: uuid.UUID) -> PullRequestReview | None:
+        """Find published reviews within the requested PR."""
+        review = self.reviews.items.get(review_id)
+        return review if review is not None and review.pull_request_id == pull_request_id else None
+
+    async def add_reply(self, reply: Comment) -> None:
+        """Persist a reply in the regular comment store."""
+        self.comments.persist(reply)
+
+    async def workspace(
+        self, pull_request_id: uuid.UUID, author_id: uuid.UUID, *, for_update: bool = False
+    ) -> PullRequestReviewWorkspace:
+        """Find a private workspace or return an empty one."""
+        workspace = PullRequestReviewWorkspace(pull_request_id=pull_request_id, author_id=author_id, reviewed_paths=[])
+        if for_update:
+            return self.workspaces.setdefault((pull_request_id, author_id), workspace)
+        return self.workspaces.get((pull_request_id, author_id)) or workspace
+
+    async def save_workspace(self, workspace: PullRequestReviewWorkspace) -> None:
+        """Save private state under the pull request and author."""
+        self.workspaces[workspace.pull_request_id, workspace.author_id] = workspace
+
+    async def submit(self, review: PullRequestReview, workspace: PullRequestReviewWorkspace) -> None:
+        """Publish all review comments and clear the draft together."""
+        self.reviews.persist(review)
+        for link in review.comments:
+            self.comments.persist(link.comment)
+            link.comment_id = link.comment.id
+            link.review_id = review.id
+        workspace.draft = None
+        await self.save_workspace(workspace)
+
+
 @dataclass
 class FakeStores:
     """Container for the in-memory store fakes."""
@@ -730,6 +826,7 @@ class FakeStores:
     users: FakeUserStore
     issues: FakeIssueStore
     pull_requests: FakePullRequestStore
+    reviews: FakeReviewStore
     repository: FakeRepositoryStore
     organizations: FakeOrganizationStore
     stars: FakeStarStore
@@ -779,6 +876,7 @@ def build_fake_stores() -> FakeStores:
         users=users,
         issues=issues,
         pull_requests=pull_requests,
+        reviews=FakeReviewStore(comments),
         repository=repository,
         organizations=organizations,
         stars=FakeStarStore(users),

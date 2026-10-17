@@ -230,6 +230,16 @@ export type Body_login_login_access_token = {
 };
 
 /**
+ * Body_utils-preview_markdown
+ */
+export type Body_utils_preview_markdown = {
+    /**
+     * Body
+     */
+    body: string;
+};
+
+/**
  * BranchInfo
  *
  * Information about a branch.
@@ -395,6 +405,26 @@ export type CommitFileChange = {
      * Patch
      */
     patch: string;
+    /**
+     * Hunks
+     */
+    hunks?: Array<DiffHunk>;
+    /**
+     * Language
+     */
+    language?: string;
+    /**
+     * Is Binary
+     */
+    is_binary?: boolean;
+    /**
+     * Diff Loaded
+     */
+    diff_loaded?: boolean;
+    /**
+     * Diff Line Count
+     */
+    diff_line_count?: number;
 };
 
 /**
@@ -539,6 +569,90 @@ export type CreateRepositoryRequest = {
      * Owner
      */
     owner: string;
+};
+
+/**
+ * DiffHunk
+ *
+ * A unified hunk and its split layout.
+ */
+export type DiffHunk = {
+    /**
+     * Header
+     */
+    header: string;
+    /**
+     * Lines
+     */
+    lines: Array<DiffLine>;
+    /**
+     * Rows
+     */
+    rows: Array<DiffRow>;
+};
+
+/**
+ * DiffLine
+ *
+ * A numbered line with server-generated syntax and change tokens.
+ */
+export type DiffLine = {
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Old Line
+     */
+    old_line?: number | null;
+    /**
+     * New Line
+     */
+    new_line?: number | null;
+    /**
+     * Tokens
+     */
+    tokens: Array<DiffToken>;
+    /**
+     * No Newline
+     */
+    no_newline?: boolean;
+};
+
+/**
+ * DiffRow
+ *
+ * Server-aligned line indexes for the split layout.
+ */
+export type DiffRow = {
+    /**
+     * Old
+     */
+    old?: number | null;
+    /**
+     * New
+     */
+    new?: number | null;
+};
+
+/**
+ * DiffToken
+ *
+ * A syntax token, optionally emphasized as an inline change.
+ */
+export type DiffToken = {
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Syntax
+     */
+    syntax?: string;
+    /**
+     * Changed
+     */
+    changed?: boolean;
 };
 
 /**
@@ -814,6 +928,20 @@ export type LanguageStatistic = {
 };
 
 /**
+ * MergeMessage
+ *
+ * Repository commit message templates.
+ */
+export type MergeMessage = 'default' | 'title' | 'title_description' | 'title_commits';
+
+/**
+ * MergeMethod
+ *
+ * Supported Git history strategies.
+ */
+export type MergeMethod = 'merge' | 'squash' | 'rebase';
+
+/**
  * NewPassword
  *
  * Schema for password reset with token.
@@ -967,6 +1095,51 @@ export type PullRequestCreate = {
      * Base Branch
      */
     base_branch?: string;
+};
+
+/**
+ * PullRequestMerge
+ *
+ * Merge the expected PR revision using an enabled strategy.
+ */
+export type PullRequestMerge = {
+    method?: MergeMethod;
+    /**
+     * Head Commit
+     */
+    head_commit?: string | null;
+    /**
+     * Base Commit
+     */
+    base_commit?: string | null;
+};
+
+/**
+ * PullRequestMergeability
+ *
+ * Read-only merge check for an exact pair of branch tips.
+ */
+export type PullRequestMergeability = {
+    /**
+     * Mergeable
+     */
+    mergeable: boolean;
+    /**
+     * Base Commit
+     */
+    base_commit?: string | null;
+    /**
+     * Head Commit
+     */
+    head_commit?: string | null;
+    /**
+     * Conflicting Files
+     */
+    conflicting_files?: Array<string>;
+    /**
+     * Reason
+     */
+    reason?: string | null;
 };
 
 /**
@@ -1254,6 +1427,25 @@ export type RepositoriesPublic = {
  */
 export type Repository = {
     /**
+     * Allow Merge Commit
+     */
+    allow_merge_commit?: boolean;
+    /**
+     * Allow Squash Merge
+     */
+    allow_squash_merge?: boolean;
+    /**
+     * Allow Rebase Merge
+     */
+    allow_rebase_merge?: boolean;
+    merge_commit_message?: MergeMessage;
+    squash_commit_message?: MergeMessage;
+    rebase_commit_message?: MergeMessage;
+    /**
+     * Delete Branch On Merge
+     */
+    delete_branch_on_merge?: boolean;
+    /**
      * Name
      */
     name: string;
@@ -1420,6 +1612,25 @@ export type RepositoryStatistics = {
  */
 export type RepositoryUpdate = {
     /**
+     * Allow Merge Commit
+     */
+    allow_merge_commit?: boolean | null;
+    /**
+     * Allow Squash Merge
+     */
+    allow_squash_merge?: boolean | null;
+    /**
+     * Allow Rebase Merge
+     */
+    allow_rebase_merge?: boolean | null;
+    merge_commit_message?: MergeMessage | null;
+    squash_commit_message?: MergeMessage | null;
+    rebase_commit_message?: MergeMessage | null;
+    /**
+     * Delete Branch On Merge
+     */
+    delete_branch_on_merge?: boolean | null;
+    /**
      * Name
      */
     name?: string | null;
@@ -1431,6 +1642,265 @@ export type RepositoryUpdate = {
      * Default Branch
      */
     default_branch?: string | null;
+};
+
+/**
+ * ReviewCommentPublic
+ *
+ * A submitted line comment with a bounded, backend-highlighted snapshot.
+ */
+export type ReviewCommentPublic = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Side
+     */
+    side: 'old' | 'new';
+    /**
+     * Line
+     */
+    line: number;
+    /**
+     * Body
+     */
+    body: string;
+    /**
+     * Id
+     */
+    id?: string | null;
+    /**
+     * Body Html
+     */
+    body_html?: string;
+    context?: DiffHunk | null;
+};
+
+/**
+ * ReviewDraft
+ *
+ * The exact comparison and comments being reviewed.
+ */
+export type ReviewDraft = {
+    /**
+     * Base Commit
+     */
+    base_commit: string;
+    /**
+     * Head Commit
+     */
+    head_commit: string;
+    /**
+     * Body
+     */
+    body?: string;
+    /**
+     * Comments
+     */
+    comments?: Array<ReviewLineComment>;
+};
+
+/**
+ * ReviewLineComment
+ *
+ * A review comment anchored to a side and line of a compared file.
+ */
+export type ReviewLineComment = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Side
+     */
+    side: 'old' | 'new';
+    /**
+     * Line
+     */
+    line: number;
+    /**
+     * Body
+     */
+    body: string;
+};
+
+/**
+ * ReviewPublic
+ *
+ * An immutable submitted review.
+ */
+export type ReviewPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Author Username
+     */
+    author_username: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    state: ReviewState;
+    /**
+     * Body
+     */
+    body?: string;
+    /**
+     * Body Html
+     */
+    body_html?: string;
+    /**
+     * Summary Comment Id
+     */
+    summary_comment_id?: string | null;
+    /**
+     * Base Commit
+     */
+    base_commit: string;
+    /**
+     * Head Commit
+     */
+    head_commit: string;
+    /**
+     * Comments
+     */
+    comments?: Array<ReviewCommentPublic>;
+    /**
+     * Replies
+     */
+    replies?: Array<ReviewReplyPublic>;
+    /**
+     * Outdated
+     */
+    outdated?: boolean | null;
+};
+
+/**
+ * ReviewReplyCreate
+ *
+ * Reply to an individual line comment, or to the overall review body.
+ */
+export type ReviewReplyCreate = {
+    /**
+     * Reply To
+     */
+    reply_to?: string | null;
+    /**
+     * Comment Index
+     */
+    comment_index?: number | null;
+    /**
+     * Body
+     */
+    body: string;
+};
+
+/**
+ * ReviewReplyPublic
+ *
+ * A published reply with server-rendered Markdown.
+ */
+export type ReviewReplyPublic = {
+    /**
+     * Reply To
+     */
+    reply_to?: string | null;
+    /**
+     * Comment Index
+     */
+    comment_index?: number | null;
+    /**
+     * Body
+     */
+    body: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Author Username
+     */
+    author_username: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Body Html
+     */
+    body_html: string;
+};
+
+/**
+ * ReviewState
+ *
+ * The outcome of a submitted review.
+ */
+export type ReviewState = 'approved' | 'comment' | 'changes_requested';
+
+/**
+ * ReviewSubmit
+ *
+ * A review submitted with an outcome and optional overall comment.
+ */
+export type ReviewSubmit = {
+    /**
+     * Base Commit
+     */
+    base_commit: string;
+    /**
+     * Head Commit
+     */
+    head_commit: string;
+    /**
+     * Body
+     */
+    body?: string;
+    /**
+     * Comments
+     */
+    comments?: Array<ReviewLineComment>;
+    state: ReviewState;
+};
+
+/**
+ * ReviewWorkspacePublic
+ *
+ * A user's private draft and viewed files for the current comparison.
+ */
+export type ReviewWorkspacePublic = {
+    draft?: ReviewDraft | null;
+    /**
+     * Reviewed Paths
+     */
+    reviewed_paths?: Array<string>;
+};
+
+/**
+ * ReviewedFileUpdate
+ *
+ * Mark a file viewed at an exact comparison.
+ */
+export type ReviewedFileUpdate = {
+    /**
+     * Base Commit
+     */
+    base_commit: string;
+    /**
+     * Head Commit
+     */
+    head_commit: string;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Reviewed
+     */
+    reviewed: boolean;
 };
 
 /**
@@ -3860,7 +4330,12 @@ export type repositoriesGetCommitData = {
          */
         sha: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Include Diff
+         */
+        include_diff?: boolean;
+    };
     url: '/api/v1/repositories/{owner}/{repo}/commits/{sha}';
 };
 
@@ -4184,7 +4659,7 @@ export type repositoriesUpdatePullRequestResponses = {
 
 export type repositoriesUpdatePullRequestResponse = repositoriesUpdatePullRequestResponses[keyof repositoriesUpdatePullRequestResponses];
 
-export type repositoriesGetPullRequestFilesData = {
+export type repositoriesGetPullRequestEventsData = {
     body?: never;
     path: {
         /**
@@ -4201,6 +4676,98 @@ export type repositoriesGetPullRequestFilesData = {
         number: number;
     };
     query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/events';
+};
+
+export type repositoriesGetPullRequestEventsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetPullRequestEventsError = repositoriesGetPullRequestEventsErrors[keyof repositoriesGetPullRequestEventsErrors];
+
+export type repositoriesGetPullRequestEventsResponses = {
+    /**
+     * Response Repositories-Get Pull Request Events
+     *
+     * Successful Response
+     */
+    200: Array<ActivityPublic>;
+};
+
+export type repositoriesGetPullRequestEventsResponse = repositoriesGetPullRequestEventsResponses[keyof repositoriesGetPullRequestEventsResponses];
+
+export type repositoriesGetPullRequestCommitsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: {
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/commits';
+};
+
+export type repositoriesGetPullRequestCommitsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetPullRequestCommitsError = repositoriesGetPullRequestCommitsErrors[keyof repositoriesGetPullRequestCommitsErrors];
+
+export type repositoriesGetPullRequestCommitsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommitsPublic;
+};
+
+export type repositoriesGetPullRequestCommitsResponse = repositoriesGetPullRequestCommitsResponses[keyof repositoriesGetPullRequestCommitsResponses];
+
+export type repositoriesGetPullRequestFilesData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: {
+        /**
+         * Include Diff
+         */
+        include_diff?: boolean;
+    };
     url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/files';
 };
 
@@ -4221,6 +4788,178 @@ export type repositoriesGetPullRequestFilesResponses = {
 };
 
 export type repositoriesGetPullRequestFilesResponse = repositoriesGetPullRequestFilesResponses[keyof repositoriesGetPullRequestFilesResponses];
+
+export type repositoriesGetPullRequestMergeabilityData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: {
+        method?: MergeMethod;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/mergeability';
+};
+
+export type repositoriesGetPullRequestMergeabilityErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetPullRequestMergeabilityError = repositoriesGetPullRequestMergeabilityErrors[keyof repositoriesGetPullRequestMergeabilityErrors];
+
+export type repositoriesGetPullRequestMergeabilityResponses = {
+    /**
+     * Successful Response
+     */
+    200: PullRequestMergeability;
+};
+
+export type repositoriesGetPullRequestMergeabilityResponse = repositoriesGetPullRequestMergeabilityResponses[keyof repositoriesGetPullRequestMergeabilityResponses];
+
+export type repositoriesMergePullRequestData = {
+    body: PullRequestMerge;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/merge';
+};
+
+export type repositoriesMergePullRequestErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesMergePullRequestError = repositoriesMergePullRequestErrors[keyof repositoriesMergePullRequestErrors];
+
+export type repositoriesMergePullRequestResponses = {
+    /**
+     * Successful Response
+     */
+    200: PullRequestPublic;
+};
+
+export type repositoriesMergePullRequestResponse = repositoriesMergePullRequestResponses[keyof repositoriesMergePullRequestResponses];
+
+export type repositoriesCompareRevisionsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Base
+         */
+        base?: string;
+        /**
+         * Head
+         */
+        head?: string;
+        /**
+         * Include Diff
+         */
+        include_diff?: boolean;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/compare';
+};
+
+export type repositoriesCompareRevisionsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesCompareRevisionsError = repositoriesCompareRevisionsErrors[keyof repositoriesCompareRevisionsErrors];
+
+export type repositoriesCompareRevisionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CompareResult;
+};
+
+export type repositoriesCompareRevisionsResponse = repositoriesCompareRevisionsResponses[keyof repositoriesCompareRevisionsResponses];
+
+export type repositoriesGetDiffFileData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query: {
+        /**
+         * Head
+         */
+        head: string;
+        /**
+         * File Path
+         */
+        file_path: string;
+        /**
+         * Base
+         */
+        base?: string;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/diff-file';
+};
+
+export type repositoriesGetDiffFileErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetDiffFileError = repositoriesGetDiffFileErrors[keyof repositoriesGetDiffFileErrors];
+
+export type repositoriesGetDiffFileResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommitFileChange;
+};
+
+export type repositoriesGetDiffFileResponse = repositoriesGetDiffFileResponses[keyof repositoriesGetDiffFileResponses];
 
 export type repositoriesDeleteRepositoryData = {
     body?: never;
@@ -4323,6 +5062,313 @@ export type repositoriesUpdateRepositoryResponses = {
 };
 
 export type repositoriesUpdateRepositoryResponse = repositoriesUpdateRepositoryResponses[keyof repositoriesUpdateRepositoryResponses];
+
+export type reviewsListReviewsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviews';
+};
+
+export type reviewsListReviewsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsListReviewsError = reviewsListReviewsErrors[keyof reviewsListReviewsErrors];
+
+export type reviewsListReviewsResponses = {
+    /**
+     * Response Reviews-List Reviews
+     *
+     * Successful Response
+     */
+    200: Array<ReviewPublic>;
+};
+
+export type reviewsListReviewsResponse = reviewsListReviewsResponses[keyof reviewsListReviewsResponses];
+
+export type reviewsSubmitReviewData = {
+    body: ReviewSubmit;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviews';
+};
+
+export type reviewsSubmitReviewErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsSubmitReviewError = reviewsSubmitReviewErrors[keyof reviewsSubmitReviewErrors];
+
+export type reviewsSubmitReviewResponses = {
+    /**
+     * Successful Response
+     */
+    201: ReviewPublic;
+};
+
+export type reviewsSubmitReviewResponse = reviewsSubmitReviewResponses[keyof reviewsSubmitReviewResponses];
+
+export type reviewsGetWorkspaceData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/review-workspace';
+};
+
+export type reviewsGetWorkspaceErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsGetWorkspaceError = reviewsGetWorkspaceErrors[keyof reviewsGetWorkspaceErrors];
+
+export type reviewsGetWorkspaceResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReviewWorkspacePublic;
+};
+
+export type reviewsGetWorkspaceResponse = reviewsGetWorkspaceResponses[keyof reviewsGetWorkspaceResponses];
+
+export type reviewsGetCommentContextData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+        /**
+         * Review Id
+         */
+        review_id: string;
+        /**
+         * Comment Index
+         */
+        comment_index: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviews/{review_id}/comments/{comment_index}/context';
+};
+
+export type reviewsGetCommentContextErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsGetCommentContextError = reviewsGetCommentContextErrors[keyof reviewsGetCommentContextErrors];
+
+export type reviewsGetCommentContextResponses = {
+    /**
+     * Successful Response
+     */
+    200: DiffHunk;
+};
+
+export type reviewsGetCommentContextResponse = reviewsGetCommentContextResponses[keyof reviewsGetCommentContextResponses];
+
+export type reviewsReplyToReviewData = {
+    body: ReviewReplyCreate;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+        /**
+         * Review Id
+         */
+        review_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviews/{review_id}/replies';
+};
+
+export type reviewsReplyToReviewErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsReplyToReviewError = reviewsReplyToReviewErrors[keyof reviewsReplyToReviewErrors];
+
+export type reviewsReplyToReviewResponses = {
+    /**
+     * Successful Response
+     */
+    201: ReviewReplyPublic;
+};
+
+export type reviewsReplyToReviewResponse = reviewsReplyToReviewResponses[keyof reviewsReplyToReviewResponses];
+
+export type reviewsSaveDraftData = {
+    body: ReviewDraft;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/review-draft';
+};
+
+export type reviewsSaveDraftErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsSaveDraftError = reviewsSaveDraftErrors[keyof reviewsSaveDraftErrors];
+
+export type reviewsSaveDraftResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReviewWorkspacePublic;
+};
+
+export type reviewsSaveDraftResponse = reviewsSaveDraftResponses[keyof reviewsSaveDraftResponses];
+
+export type reviewsMarkReviewedData = {
+    body: ReviewedFileUpdate;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/reviewed-files';
+};
+
+export type reviewsMarkReviewedErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsMarkReviewedError = reviewsMarkReviewedErrors[keyof reviewsMarkReviewedErrors];
+
+export type reviewsMarkReviewedResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReviewWorkspacePublic;
+};
+
+export type reviewsMarkReviewedResponse = reviewsMarkReviewedResponses[keyof reviewsMarkReviewedResponses];
+
+export type utilsPreviewMarkdownData = {
+    body: Body_utils_preview_markdown;
+    path?: never;
+    query?: never;
+    url: '/api/v1/utils/markdown-preview';
+};
+
+export type utilsPreviewMarkdownErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type utilsPreviewMarkdownError = utilsPreviewMarkdownErrors[keyof utilsPreviewMarkdownErrors];
+
+export type utilsPreviewMarkdownResponses = {
+    /**
+     * Response Utils-Preview Markdown
+     *
+     * Successful Response
+     */
+    200: string;
+};
+
+export type utilsPreviewMarkdownResponse = utilsPreviewMarkdownResponses[keyof utilsPreviewMarkdownResponses];
 
 export type utilsTestEmailData = {
     body?: never;

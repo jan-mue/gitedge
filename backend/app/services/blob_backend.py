@@ -6,6 +6,7 @@ object storage and Redis for refs.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING
 
@@ -191,22 +192,26 @@ async def load_repository_from_storage(
         elif name.endswith(".idx"):
             idx_keys[name.removesuffix(".idx")] = key
 
-    for basename, pack_key in pack_keys.items():
+    async def load_pack(basename: str, pack_key: str) -> None:
         idx_key = idx_keys.get(basename)
         if idx_key is None:
-            continue
-        pack_data = await blob_client.get(pack_key)
-        idx_data = await blob_client.get(idx_key)
+            return
+        pack_data, idx_data = await asyncio.gather(blob_client.get(pack_key), blob_client.get(idx_key))
         if pack_data and idx_data:
             packs[basename] = PackContents(pack=pack_data, index=idx_data)
+
+    pending = list(pack_keys.items())
+    for start in range(0, len(pending), 4):
+        await asyncio.gather(*(load_pack(basename, key) for basename, key in pending[start : start + 4]))
 
     refs: dict[str, bytes] = {}
     ref_prefix = f"{repo_prefix}/{REF_PREFIX}"
 
-    for key in await redis_client.scan_keys(f"{ref_prefix}*"):
-        value = await redis_client.get(key)
-        if value:
-            refs[key.removeprefix(ref_prefix)] = value
+    keys = await redis_client.scan_keys(f"{ref_prefix}*")
+    for start in range(0, len(keys), 16):
+        batch = keys[start : start + 16]
+        values = await asyncio.gather(*(redis_client.get(key) for key in batch))
+        refs.update({key.removeprefix(ref_prefix): value for key, value in zip(batch, values, strict=True) if value})
 
     return packs, refs
 
