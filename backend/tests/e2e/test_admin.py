@@ -1,9 +1,16 @@
 """Admin page end-to-end tests."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 from playwright.sync_api import Page, expect
 
-from tests.integration.conftest import UserCredentials, log_in_user
+from tests.e2e.conftest import log_in_user
+
+if TYPE_CHECKING:
+    from tests.conftest import UserCredentials
 
 
 @pytest.mark.usefixtures("logged_in_superuser")

@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 
 from playwright.sync_api import expect
 
-from tests.integration.conftest import create_user_via_api, find_last_email, get_email_html, log_in_user
+from tests.conftest import create_user_via_api
+from tests.e2e.conftest import find_last_email, get_email_html, log_in_user
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page

@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 import pytest
 from playwright.sync_api import expect
 
-from tests.integration.test_commit_history import _run_git
-from tests.integration.test_diff_reviews import _create_pull, _headers, _repository
+from tests.e2e.test_commit_history import _run_git
+from tests.e2e.test_diff_reviews import _create_pull, _headers, _repository
 
 if TYPE_CHECKING:
     from pathlib import Path

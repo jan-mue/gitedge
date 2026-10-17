@@ -218,14 +218,27 @@ uv run coverage report
 
 ### Backend integration tests
 
-The end-to-end tests use Playwright and Docker (testcontainers for Postgres,
-Redis, MinIO, and Mailpit). Install the browsers once, then run:
+Integration tests use Docker (testcontainers for Postgres, Redis, MinIO, and
+Mailpit), without starting the frontend or a browser:
 
 ```shell
 cd backend
-uv run playwright install
 uv run pytest tests/integration
 ```
+
+### Browser end-to-end tests
+
+End-to-end tests use the same Docker services, Bun, and Playwright. Install the
+browsers once, then run:
+
+```shell
+cd backend
+uv run playwright install chromium --with-deps
+uv run pytest --tracing=retain-on-failure tests/e2e
+```
+
+Run these suites in separate pytest processes, as in GitHub Actions, to keep
+Playwright's event loop separate from pytest-asyncio.
 
 For more information on writing and running Playwright tests, see the official
 [Playwright documentation](https://playwright.dev/docs/intro).

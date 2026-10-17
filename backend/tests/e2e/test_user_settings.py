@@ -3,14 +3,8 @@
 import pytest
 from playwright.sync_api import Page, expect
 
-from tests.integration.conftest import (
-    FIRST_SUPERUSER,
-    FIRST_SUPERUSER_PASSWORD,
-    UserCredentials,
-    create_user_via_api,
-    log_in_user,
-    log_out_user,
-)
+from tests.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD, UserCredentials, create_user_via_api
+from tests.e2e.conftest import log_in_user, log_out_user
 
 TABS = ["My profile", "Password", "Danger zone"]
 

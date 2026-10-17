@@ -8,7 +8,6 @@ user profiles, and empty repositories.
 
 from __future__ import annotations
 
-import subprocess
 import tempfile
 import uuid
 from datetime import UTC, datetime
@@ -18,13 +17,9 @@ from typing import TYPE_CHECKING
 import pytest
 from playwright.sync_api import expect
 
-from tests.integration.conftest import (
-    FIRST_SUPERUSER,
-    FIRST_SUPERUSER_PASSWORD,
-    create_repository_row,
-    create_user_via_api,
-    log_in_user,
-)
+from tests.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD, create_repository_row, create_user_via_api
+from tests.e2e.conftest import log_in_user
+from tests.git import push_repo, run_git
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
@@ -32,81 +27,6 @@ if TYPE_CHECKING:
 SUPERUSER_EMAIL = FIRST_SUPERUSER
 SUPERUSER_PASSWORD = FIRST_SUPERUSER_PASSWORD
 SUPERUSER_USERNAME = FIRST_SUPERUSER.split("@")[0]
-
-
-def _run_git(cwd: Path, args: list[str]) -> str:
-    """Run a git command and return its output.
-
-    Args:
-        cwd: Working directory for the command.
-        args: Git command arguments.
-
-    Returns:
-        Command stdout as string.
-    """
-    result = subprocess.run(
-        ["git", *args],
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return result.stdout.strip()
-
-
-def _push_repo(
-    app_url: str,
-    repo_name: str,
-    *,
-    extra_branches: tuple[str, ...] = (),
-    tag: str | None = None,
-    with_deletions: bool = False,
-) -> None:
-    """Push a test repository with a README, a source file, optional branches and a tag.
-
-    Args:
-        app_url: Base URL of the GitEdge frontend.
-        repo_name: Repository path (e.g. "testuser/repo.git").
-        extra_branches: Additional branches to create and push.
-        tag: Optional tag to create and push.
-        with_deletions: Add a default-branch commit that replaces existing lines.
-    """
-    remote_url = f"{app_url}/{repo_name}"
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        source_dir = Path(tmpdir) / "source"
-        source_dir.mkdir()
-
-        _run_git(source_dir, ["init", "-b", "main"])
-        _run_git(source_dir, ["config", "user.email", "test@example.com"])
-        _run_git(source_dir, ["config", "user.name", "Test User"])
-
-        (source_dir / "README.md").write_text("# Test Repository\n\nA test repository.\n")
-        src_dir = source_dir / "src"
-        src_dir.mkdir()
-        (src_dir / "main.py").write_text('print("Hello, World!")\n')
-
-        _run_git(source_dir, ["add", "."])
-        _run_git(source_dir, ["commit", "-m", "Initial commit"])
-        if with_deletions:
-            (source_dir / "README.md").write_text("# Updated repository\nUpdated description.\n")
-            _run_git(source_dir, ["add", "."])
-            _run_git(source_dir, ["commit", "-m", "Replace README lines"])
-        if tag:
-            _run_git(source_dir, ["tag", tag])
-
-        _run_git(source_dir, ["remote", "add", "origin", remote_url])
-        _run_git(source_dir, ["push", "-u", "--force", "origin", "main"])
-        if tag:
-            _run_git(source_dir, ["push", "--force", "origin", tag])
-
-        for branch in extra_branches:
-            _run_git(source_dir, ["checkout", "-b", branch, "main"])
-            (source_dir / f"{branch.replace('/', '_')}.txt").write_text(f"{branch}\n")
-            _run_git(source_dir, ["add", "."])
-            _run_git(source_dir, ["commit", "-m", f"Add {branch}"])
-            _run_git(source_dir, ["push", "-u", "--force", "origin", branch])
-            _run_git(source_dir, ["checkout", "main"])
 
 
 def _create_foreign_owner(app_url: str) -> str:
@@ -133,7 +53,7 @@ class TestStarAndWatch:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/starrepo.git")
+        push_repo(app_url, "admin/starrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         page.goto(f"{app_url}/admin/starrepo")
 
@@ -156,7 +76,7 @@ class TestStarAndWatch:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/watchrepo.git")
+        push_repo(app_url, "admin/watchrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         page.goto(f"{app_url}/admin/watchrepo")
 
@@ -181,7 +101,7 @@ class TestFork:
         """
         foreign_owner = _create_foreign_owner(app_url)
         source_url = f"{app_url}/{foreign_owner}/forkrepo.git"
-        _push_repo(app_url, f"{foreign_owner}/forkrepo.git", extra_branches=("develop",), tag="v1.0.0")
+        push_repo(app_url, f"{foreign_owner}/forkrepo.git", extra_branches=("develop",), tag="v1.0.0")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         page.goto(f"{app_url}/{foreign_owner}/forkrepo")
 
@@ -201,11 +121,11 @@ class TestFork:
         fork_url = f"{app_url}/{SUPERUSER_USERNAME}/{fork_name}.git"
         with tempfile.TemporaryDirectory() as tmpdir:
             clone_dir = Path(tmpdir) / "fork"
-            _run_git(Path(tmpdir), ["clone", fork_url, str(clone_dir)])
+            run_git(Path(tmpdir), ["clone", fork_url, str(clone_dir)])
             assert (clone_dir / "README.md").read_text() == "# Test Repository\n\nA test repository.\n"
             assert (clone_dir / "src" / "main.py").read_text() == 'print("Hello, World!")\n'
-            source_refs = _run_git(clone_dir, ["ls-remote", source_url])
-            fork_refs = _run_git(clone_dir, ["ls-remote", fork_url])
+            source_refs = run_git(clone_dir, ["ls-remote", source_url])
+            fork_refs = run_git(clone_dir, ["ls-remote", fork_url])
             assert source_refs == fork_refs
             assert "refs/heads/develop" in fork_refs
             assert "refs/tags/v1.0.0" in fork_refs
@@ -221,7 +141,7 @@ class TestBranchesPage:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/branchesrepo.git", extra_branches=("develop",), tag="v1.0.0")
+        push_repo(app_url, "admin/branchesrepo.git", extra_branches=("develop",), tag="v1.0.0")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/branchesrepo/branches")
@@ -242,7 +162,7 @@ class TestReleasesPage:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/releaserepo.git", tag="v1.0.0")
+        push_repo(app_url, "admin/releaserepo.git", tag="v1.0.0")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/releaserepo/releases")
@@ -265,7 +185,7 @@ class TestReleasesPage:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/editreleaserepo.git", tag="v1.0.0")
+        push_repo(app_url, "admin/editreleaserepo.git", tag="v1.0.0")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/editreleaserepo/releases")
@@ -295,7 +215,7 @@ class TestIssueComments:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/issuecommentrepo.git")
+        push_repo(app_url, "admin/issuecommentrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/issuecommentrepo/issues/new")
@@ -333,7 +253,7 @@ class TestIssueComments:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/editcommentrepo.git")
+        push_repo(app_url, "admin/editcommentrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/editcommentrepo/issues/new")
@@ -364,7 +284,7 @@ class TestIssueComments:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/closeissuerepo.git")
+        push_repo(app_url, "admin/closeissuerepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/closeissuerepo/issues/new")
@@ -384,7 +304,7 @@ class TestIssueComments:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/editissuerepo.git")
+        push_repo(app_url, "admin/editissuerepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/editissuerepo/issues/new")
@@ -411,7 +331,7 @@ class TestIssueComments:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/deletecommentrepo.git")
+        push_repo(app_url, "admin/deletecommentrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/deletecommentrepo/issues/new")
@@ -442,7 +362,7 @@ class TestPullRequestCommentsAndMerge:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/prmergerepo.git", extra_branches=("feature",))
+        push_repo(app_url, "admin/prmergerepo.git", extra_branches=("feature",))
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/prmergerepo/pulls/new")
@@ -502,7 +422,7 @@ class TestPullRequestCommentsAndMerge:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/editprrepo.git", extra_branches=("feature",))
+        push_repo(app_url, "admin/editprrepo.git", extra_branches=("feature",))
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/editprrepo/pulls/new")
@@ -529,7 +449,7 @@ class TestActivityAndFeed:
     @pytest.mark.parametrize("target", ["issues", "pulls"])
     def test_comment_feed_previews_show_each_reply(self, app_url: str, page: Page, target: str) -> None:
         """Refresh cached reply previews after UI mutations without reloading the application."""
-        _push_repo(app_url, f"{SUPERUSER_USERNAME}/commentfeed.git", extra_branches=("feature",))
+        push_repo(app_url, f"{SUPERUSER_USERNAME}/commentfeed.git", extra_branches=("feature",))
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         token = page.evaluate("() => localStorage.getItem('access_token')")
         headers = {"Authorization": f"Bearer {token}"}
@@ -612,7 +532,7 @@ class TestActivityAndFeed:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/activityrepo.git")
+        push_repo(app_url, "admin/activityrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/activityrepo")
@@ -664,7 +584,7 @@ class TestActivityAndFeed:
 
     def test_code_frequency_deletions_are_below_zero(self, app_url: str, page: Page) -> None:
         """Render additions above zero and deletions below it for the same week."""
-        _push_repo(app_url, "admin/frequencyrepo.git", with_deletions=True)
+        push_repo(app_url, "admin/frequencyrepo.git", with_deletions=True)
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         page.goto(f"{app_url}/admin/frequencyrepo/activity")
         page.get_by_role("button", name="Code frequency", exact=True).click()
@@ -697,7 +617,7 @@ class TestSocialListings:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/peoplelistrepo.git")
+        push_repo(app_url, "admin/peoplelistrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/peoplelistrepo")
@@ -720,7 +640,7 @@ class TestSocialListings:
             page: Playwright page.
         """
         foreign_owner = _create_foreign_owner(app_url)
-        _push_repo(app_url, f"{foreign_owner}/forkslistrepo.git")
+        push_repo(app_url, f"{foreign_owner}/forkslistrepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/{foreign_owner}/forkslistrepo")
@@ -743,7 +663,7 @@ class TestExplore:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/explorerepo.git")
+        push_repo(app_url, "admin/explorerepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/explore")
@@ -764,7 +684,7 @@ class TestProfile:
             app_url: Base URL of the GitEdge frontend.
             page: Playwright page.
         """
-        _push_repo(app_url, "admin/profilerepo.git")
+        push_repo(app_url, "admin/profilerepo.git")
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/profilerepo")

@@ -8,13 +8,9 @@ import psycopg
 from playwright.sync_api import expect
 
 from app.config import settings
-from tests.integration.conftest import (
-    FIRST_SUPERUSER,
-    FIRST_SUPERUSER_PASSWORD,
-    create_user_via_api,
-    log_in_user,
-)
-from tests.integration.test_commit_history import _run_git
+from tests.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD, create_user_via_api
+from tests.e2e.conftest import log_in_user
+from tests.e2e.test_commit_history import _run_git
 
 if TYPE_CHECKING:
     from pathlib import Path

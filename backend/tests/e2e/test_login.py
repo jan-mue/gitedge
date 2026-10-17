@@ -3,7 +3,7 @@
 import pytest
 from playwright.sync_api import Page, expect
 
-from tests.integration.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD
+from tests.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD
 
 
 @pytest.fixture
