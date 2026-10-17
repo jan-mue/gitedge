@@ -32,8 +32,15 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
+      - name: Prepare Actions runtime
+        run: |
+          docker build -t gitedge-actions:local backend/actions-runtime
+          docker build -f backend/actions-runtime/Dockerfile.codeql -t gitedge-actions:integration backend/actions-runtime
+
       - name: Run integration tests
         working-directory: backend
+        env:
+          ACTIONS_IMAGE: gitedge-actions:integration
         run: uv run --no-sync pytest tests/integration
 
   e2e-test:
@@ -89,6 +96,9 @@ jobs:
 
       - name: Install Playwright browsers
         run: uv run --no-sync playwright install chromium --with-deps
+
+      - name: Prepare Actions runtime
+        run: docker build -t gitedge-actions:local backend/actions-runtime
 
       - name: Run E2E tests
         working-directory: backend

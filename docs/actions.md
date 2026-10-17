@@ -1,0 +1,155 @@
+# GitEdge Actions
+
+GitEdge discovers GitHub/Gitea-style YAML in `.gitedge/workflow/*.yml` and
+`*.yaml`. Every expanded matrix job gets a separate disposable sandbox. There is
+no registered runner, polling worker, shared job container, or mounted Docker
+socket. An ephemeral native executor uses the pinned `nektos/act` execution
+library for JavaScript and composite actions, expressions, step conditions,
+outputs, environment files, and action pre/post hooks.
+
+## Startup and image preparation
+
+Image builds, action downloads (including nested composite actions), and common
+toolchain installation happen **before** jobs are dispatched. Missing action
+versions fail explicitly and require a new prepared image. Provisioning sends
+only a job descriptor. The actual `actions/checkout` action fetches source from
+GitEdge at the recorded commit; source archives are not uploaded during startup.
+
+Build the base image and the optional Python CodeQL image:
+
+```sh
+docker build -t gitedge-actions:local backend/actions-runtime
+docker build -f backend/actions-runtime/Dockerfile.codeql \
+  -t gitedge-actions:integration backend/actions-runtime
+```
+
+For a managed environment with a proxy CA, add
+`--secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt`. The build mounts the
+CA for networked commands and does not copy it into the image. Runtime CA trust
+can be supplied using `ACTIONS_DOCKER_CA_BUNDLE`; `ACTIONS_DOCKER_ENV` accepts
+explicit proxy configuration. Local integration fixtures configure access from
+containers to their ephemeral backend using `host.docker.internal`.
+
+The base image prepares the action references in `actions-runtime/actions.txt`,
+Python 3.14.0, Node 24, uv 0.13.0, and Bun 1.4.3. Change the preparation recipe
+for other tool versions. The inventory unit test ensures that every action in
+this repository's GitHub workflows also has a prepared reference and a real
+integration example.
+
+**The requested sub-100 ms cold provisioning target is not met.**
+`ActionJob.provisioning_ms` measures the provider call, including creation and
+starting the command, separately from source checkout. Time to the first step
+also includes state restoration after provisioning. The managed test host's
+Docker `vfs` driver measured 23–31 seconds with the initial prepared image and
+7.3 seconds for the browser workflow with the lean image, because it copies
+complete filesystems. These measurements do not represent a
+Vercel snapshot or an overlay-backed production Docker host. No warm-pool lease
+is reported as cold provisioning, and the implementation does not claim a
+100 ms guarantee that its underlying provider has not demonstrated.
+The final browser run measured 28.5 seconds. A separate 20-container experiment
+using a tiny static executable also missed 100 ms in every sample: minimum
+101.82 ms, median 112.78 ms, maximum 297.61 ms, including creation and start.
+Validate the startup requirement on a suitable Docker host or a live Vercel
+snapshot before promoting this implementation beyond draft status.
+
+## Configuration
+
+| Setting | Purpose |
+| --- | --- |
+| `ACTIONS_PROVIDER` | `docker` locally or `vercel` in production |
+| `ACTIONS_IMAGE` | Prepared local image or operator-provisioned Vercel image |
+| `ACTIONS_VERCEL_SNAPSHOT` | Required prepared Vercel snapshot ID; no image fallback at dispatch |
+| `ACTIONS_SERVER_URL` | Backend origin reachable from sandbox jobs |
+| `ACTIONS_MAX_TIMEOUT` | Maximum job lifetime, in seconds (default 1200) |
+| `ACTIONS_MAX_PARALLEL` | Maximum simultaneous jobs in a workflow (default 2) |
+| `ACTIONS_SECRETS` | JSON mapping repository UUIDs to explicitly scoped secret maps |
+| `CRON_SECRET` | Bearer token protecting scheduled reconciliation |
+
+Vercel SDK authentication stays in the controller. It is not passed into job
+sandboxes. Create an image/snapshot out of band, including the executor and
+prepared tools, then configure its immutable identifier. Each job sandbox uses
+`persistent=False` and is destroyed after completion or cancellation. The
+Vercel adapter uses the installed asynchronous Python Sandbox SDK; its lifecycle
+contract is also unit tested without making billable calls.
+
+## Events and control flow
+
+Authenticated pushes by a repository owner or administrator deliver push events
+after Git refs are persisted. For Git clients, pass the normal GitEdge bearer
+token through `http.extraHeader`. Anonymous Git traffic does not authorize
+workflow execution. Owner-authored pull requests deliver an `opened` event. UTC cron schedules are
+delivered by the scheduled endpoint, with one run per matching minute.
+Manual dispatch requires `on: workflow_dispatch` and repository-owner or
+administrator authorization. Private run history requires the same access.
+
+Runs persist their exact definition, commit, event, provider, matrix variants,
+masked logs, outputs, and lifecycle state in PostgreSQL. Short API invocations
+reconcile state under a row lock with `SKIP LOCKED`. Short-lived signed completion
+callbacks advance dependent jobs without waiting for UI polling. The authenticated scheduled
+endpoint recovers missed callbacks and cleanup retries. Stable sandbox names allow
+retries to recover a previously created job. Provider timeouts bound execution;
+cleanup failures retain handles for retry. Cache/artifact state is stored in the
+configured blob backend, with individual job archives retained under each run.
+Repository cache snapshots contain cache data only; artifacts stay in run state.
+Mutable Vercel Blob writes allow replacement, and restores bypass stale CDN
+responses; immutable repository reads retain their normal caching behavior.
+
+The Actions tab provides the reference UI's workflow sidebar, actor/status
+filters, run list, jobs sidebar, expandable plain-text logs, dispatch, and
+cancellation, using GitEdge's existing design-system controls and theme tokens.
+Run URLs preserve the selected run in a query parameter.
+
+## Compatibility and limits
+
+Supported workflow features include push branch/tag/path filters, dispatch, UTC cron schedules,
+job dependencies and outputs, literal matrices with include/exclude, workflow,
+job, and step environments, shell steps, local actions, prepared remote
+JavaScript/composite actions, native expressions, step `if`, `always()`,
+`failure()`, step `continue-on-error`, and action cleanup hooks.
+
+Dynamic matrices, reusable workflows, job/service containers, Docker actions,
+Windows/macOS runners, and nested Docker execution are rejected explicitly.
+Linux labels select the prepared Linux environment; they do not install a
+particular Ubuntu release. Host resource limits and image selection are
+operator policy and cannot be overridden by workflow YAML. Each transferred
+sandbox file is limited to 32 MiB. Cache writes are atomic last-writer-wins;
+parallel jobs can overwrite a cache snapshot rather than merge cache entries.
+Artifact uploads use the executor's job-local results service. For official
+artifact steps, the adapter adjusts the toolkit's hostname probe to allow this
+protocol on GitEdge; checkout and the workflow's GitHub context keep GitEdge's
+origin. Artifact archives are retained in blob storage; the UI currently shows
+upload logs rather than an artifact download browser.
+
+GitHub-hosted APIs are separate integrations: GitEdge does not pretend to host
+GitHub's Code Scanning or Codecov service. Integration examples execute the real
+Codecov action in dry-run mode and the real CodeQL init/analyze actions with
+prepared tools, cached offline feature defaults, and uploads disabled; they do not send code or coverage to an
+external account. Other uses must supply an appropriate external integration.
+
+## Verification
+
+```sh
+uv run --directory backend pytest tests/unit
+ACTIONS_IMAGE=gitedge-actions:integration \
+  uv run --directory backend pytest tests/integration/actions
+bun run --filter frontend test src/components/Actions/RepositoryActions.test.tsx
+```
+
+The integration workflows cover real Git checkout, isolated matrix jobs,
+dependency outputs, failure propagation, `always()` cleanup, every action
+reference currently used by the repository, cross-run caching, and artifact
+upload with ZIP content readback. The push test also observes database state
+without polling the Actions API, verifying completion-driven dependency execution.
+The browser suite runs in a separate pytest process as required by the
+repository's testing guidelines.
+
+## Upstream references
+
+- Runner architecture: <https://gitea.com/gitea/runner>
+- Execution library: <https://github.com/nektos/act/tree/v0.2.89>
+- UI adapted from `src/pages/ActionsPage.tsx` at
+  <https://github.com/jan-mue/gitea-clone/commit/11d7444379a8f0006b881081cedf0a34b9f77614>
+- The act library's license is included in `backend/actions-runtime/ACT-LICENSE`.
+- `artifact-v7.patch` accepts optional protobuf metadata and escapes signed URL
+  values for newer artifact clients. It is applied to an isolated copy of the pinned act source during
+  preparation; shared module caches and the upstream checksum stay unchanged.

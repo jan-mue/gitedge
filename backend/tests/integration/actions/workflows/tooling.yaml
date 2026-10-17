@@ -1,0 +1,57 @@
+name: Repository tooling actions
+on: workflow_dispatch
+jobs:
+  tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.14.0'
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884
+        with:
+          version: '0.13.0'
+          enable-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.3'
+      - id: cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .cache/example
+          key: smoke-${{ hashFiles('README.md') }}
+      - name: Verify restored cache
+        if: steps.cache.outputs.cache-hit == 'true'
+        run: |
+          test "$(cat .cache/example/value.txt)" = 'portable cache'
+          echo 'Portable cache restored'
+      - name: Verify tools and write cache
+        run: |
+          node --version
+          python --version
+          uv --version
+          bun --version
+          mkdir -p .cache/example results
+          echo 'portable cache' > .cache/example/value.txt
+          echo 'artifact contents' > results/result.txt
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd
+      - name: Generate coverage
+        run: |
+          python -m coverage run example.py
+          python -m coverage xml
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5
+        with:
+          binary: /opt/hostedtoolcache/Python/3.14.0/x64/bin/codecovcli
+          dry_run: true
+          disable_telem: true
+          fail_ci_if_error: true
+          files: coverage.xml
+          run_command: upload-coverage
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: example-results
+          path: results/

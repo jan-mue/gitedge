@@ -15,6 +15,7 @@ from redis_fastapi import get_async_redis
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clients.actions import ActionsStore, SQLActionsStore
 from app.clients.activity import ActivityStore, SQLActivityStore
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
 from app.clients.cache import (
@@ -34,12 +35,15 @@ from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClie
 from app.clients.releases import ReleaseStore, SQLReleaseStore
 from app.clients.repositories import RepositoryStore, SQLRepositoryStore
 from app.clients.reviews import ReviewStore, SQLReviewStore
+from app.clients.sandboxes.docker import DockerSandboxClient
+from app.clients.sandboxes.vercel import VercelSandboxClient
 from app.clients.stars import SQLStarStore, StarStore
 from app.clients.users import SQLUserStore, UserStore
 from app.clients.watchers import SQLWatcherStore, WatcherStore
 from app.config import settings
 from app.entities.users import User
 from app.schemas.token import TokenPayload
+from app.services.actions.service import ActionsService
 from app.services.activity import ActivityService
 from app.services.blob_backend import BlobBackend
 from app.services.comments import CommentService
@@ -59,6 +63,8 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    from app.clients.sandboxes.base import SandboxClient
 
 logger = logging.getLogger(__name__)
 
@@ -668,3 +674,53 @@ def get_organization_service(
 
 
 OrganizationServiceDep = Annotated[OrganizationService, Depends(get_organization_service)]
+
+
+optional_oauth2 = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/login/access-token", auto_error=False)
+
+
+async def get_optional_user(
+    user_store: UserStoreDep, token: Annotated[str | None, Depends(optional_oauth2)]
+) -> User | None:
+    """Allow public Actions history while enforcing authentication on private data."""
+    return await get_current_user(user_store, token) if token else None
+
+
+OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+
+
+def get_actions_store(session: SessionDep) -> ActionsStore:
+    """Get the durable workflow store."""
+    return SQLActionsStore(session)
+
+
+ActionsStoreDep = Annotated[ActionsStore, Depends(get_actions_store)]
+
+
+def get_actions_service(
+    store: ActionsStoreDep,
+    repositories: RepositoryServiceDep,
+    repository_store: RepositoryStoreDep,
+    blobs: BlobStorageClientDep,
+) -> ActionsService:
+    """Configure injectable sandbox providers without starting a runner daemon."""
+    providers: dict[str, SandboxClient] = {
+        "docker": DockerSandboxClient(
+            settings.ACTIONS_IMAGE, ca_bundle=settings.ACTIONS_DOCKER_CA_BUNDLE, environment=settings.ACTIONS_DOCKER_ENV
+        ),
+        "vercel": VercelSandboxClient(settings.ACTIONS_IMAGE, settings.ACTIONS_VERCEL_SNAPSHOT),
+    }
+    return ActionsService(
+        store,
+        repositories,
+        repository_store,
+        blobs,
+        providers,
+        provider=settings.ACTIONS_PROVIDER,
+        max_timeout=settings.ACTIONS_MAX_TIMEOUT,
+        max_parallel=settings.ACTIONS_MAX_PARALLEL,
+        secrets=settings.ACTIONS_SECRETS,
+    )
+
+
+ActionsServiceDep = Annotated[ActionsService, Depends(get_actions_service)]

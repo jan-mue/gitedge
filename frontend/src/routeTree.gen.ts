@@ -21,6 +21,7 @@ import { Route as LayoutRepositoriesRouteImport } from './routes/_layout/reposit
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutProfileUsernameRouteImport } from './routes/_layout/profile.$username'
 import { Route as LayoutOwnerRepoIndexRouteImport } from './routes/_layout/$owner/$repo/index'
+import { Route as LayoutOwnerRepoActionsRouteImport } from './routes/_layout/$owner/$repo/actions'
 import { Route as LayoutOwnerRepoActivityRouteImport } from './routes/_layout/$owner/$repo/activity'
 import { Route as LayoutOwnerRepoBranchesRouteImport } from './routes/_layout/$owner/$repo/branches'
 import { Route as LayoutOwnerRepoCommitRouteImport } from './routes/_layout/$owner/$repo/commit'
@@ -111,6 +112,11 @@ const LayoutProfileUsernameRoute = LayoutProfileUsernameRouteImport.update({
 const LayoutOwnerRepoIndexRoute = LayoutOwnerRepoIndexRouteImport.update({
   id: '/$owner/$repo/',
   path: '/$owner/$repo/',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutOwnerRepoActionsRoute = LayoutOwnerRepoActionsRouteImport.update({
+  id: '/$owner/$repo/actions',
+  path: '/$owner/$repo/actions',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutOwnerRepoActivityRoute = LayoutOwnerRepoActivityRouteImport.update({
@@ -304,6 +310,7 @@ export interface FileRoutesByFullPath {
   '/repositories': typeof LayoutRepositoriesRoute
   '/settings': typeof LayoutSettingsRoute
   '/profile/$username': typeof LayoutProfileUsernameRoute
+  '/$owner/$repo/actions': typeof LayoutOwnerRepoActionsRoute
   '/$owner/$repo/activity': typeof LayoutOwnerRepoActivityRoute
   '/$owner/$repo/branches': typeof LayoutOwnerRepoBranchesRoute
   '/$owner/$repo/commit': typeof LayoutOwnerRepoCommitRouteWithChildren
@@ -349,6 +356,7 @@ export interface FileRoutesByTo {
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
   '/profile/$username': typeof LayoutProfileUsernameRoute
+  '/$owner/$repo/actions': typeof LayoutOwnerRepoActionsRoute
   '/$owner/$repo/activity': typeof LayoutOwnerRepoActivityRoute
   '/$owner/$repo/branches': typeof LayoutOwnerRepoBranchesRoute
   '/$owner/$repo/commit': typeof LayoutOwnerRepoCommitRouteWithChildren
@@ -390,6 +398,7 @@ export interface FileRoutesById {
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/profile/$username': typeof LayoutProfileUsernameRoute
+  '/_layout/$owner/$repo/actions': typeof LayoutOwnerRepoActionsRoute
   '/_layout/$owner/$repo/activity': typeof LayoutOwnerRepoActivityRoute
   '/_layout/$owner/$repo/branches': typeof LayoutOwnerRepoBranchesRoute
   '/_layout/$owner/$repo/commit': typeof LayoutOwnerRepoCommitRouteWithChildren
@@ -437,6 +446,7 @@ export interface FileRouteTypes {
     | '/repositories'
     | '/settings'
     | '/profile/$username'
+    | '/$owner/$repo/actions'
     | '/$owner/$repo/activity'
     | '/$owner/$repo/branches'
     | '/$owner/$repo/commit'
@@ -482,6 +492,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/'
     | '/profile/$username'
+    | '/$owner/$repo/actions'
     | '/$owner/$repo/activity'
     | '/$owner/$repo/branches'
     | '/$owner/$repo/commit'
@@ -522,6 +533,7 @@ export interface FileRouteTypes {
     | '/_layout/settings'
     | '/_layout/'
     | '/_layout/profile/$username'
+    | '/_layout/$owner/$repo/actions'
     | '/_layout/$owner/$repo/activity'
     | '/_layout/$owner/$repo/branches'
     | '/_layout/$owner/$repo/commit'
@@ -649,6 +661,13 @@ declare module '@tanstack/react-router' {
       path: '/$owner/$repo'
       fullPath: '/$owner/$repo/'
       preLoaderRoute: typeof LayoutOwnerRepoIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/$owner/$repo/actions': {
+      id: '/_layout/$owner/$repo/actions'
+      path: '/$owner/$repo/actions'
+      fullPath: '/$owner/$repo/actions'
+      preLoaderRoute: typeof LayoutOwnerRepoActionsRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/$owner/$repo/activity': {
@@ -1001,6 +1020,7 @@ interface LayoutRouteChildren {
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
   LayoutProfileUsernameRoute: typeof LayoutProfileUsernameRoute
+  LayoutOwnerRepoActionsRoute: typeof LayoutOwnerRepoActionsRoute
   LayoutOwnerRepoActivityRoute: typeof LayoutOwnerRepoActivityRoute
   LayoutOwnerRepoBranchesRoute: typeof LayoutOwnerRepoBranchesRoute
   LayoutOwnerRepoCommitRoute: typeof LayoutOwnerRepoCommitRouteWithChildren
@@ -1027,6 +1047,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutProfileUsernameRoute: LayoutProfileUsernameRoute,
+  LayoutOwnerRepoActionsRoute: LayoutOwnerRepoActionsRoute,
   LayoutOwnerRepoActivityRoute: LayoutOwnerRepoActivityRoute,
   LayoutOwnerRepoBranchesRoute: LayoutOwnerRepoBranchesRoute,
   LayoutOwnerRepoCommitRoute: LayoutOwnerRepoCommitRouteWithChildren,

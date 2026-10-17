@@ -129,6 +129,19 @@ class Settings(BaseSettings):
     S3_BUCKET: str | None = "gitedge"
     S3_SECURE: bool = False
 
+    # Actions jobs use a fixed operator image; workflows cannot select host privileges.
+    ACTIONS_PROVIDER: Literal["docker", "vercel"] = "docker"
+    ACTIONS_IMAGE: str = "gitedge-actions:local"
+    ACTIONS_MAX_TIMEOUT: int = 1200
+    ACTIONS_MAX_PARALLEL: int = 2
+    ACTIONS_SERVER_URL: str = "http://host.docker.internal:8000"
+    ACTIONS_VERCEL_SNAPSHOT: str | None = None
+    ACTIONS_DOCKER_CA_BUNDLE: str | None = None
+    ACTIONS_DOCKER_ENV: dict[str, str] = {}
+    # Explicitly scoped by repository UUID. Values are never stored in workflow rows.
+    ACTIONS_SECRETS: dict[str, dict[str, str]] = {}
+    CRON_SECRET: str | None = None
+
     # Email settings
     SMTP_TLS: bool = True
     SMTP_SSL: bool = False
