@@ -94,9 +94,7 @@ async def test_merge_graph_messages_and_retained_views(
     assert client.get(f"{pull}/review-workspace", headers=superuser_token_headers).json()["reviewed_paths"] == [
         "code.txt"
     ]
-    commits = client.get(f"{pull}/commits")
-    assert commits.json()["count"] == 2
-    assert commits.headers["cache-control"] == "private, no-cache"
+    assert client.get(f"{pull}/commits").json()["count"] == 2
     assert len(client.get(f"{pull}/files", params={"include_diff": False}).json()["files"]) == 2
     assert client.post(f"{pull}/merge", headers=superuser_token_headers, json={"method": method}).json() == data
     assert len(client.get(f"{pull}/events").json()) == 1

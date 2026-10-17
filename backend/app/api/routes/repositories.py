@@ -324,10 +324,9 @@ async def get_pull_request(
 
 @router.get("/{owner}/{repo}/pulls/{number}/events")
 async def get_pull_request_events(
-    owner: str, repo: str, number: int, response: Response, pull_request_service: PullRequestServiceDep
+    owner: str, repo: str, number: int, pull_request_service: PullRequestServiceDep
 ) -> list[ActivityPublic]:
     """Read state transitions at their original event dates."""
-    response.headers["Cache-Control"] = "no-store"
     return await pull_request_service.get_pull_request_events(owner, repo, number)
 
 
@@ -336,13 +335,11 @@ async def get_pull_request_commits(
     owner: str,
     repo: str,
     number: int,
-    response: Response,
     pull_request_service: PullRequestServiceDep,
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> CommitsPublic:
     """List commits unique to the PR branch, excluding the base's history."""
-    response.headers["Cache-Control"] = "private, no-cache"
     return await pull_request_service.get_pull_request_commits(owner, repo, number, offset, limit)
 
 
