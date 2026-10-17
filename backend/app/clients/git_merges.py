@@ -9,9 +9,14 @@ if TYPE_CHECKING:
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.cache import AbstractCacheClient
     from app.clients.redis import AbstractRedisClient
+from dulwich.objects import ObjectID
+from fastapi import HTTPException, status
+from fastapi.concurrency import run_in_threadpool
+
+from app.schemas.repositories import MergeMethod, PullRequestMergeability
 from app.services.blob_backend import BlobBackend, load_repository_from_storage, save_repository_changes_to_storage
 from app.services.blob_repository import BlobRepository
-from app.services.merging import MergeResult
+from app.services.merging import MergeConflict, MergeResult, calculate_merge
 
 
 class GitMergeClient:
@@ -34,6 +39,37 @@ class GitMergeClient:
         """Recover publication if a response or database write was interrupted."""
         checkpoint = await self.redis.get(f"{owner}/{name}.git/merge-state/{pull_id}")
         return MergeResult(**json.loads(checkpoint)) if checkpoint else None
+
+    async def check(self, owner: str, name: str, base: str, head: str, method: MergeMethod) -> PullRequestMergeability:
+        """Cache a read-only calculation by immutable tips and strategy, never by branch name."""
+        group = f"repo:{owner}/{name}"
+        key = f"mergeability:v1:{owner}/{name}:{base}:{head}:{method}"
+        cached = await self.cache.get(key, group=group)
+        if cached:
+            return PullRequestMergeability.model_validate_json(cached)
+        repo = await self.load(owner, name)
+        result = PullRequestMergeability(mergeable=True, base_commit=base, head_commit=head)
+        try:
+            await run_in_threadpool(
+                calculate_merge,
+                repo,
+                ObjectID(base.encode()),
+                ObjectID(head.encode()),
+                method,
+                b"Mergeability check\n",
+                b"GitEdge <mergeability@gitedge.local>",
+                write_objects=False,
+            )
+        except HTTPException as error:
+            if error.status_code != status.HTTP_409_CONFLICT:
+                raise
+            result.mergeable, result.reason = False, str(error.detail)
+            if isinstance(error, MergeConflict):
+                result.conflicting_files = error.paths
+        finally:
+            repo.object_store.close()
+        await self.cache.set(key, result.model_dump_json(), ttl=3600, group=group)
+        return result
 
     async def publish(
         self,

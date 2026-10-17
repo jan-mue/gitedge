@@ -150,3 +150,56 @@ def test_merge_methods_publish_git_and_retain_pr(
         )
         assert blocked.status == 409
         assert "disabled" in blocked.json()["detail"]
+
+
+def test_conflicts_are_reported_before_merging_and_refresh_after_a_push(
+    page: Page, app_url: str, tmp_path: Path
+) -> None:
+    """A real conflicting push disables merge; resolving it updates the preflight and permits merging."""
+    name = "preflight-conflicts"
+    source = tmp_path / name
+    _repository(source, app_url, name)
+    _run_git(source, ["checkout", "main"])
+    (source / "file-0000.py").write_text("base_conflict = True\n")
+    _run_git(source, ["add", "."])
+    _run_git(source, ["commit", "-m", "Conflicting base update"])
+    _run_git(source, ["push", "origin", "main"])
+    merges: list[str] = []
+    page.on(
+        "request",
+        lambda request: (
+            merges.append(request.url) if request.method == "POST" and request.url.endswith("/merge") else None
+        ),
+    )
+    _create_pull(page, app_url, name)
+    expect(page.get_by_text("This branch has conflicts that must be resolved", exact=True)).to_be_visible()
+    expect(page.get_by_role("list", name="Conflicting files")).to_contain_text("file-0000.py")
+    expect(page.get_by_test_id("merge-pr")).to_be_disabled()
+    assert merges == []
+    url = f"{app_url}/api/v1/repositories/admin/{name}/pulls/1"
+    for method, label in [("squash", "Squash and merge"), ("rebase", "Rebase and merge")]:
+        page.get_by_role("button", name="Choose merge method", exact=True).click()
+        page.get_by_role("menuitem").filter(has_text=label).click()
+        expect(page.get_by_test_id("merge-pr")).to_have_text(label)
+        expect(page.get_by_text("This branch has conflicts that must be resolved", exact=True)).to_be_visible()
+        expect(page.get_by_test_id("merge-pr")).to_be_disabled()
+        result = page.request.get(f"{url}/mergeability?method={method}").json()
+        assert result["mergeable"] is False
+        assert result["conflicting_files"] == ["file-0000.py"]
+    # Resolve the branch with Git and push; the old cached conflict must not survive the new head.
+    _run_git(source, ["checkout", "feature/review"])
+    _run_git(source, ["merge", "-s", "ours", "main", "-m", "Resolve branch conflict"])
+    _run_git(source, ["push", "origin", "feature/review"])
+    page.get_by_role("button", name="Choose merge method", exact=True).click()
+    page.get_by_role("menuitem").filter(has_text="Create merge commit").click()
+    page.get_by_role("button", name="Check again", exact=True).click()
+    expect(page.get_by_test_id("merge-pr")).to_be_enabled()
+    expect(page.get_by_text("This branch has no conflicts with the base branch", exact=True)).to_be_visible()
+    expect(page.get_by_role("list", name="Conflicting files")).to_have_count(0)
+    assert merges == []
+    page.get_by_test_id("merge-pr").click()
+    expect(page.get_by_test_id("pr-state")).to_have_text("Merged")
+    expect(page.get_by_test_id("pr-event-pull_request_merge")).to_be_visible()
+    assert len(merges) == 1
+    _run_git(source, ["fetch", "origin", "main"])
+    assert len(_run_git(source, ["show", "-s", "--format=%P", "origin/main"]).split()) == 2

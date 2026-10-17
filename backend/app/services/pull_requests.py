@@ -16,9 +16,11 @@ from app.entities.pull_requests import PullRequest
 from app.schemas.repositories import (
     CommitsPublic,
     CompareResult,
+    MergeMethod,
     MergeSettings,
     PullRequestCreate,
     PullRequestMerge,
+    PullRequestMergeability,
     PullRequestPublic,
     PullRequestsListPublic,
     PullRequestUpdate,
@@ -189,6 +191,33 @@ class PullRequestService:
             include_diff=include_diff,
         )
 
+    async def get_mergeability(
+        self, owner: str, name: str, number: int, method: MergeMethod
+    ) -> PullRequestMergeability:
+        """Check current branch tips independently of the PR conversation and file diff."""
+        pull = await self._find_pull_request(owner, name, number)
+        if pull.state != IssueState.OPEN:
+            return PullRequestMergeability(mergeable=False, reason="Only open pull requests can be merged")
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        enabled = {
+            MergeMethod.MERGE: repository.allow_merge_commit,
+            MergeMethod.SQUASH: repository.allow_squash_merge,
+            MergeMethod.REBASE: repository.allow_rebase_merge,
+        }[method]
+        if not enabled:
+            return PullRequestMergeability(
+                mergeable=False, reason="This merge method is disabled in repository settings"
+            )
+        if pull.head_branch == pull.base_branch:
+            return PullRequestMergeability(mergeable=False, reason="The PR must have different base and head branches")
+        completed = await self.git_merges.completed(owner, name, pull.id)
+        if completed:
+            return PullRequestMergeability(mergeable=True, base_commit=completed.base, head_commit=completed.head)
+        base, head = await self.repository_service.branch_heads(owner, name, pull.base_branch, pull.head_branch)
+        if base is None or head is None:
+            return PullRequestMergeability(mergeable=False, reason="The base or PR branch no longer exists")
+        return await self.git_merges.check(owner, name, base, head, method)
+
     async def merge_pull_request(
         self, owner: str, name: str, number: int, body: PullRequestMerge, current_user: User
     ) -> PullRequestPublic:
@@ -224,6 +253,8 @@ class PullRequestService:
                     raise HTTPException(status_code=409, detail="The base or PR branch no longer exists")
                 if body.head_commit and head.decode() != body.head_commit:
                     raise HTTPException(status_code=409, detail="The PR branch changed. Reload before merging.")
+                if body.base_commit and base.decode() != body.base_commit:
+                    raise HTTPException(status_code=409, detail="The base branch changed. Reload before merging.")
                 commits = await run_in_threadpool(
                     lambda: [
                         entry.commit

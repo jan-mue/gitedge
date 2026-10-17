@@ -1,6 +1,5 @@
 """Git merge calculation without changing branch refs."""
 
-import logging
 from dataclasses import dataclass
 from time import time
 from typing import TYPE_CHECKING
@@ -17,8 +16,16 @@ if TYPE_CHECKING:
     from app.services.blob_repository import BlobRepository
 
 
-logger = logging.getLogger(__name__)
 MAX_CONFLICT_PATHS = 10
+
+
+class MergeConflict(HTTPException):
+    """Expected conflict with structured paths for the read-only preflight."""
+
+    def __init__(self, paths: list[str], detail: str) -> None:
+        """Keep the normal merge error and the complete list of affected paths."""
+        super().__init__(status_code=409, detail=detail)
+        self.paths = paths
 
 
 def reject_conflicts(conflicts: list[bytes], operation: str) -> None:
@@ -26,11 +33,10 @@ def reject_conflicts(conflicts: list[bytes], operation: str) -> None:
     if not conflicts:
         return
     paths = [path.decode("utf-8", errors="replace") for path in conflicts]
-    logger.warning("%s rejected: conflicts in %s", operation, ", ".join(paths))
     visible = ", ".join(paths[:MAX_CONFLICT_PATHS])
     remaining = f" and {len(paths) - MAX_CONFLICT_PATHS} more files" if len(paths) > MAX_CONFLICT_PATHS else ""
-    raise HTTPException(
-        status_code=409,
+    raise MergeConflict(
+        paths=paths,
         detail=f"{operation} has conflicts in {visible}{remaining}. Resolve them on the PR branch before merging.",
     )
 
@@ -61,9 +67,16 @@ def merge_message(
 
 
 def calculate_merge(
-    repo: BlobRepository, base: ObjectID, head: ObjectID, method: MergeMethod, message: bytes, identity: bytes
+    repo: BlobRepository,
+    base: ObjectID,
+    head: ObjectID,
+    method: MergeMethod,
+    message: bytes,
+    identity: bytes,
+    *,
+    write_objects: bool = True,
 ) -> MergeResult:
-    """Create merge objects, rejecting conflicts before publishing any ref."""
+    """Calculate in memory, optionally staging objects for actual publication."""
     pending = MemoryObjectStore()
     store = OverlayObjectStore([pending, repo.object_store], add_store=pending)
     ours, theirs = store[base], store[head]
@@ -72,6 +85,8 @@ def calculate_merge(
     bases = find_merge_base(repo, [base, head])
     if not bases:
         raise HTTPException(status_code=409, detail="Branches have no common ancestor")
+    if head in bases:
+        raise HTTPException(status_code=409, detail="The PR has no commits to merge")
 
     def commit(tree: ObjectID, parents: list[ObjectID], body: bytes, original: Commit | None = None) -> Commit:
         result = Commit()
@@ -112,5 +127,6 @@ def calculate_merge(
         store.add_object(tree)
         result = commit(tree.id, [base, head] if method == MergeMethod.MERGE else [base], message)
     # One pack for the entire operation, including all rebased commits.
-    repo.object_store.add_objects([(pending[sha], None) for sha in pending])
+    if write_objects:
+        repo.object_store.add_objects([(pending[sha], None) for sha in pending])
     return MergeResult(base.decode(), head.decode(), result.id.decode())

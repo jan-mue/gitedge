@@ -52,6 +52,17 @@ class PullRequestMerge(GitEdgeBaseModel):
 
     method: MergeMethod = MergeMethod.MERGE
     head_commit: str | None = Field(default=None, pattern=r"^[0-9a-f]{40}$")
+    base_commit: str | None = Field(default=None, pattern=r"^[0-9a-f]{40}$")
+
+
+class PullRequestMergeability(GitEdgeBaseModel):
+    """Read-only merge check for an exact pair of branch tips."""
+
+    mergeable: bool
+    base_commit: str | None = None
+    head_commit: str | None = None
+    conflicting_files: list[str] = Field(default_factory=list)
+    reason: str | None = None
 
 
 class Repository(MergeSettings):

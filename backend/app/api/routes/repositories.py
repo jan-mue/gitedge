@@ -27,8 +27,10 @@ from app.schemas.repositories import (
     IssuePublic,
     IssuesListPublic,
     IssueUpdate,
+    MergeMethod,
     PullRequestCreate,
     PullRequestMerge,
+    PullRequestMergeability,
     PullRequestPublic,
     PullRequestsListPublic,
     PullRequestUpdate,
@@ -357,6 +359,20 @@ async def get_pull_request_files(
     result = await pull_request_service.get_pull_request_files(owner, repo, number, include_diff=include_diff)
     response.headers["Cache-Control"] = "no-store"
     return result
+
+
+@router.get("/{owner}/{repo}/pulls/{number}/mergeability")
+async def get_pull_request_mergeability(
+    owner: str,
+    repo: str,
+    number: int,
+    response: Response,
+    pull_request_service: PullRequestServiceDep,
+    method: MergeMethod = MergeMethod.MERGE,
+) -> PullRequestMergeability:
+    """Report conflicts before merging, checking fresh tips with immutable calculation caching."""
+    response.headers["Cache-Control"] = "no-store"
+    return await pull_request_service.get_mergeability(owner, repo, number, method)
 
 
 @router.post("/{owner}/{repo}/pulls/{number}/merge")

@@ -10,6 +10,7 @@ import {
   handleRepositoriesGetPullRequestCommits,
   handleRepositoriesGetPullRequestEvents,
   handleRepositoriesGetPullRequestFiles,
+  handleRepositoriesGetPullRequestMergeability,
   handleRepositoriesGetRepository,
   handleRepositoriesMergePullRequest,
   handleReviewsGetCommentContext,
@@ -53,6 +54,15 @@ const meta = {
   parameters: {
     msw: {
       handlers: [
+        handleRepositoriesGetRepository({
+          body: {
+            owner: "jan-mue",
+            name: "gitedge",
+            created_at: "2026-10-01T00:00:00Z",
+            updated_at: "2026-10-01T00:00:00Z",
+          },
+        }),
+        handleRepositoriesGetPullRequestMergeability({ body: { mergeable: true, conflicting_files: [] } }),
         handleRepositoriesGetPullRequest({ body: pull }),
         handleRepositoriesGetPullRequestEvents({ body: [] }),
         handleRepositoriesGetDiffFile({ body: comparisonFixture.files[0] }),
@@ -275,7 +285,7 @@ export const ReviewDiscussion: Story = {
   },
 }
 
-export const MergeMethods: Story = {
+export const MergeMethods = {
   beforeEach: () => {
     const previous = localStorage.getItem("access_token")
     localStorage.setItem("access_token", "storybook-session")
@@ -300,10 +310,37 @@ export const MergeMethods: Story = {
             updated_at: "2026-10-01T00:00:00Z",
           },
         }),
+        handleRepositoriesGetPullRequestMergeability({
+          body: {
+            mergeable: true,
+            base_commit: comparisonFixture.base_commit,
+            head_commit: comparisonFixture.head_commit,
+            conflicting_files: [],
+          },
+        }),
         handleRepositoriesMergePullRequest({ body: { ...pull, state: "merged", has_merged: true } }),
         ...meta.parameters.msw.handlers,
       ],
     },
   },
   render: () => <PullRequestDetailView owner="jan-mue" repo="gitedge" prNumber={1} />,
+} satisfies Story
+
+export const MergeConflicts: Story = {
+  ...MergeMethods,
+  parameters: {
+    msw: {
+      handlers: [
+        handleRepositoriesGetPullRequestMergeability({
+          body: {
+            mergeable: false,
+            base_commit: comparisonFixture.base_commit,
+            head_commit: comparisonFixture.head_commit,
+            conflicting_files: ["backend/pyproject.toml", "uv.lock"],
+          },
+        }),
+        ...MergeMethods.parameters.msw.handlers,
+      ],
+    },
+  },
 }

@@ -270,7 +270,7 @@ both themes and desktop/mobile, with two intentional tablet-only mobile skips.
 One static asset fetch failed in the first tablet run; that tablet check passed
 on recheck in both themes. Production app and Storybook builds passed. The real
 10,000-row conversation fixture returned 899 bytes of review data and issued no
-Git/context requests; conversation readiness was 1,415 ms in the local dev server.
+diff/context requests; conversation readiness was 1,415 ms in the local dev server.
 
 ## Git merge methods and conversation hierarchy
 
@@ -347,8 +347,8 @@ The two Vercel preview merge attempts at 09:04 UTC on October 17 stopped before
 object publication. Reproducing the exact tips (`77ddec2e` and `951554c1`) with
 both Dulwich and `git merge-tree --write-tree` reports the same conflicts in
 `backend/pyproject.toml` and `uv.lock`. The rejection is correct; the user must
-resolve those conflicts on the PR branch. Conflict paths are now logged and shown
-persistently beside the merge controls, without changing branch refs or PR state.
+resolve those conflicts on the PR branch. Conflict paths are now checked proactively and shown
+persistently beside disabled merge controls, without changing branch refs or PR state.
 
 ## Normalized comments and compact discussion verification
 
@@ -367,6 +367,43 @@ and Storybook builds passed. Full-suite CI results are linked from PR #297.
 The 500-file index remained 96,161 bytes, with two initial file requests and 3,794
 DOM nodes. Its first highlighted file appeared in 709 ms locally. The 10,000-row
 review conversation returned 1,040 bytes including rendered Markdown, with no
-additional Git/context requests. These are local regression measurements, not
+additional diff/context requests. These are local regression measurements, not
 hosted latency guarantees. Event labels have a 20-pixel icon gap and matching
 vertical centers at widths 768, 820, 1024 and 1280 pixels.
+
+## Proactive merge conflict checks
+
+Merged main through `05a9811`, resolving the package manifest and Bun lockfile
+conflicts with main's table upgrade and the diff viewer's virtualization dependency.
+
+Open pull requests now check mergeability independently of the conversation.
+The merge button stays visible and disabled while checking, on errors, and when
+conflicts exist. Conflicting filenames appear before any merge request. The method
+menu remains available; Check again, window focus, and periodic refresh read fresh
+tips. The check is available to readers as well as the repository owner.
+
+The backend uses the actual merge algorithm in a read-only mode, including each
+replayed commit for rebase. It never stages packs or publishes refs. Calculations
+are cached by repository, both immutable revisions, and strategy; missing branches,
+closed PRs, empty changes and disabled methods cannot be reported as mergeable.
+Merge requests include both checked revisions and still use atomic publication to
+reject concurrent pushes. No schema migration is needed.
+
+All nine focused full-stack cases passed with real Git, PostgreSQL, Redis, MinIO
+and Chromium, including conflict detection before clicking, switching strategies,
+pushing a resolution, rechecking and inspecting the resulting merge commit. The
+500-file case used two initial highlighted-file requests, a 96,161-byte index and
+3,795 DOM nodes; first highlight was 950 ms while other local checks were running.
+The 10,000-row conversation returned 1,040 bytes without diff/context requests;
+mergeability uses its separate request and cache.
+
+Production application and Storybook builds passed. Both themes and desktop/mobile
+conflict screenshots were visually inspected; all 38 Storybook PR scenarios passed
+across the main run and one targeted rerun, with two intentional mobile skips.
+The targeted rerun resolved an initial timeout during concurrent build/test work.
+
+All 315 backend and 294 frontend unit tests passed. The merge-focused backend
+suite also passed all 28 tests after strengthening independent base/head cache
+invalidation assertions. The final frontend run passed without concurrent builds;
+the earlier two timeouts did not recur. Required repository lint and type checks
+passed before the integration servers started.

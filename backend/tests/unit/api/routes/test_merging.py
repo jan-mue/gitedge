@@ -118,6 +118,106 @@ def test_conflicts_do_not_change_refs_or_state(
     assert client.get(f"{pull}/events").json() == []
 
 
+@pytest.mark.parametrize("method", ["merge", "squash", "rebase"])
+@pytest.mark.parametrize("conflict", [False, True])
+def test_mergeability_is_read_only_cached_and_tracks_both_tips(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    fake_stores: FakeStores,
+    mocker: MockerFixture,
+    method: str,
+    conflict: bool,
+) -> None:
+    base, first, head = seed_merge_repository(fake_stores, OWNER, "repo", conflict=conflict)
+    pull = create(client, superuser_token_headers)
+    blobs, refs = fake_stores.blob.objects.copy(), fake_stores.redis.values.copy()
+    calculate = mocker.patch("app.clients.git_merges.calculate_merge", wraps=calculate_merge)
+    response = client.get(f"{pull}/mergeability", params={"method": method})
+    assert response.status_code == 200, response.text
+    assert response.headers["Cache-Control"] == "no-store"
+    data = response.json()
+    assert data["mergeable"] is not conflict
+    assert data["base_commit"] == base
+    assert data["head_commit"] == head
+    assert data["conflicting_files"] == (["code.txt"] if conflict else [])
+    assert fake_stores.blob.objects == blobs
+    assert fake_stores.redis.values == refs
+    assert client.get(pull).json()["state"] == "open"
+    assert client.get(f"{pull}/events").json() == []
+    assert client.get(f"{pull}/mergeability", params={"method": method}).json() == data
+    assert calculate.call_count == 1
+    assert calculate.call_args.kwargs["write_objects"] is False
+    # Cache entries cannot outlive either branch tip, even without cache eviction.
+    changed_base, _, changed_head = seed_merge_repository(fake_stores, OWNER, "repo", conflict=not conflict)
+    updated = client.get(f"{pull}/mergeability", params={"method": method}).json()
+    assert updated["mergeable"] is conflict
+    assert updated["base_commit"] == changed_base
+    assert updated["head_commit"] == changed_head
+    assert calculate.call_count == 2
+    fake_stores.redis.values[f"{OWNER}/repo.git/refs/refs/heads/feature"] = first.encode()
+    updated_head = client.get(f"{pull}/mergeability", params={"method": method}).json()
+    assert updated_head["base_commit"] == changed_base
+    assert updated_head["head_commit"] == first
+    assert calculate.call_count == 3
+    # The selected strategy is also part of the calculation key.
+    other = "rebase" if method != "rebase" else "merge"
+    assert client.get(f"{pull}/mergeability", params={"method": other}).status_code == 200
+    assert calculate.call_count == 4
+
+
+def test_mergeability_branch_and_policy_failures(
+    client: TestClient, superuser_token_headers: dict[str, str], fake_stores: FakeStores
+) -> None:
+    base, _, head = seed_merge_repository(fake_stores, OWNER, "repo")
+    pull = create(client, superuser_token_headers)
+    assert client.get(f"{URL}/pulls/999/mergeability").status_code == 404
+    assert client.get(f"{pull}/mergeability", params={"method": "unknown"}).status_code == 422
+    client.patch(URL, headers=superuser_token_headers, json={"allow_merge_commit": False})
+    assert "disabled" in client.get(f"{pull}/mergeability").json()["reason"]
+    client.patch(URL, headers=superuser_token_headers, json={"allow_merge_commit": True})
+    prefix = f"{OWNER}/repo.git/refs/refs/heads/"
+    del fake_stores.redis.values[prefix + "feature"]
+    assert "no longer exists" in client.get(f"{pull}/mergeability").json()["reason"]
+    fake_stores.redis.values[prefix + "feature"] = base.encode()
+    assert "no commits" in client.get(f"{pull}/mergeability").json()["reason"]
+    fake_stores.redis.values[prefix + "feature"] = head.encode()
+    assert (
+        client.post(
+            f"{pull}/merge", headers=superuser_token_headers, json={"head_commit": head, "base_commit": "f" * 40}
+        ).status_code
+        == 409
+    )
+    client.patch(pull, headers=superuser_token_headers, json={"state": "closed"})
+    assert client.get(f"{pull}/mergeability").json()["mergeable"] is False
+
+
+async def test_rebase_checks_each_commit_even_when_the_combined_diff_merges_cleanly(
+    client: TestClient, superuser_token_headers: dict[str, str], fake_stores: FakeStores
+) -> None:
+    base, _, head = seed_merge_repository(fake_stores, OWNER, "repo", conflict=True, revert_first=True)
+    pull = create(client, superuser_token_headers)
+    assert client.get(f"{pull}/mergeability", params={"method": "merge"}).json()["mergeable"] is True
+    assert client.get(f"{pull}/mergeability", params={"method": "squash"}).json()["mergeable"] is True
+    result = client.get(f"{pull}/mergeability", params={"method": "rebase"}).json()
+    assert result["mergeable"] is False
+    assert result["conflicting_files"] == ["code.txt"]
+    # A successful preflight must not even stage new packs in its local repository.
+    git = GitMergeClient(fake_stores.blob, fake_stores.redis, fake_stores.cache, BlobBackend())
+    repo = await git.load(OWNER, "repo")
+    before = repo.get_pending_changes()
+    calculate_merge(
+        repo,
+        ObjectID(base.encode()),
+        ObjectID(head.encode()),
+        MergeMethod.MERGE,
+        b"Read only\n",
+        b"Owner <owner@example.com>",
+        write_objects=False,
+    )
+    assert repo.get_pending_changes() == before
+    repo.object_store.close()
+
+
 def test_policies_permissions_stale_head_and_retention(
     client: TestClient,
     superuser_token_headers: dict[str, str],

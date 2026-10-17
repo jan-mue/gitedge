@@ -12,7 +12,13 @@ if TYPE_CHECKING:
 
 
 def seed_merge_repository(
-    stores: FakeStores, owner: str, name: str, head_branch: str = "feature", *, conflict: bool = False
+    stores: FakeStores,
+    owner: str,
+    name: str,
+    head_branch: str = "feature",
+    *,
+    conflict: bool = False,
+    revert_first: bool = False,
 ) -> tuple[str, str, str]:
     """Persist a diverged base and two PR commits without external services."""
     repo = BlobRepository.init_bare()
@@ -34,7 +40,14 @@ def seed_merge_repository(
 
     ancestor = commit({"code.txt": b"first\nsecond\nthird\n"}, [], b"Initial")
     first = commit({"code.txt": b"feature\nsecond\nthird\n"}, [ancestor.id], b"Feature one\n\nFirst details")
-    head = commit({"code.txt": b"feature\nsecond\nthird\n", "feature.txt": b"PR file\n"}, [first.id], b"Feature two")
+    head = commit(
+        {
+            "code.txt": b"first\nsecond\nthird\n" if revert_first else b"feature\nsecond\nthird\n",
+            "feature.txt": b"PR file\n",
+        },
+        [first.id],
+        b"Feature two",
+    )
     base = commit(
         {"code.txt": b"conflict\nsecond\nthird\n" if conflict else b"first\nsecond\nthird updated\n"},
         [ancestor.id],

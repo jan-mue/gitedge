@@ -272,3 +272,28 @@ test("PR merge dropdown supports all strategies with clear descriptions", async 
   await expect(page.getByTestId("merge-pr")).toHaveText("Squash and merge")
   await page.screenshot({ path: `visual-review/pr-merge-dropdown-${testInfo.project.name}.png`, fullPage: true })
 })
+
+test("conflicts are visible before merging and keep the merge button disabled", async ({ page }, testInfo) => {
+  const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"
+  const merges: string[] = []
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.url().endsWith("/merge")) merges.push(request.url())
+  })
+  await page.goto(
+    `/iframe.html?id=patterns-repository-pull-request-detail--merge-conflicts&viewMode=story&globals=theme:${theme}`,
+  )
+  await expect(page.getByText("This branch has conflicts that must be resolved", { exact: true })).toBeVisible()
+  await expect(page.getByRole("list", { name: "Conflicting files" })).toContainText("backend/pyproject.toml")
+  await expect(page.getByRole("list", { name: "Conflicting files" })).toContainText("uv.lock")
+  await expect(page.getByTestId("merge-pr")).toBeDisabled()
+  expect(merges).toEqual([])
+  await page.getByRole("button", { name: "Choose merge method" }).click()
+  await page.getByRole("menuitem").filter({ hasText: "Rebase and merge" }).click()
+  await expect(page.getByTestId("merge-pr")).toHaveText("Rebase and merge")
+  await expect(page.getByTestId("merge-pr")).toBeDisabled()
+  await page.getByRole("button", { name: "Check again" }).click()
+  await expect(page.getByText("This branch has conflicts that must be resolved", { exact: true })).toBeVisible()
+  expect(merges).toEqual([])
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: `visual-review/pr-merge-conflicts-${testInfo.project.name}.png`, fullPage: true })
+})

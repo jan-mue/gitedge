@@ -1108,6 +1108,38 @@ export type PullRequestMerge = {
      * Head Commit
      */
     head_commit?: string | null;
+    /**
+     * Base Commit
+     */
+    base_commit?: string | null;
+};
+
+/**
+ * PullRequestMergeability
+ *
+ * Read-only merge check for an exact pair of branch tips.
+ */
+export type PullRequestMergeability = {
+    /**
+     * Mergeable
+     */
+    mergeable: boolean;
+    /**
+     * Base Commit
+     */
+    base_commit?: string | null;
+    /**
+     * Head Commit
+     */
+    head_commit?: string | null;
+    /**
+     * Conflicting Files
+     */
+    conflicting_files?: Array<string>;
+    /**
+     * Reason
+     */
+    reason?: string | null;
 };
 
 /**
@@ -4756,6 +4788,46 @@ export type repositoriesGetPullRequestFilesResponses = {
 };
 
 export type repositoriesGetPullRequestFilesResponse = repositoriesGetPullRequestFilesResponses[keyof repositoriesGetPullRequestFilesResponses];
+
+export type repositoriesGetPullRequestMergeabilityData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: {
+        method?: MergeMethod;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/mergeability';
+};
+
+export type repositoriesGetPullRequestMergeabilityErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesGetPullRequestMergeabilityError = repositoriesGetPullRequestMergeabilityErrors[keyof repositoriesGetPullRequestMergeabilityErrors];
+
+export type repositoriesGetPullRequestMergeabilityResponses = {
+    /**
+     * Successful Response
+     */
+    200: PullRequestMergeability;
+};
+
+export type repositoriesGetPullRequestMergeabilityResponse = repositoriesGetPullRequestMergeabilityResponses[keyof repositoriesGetPullRequestMergeabilityResponses];
 
 export type repositoriesMergePullRequestData = {
     body: PullRequestMerge;
