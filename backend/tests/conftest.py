@@ -235,7 +235,7 @@ def backend_url(infrastructure: dict[str, str], xprocess: XProcess) -> Generator
     """Start the backend server for integration and browser tests."""
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("", 0))
+        s.bind(("127.0.0.1", 0))
         backend_port = s.getsockname()[1]
 
     backend_env = os.environ.copy()

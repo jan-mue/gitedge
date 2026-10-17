@@ -58,7 +58,7 @@ def browser_context_args(browser_context_args: dict[str, Any]) -> dict[str, Any]
 def app_url(backend_url: str, xprocess: XProcess) -> Generator[str]:
     """Start Vite against the shared backend for browser tests."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("", 0))
+        s.bind(("127.0.0.1", 0))
         frontend_port = s.getsockname()[1]
 
     frontend_env = os.environ.copy()
