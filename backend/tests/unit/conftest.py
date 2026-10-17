@@ -24,11 +24,10 @@ from app.api.dependencies import (
     get_user_store,
     get_watcher_store,
 )
-from app.config import settings
 from app.index import app
 from app.services.crud import CrudService
 from tests.unit.utils.fakes import FakeStores, build_fake_stores
-from tests.unit.utils.user import authentication_token_from_email
+from tests.unit.utils.user import EMAIL_TEST_USER, authentication_token_from_email
 from tests.unit.utils.utils import get_superuser_token_headers
 
 if TYPE_CHECKING:
@@ -99,4 +98,4 @@ def superuser_token_headers(client: TestClient) -> dict[str, str]:
 
 @pytest_asyncio.fixture
 async def normal_user_token_headers(client: TestClient, crud: CrudService) -> dict[str, str]:
-    return await authentication_token_from_email(client=client, email=settings.EMAIL_TEST_USER, crud=crud)
+    return await authentication_token_from_email(client=client, email=EMAIL_TEST_USER, crud=crud)

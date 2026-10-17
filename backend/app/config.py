@@ -62,15 +62,14 @@ def _preview_hosts(raw: str | None) -> list[str]:
 
 
 class LogLevel(StrEnum):
-    """Log level options for the application."""
+    """Standard library logging level names."""
 
-    TRACE = "TRACE"
-    DEBUG = "DEBUG"
-    INFO = "INFO"
-    SUCCESS = "SUCCESS"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
     CRITICAL = "CRITICAL"
+    ERROR = "ERROR"
+    WARNING = "WARNING"
+    INFO = "INFO"
+    DEBUG = "DEBUG"
+    NOTSET = "NOTSET"
 
 
 class Settings(BaseSettings):
@@ -153,7 +152,6 @@ class Settings(BaseSettings):
         """Check if email sending is properly configured."""
         return bool(self.SMTP_HOST and self.EMAILS_FROM_EMAIL)
 
-    EMAIL_TEST_USER: EmailStr = "test@example.com"
     FIRST_SUPERUSER: EmailStr
     FIRST_SUPERUSER_PASSWORD: str
 

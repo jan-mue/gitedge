@@ -52,7 +52,7 @@ def merge_message(
     elif template == MergeMessage.TITLE_COMMITS:
         details = "\n\n".join(commit.message.decode("utf-8", errors="replace").strip() for commit in commits)
         message = title + (f"\n\n{details}" if details else "")
-    else:
+    elif template == MergeMessage.TITLE:
         message = title
     return (message.rstrip() + "\n").encode()
 

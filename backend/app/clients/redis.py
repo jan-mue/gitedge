@@ -3,6 +3,7 @@
 import json
 import logging
 from abc import ABC, abstractmethod
+from typing import override
 
 import redis.asyncio as aioredis
 from redis.exceptions import WatchError
@@ -66,6 +67,7 @@ class RedisClient(AbstractRedisClient):
         """Initialize the standard Redis client."""
         self._client = aioredis.from_url(settings.REDIS_URL, password=settings.REDIS_PASSWORD, decode_responses=False)
 
+    @override
     async def compare_and_set(self, expected: dict[str, str | None], updates: dict[str, str | None]) -> bool:
         """Use the SDK's optimistic transaction to check and update keys atomically."""
         async with self._client.pipeline() as transaction:
@@ -87,6 +89,7 @@ class RedisClient(AbstractRedisClient):
                 return False
         return True
 
+    @override
     async def get(self, key: str) -> bytes | None:
         """Get a value from Redis."""
         result = await self._client.get(key)
@@ -96,14 +99,17 @@ class RedisClient(AbstractRedisClient):
             return result.encode()
         return bytes(result)
 
+    @override
     async def set(self, key: str, value: str | bytes) -> None:
         """Set a value in Redis."""
         await self._client.set(key, value)
 
+    @override
     async def delete(self, key: str) -> None:
         """Delete a key from Redis."""
         await self._client.delete(key)
 
+    @override
     async def scan_keys(self, pattern: str) -> list[str]:
         """Scan for keys matching a pattern."""
         keys: list[str] = []
@@ -122,6 +128,7 @@ class UpstashRedisClient(AbstractRedisClient):
         """Initialize the Upstash Redis client."""
         self._client = Redis(url=settings.REDIS_URL or "", token=settings.REDIS_PASSWORD or "")
 
+    @override
     async def compare_and_set(self, expected: dict[str, str | None], updates: dict[str, str | None]) -> bool:
         """Use a server-side condition because REST transactions do not support WATCH."""
         return bool(
@@ -132,6 +139,7 @@ class UpstashRedisClient(AbstractRedisClient):
             )
         )
 
+    @override
     async def get(self, key: str) -> bytes | None:
         """Get a value from Redis."""
         # upstash-redis returns parsed strings by default for standard values
@@ -144,16 +152,19 @@ class UpstashRedisClient(AbstractRedisClient):
             return result
         return str(result).encode()
 
+    @override
     async def set(self, key: str, value: str | bytes) -> None:
         """Set a value in Redis."""
         if isinstance(value, bytes):
             value = value.decode("utf-8", errors="ignore")
         await self._client.set(key, value)
 
+    @override
     async def delete(self, key: str) -> None:
         """Delete a key from Redis."""
         await self._client.delete(key)
 
+    @override
     async def scan_keys(self, pattern: str) -> list[str]:
         """Scan for keys matching a pattern."""
         cursor = 0

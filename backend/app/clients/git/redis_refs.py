@@ -45,6 +45,7 @@ class RedisRefsContainer(RefsContainer):
         self._pending_puts: dict[Ref, bytes] = {}
         self._pending_deletes: set[Ref] = set()
 
+    @override
     def allkeys(self) -> set[Ref]:
         """Return all reference keys.
 
@@ -53,6 +54,7 @@ class RedisRefsContainer(RefsContainer):
         """
         return set(self._refs.keys())
 
+    @override
     def read_loose_ref(self, name: Ref) -> bytes | None:
         """Read a loose reference.
 
@@ -64,6 +66,7 @@ class RedisRefsContainer(RefsContainer):
         """
         return self._refs.get(name)
 
+    @override
     def get_packed_refs(self) -> dict[Ref, ObjectID]:
         """Get packed references.
 
@@ -238,6 +241,7 @@ class RedisRefsContainer(RefsContainer):
             )
         return True
 
+    @override
     def get_peeled(self, name: Ref) -> ObjectID | None:
         """Return the cached peeled value of a ref, if available.
 
@@ -282,6 +286,7 @@ class RedisRefsContainer(RefsContainer):
         self._pending_puts.clear()
         self._pending_deletes.clear()
 
+    @override
     def add_packed_refs(self, new_refs: Mapping[Ref, ObjectID | None]) -> None:
         """Add packed refs (no-op for Redis-based storage).
 
@@ -294,7 +299,8 @@ class RedisRefsContainer(RefsContainer):
             else:
                 self.set_if_equals(name, None, value)
 
-    def pack_refs(self, all: bool = False) -> None:  # noqa: A002
+    @override
+    def pack_refs(self, all: bool = False) -> None:
         """Pack loose refs (no-op for Redis-based storage).
 
         Args:

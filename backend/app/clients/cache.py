@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, override
 
 from redis_fastapi import CacheBackend
 from vercel.cache import RuntimeCacheError
@@ -65,7 +65,8 @@ class AbstractCacheClient(ABC):
 class NoopCacheClient(AbstractCacheClient):
     """Cache that never stores anything."""
 
-    async def get(self, key: str, *, group: str) -> str | None:  # noqa: ARG002
+    @override
+    async def get(self, key: str, *, group: str) -> str | None:
         """Return None.
 
         Args:
@@ -77,6 +78,7 @@ class NoopCacheClient(AbstractCacheClient):
         """
         return None
 
+    @override
     async def set(self, key: str, value: str, *, ttl: int, group: str) -> None:
         """Do nothing.
 
@@ -87,6 +89,7 @@ class NoopCacheClient(AbstractCacheClient):
             group: Group used for bulk invalidation.
         """
 
+    @override
     async def invalidate(self, group: str) -> None:
         """Do nothing.
 
@@ -106,6 +109,7 @@ class RedisCacheClient(AbstractCacheClient):
         """
         self._backend = CacheBackend(redis)
 
+    @override
     async def get(self, key: str, *, group: str) -> str | None:
         """Return a cached value.
 
@@ -119,6 +123,7 @@ class RedisCacheClient(AbstractCacheClient):
         value = await self._backend.get(key, eviction_group=group)
         return value if isinstance(value, str) else None
 
+    @override
     async def set(self, key: str, value: str, *, ttl: int, group: str) -> None:
         """Store a value.
 
@@ -130,6 +135,7 @@ class RedisCacheClient(AbstractCacheClient):
         """
         await self._backend.set(key, value, ttl=ttl, eviction_group=group)
 
+    @override
     async def invalidate(self, group: str) -> None:
         """Drop every entry in a group.
 
@@ -150,6 +156,7 @@ class VercelCacheClient(AbstractCacheClient):
         """
         self._cache = AsyncRuntimeCache(namespace=namespace)
 
+    @override
     async def get(self, key: str, *, group: str) -> str | None:
         """Return a cached value.
 
@@ -167,6 +174,7 @@ class VercelCacheClient(AbstractCacheClient):
             return None
         return value if isinstance(value, str) else None
 
+    @override
     async def set(self, key: str, value: str, *, ttl: int, group: str) -> None:
         """Store a value.
 
@@ -181,6 +189,7 @@ class VercelCacheClient(AbstractCacheClient):
         except (RuntimeCacheError, OSError) as e:
             logger.warning("Vercel cache set failed for %s: %s", key, e)
 
+    @override
     async def invalidate(self, group: str) -> None:
         """Expire every entry tagged with a group.
 

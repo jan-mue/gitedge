@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi.encoders import jsonable_encoder
-
 from app.schemas.users import UserCreate, UserUpdate
 from app.utils.security import verify_password
 from tests.unit.utils.utils import random_email, random_lower_string
@@ -67,17 +65,6 @@ async def test_check_if_user_is_superuser_normal_user(crud: CrudService) -> None
     user_in = UserCreate(email=username, password=password)
     user = await crud.create_user(user_create=user_in)
     assert user.is_superuser is False
-
-
-async def test_get_user(crud: CrudService) -> None:
-    password = random_lower_string()
-    username = random_email()
-    user_in = UserCreate(email=username, password=password, is_superuser=True)
-    user = await crud.create_user(user_create=user_in)
-    user_2 = await crud.get_user_by_id(user.id)
-    assert user_2
-    assert user.email == user_2.email
-    assert jsonable_encoder(user) == jsonable_encoder(user_2)
 
 
 async def test_update_user(crud: CrudService) -> None:

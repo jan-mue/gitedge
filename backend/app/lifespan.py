@@ -14,13 +14,12 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from fastapi import FastAPI
-    from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 class LifespanState(TypedDict):
     """Shared resources created on startup and exposed via ``request.state``."""
 
-    db_engine: AsyncEngine
     db_session_factory: async_sessionmaker[AsyncSession]
 
 
@@ -39,6 +38,5 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[LifespanState]:
             await stack.enter_async_context(redis_lifespan(app))
         engine = await stack.enter_async_context(create_db_engine())
         yield {
-            "db_engine": engine,
             "db_session_factory": create_session_factory(engine),
         }

@@ -134,6 +134,46 @@ per_rule_ignores.DEP002 = [
 ]
 known_first_party = [ "app" ]
 
+[tool.vulture]
+paths = [ "app" ]
+exclude = [ "app/schemas/" ]
+# Declarative and serialization layers expose members that are only ever read
+# dynamically by frameworks (Pydantic, SQLAlchemy, dulwich) or are written purely
+# as API response payloads, so they have no static read site for vulture to see.
+# Log-level enum members are likewise public configuration options.
+ignore_names = [
+    "add_thin_pack",
+    "bare",
+    "commit_timezone",
+    "conflicting_files",
+    "CRITICAL",
+    "DEBUG",
+    "diff_line_count",
+    "ERROR",
+    "mergeable",
+    "merger_id",
+    "metadata",
+    "model_config",
+    "no_newline",
+    "NOTSET",
+    "pack_deletes",
+    "pack_uploads",
+    "reason",
+    "ref_deletes",
+    "ref_puts",
+    "series",
+]
+ignore_decorators = [
+    "@app.*",
+    "@comment_router.*",
+    "@computed_field",
+    "@field_validator",
+    "@model_validator",
+    "@override",
+    "@router.*",
+    "@user_router.*",
+]
+
 [tool.pyproject-fmt]
 column_width = 120
 indent = 4
