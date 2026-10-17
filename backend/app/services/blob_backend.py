@@ -200,7 +200,6 @@ async def load_repository_from_storage(
         if pack_data and idx_data:
             packs[basename] = PackContents(pack=pack_data, index=idx_data)
 
-    # Bound network concurrency to eight reads, even for repositories with many packs.
     pending = list(pack_keys.items())
     for start in range(0, len(pending), 4):
         await asyncio.gather(*(load_pack(basename, key) for basename, key in pending[start : start + 4]))

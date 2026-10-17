@@ -117,7 +117,6 @@ def test_merge_methods_publish_git_and_retain_pr(
     page.get_by_test_id("comment-submit").click()
     expect(page.get_by_test_id("comment-input")).to_have_value("")
     assert page.request.patch(pull_url, headers=_headers(page), data={"state": "open"}).status == 409
-    # Disabling a method is enforced by the server as well as the menu.
     page.goto(f"{app_url}/admin/{name}/settings")
     page.get_by_role("checkbox", name=label, exact=True).uncheck()
     with page.expect_response(
@@ -186,7 +185,6 @@ def test_conflicts_are_reported_before_merging_and_refresh_after_a_push(
         result = page.request.get(f"{url}/mergeability?method={method}").json()
         assert result["mergeable"] is False
         assert result["conflicting_files"] == ["file-0000.py"]
-    # Resolve the branch with Git and push; the old cached conflict must not survive the new head.
     _run_git(source, ["checkout", "feature/review"])
     _run_git(source, ["merge", "-s", "ours", "main", "-m", "Resolve branch conflict"])
     _run_git(source, ["push", "origin", "feature/review"])

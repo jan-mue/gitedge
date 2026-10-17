@@ -588,7 +588,6 @@ def get_comment_service(
     Args:
         comment_store: Comment store dependency.
         issue_store: Issue store dependency.
-        git_merges: Durable Git merge storage adapter.
         pull_request_store: Pull request store dependency.
         repository_store: Repository store dependency.
         activity_service: Activity service dependency.

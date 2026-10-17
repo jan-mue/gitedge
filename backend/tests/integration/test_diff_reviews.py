@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-import time
 from typing import TYPE_CHECKING
 
 import psycopg
@@ -205,7 +203,6 @@ def test_review_lifecycle(page: Page, app_url: str, tmp_path: Path, random_email
         )
     ).to_be_visible()
 
-    # The regular comment API removes review anchors and their replies as one thread.
     anchor_id = reviews[0]["comments"][0]["id"]
     assert page.request.delete(f"{app_url}/api/v1/comments/{anchor_id}", headers=_headers(page)).status == 204
     remaining = page.request.get(f"{pull}/reviews").json()[0]
@@ -219,9 +216,7 @@ def test_large_pr_bounds_rendering_and_fetches(page: Page, app_url: str, tmp_pat
     _, head = _repository(tmp_path / "source", app_url, name, count=500, lines=40)
     _create_pull(page, app_url, name)
     files_url = f"{app_url}/api/v1/repositories/admin/{name}/pulls/1/files?include_diff=false"
-    started = time.perf_counter()
     summary = page.request.get(files_url)
-    summary_ms = (time.perf_counter() - started) * 1000
     assert summary.ok
     assert len(summary.body()) < 250_000
     changes = summary.json()
@@ -229,10 +224,8 @@ def test_large_pr_bounds_rendering_and_fetches(page: Page, app_url: str, tmp_pat
     assert all(not file["diff_loaded"] and file["patch"] == "" and not file["hunks"] for file in changes["files"])
     requested = []
     page.on("request", lambda request: requested.append(request.url) if "/diff-file?" in request.url else None)
-    started = time.perf_counter()
     page.get_by_role("tab", name="Files Changed", exact=False).click()
     expect(page.locator('[data-syntax="literal-number-integer"][data-changed="true"]').first).to_be_visible()
-    first_file_ms = (time.perf_counter() - started) * 1000
     initial_requests = len(requested)
     assert initial_requests < 10
     assert page.locator(".diff-code-row").count() < 500
@@ -263,18 +256,6 @@ def test_large_pr_bounds_rendering_and_fetches(page: Page, app_url: str, tmp_pat
     page.set_viewport_size({"width": 390, "height": 844})
     page.get_by_role("button", name="Wrap lines").click()
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-    print(
-        json.dumps(
-            {
-                "files": 500,
-                "summary_bytes": len(summary.body()),
-                "summary_ms": round(summary_ms),
-                "first_highlighted_file_ms": round(first_file_ms),
-                "initial_file_requests": initial_requests,
-                "dom_nodes": page.locator("*").count(),
-            }
-        )
-    )
 
 
 def test_large_file_preserves_editor_across_virtual_scroll(page: Page, app_url: str, tmp_path: Path) -> None:
@@ -303,7 +284,6 @@ def test_large_file_preserves_editor_across_virtual_scroll(page: Page, app_url: 
     expect(page.get_by_role("dialog")).not_to_be_visible()
     requests: list[str] = []
     page.on("request", lambda request: requests.append(request.url))
-    started = time.perf_counter()
     page.reload()
     thread = page.get_by_role("region", name="Review comment on file-0000.py old line 1", exact=True)
     expect(thread.get_by_text("Keep this draft while scrolling.", exact=True)).to_be_visible()
@@ -311,16 +291,5 @@ def test_large_file_preserves_editor_across_virtual_scroll(page: Page, app_url: 
     assert thread.locator(".diff-code-row").count() <= 4
     assert not any("/diff-file?" in url or url.endswith("/context") for url in requests)
     assert not any(f"/pulls/1/{suffix}" in url for url in requests for suffix in ("files?", "commits?"))
-    ready_ms = round((time.perf_counter() - started) * 1000)
     payload = page.request.get(f"{app_url}/api/v1/repositories/admin/{name}/pulls/1/reviews")
     assert len(payload.body()) < 10_000
-    print(
-        json.dumps(
-            {
-                "scenario": "10000-row-review-conversation",
-                "ready_ms": ready_ms,
-                "review_bytes": len(payload.body()),
-                "git_requests": 0,
-            }
-        )
-    )

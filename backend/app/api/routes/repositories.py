@@ -342,7 +342,7 @@ async def get_pull_request_commits(
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> CommitsPublic:
     """List commits unique to the PR branch, excluding the base's history."""
-    response.headers["Cache-Control"] = "no-store"
+    response.headers["Cache-Control"] = "private, no-cache"
     return await pull_request_service.get_pull_request_commits(owner, repo, number, offset, limit)
 
 

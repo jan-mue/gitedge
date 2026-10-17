@@ -1,7 +1,6 @@
 import type { ReactNode } from "react"
 import type { DiffLine } from "@/client"
 
-/** Renders backend-produced syntax and changed-token ranges without recalculating them. */
 export const DiffCodeRow = ({ line, side, action }: { line: DiffLine; side?: "old" | "new"; action?: ReactNode }) => (
   <div className={`diff-code-row ${side ? "diff-single-side" : ""}`}>
     <div className="diff-line-action">{action}</div>

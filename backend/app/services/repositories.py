@@ -1292,7 +1292,6 @@ class RepositoryService:
             return obj.data if isinstance(obj, Blob) else obj.as_raw_string()
 
         files = []
-        # Copies of the same content share statistics within this comparison.
         statistics: dict[tuple[ObjectID | None, ObjectID | None], tuple[int, int, int, bool]] = {}
         for change in tree_changes(store, old_tree, new_tree):
             old_entry, new_entry = change.old, change.new

@@ -93,7 +93,6 @@ export const PullRequestMergeButton = ({
           queryKey: repositoriesGetPullRequestEventsQueryKey({ path: { owner, repo, number: pull.number } }),
         }),
         client.invalidateQueries({ queryKey: repositoriesListPullRequestsQueryKey({ path: { owner, repo } }) }),
-        // Branches, source and file/commit views must reflect the published Git refs.
         client.invalidateQueries({
           predicate: (query) =>
             query.queryKey.some(

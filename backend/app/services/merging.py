@@ -126,7 +126,6 @@ def calculate_merge(
         reject_conflicts(conflicts, "Merge")
         store.add_object(tree)
         result = commit(tree.id, [base, head] if method == MergeMethod.MERGE else [base], message)
-    # One pack for the entire operation, including all rebased commits.
     if write_objects:
         repo.object_store.add_objects([(pending[sha], None) for sha in pending])
     return MergeResult(base.decode(), head.decode(), result.id.decode())

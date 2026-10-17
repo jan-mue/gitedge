@@ -94,7 +94,9 @@ async def test_merge_graph_messages_and_retained_views(
     assert client.get(f"{pull}/review-workspace", headers=superuser_token_headers).json()["reviewed_paths"] == [
         "code.txt"
     ]
-    assert client.get(f"{pull}/commits").json()["count"] == 2
+    commits = client.get(f"{pull}/commits")
+    assert commits.json()["count"] == 2
+    assert commits.headers["cache-control"] == "private, no-cache"
     assert len(client.get(f"{pull}/files", params={"include_diff": False}).json()["files"]) == 2
     assert client.post(f"{pull}/merge", headers=superuser_token_headers, json={"method": method}).json() == data
     assert len(client.get(f"{pull}/events").json()) == 1
@@ -147,7 +149,6 @@ def test_mergeability_is_read_only_cached_and_tracks_both_tips(
     assert client.get(f"{pull}/mergeability", params={"method": method}).json() == data
     assert calculate.call_count == 1
     assert calculate.call_args.kwargs["write_objects"] is False
-    # Cache entries cannot outlive either branch tip, even without cache eviction.
     changed_base, _, changed_head = seed_merge_repository(fake_stores, OWNER, "repo", conflict=not conflict)
     updated = client.get(f"{pull}/mergeability", params={"method": method}).json()
     assert updated["mergeable"] is conflict
@@ -159,7 +160,6 @@ def test_mergeability_is_read_only_cached_and_tracks_both_tips(
     assert updated_head["base_commit"] == changed_base
     assert updated_head["head_commit"] == first
     assert calculate.call_count == 3
-    # The selected strategy is also part of the calculation key.
     other = "rebase" if method != "rebase" else "merge"
     assert client.get(f"{pull}/mergeability", params={"method": other}).status_code == 200
     assert calculate.call_count == 4
@@ -201,7 +201,6 @@ async def test_rebase_checks_each_commit_even_when_the_combined_diff_merges_clea
     result = client.get(f"{pull}/mergeability", params={"method": "rebase"}).json()
     assert result["mergeable"] is False
     assert result["conflicting_files"] == ["code.txt"]
-    # A successful preflight must not even stage new packs in its local repository.
     git = GitMergeClient(fake_stores.blob, fake_stores.redis, fake_stores.cache, BlobBackend())
     repo = await git.load(OWNER, "repo")
     before = repo.get_pending_changes()
