@@ -26,7 +26,7 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
   - repo: https://github.com/astral-sh/ty-pre-commit
-    rev: 55b90b9b17c398bf664dd80a913668780e29a812 # frozen: v0.0.85
+    rev: ded8634232ffc633dc66d44f1b0dfe2bdf766542 # frozen: v0.0.86
     hooks:
       - id: ty
   - repo: https://github.com/codespell-project/codespell
@@ -60,7 +60,7 @@ repos:
         args: [--fix]
         exclude: CHANGELOG\.md
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 308b7fa26251088f0f2a9ad4a5b5d86e30ac5455 # frozen: 0.12.24
+    rev: 2e145a365871c9fef3715d38b9b7393ce4174c85 # frozen: 0.13.0
     hooks:
       - id: uv-lock
   - repo: https://github.com/fpgmaas/deptry.git
