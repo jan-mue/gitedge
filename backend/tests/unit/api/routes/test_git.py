@@ -10,10 +10,10 @@ from dulwich.pack import write_pack_objects
 from dulwich.protocol import pkt_line
 from starlette.requests import Request
 
-from app.clients.git.dulwich.blob_repository import BlobRepository
-from app.clients.git.dulwich.http import create_wsgi_environ
-from app.clients.git.interfaces import GitHttpRequest
+from app.clients.git.blob_repository import BlobRepository
+from app.clients.git.http import create_wsgi_environ
 from app.clients.git.storage import RepositoryStorage
+from app.clients.git.types import GitHttpRequest
 from app.config import settings
 
 if TYPE_CHECKING:

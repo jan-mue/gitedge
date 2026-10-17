@@ -9,11 +9,11 @@ from dulwich.object_store import MemoryObjectStore, OverlayObjectStore
 from dulwich.objects import Commit, ObjectID
 from fastapi import HTTPException
 
-from app.clients.git.interfaces import MergeResult
+from app.clients.git.types import MergeResult
 from app.schemas.repositories import MergeMessage, MergeMethod
 
 if TYPE_CHECKING:
-    from app.clients.git.dulwich.blob_repository import BlobRepository
+    from app.clients.git.blob_repository import BlobRepository
 
 
 MAX_CONFLICT_PATHS = 10

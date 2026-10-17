@@ -6,15 +6,15 @@ from typing import TYPE_CHECKING
 from dulwich.objects import Blob, Commit, ObjectID, Tree
 from dulwich.refs import Ref
 
-from app.clients.git.dulwich.blob_repository import BlobRepository
-from app.clients.git.dulwich.repositories import DulwichGitClient
+from app.clients.git.blob_repository import BlobRepository
+from app.clients.git.repositories import GitClient
 from app.clients.git.storage import RepositoryStorage
 from app.services.repositories import RepositoryService
 
 if TYPE_CHECKING:
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.cache import AbstractCacheClient
-    from app.clients.git.dulwich.blob_backend import BlobBackend
+    from app.clients.git.blob_backend import BlobBackend
     from app.clients.redis import AbstractRedisClient
     from app.clients.repositories import RepositoryStore
     from app.clients.stars import StarStore
@@ -90,11 +90,5 @@ def build_repository_service(
     async def exists(owner: str, name: str) -> bool:
         return await repository_store.find_by_owner_and_name(owner, name) is not None
 
-    git = DulwichGitClient(backend, RepositoryStorage(blob, redis), cache, exists)
+    git = GitClient(backend, RepositoryStorage(blob, redis), cache, exists)
     return RepositoryService(git, cache, repository_store, star_store)
-
-
-def git_client(service: RepositoryService) -> DulwichGitClient:
-    """Expose native state only in tests that intentionally construct Git graphs."""
-    assert isinstance(service.git, DulwichGitClient)
-    return service.git

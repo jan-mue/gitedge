@@ -12,7 +12,7 @@ from pygments.lexers import TextLexer, get_lexer_for_filename
 from pygments.util import ClassNotFound
 
 from app.schemas.repositories import DiffHunk, DiffLine, DiffRow, DiffToken
-from app.services.diffs import comment_context
+from app.utils.diffs import comment_context
 
 if TYPE_CHECKING:
     from dulwich.object_store import BaseObjectStore

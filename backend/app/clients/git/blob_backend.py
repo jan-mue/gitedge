@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from dulwich.errors import NotGitRepository
 from dulwich.server import Backend
 
-from app.clients.git.dulwich.blob_repository import BlobRepository
+from app.clients.git.blob_repository import BlobRepository
 
 if TYPE_CHECKING:
     from app.types import PackContents, RepositoryChanges

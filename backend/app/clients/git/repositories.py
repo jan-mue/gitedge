@@ -1,4 +1,4 @@
-"""Dulwich browsing adapter; public methods return application schemas."""
+"""Git repository browsing and storage operations."""
 
 from __future__ import annotations
 
@@ -24,10 +24,10 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import TextLexer, get_lexer_for_filename
 from pygments.util import ClassNotFound
 
-from app.clients.git.dulwich.activity import collect_git_activity
-from app.clients.git.dulwich.diffs import enrich_diff
-from app.clients.git.dulwich.http import handle_http
-from app.clients.git_refs import GitRefStore
+from app.clients.git.activity import collect_git_activity
+from app.clients.git.diffs import enrich_diff
+from app.clients.git.http import handle_http
+from app.clients.git.refs import GitRefStore
 from app.config import settings
 from app.schemas.releases import TagInfo, TagsPublic
 from app.schemas.repositories import (
@@ -53,11 +53,11 @@ from app.schemas.repositories import (
     TreeListing,
 )
 from app.schemas.repository_activity import GitActivityHistory
-from app.services.languages import source_language
-from app.services.markdown import render_markdown
 from app.utils.cache_headers import (
     is_commit_sha,
 )
+from app.utils.languages import source_language
+from app.utils.markdown import render_markdown
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Iterator
@@ -65,10 +65,10 @@ if TYPE_CHECKING:
     from dulwich.object_store import BaseObjectStore
 
     from app.clients.cache import AbstractCacheClient
-    from app.clients.git.dulwich.blob_backend import BlobBackend
-    from app.clients.git.dulwich.blob_repository import BlobRepository
-    from app.clients.git.interfaces import GitHttpRequest, GitHttpResponse
+    from app.clients.git.blob_backend import BlobBackend
+    from app.clients.git.blob_repository import BlobRepository
     from app.clients.git.storage import RepositoryStorage
+    from app.clients.git.types import GitHttpRequest, GitHttpResponse
 
 logger = logging.getLogger(__name__)
 
@@ -137,8 +137,8 @@ def repo_key(owner: str, name: str) -> str:
     return f"{owner}/{name}.git"
 
 
-class DulwichGitClient:
-    """Request-scoped Git adapter over shared object and ref storage."""
+class GitClient:
+    """Request-scoped Git client over shared object and ref storage."""
 
     def __init__(
         self,
@@ -209,7 +209,7 @@ class DulwichGitClient:
     @staticmethod
     def _revision_files(repo: BlobRepository, sha: bytes) -> Iterator[tuple[str, ObjectID]]:
         """Iterate file paths and object IDs, skipping submodules and symlinks."""
-        root = DulwichGitClient._get_tree_at_path(repo, sha, "")
+        root = GitClient._get_tree_at_path(repo, sha, "")
         pending = [("", root)]
         while pending:
             prefix, tree = pending.pop()
@@ -227,7 +227,7 @@ class DulwichGitClient:
         """Compute source language shares, total bytes, and reachable commit count."""
         sizes: dict[str, int] = {}
         total = 0
-        for path, blob_sha in DulwichGitClient._revision_files(repo, sha):
+        for path, blob_sha in GitClient._revision_files(repo, sha):
             blob = repo.object_store[blob_sha]
             if not isinstance(blob, Blob):
                 continue
@@ -470,7 +470,7 @@ class DulwichGitClient:
         Raises:
             HTTPException: If the ref is not found.
         """
-        sha = DulwichGitClient._try_resolve_ref(repo, ref_name)
+        sha = GitClient._try_resolve_ref(repo, ref_name)
         if sha is None:
             raise HTTPException(status_code=404, detail=f"Ref '{ref_name}' not found")
         return sha
@@ -639,7 +639,7 @@ class DulwichGitClient:
                     for parent_sha in unchanged_parents:
                         pending.setdefault(parent_sha, set()).add(path)
                 else:
-                    result[path] = DulwichGitClient._get_commit_info(repo, commit.id)
+                    result[path] = GitClient._get_commit_info(repo, commit.id)
                     remaining.remove(path)
             if not remaining:
                 break

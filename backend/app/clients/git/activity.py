@@ -15,7 +15,7 @@ from app.schemas.repository_activity import (
 )
 
 if TYPE_CHECKING:
-    from app.clients.git.dulwich.blob_repository import BlobRepository
+    from app.clients.git.blob_repository import BlobRepository
 
 
 def _line_changes(repo: BlobRepository, commit: Commit) -> tuple[int, int, list[str]]:

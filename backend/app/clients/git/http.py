@@ -7,14 +7,14 @@ from typing import TYPE_CHECKING, Any
 
 from dulwich.web import GunzipFilter, HTTPGitApplication, LimitedInputFilter
 
-from app.clients.git.interfaces import GitHttpResponse
+from app.clients.git.types import GitHttpResponse
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from types import TracebackType
 
-    from app.clients.git.dulwich.blob_backend import BlobBackend
-    from app.clients.git.interfaces import GitHttpRequest
+    from app.clients.git.blob_backend import BlobBackend
+    from app.clients.git.types import GitHttpRequest
 
 
 def create_wsgi_environ(request: GitHttpRequest) -> dict[str, Any]:

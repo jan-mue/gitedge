@@ -20,8 +20,8 @@ from dulwich.rebase import MemoryRebaseStateManager
 from dulwich.refs import HEADREF, LOCAL_BRANCH_PREFIX, Ref
 from dulwich.repo import BaseRepo
 
-from app.clients.git.dulwich.blob_object_store import BlobObjectStore
-from app.clients.git.dulwich.redis_refs import RedisRefsContainer
+from app.clients.git.blob_object_store import BlobObjectStore
+from app.clients.git.redis_refs import RedisRefsContainer
 
 if TYPE_CHECKING:
     from dulwich.index import Index

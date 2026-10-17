@@ -8,7 +8,7 @@ from dulwich.objects import Blob, Commit, Tree
 from dulwich.refs import Ref
 from fastapi import HTTPException
 
-from app.clients.git.dulwich.blob_backend import BlobBackend
+from app.clients.git.blob_backend import BlobBackend
 from app.entities.repositories import Repository
 from app.entities.users import User
 from app.schemas.social import ForkCreate
@@ -27,7 +27,7 @@ from tests.unit.utils.fakes import (
     FakeStarStore,
     FakeUserStore,
 )
-from tests.unit.utils.git import build_repository_service, git_client
+from tests.unit.utils.git import build_repository_service
 
 
 def _setup() -> tuple[FakeRepositoryStore, FakeUserStore, User, User, ForkService, RepositoryService]:
@@ -63,7 +63,7 @@ async def test_fork_repository() -> None:
 
     assert fork.name == "repo"
     assert fork.owner == "alice"
-    assert await git_client(repository_service).storage.redis.get("alice/repo.git/refs/HEAD") is not None
+    assert await repository_service.git.storage.redis.get("alice/repo.git/refs/HEAD") is not None
 
     assert await repository_store.count_by_fork_of(source.id) == 1
     assert fork.forks_count == 0
@@ -102,7 +102,7 @@ async def test_fork_repository_into_same_owner() -> None:
 async def test_fork_copies_persisted_objects_and_refs() -> None:
     repository_store, _users, owner, alice, fork_service, repository_service = _setup()
     await repository_store.add(Repository(name="repo", owner_id=owner.id))
-    repo = await git_client(repository_service).load_repository("owner", "repo")
+    repo = await repository_service.git.load_repository("owner", "repo")
     blob = Blob.from_string(b"fork content\n")
     tree = Tree()
     tree.add(b"file.txt", 0o100644, blob.id)

@@ -5,8 +5,8 @@ import json
 from dataclasses import asdict
 from typing import TYPE_CHECKING
 
-from app.clients.git.interfaces import MergeResult
 from app.clients.git.storage import REF_PREFIX
+from app.clients.git.types import MergeResult
 
 if TYPE_CHECKING:
     import uuid

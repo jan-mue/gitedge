@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Request, Response
 
 from app.api.dependencies import RepositoryServiceDep
-from app.clients.git.interfaces import GitHttpRequest
+from app.clients.git.types import GitHttpRequest
 from app.utils.cache_headers import CACHE_CONTROL_NO_STORE
 
 if TYPE_CHECKING:

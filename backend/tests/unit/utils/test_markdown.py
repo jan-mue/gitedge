@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.markdown import render_markdown
+from app.utils.markdown import render_markdown
 
 
 def test_gfm_features() -> None:

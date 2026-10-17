@@ -1,4 +1,4 @@
-"""Repository metadata and policy over replaceable Git operations."""
+"""Repository metadata and policy using the Git client."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     import uuid
 
     from app.clients.cache import AbstractCacheClient
-    from app.clients.git.interfaces import GitClient
+    from app.clients.git.repositories import GitClient
     from app.clients.repositories import RepositoryStore
     from app.clients.stars import StarStore
     from app.entities.users import User
@@ -73,7 +73,7 @@ async def ensure_repository(
 
 
 class RepositoryService:
-    """Repository metadata and policy, using an interchangeable Git client."""
+    """Repository metadata and policy using the Git client."""
 
     def __init__(
         self,
@@ -82,7 +82,7 @@ class RepositoryService:
         repository_store: RepositoryStore,
         star_store: StarStore,
     ) -> None:
-        """Bind the Git port, metadata stores, and response cache."""
+        """Bind the Git client, metadata stores, and response cache."""
         self.git = git
         self.cache_client = cache_client
         self.repository_store = repository_store

@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from app.entities.activity import Activity, ActivityKind, ActivityTargetType
 from app.schemas.activity import ActivitiesPublic, ActivityPublic
 from app.schemas.repository_activity import ActivityOverview, ActivitySeriesPoint, RepositoryActivityStatistics
-from app.services.repository_activity import aggregate_contributors, aggregate_recent_commits
+from app.utils.repository_activity import aggregate_contributors, aggregate_recent_commits
 
 if TYPE_CHECKING:
     import uuid
