@@ -150,7 +150,7 @@ class VercelCacheClient(AbstractCacheClient):
         """
         self._cache = AsyncRuntimeCache(namespace=namespace)
 
-    async def get(self, key: str, *, group: str) -> str | None:  # noqa: ARG002
+    async def get(self, key: str, *, group: str) -> str | None:
         """Return a cached value.
 
         Args:
@@ -161,7 +161,7 @@ class VercelCacheClient(AbstractCacheClient):
             The cached value, or None on a miss or error.
         """
         try:
-            value = await self._cache.get(key)
+            value = await self._cache.get(f"v2:{group}:{key}")
         except (RuntimeCacheError, OSError) as e:
             logger.warning("Vercel cache get failed for %s: %s", key, e)
             return None
@@ -177,7 +177,7 @@ class VercelCacheClient(AbstractCacheClient):
             group: Group used for bulk invalidation (stored as a cache tag).
         """
         try:
-            await self._cache.set(key, value, {"ttl": ttl, "tags": [group]})
+            await self._cache.set(f"v2:{group}:{key}", value, {"ttl": ttl, "tags": [group]})
         except (RuntimeCacheError, OSError) as e:
             logger.warning("Vercel cache set failed for %s: %s", key, e)
 

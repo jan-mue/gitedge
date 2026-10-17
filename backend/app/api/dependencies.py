@@ -26,7 +26,11 @@ from app.clients.cache import (
 )
 from app.clients.comments import CommentStore, SQLCommentStore
 from app.clients.email import EmailClient, SMTPClient
-from app.clients.git_merges import GitMergeClient
+from app.clients.git.dulwich.blob_backend import BlobBackend
+from app.clients.git.dulwich.merges import DulwichMergeClient
+from app.clients.git.dulwich.repositories import DulwichGitClient
+from app.clients.git.interfaces import GitClient, GitMergeClient
+from app.clients.git.storage import RepositoryStorage
 from app.clients.issues import IssueStore, SQLIssueStore
 from app.clients.organizations import OrganizationStore, SQLOrganizationStore
 from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
@@ -41,7 +45,6 @@ from app.config import settings
 from app.entities.users import User
 from app.schemas.token import TokenPayload
 from app.services.activity import ActivityService
-from app.services.blob_backend import BlobBackend
 from app.services.comments import CommentService
 from app.services.crud import CrudService
 from app.services.forks import ForkService
@@ -318,28 +321,32 @@ def get_star_store(session: SessionDep) -> StarStore:
 StarStoreDep = Annotated[StarStore, Depends(get_star_store)]
 
 
-def get_repository_service(
+def get_git_client(
     backend: BackendDep,
     blob_client: BlobStorageClientDep,
     redis_client: RedisClientDep,
     cache_client: CacheClientDep,
     repository_store: RepositoryStoreDep,
+) -> GitClient:
+    """Select the Git engine independently from the S3/Blob provider."""
+
+    async def exists(owner: str, name: str) -> bool:
+        return await repository_store.find_by_owner_and_name(owner, name) is not None
+
+    return DulwichGitClient(backend, RepositoryStorage(blob_client, redis_client), cache_client, exists)
+
+
+GitClientDep = Annotated[GitClient, Depends(get_git_client)]
+
+
+def get_repository_service(
+    git: GitClientDep,
+    cache_client: CacheClientDep,
+    repository_store: RepositoryStoreDep,
     star_store: StarStoreDep,
 ) -> RepositoryService:
-    """Get the repository service dependency.
-
-    Args:
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
-        redis_client: Redis client dependency.
-        cache_client: Cache client dependency.
-        repository_store: Repository store dependency.
-        star_store: Star store dependency.
-
-    Returns:
-        Repository service instance.
-    """
-    return RepositoryService(backend, blob_client, redis_client, cache_client, repository_store, star_store)
+    """Wire metadata policy to the selected Git implementation."""
+    return RepositoryService(git, cache_client, repository_store, star_store)
 
 
 RepositoryServiceDep = Annotated[RepositoryService, Depends(get_repository_service)]
@@ -481,7 +488,7 @@ def get_git_merge_client(
     blob: BlobStorageClientDep, redis: RedisClientDep, cache: CacheClientDep, backend: BackendDep
 ) -> GitMergeClient:
     """Create the merge storage adapter."""
-    return GitMergeClient(blob, redis, cache, backend)
+    return DulwichMergeClient(blob, redis, cache, backend)
 
 
 GitMergeClientDep = Annotated[GitMergeClient, Depends(get_git_merge_client)]

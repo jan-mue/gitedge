@@ -89,12 +89,14 @@ class VercelBlobClient(BlobStorageClient):
             access=self._access,
             content_type="application/octet-stream",
             add_random_suffix=False,
+            # Git pack/index keys are content-addressed and never overwritten.
+            cache_control_max_age=31536000,
         )
 
     async def get(self, key: str) -> bytes | None:
         """Retrieve binary data from Vercel Blob Storage."""
         try:
-            result = await self._client.get(key, access=self._access)
+            result = await self._client.get(key, access=self._access, use_cache=True)
         except BlobNotFoundError:
             logger.debug("Blob not found: %s", key)
             return None
@@ -111,8 +113,16 @@ class VercelBlobClient(BlobStorageClient):
 
     async def list_keys(self, prefix: str) -> list[str]:
         """List all keys with the given prefix in Vercel Blob Storage."""
-        listing = await self._client.list_objects(prefix=prefix)
-        return [blob.pathname for blob in listing.blobs]
+        keys: list[str] = []
+        cursor = None
+        while True:
+            listing = await self._client.list_objects(prefix=prefix, cursor=cursor, limit=1000)
+            keys.extend(blob.pathname for blob in listing.blobs)
+            if not listing.has_more:
+                return keys
+            if not listing.cursor:
+                raise ValueError("Blob listing has more results but no pagination cursor")
+            cursor = listing.cursor
 
 
 class S3Client(BlobStorageClient):
