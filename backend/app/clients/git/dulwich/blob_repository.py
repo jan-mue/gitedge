@@ -20,8 +20,8 @@ from dulwich.rebase import MemoryRebaseStateManager
 from dulwich.refs import HEADREF, LOCAL_BRANCH_PREFIX, Ref
 from dulwich.repo import BaseRepo
 
-from app.services.blob_object_store import BlobObjectStore
-from app.services.redis_refs import RedisRefsContainer
+from app.clients.git.dulwich.blob_object_store import BlobObjectStore
+from app.clients.git.dulwich.redis_refs import RedisRefsContainer
 
 if TYPE_CHECKING:
     from dulwich.index import Index
@@ -129,8 +129,8 @@ class BlobRepository(BaseRepo):
         return {
             "pack_uploads": self._object_store.get_pending_uploads(),
             "pack_deletes": self._object_store.get_pending_deletes(),
-            "ref_puts": self._refs.get_pending_puts(),
-            "ref_deletes": self._refs.get_pending_deletes(),
+            "ref_puts": {bytes(ref): value for ref, value in self._refs.get_pending_puts().items()},
+            "ref_deletes": {bytes(ref) for ref in self._refs.get_pending_deletes()},
         }
 
     def clear_pending_changes(self) -> None:
