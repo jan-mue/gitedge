@@ -9,6 +9,7 @@ import pytest
 from app.config import settings
 from app.schemas.repositories import CommitFileChange, CompareResult, DiffHunk, DiffLine, DiffToken
 from app.services.repositories import RepositoryService
+from tests.unit.utils.git import seed_merge_repository
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -188,8 +189,13 @@ def test_empty_comment_review_is_rejected(
 
 
 def test_replies_persist_on_their_thread_after_merging(
-    client: TestClient, pull: str, normal_user_token_headers: dict[str, str], superuser_token_headers: dict[str, str]
+    client: TestClient,
+    pull: str,
+    normal_user_token_headers: dict[str, str],
+    superuser_token_headers: dict[str, str],
+    fake_stores: FakeStores,
 ) -> None:
+    seed_merge_repository(fake_stores, OWNER, "repo")
     review = client.post(
         f"{pull}/reviews", headers=normal_user_token_headers, json={**DRAFT, "state": "comment"}
     ).json()
@@ -199,7 +205,7 @@ def test_replies_persist_on_their_thread_after_merging(
     )
     assert line.status_code == 201
     assert "<strong>Agreed</strong>" in line.json()["body_html"]
-    client.patch(pull, headers=superuser_token_headers, json={"state": "merged"})
+    assert client.patch(pull, headers=superuser_token_headers, json={"state": "merged"}).status_code == 200
     overall = client.post(replies, headers=normal_user_token_headers, json={"body": "Thanks for merging."})
     assert overall.status_code == 201
     published = client.get(f"{pull}/reviews").json()[0]
@@ -231,8 +237,13 @@ def test_invalid_replies_are_rejected(
 
 
 def test_replies_require_authentication_and_belong_to_the_requested_pr(
-    client: TestClient, pull: str, normal_user_token_headers: dict[str, str], superuser_token_headers: dict[str, str]
+    client: TestClient,
+    pull: str,
+    normal_user_token_headers: dict[str, str],
+    superuser_token_headers: dict[str, str],
+    fake_stores: FakeStores,
 ) -> None:
+    seed_merge_repository(fake_stores, OWNER, "repo")
     review = client.post(
         f"{pull}/reviews", headers=normal_user_token_headers, json={**DRAFT, "state": "comment"}
     ).json()

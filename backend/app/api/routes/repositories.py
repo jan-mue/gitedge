@@ -28,6 +28,7 @@ from app.schemas.repositories import (
     IssuesListPublic,
     IssueUpdate,
     PullRequestCreate,
+    PullRequestMerge,
     PullRequestPublic,
     PullRequestsListPublic,
     PullRequestUpdate,
@@ -356,6 +357,19 @@ async def get_pull_request_files(
     result = await pull_request_service.get_pull_request_files(owner, repo, number, include_diff=include_diff)
     response.headers["Cache-Control"] = "no-store"
     return result
+
+
+@router.post("/{owner}/{repo}/pulls/{number}/merge")
+async def merge_pull_request(
+    owner: str,
+    repo: str,
+    number: int,
+    body: PullRequestMerge,
+    pull_request_service: PullRequestServiceDep,
+    current_user: CurrentUser,
+) -> PullRequestPublic:
+    """Merge Git history and record the PR state only after successful publication."""
+    return await pull_request_service.merge_pull_request(owner, repo, number, body, current_user)
 
 
 @router.patch("/{owner}/{repo}/pulls/{number}")

@@ -1,5 +1,6 @@
 """Redis client for Git ref storage."""
 
+import json
 from abc import ABC, abstractmethod
 
 import redis.asyncio as aioredis
@@ -7,9 +8,25 @@ from upstash_redis.asyncio import Redis
 
 from app.config import settings
 
+_PUBLISH_MERGE = """
+if redis.call('EXISTS', KEYS[6]) == 1 then return 0 end
+if redis.call('GET', KEYS[1]) ~= ARGV[1] or redis.call('GET', KEYS[2]) ~= ARGV[2] then return 0 end
+redis.call('SET', KEYS[1], ARGV[3])
+redis.call('SET', KEYS[3], ARGV[1])
+redis.call('SET', KEYS[4], ARGV[2])
+redis.call('SET', KEYS[5], ARGV[3])
+redis.call('SET', KEYS[6], ARGV[5])
+if ARGV[4] == '1' then redis.call('DEL', KEYS[2]) end
+return 1
+"""
+
 
 class AbstractRedisClient(ABC):
     """Abstract base class for Redis operations."""
+
+    @abstractmethod
+    async def publish_merge(self, keys: list[str], base: str, head: str, commit: str, delete_branch: bool) -> bool:
+        """Atomically verify both branch tips, archive PR revisions and advance the base."""
 
     @abstractmethod
     async def get(self, key: str) -> bytes | None:
@@ -34,6 +51,21 @@ class RedisClient(AbstractRedisClient):
     def __init__(self) -> None:
         """Initialize the standard Redis client."""
         self._client = aioredis.from_url(settings.REDIS_URL, password=settings.REDIS_PASSWORD, decode_responses=False)
+
+    async def publish_merge(self, keys: list[str], base: str, head: str, commit: str, delete_branch: bool) -> bool:
+        """Publish a merge with a single Redis compare-and-swap script."""
+        return bool(
+            await self._client.eval(
+                _PUBLISH_MERGE,
+                len(keys),
+                *keys,
+                base,
+                head,
+                commit,
+                "1" if delete_branch else "0",
+                json.dumps({"base": base, "head": head, "commit": commit}),
+            )
+        )
 
     async def get(self, key: str) -> bytes | None:
         """Get a value from Redis."""
@@ -69,6 +101,22 @@ class UpstashRedisClient(AbstractRedisClient):
     def __init__(self) -> None:
         """Initialize the Upstash Redis client."""
         self._client = Redis(url=settings.REDIS_URL or "", token=settings.REDIS_PASSWORD or "")
+
+    async def publish_merge(self, keys: list[str], base: str, head: str, commit: str, delete_branch: bool) -> bool:
+        """Publish a merge with a single Redis compare-and-swap script."""
+        return bool(
+            await self._client.eval(
+                _PUBLISH_MERGE,
+                keys=keys,
+                args=[
+                    base,
+                    head,
+                    commit,
+                    "1" if delete_branch else "0",
+                    json.dumps({"base": base, "head": head, "commit": commit}),
+                ],
+            )
+        )
 
     async def get(self, key: str) -> bytes | None:
         """Get a value from Redis."""

@@ -10,11 +10,14 @@ import {
   handleRepositoriesGetPullRequestCommits,
   handleRepositoriesGetPullRequestEvents,
   handleRepositoriesGetPullRequestFiles,
+  handleRepositoriesGetRepository,
+  handleRepositoriesMergePullRequest,
   handleReviewsGetCommentContext,
   handleReviewsGetWorkspace,
   handleReviewsListReviews,
   handleReviewsReplyToReview,
   handleReviewsSaveDraft,
+  handleUsersReadUserMe,
   handleUtilsPreviewMarkdown,
 } from "@/client/msw.gen"
 import { repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
@@ -266,4 +269,37 @@ export const ReviewDiscussion: Story = {
       ],
     },
   },
+}
+
+export const MergeMethods: Story = {
+  beforeEach: () => {
+    const previous = localStorage.getItem("access_token")
+    localStorage.setItem("access_token", "storybook-session")
+    return () => {
+      if (previous === null) localStorage.removeItem("access_token")
+      else localStorage.setItem("access_token", previous)
+    }
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        handleUsersReadUserMe({ body: { id: "owner", name: "jan-mue", email: "jan@example.com", is_active: true } }),
+        handleRepositoriesGetRepository({
+          body: {
+            owner: "jan-mue",
+            name: "gitedge",
+            default_branch: "main",
+            allow_merge_commit: true,
+            allow_squash_merge: true,
+            allow_rebase_merge: true,
+            created_at: "2026-10-01T00:00:00Z",
+            updated_at: "2026-10-01T00:00:00Z",
+          },
+        }),
+        handleRepositoriesMergePullRequest({ body: { ...pull, state: "merged", has_merged: true } }),
+        ...meta.parameters.msw.handlers,
+      ],
+    },
+  },
+  render: () => <PullRequestDetailView owner="jan-mue" repo="gitedge" prNumber={1} />,
 }

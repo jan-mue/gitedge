@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import fnmatch
+import json
 import logging
 import uuid
 from dataclasses import dataclass
@@ -94,6 +95,21 @@ class FakeRedisClient(AbstractRedisClient):
     def __init__(self) -> None:
         """Initialize the client."""
         self.values: dict[str, bytes] = {}
+
+    async def publish_merge(self, keys: list[str], base: str, head: str, commit: str, delete_branch: bool) -> bool:
+        """Mirror the atomic publication script without yielding between checks and writes."""
+        if (
+            keys[4] in self.values
+            or self.values.get(keys[0]) != base.encode()
+            or self.values.get(keys[1]) != head.encode()
+        ):
+            return False
+        for key, value in zip([keys[0], keys[2], keys[3], keys[4]], [commit, base, head, commit], strict=True):
+            self.values[key] = value.encode()
+        self.values[keys[5]] = json.dumps({"base": base, "head": head, "commit": commit}).encode()
+        if delete_branch:
+            self.values.pop(keys[1], None)
+        return True
 
     async def get(self, key: str) -> bytes | None:
         """Get a value from Redis."""

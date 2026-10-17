@@ -39,6 +39,7 @@ import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 import { PullRequestCommits } from "./PullRequestCommits"
 import { PullRequestConversation } from "./PullRequestConversation"
+import { PullRequestMergeButton } from "./PullRequestMergeButton"
 
 const stateBadge = (state: string) => {
   if (state === "merged") {
@@ -218,7 +219,8 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
           <div className="flex flex-wrap items-center gap-2">
             {stateBadge(pull.state)}
             <p className="text-sm text-muted-foreground">
-              <strong className="font-medium text-foreground">{pull.author_username}</strong> wants to merge{" "}
+              <strong className="font-medium text-foreground">{pull.author_username}</strong>{" "}
+              {pull.state === "merged" ? "merged" : "wants to merge"}{" "}
               {commitsQuery.data ? `${commitsQuery.data.count} commits` : "changes"} from{" "}
               <code className="rounded bg-primary/10 px-1 py-0.5 text-xs text-primary">{pull.head_branch}</code> into{" "}
               <code className="rounded bg-primary/10 px-1 py-0.5 text-xs text-primary">{pull.base_branch}</code>
@@ -269,22 +271,7 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
             username={user?.name}
             reviews={reviewsQuery.data ?? []}
             changes={changes}
-            mergeActions={
-              isOpen ? (
-                <Button
-                  size="compact"
-                  variant="success"
-                  disabled={mutation.isPending}
-                  onClick={() =>
-                    mutation.mutate({ path: { owner, repo, number: prNumber }, body: { state: "merged" } })
-                  }
-                  data-testid="merge-pr"
-                >
-                  <GitMerge className="size-4" />
-                  Create merge commit
-                </Button>
-              ) : null
-            }
+            mergeActions={isOpen ? <PullRequestMergeButton owner={owner} repo={repo} pull={pull} /> : null}
             closeActions={
               pull.state !== "merged" ? (
                 <Button

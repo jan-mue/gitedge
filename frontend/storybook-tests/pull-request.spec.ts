@@ -242,3 +242,16 @@ test("conversation loads without inactive Git tabs and review replies stay in th
   await expect(thread.getByRole("textbox", { name: "Reply to review comment" })).toHaveCount(0)
   await page.screenshot({ path: `visual-review/pr-thread-replies-${testInfo.project.name}.png`, fullPage: true })
 })
+
+test("PR merge dropdown supports all strategies with clear descriptions", async ({ page }, testInfo) => {
+  const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"
+  await page.goto(
+    `/iframe.html?id=patterns-repository-pull-request-detail--merge-methods&viewMode=story&globals=theme:${theme}`,
+  )
+  await expect(page.getByTestId("merge-pr")).toBeEnabled()
+  await page.getByRole("button", { name: "Choose merge method" }).click()
+  await expect(page.getByRole("menuitem")).toHaveCount(3)
+  await page.getByRole("menuitem").filter({ hasText: "Squash and merge" }).click()
+  await expect(page.getByTestId("merge-pr")).toHaveText("Squash and merge")
+  await page.screenshot({ path: `visual-review/pr-merge-dropdown-${testInfo.project.name}.png`, fullPage: true })
+})

@@ -26,6 +26,10 @@ class PullRequestStore(CrudStore[PullRequest], ABC):
     async def get_by_number(self, repo_id: uuid.UUID, number: int) -> PullRequest:
         """Get a pull request by repository id and number, raising when absent."""
 
+    async def get_for_merge(self, repo_id: uuid.UUID, number: int) -> PullRequest:
+        """Resolve a PR; database implementations lock it until the state is saved."""
+        return await self.get_by_number(repo_id, number)
+
     @abstractmethod
     async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[PullRequest]:
         """List pull requests for a repository, newest first."""
@@ -64,6 +68,19 @@ class SQLPullRequestStore(PullRequestStore, SQLStore[PullRequest]):
         if pull_request is None:
             raise PullRequestNotFoundError
         return pull_request
+
+    async def get_for_merge(self, repo_id: uuid.UUID, number: int) -> PullRequest:
+        """Serialize merges of a PR, including recovery after Git publication."""
+        pull = await self.db.scalar(
+            select(PullRequest)
+            .options(joinedload(PullRequest.author))
+            .where(PullRequest.repo_id == repo_id, PullRequest.number == number)
+            .with_for_update(of=PullRequest.__table__)
+            .execution_options(populate_existing=True)
+        )
+        if pull is None:
+            raise PullRequestNotFoundError
+        return pull
 
     async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[PullRequest]:
         """List pull requests for a repository, newest first."""

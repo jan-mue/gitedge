@@ -58,7 +58,11 @@ class ReviewService:
 
     async def _comparison(self, owner: str, repo: str, pull: PullRequest) -> CompareResult:
         return await self.repository_service.compare(
-            owner, repo, pull.base_branch, pull.head_branch, include_diff=False
+            owner,
+            repo,
+            pull.merge_base or pull.base_branch,
+            pull.merged_head_commit or pull.head_branch,
+            include_diff=False,
         )
 
     @staticmethod
@@ -136,7 +140,10 @@ class ReviewService:
         reviews = await self.store.list_reviews(pull.id)
         if not reviews:
             return []
-        base, head = await self.repository_service.branch_heads(owner, repo, pull.base_branch, pull.head_branch)
+        if pull.merged_head_commit and pull.merge_base:
+            base, head = pull.merge_base, pull.merged_head_commit
+        else:
+            base, head = await self.repository_service.branch_heads(owner, repo, pull.base_branch, pull.head_branch)
         return [
             self._public(review).model_copy(
                 update={

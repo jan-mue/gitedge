@@ -35,12 +35,16 @@ export const ReviewReplies = ({
     },
   })
   return (
-    <fieldset className="min-w-0 border-t border-border" aria-label="Review replies">
+    <fieldset className="min-w-0 border-t border-border bg-secondary/20" aria-label="Review replies">
       {(review.replies ?? [])
         .filter((reply) => (reply.comment_index ?? null) === commentIndex)
         .map((reply) => (
-          <div key={reply.id} className="border-b border-border" data-testid={`review-reply-${reply.id}`}>
-            <ConversationCard author={reply.author_username} date={reply.created_at} embedded>
+          <div
+            key={reply.id}
+            className="ml-3 border-l-2 border-primary/25 border-b border-b-border sm:ml-5"
+            data-testid={`review-reply-${reply.id}`}
+          >
+            <ConversationCard author={reply.author_username} date={reply.created_at} embedded reply>
               <MarkdownContent html={reply.body_html} />
             </ConversationCard>
           </div>
@@ -86,7 +90,7 @@ export const ReviewReplies = ({
       ) : (
         <div className="flex justify-end bg-secondary/30 px-3 py-2">
           {username ? (
-            <Button size="compact" variant="repository" onClick={() => setOpen(true)}>
+            <Button size="compact" variant="default" onClick={() => setOpen(true)}>
               <Reply className="size-3.5" /> Reply
             </Button>
           ) : (

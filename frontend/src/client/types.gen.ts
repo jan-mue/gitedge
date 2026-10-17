@@ -928,6 +928,20 @@ export type LanguageStatistic = {
 };
 
 /**
+ * MergeMessage
+ *
+ * Repository commit message templates.
+ */
+export type MergeMessage = 'default' | 'title' | 'title_description' | 'title_commits';
+
+/**
+ * MergeMethod
+ *
+ * Supported Git history strategies.
+ */
+export type MergeMethod = 'merge' | 'squash' | 'rebase';
+
+/**
  * NewPassword
  *
  * Schema for password reset with token.
@@ -1081,6 +1095,19 @@ export type PullRequestCreate = {
      * Base Branch
      */
     base_branch?: string;
+};
+
+/**
+ * PullRequestMerge
+ *
+ * Merge the expected PR revision using an enabled strategy.
+ */
+export type PullRequestMerge = {
+    method?: MergeMethod;
+    /**
+     * Head Commit
+     */
+    head_commit?: string | null;
 };
 
 /**
@@ -1368,6 +1395,25 @@ export type RepositoriesPublic = {
  */
 export type Repository = {
     /**
+     * Allow Merge Commit
+     */
+    allow_merge_commit?: boolean;
+    /**
+     * Allow Squash Merge
+     */
+    allow_squash_merge?: boolean;
+    /**
+     * Allow Rebase Merge
+     */
+    allow_rebase_merge?: boolean;
+    merge_commit_message?: MergeMessage;
+    squash_commit_message?: MergeMessage;
+    rebase_commit_message?: MergeMessage;
+    /**
+     * Delete Branch On Merge
+     */
+    delete_branch_on_merge?: boolean;
+    /**
      * Name
      */
     name: string;
@@ -1533,6 +1579,25 @@ export type RepositoryStatistics = {
  * Editable repository settings.
  */
 export type RepositoryUpdate = {
+    /**
+     * Allow Merge Commit
+     */
+    allow_merge_commit?: boolean | null;
+    /**
+     * Allow Squash Merge
+     */
+    allow_squash_merge?: boolean | null;
+    /**
+     * Allow Rebase Merge
+     */
+    allow_rebase_merge?: boolean | null;
+    merge_commit_message?: MergeMessage | null;
+    squash_commit_message?: MergeMessage | null;
+    rebase_commit_message?: MergeMessage | null;
+    /**
+     * Delete Branch On Merge
+     */
+    delete_branch_on_merge?: boolean | null;
     /**
      * Name
      */
@@ -4667,6 +4732,44 @@ export type repositoriesGetPullRequestFilesResponses = {
 };
 
 export type repositoriesGetPullRequestFilesResponse = repositoriesGetPullRequestFilesResponses[keyof repositoriesGetPullRequestFilesResponses];
+
+export type repositoriesMergePullRequestData = {
+    body: PullRequestMerge;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/merge';
+};
+
+export type repositoriesMergePullRequestErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type repositoriesMergePullRequestError = repositoriesMergePullRequestErrors[keyof repositoriesMergePullRequestErrors];
+
+export type repositoriesMergePullRequestResponses = {
+    /**
+     * Successful Response
+     */
+    200: PullRequestPublic;
+};
+
+export type repositoriesMergePullRequestResponse = repositoriesMergePullRequestResponses[keyof repositoriesMergePullRequestResponses];
 
 export type repositoriesCompareRevisionsData = {
     body?: never;

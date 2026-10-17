@@ -327,7 +327,7 @@ export const ReviewTimeline = ({
 }) => (
   <div className="space-y-4">
     {reviews.map((review) => (
-      <div key={review.id} data-testid={`review-${review.id}`} className="space-y-3">
+      <div key={review.id} data-testid={`review-${review.id}`} className="space-y-4">
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 py-1 text-sm text-muted-foreground">
           <strong className="font-medium text-foreground">{review.author_username}</strong>
           <span>{stateLabel[review.state]}</span>

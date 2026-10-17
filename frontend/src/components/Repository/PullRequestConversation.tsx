@@ -12,6 +12,7 @@ import {
   ConversationItem,
   MarkdownContent,
   ReviewStatusIcon,
+  Link as RouterLink,
 } from "@/components/design-system"
 import CommentsSection from "./CommentsSection"
 import { ReviewTimeline } from "./PullRequestFiles"
@@ -108,13 +109,30 @@ export const PullRequestConversation = ({
                   data-testid={`pr-event-${event.kind}`}
                 >
                   <strong className="font-medium text-foreground">{event.actor_username}</strong>
-                  <span>
-                    {event.kind === "pull_request_merge"
-                      ? "merged this pull request"
-                      : event.kind === "pull_request_close"
-                        ? "closed this pull request"
-                        : "reopened this pull request"}
-                  </span>
+                  {event.kind === "pull_request_merge" && pull.merged_commit_id ? (
+                    <>
+                      <span>merged commit</span>
+                      <RouterLink
+                        to="/$owner/$repo/commit/$hash"
+                        params={{ owner, repo, hash: pull.merged_commit_id }}
+                        appearance="muted"
+                      >
+                        <code className="rounded border border-border bg-secondary px-1.5 py-0.5 text-xs">
+                          {pull.merged_commit_id.slice(0, 10)}
+                        </code>
+                      </RouterLink>
+                      <span>into</span>
+                      <code className="rounded bg-secondary px-1 text-xs">{pull.base_branch}</code>
+                    </>
+                  ) : (
+                    <span>
+                      {event.kind === "pull_request_merge"
+                        ? "merged this pull request"
+                        : event.kind === "pull_request_close"
+                          ? "closed this pull request"
+                          : "reopened this pull request"}
+                    </span>
+                  )}
                   <time dateTime={event.created_at}>{new Date(event.created_at).toLocaleString()}</time>
                 </div>
               ),

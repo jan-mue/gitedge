@@ -42,6 +42,7 @@ from app.schemas.repositories import (
     FileContent,
     FileIndex,
     LanguageStatistic,
+    MergeSettings,
     ReadmeContent,
     RepositoriesPublic,
     Repository,
@@ -304,6 +305,7 @@ class RepositoryService:
             The public repository representation.
         """
         repository = Repository(
+            **{key: getattr(entity, key) for key in MergeSettings.model_fields},
             name=entity.name,
             owner=entity.owner.name,
             description=entity.description,
@@ -461,7 +463,7 @@ class RepositoryService:
             data = await self.blob_client.get(key)
             if data is not None:
                 await self.blob_client.put(destination + key[len(source) :], data)
-        for key in await self.redis_client.scan_keys(f"{source}/refs/*"):
+        for key in await self.redis_client.scan_keys(f"{source}/*"):
             value = await self.redis_client.get(key)
             if value is not None:
                 await self.redis_client.set(destination + key[len(source) :], value)
@@ -478,7 +480,7 @@ class RepositoryService:
         """Remove a repository's objects and refs without touching similarly named repositories."""
         for blob_key in await self.blob_client.list_keys(f"{key}/"):
             await self.blob_client.delete(blob_key)
-        for ref_key in await self.redis_client.scan_keys(f"{key}/refs/*"):
+        for ref_key in await self.redis_client.scan_keys(f"{key}/*"):
             await self.redis_client.delete(ref_key)
 
     async def delete_repository(self, owner: str, name: str, user: User) -> None:

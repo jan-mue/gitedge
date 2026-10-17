@@ -26,6 +26,7 @@ from app.clients.cache import (
 )
 from app.clients.comments import CommentStore, SQLCommentStore
 from app.clients.email import EmailClient, SMTPClient
+from app.clients.git_merges import GitMergeClient
 from app.clients.issues import IssueStore, SQLIssueStore
 from app.clients.organizations import OrganizationStore, SQLOrganizationStore
 from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
@@ -476,7 +477,18 @@ def get_issue_service(
 IssueServiceDep = Annotated[IssueService, Depends(get_issue_service)]
 
 
+def get_git_merge_client(
+    blob: BlobStorageClientDep, redis: RedisClientDep, cache: CacheClientDep, backend: BackendDep
+) -> GitMergeClient:
+    """Create the merge storage adapter."""
+    return GitMergeClient(blob, redis, cache, backend)
+
+
+GitMergeClientDep = Annotated[GitMergeClient, Depends(get_git_merge_client)]
+
+
 def get_pull_request_service(
+    git_merges: GitMergeClientDep,
     pull_request_store: PullRequestStoreDep,
     repository_store: RepositoryStoreDep,
     repository_service: RepositoryServiceDep,
@@ -485,6 +497,7 @@ def get_pull_request_service(
     """Get the pull request service dependency.
 
     Args:
+        git_merges: Durable Git merge storage adapter.
         pull_request_store: Pull request store dependency.
         repository_store: Repository store dependency.
         repository_service: Repository service dependency.
@@ -493,7 +506,7 @@ def get_pull_request_service(
     Returns:
         Pull request service instance.
     """
-    return PullRequestService(pull_request_store, repository_store, repository_service, activity_service)
+    return PullRequestService(pull_request_store, repository_store, repository_service, activity_service, git_merges)
 
 
 PullRequestServiceDep = Annotated[PullRequestService, Depends(get_pull_request_service)]
@@ -575,6 +588,7 @@ def get_comment_service(
     Args:
         comment_store: Comment store dependency.
         issue_store: Issue store dependency.
+        git_merges: Durable Git merge storage adapter.
         pull_request_store: Pull request store dependency.
         repository_store: Repository store dependency.
         activity_service: Activity service dependency.

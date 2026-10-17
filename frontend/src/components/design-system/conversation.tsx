@@ -20,7 +20,7 @@ export const ConversationItem = ({
 }) => (
   <div
     data-timeline-item={terminal ? "composer" : "event"}
-    className={`relative pb-4 sm:pl-10 before:absolute before:left-[19px] before:top-0 before:hidden before:w-0.5 before:bg-border sm:before:block ${
+    className={`relative pb-6 sm:pl-10 before:absolute before:left-[19px] before:top-0 before:hidden before:w-0.5 before:bg-border sm:before:block ${
       terminal
         ? "before:h-[25px] after:absolute after:left-[19px] after:top-[25px] after:hidden after:h-0.5 after:w-[21px] after:bg-border sm:after:block"
         : "before:bottom-0"
@@ -46,6 +46,7 @@ export const ConversationCard = ({
   actions,
   children,
   embedded = false,
+  reply = false,
 }: {
   author: string
   date: string
@@ -53,17 +54,25 @@ export const ConversationCard = ({
   actions?: ReactNode
   children: ReactNode
   embedded?: boolean
+  reply?: boolean
 }) => (
-  <article className={embedded ? "overflow-hidden bg-card" : "overflow-hidden rounded-lg border border-border bg-card"}>
-    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-secondary px-3 py-2.5 sm:px-4">
+  <article
+    className={
+      embedded ? "overflow-hidden bg-card" : "overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+    }
+  >
+    <header
+      className={`flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 sm:px-4 ${reply ? "bg-secondary/50 py-2" : "bg-secondary py-2.5"}`}
+    >
       <div className="flex min-w-0 items-center gap-2">
         <span
           aria-hidden="true"
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-foreground"
+          className={`flex shrink-0 items-center justify-center rounded-full bg-accent font-medium text-accent-foreground ${reply ? "size-6 text-xs" : "size-8 text-sm"}`}
         >
           {author.charAt(0).toUpperCase()}
         </span>
         <strong className="truncate text-sm font-medium">{author}</strong>
+        <span className="hidden text-xs text-muted-foreground sm:inline">{reply ? "replied" : "commented"}</span>
         <time dateTime={date} className="truncate text-xs text-muted-foreground">
           {new Date(date).toLocaleString()}
         </time>
@@ -75,6 +84,6 @@ export const ConversationCard = ({
         {actions}
       </div>
     </header>
-    <div className="px-4 py-4 text-sm">{children}</div>
+    <div className={reply ? "px-4 py-3 text-sm sm:px-6" : "px-4 py-4 text-sm sm:px-6"}>{children}</div>
   </article>
 )

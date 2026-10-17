@@ -34,6 +34,16 @@ class Repository(Base):
         UUID(as_uuid=True), ForeignKey("repository.id"), nullable=True, index=True
     )
 
+    allow_merge_commit: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    allow_squash_merge: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    allow_rebase_merge: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    merge_commit_message: Mapped[str] = mapped_column(String(32), default="default", server_default="default")
+    squash_commit_message: Mapped[str] = mapped_column(
+        String(32), default="title_description", server_default="title_description"
+    )
+    rebase_commit_message: Mapped[str] = mapped_column(String(32), default="default", server_default="default")
+    delete_branch_on_merge: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
     owner: Mapped["Principal"] = relationship(back_populates="repositories")
     fork_of: Mapped["Repository | None"] = relationship(remote_side="Repository.id", back_populates="forks")
     forks: Mapped[list["Repository"]] = relationship(back_populates="fork_of")

@@ -26,6 +26,7 @@ class PullRequest(Issue):
     head_branch: Mapped[str] = mapped_column(String(255), nullable=False)
     base_branch: Mapped[str] = mapped_column(String(255), nullable=False, default="main")
     merge_base: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    merged_head_commit: Mapped[str | None] = mapped_column(String(40), nullable=True)
     merged_commit_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     has_merged: Mapped[bool] = mapped_column(Boolean, default=False)
     merger_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=True)

@@ -6,6 +6,7 @@ import pytest
 
 from app.config import settings
 from app.utils.cache_headers import CACHE_CONTROL_PRIVATE, CACHE_CONTROL_REVALIDATE
+from tests.unit.utils.git import seed_merge_repository
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -247,7 +248,10 @@ def test_create_pull_request(
 
 
 @pytest.mark.usefixtures("fake_stores")
-def test_list_pull_requests_counts(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
+def test_list_pull_requests_counts(
+    client: TestClient, superuser_token_headers: dict[str, str], fake_stores: FakeStores
+) -> None:
+    seed_merge_repository(fake_stores, REPO_OWNER, REPO_NAME, "b")
     client.post(PULLS_URL, headers=superuser_token_headers, json={"title": "First", "head_branch": "a"})
     client.post(PULLS_URL, headers=superuser_token_headers, json={"title": "Second", "head_branch": "b"})
     client.patch(f"{PULLS_URL}/2", headers=superuser_token_headers, json={"state": "merged"})
@@ -263,8 +267,9 @@ def test_list_pull_requests_counts(client: TestClient, superuser_token_headers: 
 
 @pytest.mark.usefixtures("fake_stores")
 def test_merged_pull_requests_cannot_be_reopened_or_closed(
-    client: TestClient, superuser_token_headers: dict[str, str]
+    client: TestClient, superuser_token_headers: dict[str, str], fake_stores: FakeStores
 ) -> None:
+    seed_merge_repository(fake_stores, REPO_OWNER, REPO_NAME)
     created = client.post(
         PULLS_URL, headers=superuser_token_headers, json={"title": "Merge once", "head_branch": "feature"}
     )

@@ -26,7 +26,43 @@ class CommitChangeType(StrEnum):
     RENAME = "rename"
 
 
-class Repository(GitEdgeBaseModel):
+class MergeMethod(StrEnum):
+    """Supported Git history strategies."""
+
+    MERGE = "merge"
+    SQUASH = "squash"
+    REBASE = "rebase"
+
+
+class MergeMessage(StrEnum):
+    """Repository commit message templates."""
+
+    DEFAULT = "default"
+    TITLE = "title"
+    TITLE_DESCRIPTION = "title_description"
+    TITLE_COMMITS = "title_commits"
+
+
+class MergeSettings(GitEdgeBaseModel):
+    """Repository merge policies."""
+
+    allow_merge_commit: bool = True
+    allow_squash_merge: bool = True
+    allow_rebase_merge: bool = True
+    merge_commit_message: MergeMessage = MergeMessage.DEFAULT
+    squash_commit_message: MergeMessage = MergeMessage.TITLE_DESCRIPTION
+    rebase_commit_message: MergeMessage = MergeMessage.DEFAULT
+    delete_branch_on_merge: bool = True
+
+
+class PullRequestMerge(GitEdgeBaseModel):
+    """Merge the expected PR revision using an enabled strategy."""
+
+    method: MergeMethod = MergeMethod.MERGE
+    head_commit: str | None = Field(default=None, pattern=r"^[0-9a-f]{40}$")
+
+
+class Repository(MergeSettings):
     """Repository schema."""
 
     name: str
@@ -101,6 +137,13 @@ class CreateRepositoryRequest(GitEdgeBaseModel):
 class RepositoryUpdate(GitEdgeBaseModel):
     """Editable repository settings."""
 
+    allow_merge_commit: bool | None = None
+    allow_squash_merge: bool | None = None
+    allow_rebase_merge: bool | None = None
+    merge_commit_message: MergeMessage | None = None
+    squash_commit_message: MergeMessage | None = None
+    rebase_commit_message: MergeMessage | None = None
+    delete_branch_on_merge: bool | None = None
     name: str | None = Field(default=None, min_length=1, max_length=255, pattern=r"^[A-Za-z0-9_.-]+$")
     description: str | None = Field(default=None, max_length=10000)
     default_branch: str | None = Field(default=None, min_length=1, max_length=255)
