@@ -91,7 +91,6 @@ class DulwichMergeClient:
         """Durably upload objects, then verify both tips and publish all refs atomically."""
         key = f"{owner}/{name}.git"
         changes = repo.get_pending_changes()
-        # No branch is visible until all objects are durable.
         changes["ref_puts"], changes["ref_deletes"] = {}, set()
         await self.storage.save(key, changes)
         published = await self.refs.publish_merge(

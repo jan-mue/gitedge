@@ -78,10 +78,6 @@ async def _handle_git_request(
     return Response(content=result.body, status_code=result.status, headers=headers)
 
 
-# Route patterns for Git smart HTTP protocol
-# These paths are shared by implementations of the Git HTTP protocol.
-
-
 @router.get("/{repo_path:path}/info/refs")
 async def get_info_refs(
     request: Request,
