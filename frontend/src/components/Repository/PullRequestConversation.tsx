@@ -105,7 +105,7 @@ export const PullRequestConversation = ({
                 ),
               content: (
                 <div
-                  className="flex flex-wrap items-center gap-x-1.5 gap-y-1 py-1 text-sm text-muted-foreground"
+                  className="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-h-8 text-sm text-muted-foreground"
                   data-testid={`pr-event-${event.kind}`}
                 >
                   <strong className="font-medium text-foreground">{event.actor_username}</strong>
@@ -171,25 +171,15 @@ export const PullRequestConversation = ({
         <SidebarSection title="Reviewers">
           {reviewers.length ? (
             reviewers.map((review) => (
-              <div key={review.author_username} className="flex items-center justify-between gap-2 py-1 text-sm">
-                <span className="flex items-center gap-2">
-                  <ReviewStatusIcon state={review.state} inline />
-                  {review.author_username}
-                </span>
-                <span
-                  className={
-                    review.state === "approved"
-                      ? "text-success"
-                      : review.state === "changes_requested"
-                        ? "text-destructive"
-                        : "text-muted-foreground"
-                  }
-                >
+              <div key={review.author_username} className="flex items-center gap-2 py-1 text-sm text-muted-foreground">
+                <ReviewStatusIcon state={review.state} inline />
+                <span>
+                  {review.author_username}{" "}
                   {review.state === "approved"
-                    ? "Approved"
+                    ? "approved these changes"
                     : review.state === "changes_requested"
-                      ? "Changes requested"
-                      : "Commented"}
+                      ? "requested changes"
+                      : "reviewed with comments"}
                 </span>
               </div>
             ))

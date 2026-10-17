@@ -6,8 +6,9 @@ from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 
+from app.entities.comments import Comment
 from app.entities.issues import IssueState
-from app.entities.reviews import PullRequestReview, PullRequestReviewReply
+from app.entities.reviews import DiffSide, PullRequestComment, PullRequestReview
 from app.schemas.reviews import (
     ReviewCommentPublic,
     ReviewDraft,
@@ -111,25 +112,47 @@ class ReviewService:
 
     @staticmethod
     def _public(review: PullRequestReview) -> ReviewPublic:
+        indices = {link.comment.id: index for index, link in enumerate(review.line_comments)}
+        replies = [
+            ReviewService._reply_public(reply, indices.get(link.comment.id))
+            for link in review.comments
+            for reply in link.comment.replies
+        ]
+        replies.sort(key=lambda reply: (reply.created_at, reply.id))
         return ReviewPublic(
             id=review.id,
             author_username=review.author.name,
             created_at=review.created_at,
             state=ReviewState(review.state),
             body=review.body,
+            body_html=render_markdown(review.body),
+            summary_comment_id=review.summary.id if review.summary else None,
             base_commit=review.base_commit,
             head_commit=review.head_commit,
-            comments=[ReviewCommentPublic.model_validate(comment) for comment in review.comments],
-            replies=[ReviewService._reply_public(reply) for reply in review.replies],
+            comments=[ReviewService._comment_public(link) for link in review.line_comments],
+            replies=replies,
         )
 
     @staticmethod
-    def _reply_public(reply: PullRequestReviewReply) -> ReviewReplyPublic:
+    def _comment_public(link: PullRequestComment) -> ReviewCommentPublic:
+        return ReviewCommentPublic(
+            id=link.comment.id,
+            path=link.path or "",
+            side="old" if link.side == DiffSide.OLD else "new",
+            line=link.line or 1,
+            body=link.comment.body,
+            body_html=render_markdown(link.comment.body),
+            context=link.context,
+        )
+
+    @staticmethod
+    def _reply_public(reply: Comment, comment_index: int | None) -> ReviewReplyPublic:
         return ReviewReplyPublic(
             id=reply.id,
             author_username=reply.author.name,
             created_at=reply.created_at,
-            comment_index=reply.comment_index,
+            comment_index=comment_index,
+            reply_to=reply.reply_to,
             body=reply.body,
             body_html=render_markdown(reply.body),
         )
@@ -165,9 +188,9 @@ class ReviewService:
     ) -> DiffHunk:
         """Serve legacy comments without sending the entire highlighted file to the browser."""
         review = await self._review(owner, repo, number, review_id)
-        if index >= len(review.comments):
+        if index >= len(review.line_comments):
             raise HTTPException(status_code=404, detail="Review comment not found")
-        comment = ReviewCommentPublic.model_validate(review.comments[index])
+        comment = self._comment_public(review.line_comments[index])
         if comment.context is not None:
             return comment.context
         return await self.repository_service.get_diff_context(
@@ -181,19 +204,32 @@ class ReviewService:
         review = await self._review(owner, repo, number, review_id)
         if not body.body.strip():
             raise HTTPException(status_code=422, detail="Add a reply before submitting")
-        if body.comment_index is not None and body.comment_index >= len(review.comments):
-            raise HTTPException(status_code=404, detail="Review comment not found")
-        if body.comment_index is None and not review.body.strip():
+        parent = None
+        index = body.comment_index
+        if body.reply_to is not None:
+            link = next((link for link in review.comments if link.comment.id == body.reply_to), None)
+            if link is None:
+                raise HTTPException(status_code=404, detail="Review comment not found")
+            parent = link.comment
+            index = review.line_comments.index(link) if link.path is not None else None
+        elif index is not None:
+            if index >= len(review.line_comments):
+                raise HTTPException(status_code=404, detail="Review comment not found")
+            parent = review.line_comments[index].comment
+        else:
+            parent = review.summary
+        if parent is None:
             raise HTTPException(status_code=422, detail="This review has no overall comment to reply to")
-        reply = PullRequestReviewReply(
-            review_id=review.id,
+        reply = Comment(
+            issue_id=review.pull_request_id,
             author_id=user.id,
             author=user,
-            comment_index=body.comment_index,
+            reply_to=parent.id,
+            parent=parent,
             body=body.body.strip(),
         )
         await self.store.add_reply(reply)
-        return self._reply_public(reply)
+        return self._reply_public(reply, index)
 
     async def get_workspace(self, owner: str, repo: str, number: int, user: User) -> ReviewWorkspacePublic:
         """Read the current user's draft and comparison-scoped viewed files."""
@@ -248,21 +284,29 @@ class ReviewService:
             pull_request_id=pull.id,
             author_id=user.id,
             author=user,
-            state=body.state.value,
-            body=body.body.strip(),
-            comments=[
-                {
-                    **comment.model_dump(),
-                    "context": context.model_dump(mode="json")
-                    if (context := comment_context(files[comment.path].hunks, comment.side, comment.line)) is not None
-                    else None,
-                }
-                for comment in body.comments
-            ],
-            replies=[],
+            state=body.state,
+            comments=[],
             base_commit=body.base_commit,
             head_commit=body.head_commit,
         )
+
+        def comment(text: str) -> Comment:
+            return Comment(issue_id=pull.id, author_id=user.id, author=user, body=text.strip(), replies=[])
+
+        if body.body.strip():
+            review.comments.append(PullRequestComment(position=-1, comment=comment(body.body)))
+        for index, line_comment in enumerate(body.comments):
+            context = comment_context(files[line_comment.path].hunks, line_comment.side, line_comment.line)
+            review.comments.append(
+                PullRequestComment(
+                    position=index,
+                    comment=comment(line_comment.body),
+                    path=line_comment.path,
+                    side=DiffSide(line_comment.side),
+                    line=line_comment.line,
+                    context=context.model_dump(mode="json") if context is not None else None,
+                )
+            )
         workspace = await self.store.workspace(pull.id, user.id, for_update=True)
         await self.store.submit(review, workspace)
         return self._public(review)

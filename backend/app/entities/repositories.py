@@ -1,12 +1,14 @@
 """Repository entity model."""
 
 import uuid
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import UUID, Boolean, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.entities.base import Base
+from app.entities.enums import string_enum
 
 if TYPE_CHECKING:
     from app.entities.activity import Activity
@@ -15,6 +17,15 @@ if TYPE_CHECKING:
     from app.entities.releases import Release
     from app.entities.stars import Star
     from app.entities.watchers import Watcher
+
+
+class MergeMessage(StrEnum):
+    """Repository commit message templates."""
+
+    DEFAULT = "default"
+    TITLE = "title"
+    TITLE_DESCRIPTION = "title_description"
+    TITLE_COMMITS = "title_commits"
 
 
 class Repository(Base):
@@ -37,11 +48,15 @@ class Repository(Base):
     allow_merge_commit: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     allow_squash_merge: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     allow_rebase_merge: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
-    merge_commit_message: Mapped[str] = mapped_column(String(32), default="default", server_default="default")
-    squash_commit_message: Mapped[str] = mapped_column(
-        String(32), default="title_description", server_default="title_description"
+    merge_commit_message: Mapped[MergeMessage] = mapped_column(
+        string_enum(MergeMessage, 32), default=MergeMessage.DEFAULT, server_default="default"
     )
-    rebase_commit_message: Mapped[str] = mapped_column(String(32), default="default", server_default="default")
+    squash_commit_message: Mapped[MergeMessage] = mapped_column(
+        string_enum(MergeMessage, 32), default=MergeMessage.TITLE_DESCRIPTION, server_default="title_description"
+    )
+    rebase_commit_message: Mapped[MergeMessage] = mapped_column(
+        string_enum(MergeMessage, 32), default=MergeMessage.DEFAULT, server_default="default"
+    )
     delete_branch_on_merge: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
     owner: Mapped["Principal"] = relationship(back_populates="repositories")

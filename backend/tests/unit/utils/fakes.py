@@ -39,7 +39,7 @@ from app.entities.principals import Principal, PrincipalType
 from app.entities.pull_requests import PullRequest
 from app.entities.releases import Release
 from app.entities.repositories import Repository
-from app.entities.reviews import PullRequestReview, PullRequestReviewReply, PullRequestReviewWorkspace
+from app.entities.reviews import PullRequestReview, PullRequestReviewWorkspace
 from app.entities.stars import Star
 from app.entities.users import User
 from app.entities.watchers import Watcher
@@ -571,7 +571,11 @@ class FakeCommentStore(FakeCrudStore[Comment], CommentStore):
     async def list_by_issue(self, issue_id: uuid.UUID) -> list[Comment]:
         """Read hydrated comments for one discussion."""
         return sorted(
-            [self._hydrate(comment) for comment in self.items.values() if comment.issue_id == issue_id],
+            [
+                self._hydrate(comment)
+                for comment in self.items.values()
+                if comment.issue_id == issue_id and comment.reply_to is None and comment.pull_request_comment is None
+            ],
             key=lambda comment: (comment.created_at, comment.id),
         )
 
@@ -613,6 +617,18 @@ class FakeCommentStore(FakeCrudStore[Comment], CommentStore):
         """Add a comment and populate its relationships."""
         self.persist(obj)
         self._hydrate(obj)
+
+    async def delete(self, obj: Comment) -> None:
+        """Mirror database cascades for a comment thread and its review anchor."""
+        for child in list(self.items.values()):
+            if child.reply_to == obj.id:
+                await self.delete(child)
+        if obj.pull_request_comment is not None:
+            link = obj.pull_request_comment
+            link.review.comments.remove(link)
+        if obj.parent is not None:
+            obj.parent.replies.remove(obj)
+        await super().delete(obj)
 
     def comments_for(self, issue_id: uuid.UUID) -> list[Comment]:
         """Return hydrated comments for an issue, oldest first."""
@@ -763,8 +779,9 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
 class FakeReviewStore(ReviewStore):
     """In-memory reviews and per-user workspaces."""
 
-    def __init__(self) -> None:
-        """Initialize isolated review state."""
+    def __init__(self, comments: FakeCommentStore) -> None:
+        """Share the regular comment store with issue discussions."""
+        self.comments = comments
         self.reviews = FakeCrudStore[PullRequestReview]()
         self.workspaces: dict[tuple[uuid.UUID, uuid.UUID], PullRequestReviewWorkspace] = {}
 
@@ -777,10 +794,9 @@ class FakeReviewStore(ReviewStore):
         review = self.reviews.items.get(review_id)
         return review if review is not None and review.pull_request_id == pull_request_id else None
 
-    async def add_reply(self, reply: PullRequestReviewReply) -> None:
-        """Persist a reply on the parent review."""
-        FakeCrudStore[PullRequestReviewReply]().persist(reply)
-        self.reviews.items[reply.review_id].replies.append(reply)
+    async def add_reply(self, reply: Comment) -> None:
+        """Persist a reply in the regular comment store."""
+        self.comments.persist(reply)
 
     async def workspace(
         self, pull_request_id: uuid.UUID, author_id: uuid.UUID, *, for_update: bool = False
@@ -798,6 +814,10 @@ class FakeReviewStore(ReviewStore):
     async def submit(self, review: PullRequestReview, workspace: PullRequestReviewWorkspace) -> None:
         """Publish all review comments and clear the draft together."""
         self.reviews.persist(review)
+        for link in review.comments:
+            self.comments.persist(link.comment)
+            link.comment_id = link.comment.id
+            link.review_id = review.id
         workspace.draft = None
         await self.save_workspace(workspace)
 
@@ -859,7 +879,7 @@ def build_fake_stores() -> FakeStores:
         users=users,
         issues=issues,
         pull_requests=pull_requests,
-        reviews=FakeReviewStore(),
+        reviews=FakeReviewStore(comments),
         repository=repository,
         organizations=organizations,
         stars=FakeStarStore(users),

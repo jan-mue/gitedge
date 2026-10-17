@@ -88,7 +88,10 @@ def test_private_drafts_and_viewed_progress_publish_together_on_submission(
     assert submitted.status_code == 201
     assert submitted.json()["state"] == "approved"
     submitted_comment = submitted.json()["comments"][0]
-    assert {key: value for key, value in submitted_comment.items() if key != "context"} == COMMENT
+    assert {
+        key: value for key, value in submitted_comment.items() if key not in {"context", "id", "body_html"}
+    } == COMMENT
+    assert submitted_comment["body_html"] == "<p>Please handle this case.</p>\n"
     assert submitted_comment["context"]["lines"][-1]["new_line"] == COMMENT["line"]
     assert client.get(f"{pull}/reviews").json() == [submitted.json()]
     workspace = client.get(f"{pull}/review-workspace", headers=headers).json()
@@ -141,7 +144,7 @@ def test_old_side_comments_are_supported(
     )
     assert response.status_code == 201
     submitted = response.json()["comments"][0]
-    assert {key: value for key, value in submitted.items() if key != "context"} == old_comment
+    assert {key: value for key, value in submitted.items() if key not in {"context", "id", "body_html"}} == old_comment
     assert len(submitted["context"]["lines"]) == 1
     assert submitted["context"]["lines"][-1]["old_line"] == 1
 
@@ -288,7 +291,7 @@ def test_legacy_context_uses_original_revisions_and_validates_its_anchor(
         f"{pull}/reviews", headers=normal_user_token_headers, json={**DRAFT, "state": "comment"}
     ).json()
     stored = next(review for review in fake_stores.reviews.reviews.items.values())
-    stored.comments = [COMMENT]
+    stored.line_comments[0].context = None
     context = mocker.patch.object(RepositoryService, "get_diff_context", return_value=comparison.files[0].hunks[0])
     url = f"{pull}/reviews/{review['id']}/comments"
     assert client.get(f"{url}/0/context").status_code == 200
@@ -306,3 +309,87 @@ def test_pr_file_metadata_is_not_http_cached(client: TestClient, pull: str) -> N
     assert response.headers["cache-control"] == "no-store"
     response = client.get(f"{repository}/compare?base={BASE}&head={HEAD}&include_diff=false")
     assert "immutable" in response.headers["cache-control"]
+
+
+def test_review_text_and_replies_share_the_regular_comment_store(
+    client: TestClient, pull: str, normal_user_token_headers: dict[str, str], fake_stores: FakeStores
+) -> None:
+    """Review summaries, anchors and replies use ordinary comments with stable IDs."""
+    review = client.post(
+        f"{pull}/reviews", headers=normal_user_token_headers, json={**DRAFT, "state": "comment"}
+    ).json()
+    summary_id = review["summary_comment_id"]
+    anchor_id = review["comments"][0]["id"]
+    comments = {str(comment.id): comment for comment in fake_stores.comments.items.values()}
+    assert set(comments) == {summary_id, anchor_id}
+    assert comments[summary_id].body == DRAFT["body"]
+    assert comments[anchor_id].body == COMMENT["body"]
+    reply = client.post(
+        f"{pull}/reviews/{review['id']}/replies",
+        headers=normal_user_token_headers,
+        json={"reply_to": anchor_id, "body": "I will add the test."},
+    )
+    assert reply.status_code == 201
+    assert reply.json()["reply_to"] == anchor_id
+    assert reply.json()["comment_index"] == 0
+    stored_reply = next(
+        comment for comment in fake_stores.comments.items.values() if str(comment.id) == reply.json()["id"]
+    )
+    assert str(stored_reply.reply_to) == anchor_id
+    discussion = pull.replace("/pulls/", "/issues/") + "/comments"
+    assert client.get(discussion).json()["data"] == []
+    assert (
+        client.patch(
+            f"{settings.API_V1_STR}/comments/{anchor_id}",
+            headers=normal_user_token_headers,
+            json={"body": "Updated review comment"},
+        ).status_code
+        == 200
+    )
+    published = client.get(f"{pull}/reviews").json()[0]
+    assert published["comments"][0]["body"] == "Updated review comment"
+    assert len(published["replies"]) == 1
+
+
+def test_reply_target_cannot_cross_reviews(
+    client: TestClient, pull: str, normal_user_token_headers: dict[str, str]
+) -> None:
+    first, second = [
+        client.post(f"{pull}/reviews", headers=normal_user_token_headers, json={**DRAFT, "state": "comment"}).json()
+        for _ in range(2)
+    ]
+    response = client.post(
+        f"{pull}/reviews/{second['id']}/replies",
+        headers=normal_user_token_headers,
+        json={"reply_to": first["comments"][0]["id"], "body": "Wrong thread"},
+    )
+    assert response.status_code == 404
+
+
+def test_deleting_a_review_comment_cascades_its_thread_without_retargeting_replies(
+    client: TestClient, pull: str, normal_user_token_headers: dict[str, str]
+) -> None:
+    """Comment identities remain stable when another anchor in the review is removed."""
+    review = client.post(
+        f"{pull}/reviews",
+        headers=normal_user_token_headers,
+        json={**DRAFT, "state": "comment", "comments": [COMMENT, {**COMMENT, "side": "old", "line": 1}]},
+    ).json()
+    first, second = [comment["id"] for comment in review["comments"]]
+    replies = f"{pull}/reviews/{review['id']}/replies"
+    assert (
+        client.post(
+            replies, headers=normal_user_token_headers, json={"reply_to": first, "body": "First thread"}
+        ).status_code
+        == 201
+    )
+    assert (
+        client.delete(f"{settings.API_V1_STR}/comments/{first}", headers=normal_user_token_headers).status_code == 204
+    )
+    published = client.get(f"{pull}/reviews").json()[0]
+    assert [comment["id"] for comment in published["comments"]] == [second]
+    assert published["replies"] == []
+    reply = client.post(replies, headers=normal_user_token_headers, json={"reply_to": second, "body": "Second thread"})
+    assert reply.status_code == 201
+    assert reply.json()["reply_to"] == second
+    assert reply.json()["comment_index"] == 0

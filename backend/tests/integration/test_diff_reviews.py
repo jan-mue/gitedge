@@ -6,8 +6,10 @@ import json
 import time
 from typing import TYPE_CHECKING
 
+import psycopg
 from playwright.sync_api import expect
 
+from app.config import settings
 from tests.integration.conftest import (
     FIRST_SUPERUSER,
     FIRST_SUPERUSER_PASSWORD,
@@ -136,6 +138,22 @@ def test_review_lifecycle(page: Page, app_url: str, tmp_path: Path, random_email
     reviews = page.request.get(f"{pull}/reviews").json()
     assert len(reviews) == 1
     assert len(reviews[0]["comments"]) == 2
+    pull_id = page.request.get(pull).json()["id"]
+    with psycopg.connect(str(settings.DATABASE_URL).replace("postgresql+psycopg://", "postgresql://")) as db:
+        comments = db.execute(
+            "SELECT c.id, c.body, c.reply_to, pc.review_id, pc.path FROM comment c "
+            "LEFT JOIN pull_request_comments pc ON pc.comment_id = c.id WHERE c.issue_id = %s",
+            (pull_id,),
+        ).fetchall()
+    assert len(comments) == 4  # Summary, two line comments, one reply: all regular comments.
+    anchor = next(comment for comment in comments if str(comment[0]) == reviews[0]["comments"][0]["id"])
+    reply = next(comment for comment in comments if comment[2] is not None)
+    assert reply[2] == anchor[0]
+    assert str(anchor[3]) == reviews[0]["id"]
+    assert anchor[4] == "file-0000.py"
+    discussion = f"{app_url}/api/v1/repositories/admin/{name}/issues/1/comments"
+    assert page.request.get(discussion).json()["data"] == []
+
     assert page.request.get(f"{pull}/review-workspace", headers=_headers(page)).json()["draft"] is None
 
     for button, state in [("Comment", "comment"), ("Approve", "approved")]:
@@ -186,6 +204,13 @@ def test_review_lifecycle(page: Page, app_url: str, tmp_path: Path, random_email
             "Follow-up after merging.", exact=True
         )
     ).to_be_visible()
+
+    # The regular comment API removes review anchors and their replies as one thread.
+    anchor_id = reviews[0]["comments"][0]["id"]
+    assert page.request.delete(f"{app_url}/api/v1/comments/{anchor_id}", headers=_headers(page)).status == 204
+    remaining = page.request.get(f"{pull}/reviews").json()[0]
+    assert len(remaining["comments"]) == 1
+    assert remaining["replies"] == []
 
 
 def test_large_pr_bounds_rendering_and_fetches(page: Page, app_url: str, tmp_path: Path) -> None:

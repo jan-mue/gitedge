@@ -11,12 +11,14 @@ export const MarkdownComposer = ({
   actions,
   label = "Comment",
   testId,
+  rows = 5,
 }: {
   value: string
   onChange: (value: string) => void
   actions: ReactNode
   label?: string
   testId?: string
+  rows?: number
 }) => {
   const [tab, setTab] = useState("write")
   const preview = useMutation(utilsPreviewMarkdownMutation())
@@ -48,7 +50,7 @@ export const MarkdownComposer = ({
           <Textarea
             aria-label={label}
             placeholder="Leave a comment"
-            rows={5}
+            rows={rows}
             maxLength={20000}
             value={value}
             onChange={(event) => onChange(event.target.value)}

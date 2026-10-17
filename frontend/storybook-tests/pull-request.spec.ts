@@ -92,9 +92,7 @@ test("tablet layouts keep metadata to the right of the conversation", async ({ p
   }
 })
 
-test("review events use Gitea's check and diff markers, and merged PRs have no reopen action", async ({
-  page,
-}, testInfo) => {
+test("review events use clear status markers, and merged PRs have no reopen action", async ({ page }, testInfo) => {
   const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"
   await page.goto(
     `/iframe.html?id=patterns-repository-pull-request-detail--merged&viewMode=story&globals=theme:${theme}`,
@@ -103,8 +101,12 @@ test("review events use Gitea's check and diff markers, and merged PRs have no r
   await expect(page.getByTestId("reopen-pr")).toHaveCount(0)
   await expect(page.getByTestId("close-pr")).toHaveCount(0)
   const timeline = page.getByTestId("comments-section")
+  expect((await timeline.locator("article > header").first().boundingBox())!.height).toBeLessThanOrEqual(40)
+
   await expect(timeline.locator('[data-review-state="approved"] svg')).toHaveClass(/lucide-check/)
-  await expect(timeline.locator('[data-review-state="changes_requested"] svg')).toHaveClass(/lucide-diff/)
+  await expect(timeline.locator('[data-review-state="changes_requested"] svg')).toHaveClass(
+    /lucide-message-square-warning/,
+  )
   await expect(timeline.locator('[data-review-state="merged"] svg').first()).toHaveClass(/lucide-git-merge/)
   if (!testInfo.project.name.endsWith("mobile")) {
     const bounds = await timeline.locator('[data-review-state="approved"]').evaluate((node) => {
@@ -118,6 +120,16 @@ test("review events use Gitea's check and diff markers, and merged PRs have no r
       }
     })
     expect(bounds).toEqual({ outer: 32, icon: 16, gap: 8, padding: "0px" })
+    const alignment = await timeline.locator('[data-review-state="approved"]').evaluate((node) => {
+      const icon = node.getBoundingClientRect()
+      const row = node
+        .closest("[data-timeline-item]")!
+        .querySelector('[data-testid^="review-"] > div')!
+        .getBoundingClientRect()
+      return { gap: row.left - icon.right, center: Math.abs(row.top + row.height / 2 - icon.top - icon.height / 2) }
+    })
+    expect(alignment.gap).toBeGreaterThanOrEqual(16)
+    expect(alignment.center).toBeLessThan(1)
   }
   await page.screenshot({ path: `visual-review/pr-merged-${testInfo.project.name}.png`, fullPage: true })
   await page.goto(
@@ -239,6 +251,11 @@ test("conversation loads without inactive Git tabs and review replies stay in th
   await thread.getByRole("textbox", { name: "Reply to review comment" }).fill("The new test covers this value.")
   await thread.getByRole("button", { name: "Reply", exact: true }).click()
   await expect(thread.getByText("The new test covers this value.", { exact: true })).toBeVisible()
+  const compactReply = thread.locator('[data-testid^="review-reply-"]').first()
+  expect((await compactReply.locator("header").boundingBox())!.height).toBeLessThanOrEqual(24)
+  expect((await compactReply.boundingBox())!.height).toBeLessThan(90)
+  expect(await compactReply.locator(".markdown-body").evaluate((node) => getComputedStyle(node).fontSize)).toBe("14px")
+
   await expect(thread.getByRole("textbox", { name: "Reply to review comment" })).toHaveCount(0)
   await page.screenshot({ path: `visual-review/pr-thread-replies-${testInfo.project.name}.png`, fullPage: true })
 })

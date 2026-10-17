@@ -13,6 +13,7 @@ import {
 import {
   Button,
   ConversationCard,
+  MarkdownContent,
   Popover,
   PopoverClose,
   PopoverContent,
@@ -328,7 +329,7 @@ export const ReviewTimeline = ({
   <div className="space-y-4">
     {reviews.map((review) => (
       <div key={review.id} data-testid={`review-${review.id}`} className="space-y-4">
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 py-1 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-h-8 text-sm text-muted-foreground">
           <strong className="font-medium text-foreground">{review.author_username}</strong>
           <span>{stateLabel[review.state]}</span>
           <time dateTime={review.created_at}>{new Date(review.created_at).toLocaleString()}</time>
@@ -342,7 +343,11 @@ export const ReviewTimeline = ({
         {review.body && (
           <section className="overflow-hidden rounded-lg border border-border" aria-label="Review comment">
             <ConversationCard author={review.author_username} date={review.created_at} badge="Reviewer" embedded>
-              <p className="whitespace-pre-wrap text-sm">{review.body}</p>
+              {review.body_html ? (
+                <MarkdownContent html={review.body_html} />
+              ) : (
+                <p className="whitespace-pre-wrap text-sm">{review.body}</p>
+              )}
             </ConversationCard>
             <ReviewReplies owner={owner} repo={repo} number={number} review={review} username={username} />
           </section>

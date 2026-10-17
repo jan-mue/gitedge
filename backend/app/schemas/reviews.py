@@ -2,21 +2,13 @@
 
 import uuid
 from datetime import datetime
-from enum import StrEnum
 from typing import Literal
 
 from pydantic import Field
 
+from app.entities.reviews import ReviewState
 from app.schemas.base import GitEdgeBaseModel
 from app.schemas.repositories import DiffHunk
-
-
-class ReviewState(StrEnum):
-    """The outcome of a submitted review."""
-
-    APPROVED = "approved"
-    COMMENT = "comment"
-    CHANGES_REQUESTED = "changes_requested"
 
 
 class ReviewLineComment(GitEdgeBaseModel):
@@ -46,12 +38,15 @@ class ReviewSubmit(ReviewDraft):
 class ReviewCommentPublic(ReviewLineComment):
     """A submitted line comment with a bounded, backend-highlighted snapshot."""
 
+    id: uuid.UUID | None = None
+    body_html: str = ""
     context: DiffHunk | None = None
 
 
 class ReviewReplyCreate(GitEdgeBaseModel):
     """Reply to an individual line comment, or to the overall review body."""
 
+    reply_to: uuid.UUID | None = None
     comment_index: int | None = Field(default=None, ge=0)
     body: str = Field(min_length=1, max_length=20000)
 
@@ -73,6 +68,8 @@ class ReviewPublic(GitEdgeBaseModel):
     created_at: datetime
     state: ReviewState
     body: str = ""
+    body_html: str = ""
+    summary_comment_id: uuid.UUID | None = None
     base_commit: str
     head_commit: str
     comments: list[ReviewCommentPublic] = Field(default_factory=list)

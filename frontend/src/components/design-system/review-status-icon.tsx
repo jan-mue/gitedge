@@ -1,9 +1,16 @@
-import { Check, Diff, GitMerge, GitPullRequest, GitPullRequestClosed, MessageSquare } from "lucide-react"
+import {
+  Check,
+  GitMerge,
+  GitPullRequest,
+  GitPullRequestClosed,
+  MessageSquare,
+  MessageSquareWarning,
+} from "lucide-react"
 
 type ReviewStatus = "approved" | "changes_requested" | "comment" | "merged" | "closed" | "reopened"
 const icons = {
   approved: Check,
-  changes_requested: Diff,
+  changes_requested: MessageSquareWarning,
   comment: MessageSquare,
   merged: GitMerge,
   closed: GitPullRequestClosed,
@@ -19,7 +26,7 @@ const labels = {
 }
 const tones = {
   approved: "bg-success text-success-foreground",
-  changes_requested: "bg-destructive text-destructive-foreground",
+  changes_requested: "bg-secondary text-foreground",
   comment: "bg-secondary text-muted-foreground",
   merged: "bg-merged text-merged-foreground",
   closed: "bg-destructive text-destructive-foreground",
@@ -27,7 +34,7 @@ const tones = {
 }
 const inlineTones = {
   approved: "text-success",
-  changes_requested: "text-destructive",
+  changes_requested: "text-muted-foreground",
   comment: "text-muted-foreground",
   merged: "text-merged",
   closed: "text-destructive",

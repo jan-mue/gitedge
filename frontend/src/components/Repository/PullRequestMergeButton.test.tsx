@@ -56,3 +56,23 @@ describe("PR merge dropdown", () => {
     expect(screen.queryByRole("button", { name: "Choose merge method" })).not.toBeInTheDocument()
   })
 })
+
+test("keeps conflicting filenames visible beside the merge controls", async () => {
+  server.use(
+    handleRepositoriesGetRepository({ body: repository }),
+    handleRepositoriesMergePullRequest(() =>
+      HttpResponse.json(
+        {
+          detail:
+            "Merge has conflicts in backend/pyproject.toml, uv.lock. Resolve them on the PR branch before merging.",
+        },
+        { status: 409 },
+      ),
+    ),
+  )
+  const { user } = render(<PullRequestMergeButton owner="owner" repo="repo" pull={trackerPulls[0]} />)
+  await waitFor(() => expect(screen.getByRole("button", { name: "Create merge commit" })).toBeEnabled())
+  await user.click(screen.getByRole("button", { name: "Create merge commit" }))
+  expect(await screen.findByRole("alert")).toHaveTextContent("backend/pyproject.toml, uv.lock")
+  expect(screen.getByRole("button", { name: "Choose merge method" })).toBeEnabled()
+})

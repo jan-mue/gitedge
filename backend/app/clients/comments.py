@@ -47,7 +47,7 @@ class SQLCommentStore(CommentStore, SQLStore[Comment]):
         result = await self.db.scalars(
             select(Comment)
             .options(joinedload(Comment.author))
-            .where(Comment.issue_id == issue_id)
+            .where(Comment.issue_id == issue_id, Comment.reply_to.is_(None), ~Comment.pull_request_comment.has())
             .order_by(Comment.created_at, Comment.id)
         )
         return list(result.all())

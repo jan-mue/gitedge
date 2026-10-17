@@ -1,6 +1,6 @@
 export const signupsEnabled = import.meta.env.VITE_SIGNUPS_ENABLED !== "false"
 
-function extractErrorMessage(err: unknown): string {
+export function extractErrorMessage(err: unknown): string {
   const detail = (err as { detail?: unknown } | null)?.detail
   if (Array.isArray(detail) && detail.length > 0) {
     const first = detail[0] as { msg?: unknown }

@@ -1,5 +1,6 @@
 """Git merge calculation without changing branch refs."""
 
+import logging
 from dataclasses import dataclass
 from time import time
 from typing import TYPE_CHECKING
@@ -14,6 +15,24 @@ from app.schemas.repositories import MergeMessage, MergeMethod
 
 if TYPE_CHECKING:
     from app.services.blob_repository import BlobRepository
+
+
+logger = logging.getLogger(__name__)
+MAX_CONFLICT_PATHS = 10
+
+
+def reject_conflicts(conflicts: list[bytes], operation: str) -> None:
+    """Explain expected Git conflicts without publishing any changes."""
+    if not conflicts:
+        return
+    paths = [path.decode("utf-8", errors="replace") for path in conflicts]
+    logger.warning("%s rejected: conflicts in %s", operation, ", ".join(paths))
+    visible = ", ".join(paths[:MAX_CONFLICT_PATHS])
+    remaining = f" and {len(paths) - MAX_CONFLICT_PATHS} more files" if len(paths) > MAX_CONFLICT_PATHS else ""
+    raise HTTPException(
+        status_code=409,
+        detail=f"{operation} has conflicts in {visible}{remaining}. Resolve them on the PR branch before merging.",
+    )
 
 
 @dataclass(frozen=True)
@@ -79,8 +98,7 @@ def calculate_merge(
             if ancestor is not None and not isinstance(ancestor, Commit):
                 raise HTTPException(status_code=409, detail="PR history contains an invalid parent")
             tree, conflicts = three_way_merge(store, ancestor, current, original)
-            if conflicts:
-                raise HTTPException(status_code=409, detail="Rebase has conflicts. Update the PR branch and try again.")
+            reject_conflicts(conflicts, "Rebase")
             store.add_object(tree)
             current = commit(
                 tree.id, [current.id], message if index == len(entries) - 1 else original.message, original
@@ -90,8 +108,7 @@ def calculate_merge(
         result = current
     else:
         tree, conflicts = recursive_merge(store, bases, ours, theirs)
-        if conflicts:
-            raise HTTPException(status_code=409, detail="Merge has conflicts. Update the PR branch and try again.")
+        reject_conflicts(conflicts, "Merge")
         store.add_object(tree)
         result = commit(tree.id, [base, head] if method == MergeMethod.MERGE else [base], message)
     # One pack for the entire operation, including all rebased commits.

@@ -8,6 +8,7 @@ from sqlalchemy import UUID, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.entities.base import Base
+from app.entities.enums import string_enum
 
 if TYPE_CHECKING:
     from app.entities.comments import Comment
@@ -43,9 +44,9 @@ class Issue(Base):
     number: Mapped[int] = mapped_column(Integer, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     body: Mapped[str | None] = mapped_column(Text, nullable=True)
-    state: Mapped[IssueState] = mapped_column(String(20), default=IssueState.OPEN)
+    state: Mapped[IssueState] = mapped_column(string_enum(IssueState, 20), default=IssueState.OPEN)
     author_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False, index=True)
-    kind: Mapped[IssueKind] = mapped_column("type", String(20), default=IssueKind.ISSUE)
+    kind: Mapped[IssueKind] = mapped_column("type", string_enum(IssueKind, 20), default=IssueKind.ISSUE)
 
     repo: Mapped["Repository"] = relationship(back_populates="issues")
     author: Mapped["User"] = relationship(back_populates="issues")

@@ -104,7 +104,11 @@ def test_merge_methods_publish_git_and_retain_pr(
     expect(page.get_by_test_id("pr-commits")).to_contain_text("Update configuration")
     page.get_by_role("tab", name="Files Changed", exact=False).click()
     expect(page.get_by_test_id("diff-viewer")).to_be_visible()
-    page.get_by_role("checkbox", name="Mark base.txt as viewed", exact=True).click()
+    with page.expect_response(
+        lambda response: response.url.endswith("/reviewed-files") and response.request.method == "PUT"
+    ) as marked:
+        page.get_by_role("checkbox", name="Mark base.txt as viewed", exact=True).click()
+    assert marked.value.status == 200
     expect(page.get_by_role("button", name="Expand base.txt", exact=True)).to_be_visible()
     workspace = page.request.get(f"{pull_url}/review-workspace", headers=_headers(page)).json()
     assert "base.txt" in workspace["reviewed_paths"]

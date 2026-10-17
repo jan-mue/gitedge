@@ -4,10 +4,11 @@ import uuid
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import UUID, ForeignKey, Integer, String, Text
+from sqlalchemy import UUID, ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.entities.base import Base
+from app.entities.enums import string_enum
 
 if TYPE_CHECKING:
     from app.entities.repositories import Repository
@@ -49,9 +50,9 @@ class Activity(Base):
     repo_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("repository.id"), nullable=True, index=True
     )
-    kind: Mapped[ActivityKind] = mapped_column(String(40), nullable=False)
+    kind: Mapped[ActivityKind] = mapped_column(string_enum(ActivityKind, 40), nullable=False)
     title: Mapped[str | None] = mapped_column(Text, nullable=True)
-    target_type: Mapped[ActivityTargetType | None] = mapped_column(String(40), nullable=True)
+    target_type: Mapped[ActivityTargetType | None] = mapped_column(string_enum(ActivityTargetType, 40), nullable=True)
     target_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     comment_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("comment.id", ondelete="SET NULL"), nullable=True, index=True

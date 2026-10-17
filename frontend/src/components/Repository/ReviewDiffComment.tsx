@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import type { ReviewCommentPublic, ReviewPublic } from "@/client"
 import { reviewsGetCommentContextOptions } from "@/client/@tanstack/react-query.gen"
-import { Button, CodeSkeleton, ConversationCard, ExternalLink } from "@/components/design-system"
+import { Button, CodeSkeleton, ConversationCard, ExternalLink, MarkdownContent } from "@/components/design-system"
 import { DiffCodeRow } from "./DiffCodeRow"
 import { ReviewReplies } from "./ReviewReplies"
 import "./diff-viewer.css"
@@ -102,8 +102,12 @@ export const ReviewDiffComment = ({
           <p className="p-3 font-sans text-sm text-muted-foreground">Diff context is unavailable for this line.</p>
         )}
       </section>
-      <ConversationCard author={review.author_username} date={review.created_at} badge="Reviewer" embedded>
-        <p className="whitespace-pre-wrap">{comment.body}</p>
+      <ConversationCard author={review.author_username} date={review.created_at} badge="Reviewer" embedded thread>
+        {comment.body_html ? (
+          <MarkdownContent html={comment.body_html} />
+        ) : (
+          <p className="whitespace-pre-wrap">{comment.body}</p>
+        )}
       </ConversationCard>
       <ReviewReplies
         owner={owner}

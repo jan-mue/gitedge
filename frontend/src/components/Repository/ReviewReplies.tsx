@@ -35,15 +35,11 @@ export const ReviewReplies = ({
     },
   })
   return (
-    <fieldset className="min-w-0 border-t border-border bg-secondary/20" aria-label="Review replies">
+    <fieldset className="min-w-0 border-t border-border/60 bg-card" aria-label="Review replies">
       {(review.replies ?? [])
         .filter((reply) => (reply.comment_index ?? null) === commentIndex)
         .map((reply) => (
-          <div
-            key={reply.id}
-            className="ml-3 border-l-2 border-primary/25 border-b border-b-border sm:ml-5"
-            data-testid={`review-reply-${reply.id}`}
-          >
+          <div key={reply.id} className="border-b border-border/60" data-testid={`review-reply-${reply.id}`}>
             <ConversationCard author={reply.author_username} date={reply.created_at} embedded reply>
               <MarkdownContent html={reply.body_html} />
             </ConversationCard>
@@ -60,6 +56,7 @@ export const ReviewReplies = ({
             value={body}
             onChange={setBody}
             label="Reply to review comment"
+            rows={3}
             actions={
               <>
                 <Button
@@ -76,7 +73,12 @@ export const ReviewReplies = ({
                   onClick={() =>
                     mutation.mutate({
                       path: { owner, repo, number, review_id: review.id },
-                      body: { body: body.trim(), comment_index: commentIndex },
+                      body: {
+                        body: body.trim(),
+                        reply_to:
+                          commentIndex === null ? review.summary_comment_id : review.comments?.[commentIndex]?.id,
+                        comment_index: commentIndex,
+                      },
                     })
                   }
                 >
@@ -88,9 +90,9 @@ export const ReviewReplies = ({
           />
         </div>
       ) : (
-        <div className="flex justify-end bg-secondary/30 px-3 py-2">
+        <div className="flex justify-start px-3 py-2">
           {username ? (
-            <Button size="compact" variant="default" onClick={() => setOpen(true)}>
+            <Button size="compact" variant="repository" onClick={() => setOpen(true)}>
               <Reply className="size-3.5" /> Reply
             </Button>
           ) : (

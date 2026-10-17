@@ -7,6 +7,7 @@ from enum import StrEnum
 from pydantic import Field
 
 from app.entities.issues import IssueState
+from app.entities.repositories import MergeMessage
 from app.schemas.base import GitEdgeBaseModel
 
 
@@ -32,15 +33,6 @@ class MergeMethod(StrEnum):
     MERGE = "merge"
     SQUASH = "squash"
     REBASE = "rebase"
-
-
-class MergeMessage(StrEnum):
-    """Repository commit message templates."""
-
-    DEFAULT = "default"
-    TITLE = "title"
-    TITLE_DESCRIPTION = "title_description"
-    TITLE_COMMITS = "title_commits"
 
 
 class MergeSettings(GitEdgeBaseModel):

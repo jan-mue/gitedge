@@ -236,12 +236,16 @@ let replyReview: ReviewPublic = {
   ...reviews[0],
   id: "reply-review",
   body: "Please explain the timeout change.",
+  body_html: "<p>Please explain the timeout change.</p>",
+  summary_comment_id: "00000000-0000-0000-0000-000000000002",
   comments: [
     {
       path: "src/config.py",
       side: "new",
       line: 1,
+      id: "00000000-0000-0000-0000-000000000001",
       body: "Please cover this in a test.",
+      body_html: "<p>Please cover this in a <strong>test</strong>.</p>",
       context: comparisonFixture.files[0].hunks![0],
     },
   ],

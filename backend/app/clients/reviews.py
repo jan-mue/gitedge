@@ -9,7 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import joinedload, selectinload
 
-from app.entities.reviews import PullRequestReview, PullRequestReviewReply, PullRequestReviewWorkspace
+from app.entities.comments import Comment
+from app.entities.reviews import PullRequestComment, PullRequestReview, PullRequestReviewWorkspace
 
 if TYPE_CHECKING:
     import uuid
@@ -25,7 +26,7 @@ class ReviewStore(ABC):
         """Find a published review within this pull request."""
 
     @abstractmethod
-    async def add_reply(self, reply: PullRequestReviewReply) -> None:
+    async def add_reply(self, reply: Comment) -> None:
         """Persist a reply without changing the original review."""
 
     @abstractmethod
@@ -60,7 +61,9 @@ class SQLReviewStore(ReviewStore):
             select(PullRequestReview)
             .options(
                 joinedload(PullRequestReview.author),
-                selectinload(PullRequestReview.replies).joinedload(PullRequestReviewReply.author),
+                selectinload(PullRequestReview.comments)
+                .joinedload(PullRequestComment.comment)
+                .options(joinedload(Comment.author), selectinload(Comment.replies).joinedload(Comment.author)),
             )
             .where(PullRequestReview.pull_request_id == pull_request_id)
             .order_by(PullRequestReview.created_at, PullRequestReview.id)
@@ -70,12 +73,16 @@ class SQLReviewStore(ReviewStore):
     async def get_review(self, pull_request_id: uuid.UUID, review_id: uuid.UUID) -> PullRequestReview | None:
         """Scope lookups so reviews cannot be addressed through another PR."""
         return await self.db.scalar(
-            select(PullRequestReview).where(
-                PullRequestReview.id == review_id, PullRequestReview.pull_request_id == pull_request_id
+            select(PullRequestReview)
+            .options(
+                selectinload(PullRequestReview.comments)
+                .joinedload(PullRequestComment.comment)
+                .options(joinedload(Comment.author), selectinload(Comment.replies).joinedload(Comment.author))
             )
+            .where(PullRequestReview.id == review_id, PullRequestReview.pull_request_id == pull_request_id)
         )
 
-    async def add_reply(self, reply: PullRequestReviewReply) -> None:
+    async def add_reply(self, reply: Comment) -> None:
         """Save the reply and load server-generated dates."""
         self.db.add(reply)
         await self.db.commit()

@@ -108,7 +108,10 @@ def test_conflicts_do_not_change_refs_or_state(
 ) -> None:
     base, _, head = seed_merge_repository(fake_stores, OWNER, "repo", conflict=True)
     pull = create(client, superuser_token_headers)
-    assert client.post(f"{pull}/merge", headers=superuser_token_headers, json={"method": method}).status_code == 409
+    response = client.post(f"{pull}/merge", headers=superuser_token_headers, json={"method": method})
+    assert response.status_code == 409
+    assert "code.txt" in response.json()["detail"]
+    assert "Resolve them on the PR branch" in response.json()["detail"]
     assert fake_stores.redis.values[f"{OWNER}/repo.git/refs/refs/heads/main"] == base.encode()
     assert fake_stores.redis.values[f"{OWNER}/repo.git/refs/refs/heads/feature"] == head.encode()
     assert client.get(pull).json()["state"] == "open"
@@ -137,7 +140,9 @@ def test_policies_permissions_stale_head_and_retention(
         == 200
     )
     for method in ("merge", "squash", "rebase"):
-        assert client.post(f"{pull}/merge", headers=superuser_token_headers, json={"method": method}).status_code == 409
+        response = client.post(f"{pull}/merge", headers=superuser_token_headers, json={"method": method})
+        assert response.status_code == 409
+        assert "disabled" in response.json()["detail"]
     assert client.patch(pull, headers=superuser_token_headers, json={"state": "merged"}).status_code == 409
     client.patch(
         URL, headers=superuser_token_headers, json={"allow_merge_commit": True, "delete_branch_on_merge": False}

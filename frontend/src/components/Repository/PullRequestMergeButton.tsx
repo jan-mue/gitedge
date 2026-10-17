@@ -17,8 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
-import useCustomToast from "@/hooks/useCustomToast"
-import { handleError } from "@/utils"
+import { extractErrorMessage } from "@/utils"
 
 const methods = [
   {
@@ -55,7 +54,6 @@ export const PullRequestMergeButton = ({
 }) => {
   const { user } = useAuth()
   const client = useQueryClient()
-  const { showErrorToast } = useCustomToast()
   const [selected, setSelected] = useState<MergeMethod>("merge")
   const settings = useQuery({
     ...repositoriesGetRepositoryOptions({ path: { owner, repo } }),
@@ -64,7 +62,6 @@ export const PullRequestMergeButton = ({
   })
   const mutation = useMutation({
     ...repositoriesMergePullRequestMutation(),
-    onError: handleError.bind(showErrorToast),
     onSuccess: async (updated) => {
       client.setQueryData(repositoriesGetPullRequestQueryKey({ path: { owner, repo, number: pull.number } }), updated)
       await Promise.all([
@@ -101,47 +98,56 @@ export const PullRequestMergeButton = ({
     return <p className="text-sm text-muted-foreground">All merge methods are disabled in repository settings.</p>
   const Icon = method.icon
   return (
-    <fieldset className="inline-flex" aria-label="Merge pull request">
-      <Button
-        variant="success"
-        size="compact"
-        shape="start"
-        loading={mutation.isPending}
-        disabled={!settings.data}
-        data-testid="merge-pr"
-        onClick={() => mutation.mutate({ path: { owner, repo, number: pull.number }, body: { method: method.value } })}
-      >
-        <Icon className="size-4" />
-        {method.label}
-      </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="success"
-            size="icon-sm"
-            shape="end"
-            aria-label="Choose merge method"
-            disabled={!settings.data || mutation.isPending}
-          >
-            <ChevronDown className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          {enabled.map((item) => (
-            <DropdownMenuItem key={item.value} onSelect={() => setSelected(item.value)}>
-              <div className="flex items-start gap-2 py-1">
-                <span className="mt-0.5 flex size-4 shrink-0 items-center">
-                  {method.value === item.value && <Check className="size-4" />}
-                </span>
-                <span>
-                  <span className="block font-medium">{item.label}</span>
-                  <span className="block text-xs text-muted-foreground">{item.description}</span>
-                </span>
-              </div>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </fieldset>
+    <div className="space-y-3">
+      {mutation.isError && (
+        <p role="alert" className="max-w-prose break-words text-sm text-foreground">
+          {extractErrorMessage(mutation.error)}
+        </p>
+      )}
+      <fieldset className="inline-flex" aria-label="Merge pull request">
+        <Button
+          variant="success"
+          size="compact"
+          shape="start"
+          loading={mutation.isPending}
+          disabled={!settings.data}
+          data-testid="merge-pr"
+          onClick={() =>
+            mutation.mutate({ path: { owner, repo, number: pull.number }, body: { method: method.value } })
+          }
+        >
+          <Icon className="size-4" />
+          {method.label}
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="success"
+              size="icon-sm"
+              shape="end"
+              aria-label="Choose merge method"
+              disabled={!settings.data || mutation.isPending}
+            >
+              <ChevronDown className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {enabled.map((item) => (
+              <DropdownMenuItem key={item.value} onSelect={() => setSelected(item.value)}>
+                <div className="flex items-start gap-2 py-1">
+                  <span className="mt-0.5 flex size-4 shrink-0 items-center">
+                    {method.value === item.value && <Check className="size-4" />}
+                  </span>
+                  <span>
+                    <span className="block font-medium">{item.label}</span>
+                    <span className="block text-xs text-muted-foreground">{item.description}</span>
+                  </span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </fieldset>
+    </div>
   )
 }

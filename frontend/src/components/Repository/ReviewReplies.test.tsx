@@ -17,6 +17,9 @@ const review: ReviewPublic = {
   head_commit: "b".repeat(40),
   created_at: "2026-10-16T00:00:00Z",
   replies: [],
+  comments: [
+    { id: "00000000-0000-0000-0000-000000000001", path: "code.py", side: "new", line: 1, body: "Review line" },
+  ],
 }
 const Thread = () => {
   const { data } = useQuery(reviewsListReviewsOptions({ path: { owner: "owner", repo: "repo", number: 1 } }))
@@ -34,7 +37,11 @@ describe("review replies", () => {
       handleReviewsReplyToReview(async ({ request }) => {
         if (failed) return new HttpResponse(null, { status: 503 })
         const body = (await request.json()) as { body: string; comment_index: number }
-        expect(body).toEqual({ body: "Thanks for the review", comment_index: 0 })
+        expect(body).toEqual({
+          body: "Thanks for the review",
+          comment_index: 0,
+          reply_to: "00000000-0000-0000-0000-000000000001",
+        })
         const reply = {
           id: "reply-1",
           author_username: "alice",

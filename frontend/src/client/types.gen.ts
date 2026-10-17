@@ -1634,6 +1634,14 @@ export type ReviewCommentPublic = {
      * Body
      */
     body: string;
+    /**
+     * Id
+     */
+    id?: string | null;
+    /**
+     * Body Html
+     */
+    body_html?: string;
     context?: DiffHunk | null;
 };
 
@@ -1709,6 +1717,14 @@ export type ReviewPublic = {
      */
     body?: string;
     /**
+     * Body Html
+     */
+    body_html?: string;
+    /**
+     * Summary Comment Id
+     */
+    summary_comment_id?: string | null;
+    /**
      * Base Commit
      */
     base_commit: string;
@@ -1737,6 +1753,10 @@ export type ReviewPublic = {
  */
 export type ReviewReplyCreate = {
     /**
+     * Reply To
+     */
+    reply_to?: string | null;
+    /**
      * Comment Index
      */
     comment_index?: number | null;
@@ -1752,6 +1772,10 @@ export type ReviewReplyCreate = {
  * A published reply with server-rendered Markdown.
  */
 export type ReviewReplyPublic = {
+    /**
+     * Reply To
+     */
+    reply_to?: string | null;
     /**
      * Comment Index
      */
