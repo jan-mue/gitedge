@@ -137,31 +137,31 @@ known_first_party = [ "app" ]
 [tool.vulture]
 paths = [ "app" ]
 exclude = [ "app/schemas/" ]
-# Declarative and serialization layers expose members that are only ever read
-# dynamically by frameworks (Pydantic, SQLAlchemy, dulwich) or are written purely
-# as API response payloads, so they have no static read site for vulture to see.
-# Log-level enum members are likewise public configuration options.
 ignore_names = [
+    # Group: used dynamically by dulwich
     "add_thin_pack",
     "bare",
     "commit_timezone",
+    # Group: serialized to JSON payloads
     "conflicting_files",
+    "diff_line_count",
+    "mergeable",
+    "no_newline",
+    "reason",
+    "series",
+    # Group: LogLevel enum values
     "CRITICAL",
     "DEBUG",
-    "diff_line_count",
     "ERROR",
-    "mergeable",
-    "merger_id",
+    "NOTSET",
+    # Group: reserved Pydantic/SQLAlchemy members
     "metadata",
     "model_config",
-    "no_newline",
-    "NOTSET",
+    # Group: RepositoryChanges TypedDict keys
     "pack_deletes",
     "pack_uploads",
-    "reason",
     "ref_deletes",
     "ref_puts",
-    "series",
 ]
 ignore_decorators = [
     "@app.*",

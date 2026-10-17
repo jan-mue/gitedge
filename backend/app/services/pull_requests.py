@@ -259,7 +259,7 @@ class PullRequestService:
             )
         pull.state, pull.has_merged = IssueState.MERGED, True
         pull.merge_base, pull.merged_head_commit, pull.merged_commit_id = result.base, result.head, result.commit
-        pull.merger_id, pull.updated_at = current_user.id, datetime.now(UTC)
+        pull.updated_at = datetime.now(UTC)
         await self.pull_request_store.update(pull)
         await self.activity_service.record(
             actor=current_user,
