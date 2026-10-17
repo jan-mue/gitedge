@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1
+ARG BASE_IMAGE=gitedge-actions:local
+FROM ${BASE_IMAGE}
+COPY --chmod=755 launch.sh /usr/local/bin/gitedge-launch
+ARG CODEQL_VERSION=2.27.2
+RUN --mount=type=secret,id=proxy_ca,target=/run/proxy-ca.pem \
+    if [ -f /run/proxy-ca.pem ]; then export CURL_CA_BUNDLE=/run/proxy-ca.pem; fi; \
+    mkdir -p /opt/hostedtoolcache/CodeQL/${CODEQL_VERSION}/x64 && \
+    curl --fail --location --silent --show-error \
+    https://github.com/github/codeql-action/releases/download/codeql-bundle-v${CODEQL_VERSION}/codeql-bundle-python-linux64.tar.zst | \
+    tar --zstd -x -C /opt/hostedtoolcache/CodeQL/${CODEQL_VERSION}/x64 && \
+    chmod -R a+rX /opt/hostedtoolcache/CodeQL/${CODEQL_VERSION}/x64/codeql && \
+    touch /opt/hostedtoolcache/CodeQL/${CODEQL_VERSION}/x64.complete

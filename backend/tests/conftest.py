@@ -240,13 +240,21 @@ def backend_url(infrastructure: dict[str, str], xprocess: XProcess) -> Generator
 
     backend_env = os.environ.copy()
     backend_env.update(infrastructure)
+    backend_env.update(
+        {
+            "ACTIONS_SERVER_URL": f"http://host.docker.internal:{backend_port}",
+            "ACTIONS_DOCKER_CA_BUNDLE": os.environ.get(
+                "ACTIONS_DOCKER_CA_BUNDLE", "/etc/ssl/certs/ca-certificates.crt"
+            ),
+        }
+    )
     backend_cwd = BACKEND_DIR
 
     class BackendStarter(ProcessStarter):  # type: ignore[misc]
         terminate_on_interrupt = True
         pattern = "Application startup complete"
         env = backend_env
-        args = [sys.executable, "-m", "uvicorn", "app.index:app", "--port", str(backend_port)]
+        args = [sys.executable, "-m", "uvicorn", "app.index:app", "--host", "0.0.0.0", "--port", str(backend_port)]
         popen_kwargs = {"cwd": backend_cwd}
         max_read_lines = 1000
 

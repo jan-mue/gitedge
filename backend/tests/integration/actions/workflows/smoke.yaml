@@ -1,0 +1,37 @@
+name: Isolation and dependencies
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        value: [one, two]
+    outputs:
+      message: ${{ steps.out.outputs.message }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - id: out
+        name: Build and export
+        env:
+          VALUE: ${{ matrix.value }}
+        run: |
+          test -f README.md
+          test ! -f /gitedge/isolation-marker
+          touch /gitedge/isolation-marker
+          echo "message=hello" >> "$GITHUB_OUTPUT"
+          echo "EXPORTED=present" >> "$GITHUB_ENV"
+          echo "Built $VALUE"
+      - name: Read environment
+        run: test "$EXPORTED" = present
+  verify:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read needs output
+        env:
+          MESSAGE: ${{ needs.build.outputs.message }}
+        run: |
+          test ! -f /gitedge/isolation-marker
+          test "$MESSAGE" = hello
+          echo 'Dependency outputs verified'

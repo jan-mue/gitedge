@@ -2,10 +2,18 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "installCommand": "uv sync",
-  "relatedProjects": ["prj_UJLLfQw7EHhXQXu9YWmotU2XnN83"],
+  "relatedProjects": [
+    "prj_UJLLfQw7EHhXQXu9YWmotU2XnN83"
+  ],
   "git": {
     "deploymentEnabled": {
       "renovate/*": false
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/v1/actions/reconcile",
+      "schedule": "* * * * *"
+    }
+  ]
 }

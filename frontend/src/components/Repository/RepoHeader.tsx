@@ -7,6 +7,7 @@ import {
   GitFork,
   GitPullRequest,
   MoreHorizontal,
+  PlayCircle,
   Settings,
   Tag,
 } from "lucide-react"
@@ -32,6 +33,7 @@ const tabs = [
   { label: "Code", icon: Code, path: "/$owner/$repo" as const, testId: "tab-code" },
   { label: "Issues", icon: CircleDot, path: "/$owner/$repo/issues" as const, testId: "tab-issues" },
   { label: "Pull requests", icon: GitPullRequest, path: "/$owner/$repo/pulls" as const, testId: "tab-pulls" },
+  { label: "Actions", icon: PlayCircle, path: "/$owner/$repo/actions" as const, testId: "tab-actions" },
   { label: "Releases", icon: Tag, path: "/$owner/$repo/releases" as const, testId: "tab-releases" },
   { label: "Branches", icon: GitBranch, path: "/$owner/$repo/branches" as const, testId: "tab-branches" },
   { label: "Settings", icon: Settings, path: "/$owner/$repo/settings" as const, testId: "tab-settings" },
