@@ -38,7 +38,6 @@ class RedisRefsContainer(RefsContainer):
         """
         super().__init__(logger=logger)
 
-        # In-memory refs storage: ref name -> ref value (SHA or SYMREF + target)
         self._refs: dict[Ref, bytes] = {}
 
         self._peeled: dict[Ref, ObjectID] = {}
@@ -289,7 +288,6 @@ class RedisRefsContainer(RefsContainer):
         Args:
             new_refs: Refs to add.
         """
-        # Redis doesn't distinguish between packed and loose refs
         for name, value in new_refs.items():
             if value is None:
                 self.remove_if_equals(name, None)
@@ -302,4 +300,3 @@ class RedisRefsContainer(RefsContainer):
         Args:
             all: If True, pack all refs. If False, only pack tags.
         """
-        # Redis doesn't need packing

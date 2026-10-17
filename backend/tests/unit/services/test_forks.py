@@ -1,19 +1,22 @@
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 import pytest
 from dulwich.objects import Blob, Commit, Tree
 from dulwich.refs import Ref
 from fastapi import HTTPException
 
+from app.clients.git.blob_backend import BlobBackend
 from app.entities.repositories import Repository
 from app.entities.users import User
 from app.schemas.social import ForkCreate
 from app.services.activity import ActivityService
-from app.services.blob_backend import BlobBackend
 from app.services.forks import ForkService
-from app.services.repositories import RepositoryService
+
+if TYPE_CHECKING:
+    from app.services.repositories import RepositoryService
 from tests.unit.utils.fakes import (
     FakeActivityStore,
     FakeBlobStorageClient,
@@ -24,6 +27,7 @@ from tests.unit.utils.fakes import (
     FakeStarStore,
     FakeUserStore,
 )
+from tests.unit.utils.git import build_repository_service
 
 
 def _setup() -> tuple[FakeRepositoryStore, FakeUserStore, User, User, ForkService, RepositoryService]:
@@ -42,7 +46,7 @@ def _setup() -> tuple[FakeRepositoryStore, FakeUserStore, User, User, ForkServic
     users.persist(alice)
 
     activity_service = ActivityService(activity_store, repository_store, star_store)
-    repository_service = RepositoryService(
+    repository_service = build_repository_service(
         BlobBackend(), FakeBlobStorageClient(), FakeRedisClient(), FakeCacheClient(), repository_store, star_store
     )
     fork_service = ForkService(repository_store, repository_service, activity_service, star_store)
@@ -59,7 +63,7 @@ async def test_fork_repository() -> None:
 
     assert fork.name == "repo"
     assert fork.owner == "alice"
-    assert repository_service.backend.repository_exists("alice/repo.git")
+    assert await repository_service.git.storage.redis.get("alice/repo.git/refs/HEAD") is not None
 
     assert await repository_store.count_by_fork_of(source.id) == 1
     assert fork.forks_count == 0
@@ -98,7 +102,7 @@ async def test_fork_repository_into_same_owner() -> None:
 async def test_fork_copies_persisted_objects_and_refs() -> None:
     repository_store, _users, owner, alice, fork_service, repository_service = _setup()
     await repository_store.add(Repository(name="repo", owner_id=owner.id))
-    repo = await repository_service.load_repository("owner", "repo")
+    repo = await repository_service.git.load_repository("owner", "repo")
     blob = Blob.from_string(b"fork content\n")
     tree = Tree()
     tree.add(b"file.txt", 0o100644, blob.id)

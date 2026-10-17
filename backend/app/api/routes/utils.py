@@ -6,8 +6,8 @@ from fastapi import APIRouter, Body, Depends, status
 from pydantic.networks import EmailStr
 
 from app.api.dependencies import EmailClientDep, check_database_connection, get_current_active_superuser
-from app.services.markdown import render_markdown
 from app.utils.email import generate_test_email
+from app.utils.markdown import render_markdown
 
 router = APIRouter(prefix="/utils", tags=["utils"])
 

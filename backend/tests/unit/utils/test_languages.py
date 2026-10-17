@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.languages import source_language
+from app.utils.languages import source_language
 
 
 @pytest.mark.parametrize(

@@ -6,26 +6,15 @@ object storage and Redis for refs.
 
 from __future__ import annotations
 
-import asyncio
-import logging
 from typing import TYPE_CHECKING
 
 from dulwich.errors import NotGitRepository
 from dulwich.server import Backend
 
-from app.services.blob_repository import BlobRepository
-from app.types import PackContents
+from app.clients.git.blob_repository import BlobRepository
 
 if TYPE_CHECKING:
-    from app.clients.blob_storage import BlobStorageClient
-    from app.clients.redis import AbstractRedisClient
-    from app.types import RepositoryChanges
-
-logger = logging.getLogger(__name__)
-
-# Key prefixes for blob and Redis storage
-PACK_PREFIX = "packs/"
-REF_PREFIX = "refs/"
+    from app.types import PackContents, RepositoryChanges
 
 
 class BlobBackend(Backend):
@@ -159,103 +148,3 @@ class BlobBackend(Backend):
     def remove_repository(self, path: str) -> None:
         """Evict a repository after deletion or rename."""
         self._repos.pop(self._normalize_path(path), None)
-
-
-async def load_repository_from_storage(
-    blob_client: BlobStorageClient,
-    redis_client: AbstractRedisClient,
-    repo_path: str,
-) -> tuple[dict[str, PackContents], dict[str, bytes]]:
-    """Load repository data from blob storage and Redis.
-
-    Args:
-        blob_client: Blob storage client instance.
-        redis_client: Redis client instance.
-        repo_path: Repository path prefix.
-
-    Returns:
-        Tuple of (packs_dict, refs_dict) to pass to load_repository_from_data.
-    """
-    repo_prefix = repo_path.strip("/")
-    if not repo_prefix.endswith(".git"):
-        repo_prefix = repo_prefix + ".git"
-
-    packs: dict[str, PackContents] = {}
-    pack_prefix = f"{repo_prefix}/{PACK_PREFIX}"
-
-    pack_keys: dict[str, str] = {}
-    idx_keys: dict[str, str] = {}
-    for key in await blob_client.list_keys(pack_prefix):
-        name = key.removeprefix(pack_prefix)
-        if name.endswith(".pack"):
-            pack_keys[name.removesuffix(".pack")] = key
-        elif name.endswith(".idx"):
-            idx_keys[name.removesuffix(".idx")] = key
-
-    async def load_pack(basename: str, pack_key: str) -> None:
-        idx_key = idx_keys.get(basename)
-        if idx_key is None:
-            return
-        pack_data, idx_data = await asyncio.gather(blob_client.get(pack_key), blob_client.get(idx_key))
-        if pack_data and idx_data:
-            packs[basename] = PackContents(pack=pack_data, index=idx_data)
-
-    pending = list(pack_keys.items())
-    for start in range(0, len(pending), 4):
-        await asyncio.gather(*(load_pack(basename, key) for basename, key in pending[start : start + 4]))
-
-    refs: dict[str, bytes] = {}
-    ref_prefix = f"{repo_prefix}/{REF_PREFIX}"
-
-    keys = await redis_client.scan_keys(f"{ref_prefix}*")
-    for start in range(0, len(keys), 16):
-        batch = keys[start : start + 16]
-        values = await asyncio.gather(*(redis_client.get(key) for key in batch))
-        refs.update({key.removeprefix(ref_prefix): value for key, value in zip(batch, values, strict=True) if value})
-
-    return packs, refs
-
-
-async def save_repository_changes_to_storage(
-    blob_client: BlobStorageClient,
-    redis_client: AbstractRedisClient,
-    repo_path: str,
-    changes: RepositoryChanges,
-) -> None:
-    """Save repository changes to blob storage and Redis.
-
-    Args:
-        blob_client: Blob storage client instance.
-        redis_client: Redis client instance.
-        repo_path: Repository path prefix.
-        changes: Changes dict from get_pending_changes().
-    """
-    repo_prefix = repo_path.strip("/")
-    if not repo_prefix.endswith(".git"):
-        repo_prefix = repo_prefix + ".git"
-
-    pack_prefix = f"{repo_prefix}/{PACK_PREFIX}"
-    ref_prefix = f"{repo_prefix}/{REF_PREFIX}"
-
-    for basename, contents in changes.get("pack_uploads", {}).items():
-        pack_key = f"{pack_prefix}{basename}.pack"
-        idx_key = f"{pack_prefix}{basename}.idx"
-        await blob_client.put(pack_key, contents.pack)
-        await blob_client.put(idx_key, contents.index)
-
-    for basename in changes.get("pack_deletes", set()):
-        pack_key = f"{pack_prefix}{basename}.pack"
-        idx_key = f"{pack_prefix}{basename}.idx"
-        await blob_client.delete(pack_key)
-        await blob_client.delete(idx_key)
-
-    for ref_name, value in changes.get("ref_puts", {}).items():
-        ref_name_str = ref_name.decode() if isinstance(ref_name, bytes) else ref_name
-        redis_key = f"{ref_prefix}{ref_name_str}"
-        value_str = value.decode() if isinstance(value, bytes) else value
-        await redis_client.set(redis_key, value_str)
-
-    for ref_name in changes.get("ref_deletes", set()):
-        ref_name_str = ref_name.decode() if isinstance(ref_name, bytes) else ref_name
-        redis_key = f"{ref_prefix}{ref_name_str}"
-        await redis_client.delete(redis_key)

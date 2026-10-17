@@ -1,24 +1,19 @@
 """FastAPI routes for Git smart HTTP protocol.
 
-This module provides FastAPI routes that wrap dulwich's WSGI-based Git HTTP
-server for use with blob storage and Redis backends.
+Routes translate web requests to the selected Git engine's plain HTTP interface.
 """
 
 from __future__ import annotations
 
-from io import BytesIO
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from dulwich.web import GunzipFilter, HTTPGitApplication, LimitedInputFilter
 from fastapi import APIRouter, Request, Response
 
 from app.api.dependencies import RepositoryServiceDep
+from app.clients.git.types import GitHttpRequest
 from app.utils.cache_headers import CACHE_CONTROL_NO_STORE
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-    from types import TracebackType
-
     from app.services.repositories import RepositoryService
 
 router = APIRouter(tags=["git"])
@@ -44,50 +39,6 @@ async def _git_cache_control(repository_service: RepositoryService, owner: str, 
     return headers["Cache-Control"]
 
 
-def _create_wsgi_environ(request: Request, body: bytes, path: str) -> dict[str, Any]:
-    """Create a WSGI environ dict from a FastAPI request.
-
-    Args:
-        request: FastAPI request.
-        body: Request body bytes.
-        path: Path info for the request.
-
-    Returns:
-        WSGI environ dictionary.
-    """
-    query_string = str(request.url.query) if request.url.query else ""
-
-    environ: dict[str, Any] = {
-        "REQUEST_METHOD": request.method,
-        "SCRIPT_NAME": "",
-        "PATH_INFO": path,
-        "QUERY_STRING": query_string,
-        "SERVER_NAME": request.url.hostname or "localhost",
-        "SERVER_PORT": str(request.url.port or 80),
-        "SERVER_PROTOCOL": "HTTP/1.1",
-        "wsgi.version": (1, 0),
-        "wsgi.url_scheme": request.url.scheme,
-        "wsgi.input": BytesIO(body),
-        "wsgi.errors": BytesIO(),
-        "wsgi.multithread": False,
-        "wsgi.multiprocess": False,
-        "wsgi.run_once": True,
-    }
-
-    content_type = request.headers.get("content-type")
-    if content_type:
-        environ["CONTENT_TYPE"] = content_type
-
-    environ["CONTENT_LENGTH"] = str(len(body))
-
-    for key, value in request.headers.items():
-        key_upper = key.upper().replace("-", "_")
-        if key_upper not in ("CONTENT_TYPE", "CONTENT_LENGTH", "TRANSFER_ENCODING"):
-            environ[f"HTTP_{key_upper}"] = value
-
-    return environ
-
-
 async def _handle_git_request(
     request: Request,
     repo_path: str,
@@ -109,50 +60,22 @@ async def _handle_git_request(
     owner, _, name = repo_path.removesuffix(".git").partition("/")
     await repository_service.ensure_loaded(owner, name)
 
-    body = await request.body()
-
-    path_info = f"/{repo_path}{service_path}"
-    environ = _create_wsgi_environ(request, body, path_info)
-
-    response_status = "200 OK"
-    response_headers: list[tuple[str, str]] = []
-    response_body: list[bytes] = []
-
-    def start_response(
-        status: str,
-        headers: list[tuple[str, str]],
-        _exc_info: tuple[type[BaseException], BaseException, TracebackType] | tuple[None, None, None] | None = None,
-    ) -> Callable[[bytes], object]:
-        nonlocal response_status, response_headers
-        response_status = status
-        response_headers = headers
-
-        def write(data: bytes) -> None:
-            response_body.append(data)
-
-        return write
-
-    wsgi_app = HTTPGitApplication(repository_service.backend)
-    wsgi_app_filtered = GunzipFilter(LimitedInputFilter(wsgi_app))
-
-    result = wsgi_app_filtered(environ, start_response)
-    response_body.extend(result)
-
-    await repository_service.save_changes(owner, name)
-
-    status_code = int(response_status.split(maxsplit=1)[0])
-    headers_dict = dict(response_headers)
-    headers_dict["Cache-Control"] = await _git_cache_control(repository_service, owner, name, service_path)
-
-    return Response(
-        content=b"".join(response_body),
-        status_code=status_code,
-        headers=headers_dict,
+    result = await repository_service.git.handle_http(
+        GitHttpRequest(
+            method=request.method,
+            path=f"/{repo_path}{service_path}",
+            query=str(request.url.query),
+            headers=dict(request.headers),
+            body=await request.body(),
+            scheme=request.url.scheme,
+            hostname=request.url.hostname or "localhost",
+            port=request.url.port or 80,
+        )
     )
-
-
-# Route patterns for Git smart HTTP protocol
-# These match the patterns in dulwich.web.HTTPGitApplication.services
+    await repository_service.save_changes(owner, name)
+    headers = dict(result.headers)
+    headers["Cache-Control"] = await _git_cache_control(repository_service, owner, name, service_path)
+    return Response(content=result.body, status_code=result.status, headers=headers)
 
 
 @router.get("/{repo_path:path}/info/refs")

@@ -1,6 +1,5 @@
 """Git merge calculation without changing branch refs."""
 
-from dataclasses import dataclass
 from time import time
 from typing import TYPE_CHECKING
 
@@ -10,10 +9,11 @@ from dulwich.object_store import MemoryObjectStore, OverlayObjectStore
 from dulwich.objects import Commit, ObjectID
 from fastapi import HTTPException
 
+from app.clients.git.types import MergeResult
 from app.schemas.repositories import MergeMessage, MergeMethod
 
 if TYPE_CHECKING:
-    from app.services.blob_repository import BlobRepository
+    from app.clients.git.blob_repository import BlobRepository
 
 
 MAX_CONFLICT_PATHS = 10
@@ -39,15 +39,6 @@ def reject_conflicts(conflicts: list[bytes], operation: str) -> None:
         paths=paths,
         detail=f"{operation} has conflicts in {visible}{remaining}. Resolve them on the PR branch before merging.",
     )
-
-
-@dataclass(frozen=True)
-class MergeResult:
-    """Immutable revisions retained for the PR and publication."""
-
-    base: str
-    head: str
-    commit: str
 
 
 def merge_message(

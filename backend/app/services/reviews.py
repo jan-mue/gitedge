@@ -21,8 +21,8 @@ from app.schemas.reviews import (
     ReviewSubmit,
     ReviewWorkspacePublic,
 )
-from app.services.diffs import comment_context
-from app.services.markdown import render_markdown
+from app.utils.diffs import comment_context
+from app.utils.markdown import render_markdown
 
 if TYPE_CHECKING:
     import uuid

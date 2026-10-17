@@ -20,8 +20,8 @@ from dulwich.rebase import MemoryRebaseStateManager
 from dulwich.refs import HEADREF, LOCAL_BRANCH_PREFIX, Ref
 from dulwich.repo import BaseRepo
 
-from app.services.blob_object_store import BlobObjectStore
-from app.services.redis_refs import RedisRefsContainer
+from app.clients.git.blob_object_store import BlobObjectStore
+from app.clients.git.redis_refs import RedisRefsContainer
 
 if TYPE_CHECKING:
     from dulwich.index import Index
@@ -129,8 +129,8 @@ class BlobRepository(BaseRepo):
         return {
             "pack_uploads": self._object_store.get_pending_uploads(),
             "pack_deletes": self._object_store.get_pending_deletes(),
-            "ref_puts": self._refs.get_pending_puts(),
-            "ref_deletes": self._refs.get_pending_deletes(),
+            "ref_puts": {bytes(ref): value for ref, value in self._refs.get_pending_puts().items()},
+            "ref_deletes": {bytes(ref) for ref in self._refs.get_pending_deletes()},
         }
 
     def clear_pending_changes(self) -> None:
@@ -251,12 +251,10 @@ class BlobRepository(BaseRepo):
             config = self.get_config_stack()
         git_attributes = self.get_gitattributes()
 
-        # Lazily create FilterContext if needed
         if self.filter_context is None:
             filter_registry = FilterRegistry(config, self)
             self.filter_context = FilterContext(filter_registry)
         else:
-            # Refresh the context with current config to handle config changes
             self.filter_context.refresh_config(config)
 
         return FilterBlobNormalizer(config, git_attributes, filter_context=self.filter_context)

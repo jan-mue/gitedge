@@ -12,6 +12,7 @@ from pygments.lexers import TextLexer, get_lexer_for_filename
 from pygments.util import ClassNotFound
 
 from app.schemas.repositories import DiffHunk, DiffLine, DiffRow, DiffToken
+from app.utils.diffs import comment_context
 
 if TYPE_CHECKING:
     from dulwich.object_store import BaseObjectStore
@@ -228,23 +229,3 @@ def enrich_diff(
         if anchor is not None:
             context = comment_context(file.hunks, *anchor)
             file.hunks = [context] if context is not None else []
-
-
-def comment_context(hunks: list[DiffHunk], side: Literal["old", "new"], number: int) -> DiffHunk | None:
-    """Return up to four existing diff lines, ending exactly at the comment anchor."""
-    for hunk in hunks:
-        for index, line in enumerate(hunk.lines):
-            if (line.old_line if side == "old" else line.new_line) == number:
-                lines = [line.model_copy(deep=True) for line in hunk.lines[max(0, index - 3) : index + 1]]
-                for context_line in lines:
-                    remaining = 2048
-                    tokens = []
-                    for token in context_line.tokens:
-                        tokens.append(token.model_copy(update={"text": token.text[:remaining]}))
-                        remaining -= len(token.text)
-                        if remaining <= 0:
-                            tokens.append(DiffToken(text=" …"))
-                            break
-                    context_line.tokens = tokens
-                return DiffHunk(header=hunk.header, lines=lines, rows=[])
-    return None
