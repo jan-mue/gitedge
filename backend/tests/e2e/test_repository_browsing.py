@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from playwright.sync_api import expect
 
-from tests.integration.conftest import log_in_user
+from tests.e2e.conftest import log_in_user
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
