@@ -1,6 +1,5 @@
 """Publish Git merge objects before atomically advancing refs."""
 
-import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -13,6 +12,7 @@ from dulwich.objects import ObjectID
 from fastapi import HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 
+from app.clients.git_refs import GitRefStore
 from app.schemas.repositories import MergeMethod, PullRequestMergeability
 from app.services.blob_backend import BlobBackend, load_repository_from_storage, save_repository_changes_to_storage
 from app.services.blob_repository import BlobRepository
@@ -27,6 +27,7 @@ class GitMergeClient:
     ) -> None:
         """Bind existing application storage clients."""
         self.blob, self.redis, self.cache, self.backend = blob, redis, cache, backend
+        self.refs = GitRefStore(redis)
 
     async def load(self, owner: str, name: str) -> BlobRepository:
         """Load current refs instead of using a worker's potentially stale repository."""
@@ -37,8 +38,7 @@ class GitMergeClient:
 
     async def completed(self, owner: str, name: str, pull_id: uuid.UUID) -> MergeResult | None:
         """Recover publication if a response or database write was interrupted."""
-        checkpoint = await self.redis.get(f"{owner}/{name}.git/merge-state/{pull_id}")
-        return MergeResult(**json.loads(checkpoint)) if checkpoint else None
+        return await self.refs.completed_merge(owner, name, pull_id)
 
     async def check(self, owner: str, name: str, base: str, head: str, method: MergeMethod) -> PullRequestMergeability:
         """Cache a read-only calculation by immutable tips and strategy, never by branch name."""
@@ -90,20 +90,15 @@ class GitMergeClient:
         # No branch is visible until all objects are durable.
         changes["ref_puts"], changes["ref_deletes"] = {}, set()
         await save_repository_changes_to_storage(self.blob, self.redis, key, changes)
-        prefix = f"{key}/refs/refs/"
-        published = await self.redis.publish_merge(
-            [
-                prefix + "heads/" + base_branch,
-                prefix + "heads/" + head_branch,
-                prefix + f"pull/{number}/base",
-                prefix + f"pull/{number}/head",
-                prefix + f"pull/{number}/merge",
-                f"{key}/merge-state/{pull_id}",
-            ],
-            result.base,
-            result.head,
-            result.commit,
+        published = await self.refs.publish_merge(
+            owner,
+            name,
+            number,
+            base_branch,
+            head_branch,
+            result,
             delete_branch,
+            pull_id=pull_id,
         )
         if published:
             self.backend.remove_repository(key)

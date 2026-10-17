@@ -24,6 +24,7 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import TextLexer, get_lexer_for_filename
 from pygments.util import ClassNotFound
 
+from app.clients.git_refs import GitRefStore
 from app.config import settings
 from app.entities.repositories import Repository as RepositoryEntity
 from app.schemas.releases import TagInfo, TagsPublic
@@ -200,6 +201,7 @@ class RepositoryService:
         self.backend = backend
         self.blob_client = blob_client
         self.redis_client = redis_client
+        self.git_refs = GitRefStore(redis_client)
         self.cache_client = cache_client
         self.repository_store = repository_store
         self.star_store = star_store
@@ -1156,10 +1158,7 @@ class RepositoryService:
 
     async def branch_heads(self, owner: str, name: str, base: str, head: str) -> tuple[str | None, str | None]:
         """Read two branch tips without opening packs, walking history, or calculating a diff."""
-        prefix = f"{repo_key(owner, name)}/refs/refs/heads/"
-        values = await asyncio.gather(self.redis_client.get(prefix + base), self.redis_client.get(prefix + head))
-        before, after = values
-        return (before.decode() if before else None, after.decode() if after else None)
+        return await self.git_refs.branch_heads(owner, name, base, head)
 
     async def compare_commits(
         self, owner: str, name: str, base_ref: str, head_ref: str, offset: int = 0, limit: int = 50

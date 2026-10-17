@@ -134,7 +134,6 @@ def test_mergeability_is_read_only_cached_and_tracks_both_tips(
     calculate = mocker.patch("app.clients.git_merges.calculate_merge", wraps=calculate_merge)
     response = client.get(f"{pull}/mergeability", params={"method": method})
     assert response.status_code == 200, response.text
-    assert response.headers["Cache-Control"] == "no-store"
     data = response.json()
     assert data["mergeable"] is not conflict
     assert data["base_commit"] == base
@@ -258,14 +257,14 @@ def test_concurrent_push_wins_over_merge(
 ) -> None:
     base, _, head = seed_merge_repository(fake_stores, OWNER, "repo")
     pull = create(client, superuser_token_headers)
-    publish = fake_stores.redis.publish_merge
+    publish = fake_stores.redis.compare_and_set
     changed = "f" * 40
 
-    async def advance_then_publish(keys: list[str], base: str, head: str, commit: str, delete_branch: bool) -> bool:
+    async def advance_then_publish(expected: dict[str, str | None], updates: dict[str, str | None]) -> bool:
         fake_stores.redis.values[f"{OWNER}/repo.git/refs/refs/heads/{branch}"] = changed.encode()
-        return await publish(keys, base, head, commit, delete_branch)
+        return await publish(expected, updates)
 
-    mocker.patch.object(fake_stores.redis, "publish_merge", side_effect=advance_then_publish)
+    mocker.patch.object(fake_stores.redis, "compare_and_set", side_effect=advance_then_publish)
     response = client.post(f"{pull}/merge", headers=superuser_token_headers, json={"method": "merge"})
     assert response.status_code == 409
     assert client.get(pull).json()["state"] == "open"

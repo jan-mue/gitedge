@@ -300,13 +300,12 @@ def test_legacy_context_uses_original_revisions_and_validates_its_anchor(
     assert client.get(f"{url}/-1/context").status_code == 422
 
 
-def test_pr_file_metadata_is_not_http_cached(client: TestClient, pull: str) -> None:
+def test_pr_file_metadata_and_immutable_comparisons(client: TestClient, pull: str) -> None:
     response = client.get(f"{pull}/files?include_diff=false")
     assert response.status_code == 200
-    assert response.headers["cache-control"] == "no-store"
     repository = pull.split("/pulls/", maxsplit=1)[0]
     response = client.get(f"{repository}/compare?base=main&head=feature&include_diff=false")
-    assert response.headers["cache-control"] == "no-store"
+    assert response.status_code == 200
     response = client.get(f"{repository}/compare?base={BASE}&head={HEAD}&include_diff=false")
     assert "immutable" in response.headers["cache-control"]
 

@@ -348,14 +348,11 @@ async def get_pull_request_files(
     owner: str,
     repo: str,
     number: int,
-    response: Response,
     pull_request_service: PullRequestServiceDep,
     include_diff: bool = True,
 ) -> CompareResult:
     """List the files changed by a pull request, diffed against its base branch."""
-    result = await pull_request_service.get_pull_request_files(owner, repo, number, include_diff=include_diff)
-    response.headers["Cache-Control"] = "no-store"
-    return result
+    return await pull_request_service.get_pull_request_files(owner, repo, number, include_diff=include_diff)
 
 
 @router.get("/{owner}/{repo}/pulls/{number}/mergeability")
@@ -363,12 +360,10 @@ async def get_pull_request_mergeability(
     owner: str,
     repo: str,
     number: int,
-    response: Response,
     pull_request_service: PullRequestServiceDep,
     method: MergeMethod = MergeMethod.MERGE,
 ) -> PullRequestMergeability:
     """Report conflicts before merging, checking fresh tips with immutable calculation caching."""
-    response.headers["Cache-Control"] = "no-store"
     return await pull_request_service.get_mergeability(owner, repo, number, method)
 
 
@@ -412,8 +407,6 @@ async def compare_revisions(
     result = await repository_service.compare(owner, repo, base, head, include_diff=include_diff)
     if is_commit_sha(base) and is_commit_sha(head):
         await _apply_cache_headers(response, repository_service, owner, repo, immutable=True)
-    else:
-        response.headers["Cache-Control"] = "no-store"
     return result
 
 
