@@ -1,9 +1,11 @@
 import {
   type ColumnDef,
+  createPaginatedRowModel,
   flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
+  type RowData,
+  rowPaginationFeature,
+  tableFeatures,
+  useTable,
 } from "@tanstack/react-table"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 import {
@@ -17,17 +19,23 @@ import {
   TableRow,
 } from "@/components/design-system"
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
+const dataTableFeatures = tableFeatures({
+  rowPaginationFeature,
+  paginatedRowModel: createPaginatedRowModel(),
+})
+
+export type DataTableFeatures = typeof dataTableFeatures
+
+interface DataTableProps<TData extends RowData> {
+  columns: ColumnDef<DataTableFeatures, TData>[]
   data: TData[]
 }
 
-export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData, TValue>) {
-  const table = useReactTable({
+export function DataTable<TData extends RowData>({ columns, data }: DataTableProps<TData>) {
+  const table = useTable({
+    features: dataTableFeatures,
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   })
 
   return (
@@ -50,7 +58,7 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
           {table.getRowModel().rows.length ? (
             table.getRowModel().rows.map((row) => (
               <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
+                {row.getAllCells().map((cell) => (
                   <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                 ))}
               </TableRow>
@@ -69,17 +77,14 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border-t bg-muted/20">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="text-sm text-muted-foreground">
-              Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{" "}
-              {Math.min(
-                (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-                data.length,
-              )}{" "}
-              of <span className="font-medium text-foreground">{data.length}</span> entries
+              Showing {table.state.pagination.pageIndex * table.state.pagination.pageSize + 1} to{" "}
+              {Math.min((table.state.pagination.pageIndex + 1) * table.state.pagination.pageSize, data.length)} of{" "}
+              <span className="font-medium text-foreground">{data.length}</span> entries
             </div>
             <div className="flex items-center gap-x-2">
               <p className="text-sm text-muted-foreground">Rows per page</p>
               <SelectField
-                value={String(table.getState().pagination.pageSize)}
+                value={String(table.state.pagination.pageSize)}
                 onValueChange={(value) => table.setPageSize(Number(value))}
                 aria-label="Rows per page"
                 appearance="pagination"
@@ -91,7 +96,7 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
           <div className="flex items-center gap-x-6">
             <div className="flex items-center gap-x-1 text-sm text-muted-foreground">
               <span>Page</span>
-              <span className="font-medium text-foreground">{table.getState().pagination.pageIndex + 1}</span>
+              <span className="font-medium text-foreground">{table.state.pagination.pageIndex + 1}</span>
               <span>of</span>
               <span className="font-medium text-foreground">{table.getPageCount()}</span>
             </div>
