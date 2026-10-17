@@ -7,22 +7,22 @@ if TYPE_CHECKING:
 
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.cache import AbstractCacheClient
-    from app.clients.git.dulwich.blob_backend import BlobBackend
-    from app.clients.git.interfaces import MergeRequest, MergeResult
+    from app.clients.git.blob_backend import BlobBackend
+    from app.clients.git.types import MergeRequest, MergeResult
     from app.clients.redis import AbstractRedisClient
 from dulwich.objects import ObjectID
 from dulwich.refs import Ref
 from fastapi import HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 
-from app.clients.git.dulwich.blob_repository import BlobRepository
-from app.clients.git.dulwich.merging import MergeConflict, calculate_merge, merge_message
+from app.clients.git.blob_repository import BlobRepository
+from app.clients.git.merging import MergeConflict, calculate_merge, merge_message
+from app.clients.git.refs import GitRefStore
 from app.clients.git.storage import RepositoryStorage
-from app.clients.git_refs import GitRefStore
 from app.schemas.repositories import MergeMethod, PullRequestMergeability
 
 
-class DulwichMergeClient:
+class GitMergeClient:
     """Fresh Git reads and conditional merge publication shared across workers."""
 
     def __init__(

@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 import pytest
 from dulwich.objects import Blob, Commit, ObjectID, Tree
 
-from app.clients.git.dulwich.blob_backend import BlobBackend
-from app.clients.git.dulwich.blob_repository import BlobRepository
-from app.clients.git.dulwich.merges import DulwichMergeClient
-from app.clients.git.dulwich.merging import calculate_merge
+from app.clients.git.blob_backend import BlobBackend
+from app.clients.git.blob_repository import BlobRepository
+from app.clients.git.merges import GitMergeClient
+from app.clients.git.merging import calculate_merge
 from app.clients.git.storage import RepositoryStorage
 from app.config import settings
 from app.schemas.repositories import MergeMessage, MergeMethod
@@ -132,7 +132,7 @@ def test_mergeability_is_read_only_cached_and_tracks_both_tips(
     base, first, head = seed_merge_repository(fake_stores, OWNER, "repo", conflict=conflict)
     pull = create(client, superuser_token_headers)
     blobs, refs = fake_stores.blob.objects.copy(), fake_stores.redis.values.copy()
-    calculate = mocker.patch("app.clients.git.dulwich.merges.calculate_merge", wraps=calculate_merge)
+    calculate = mocker.patch("app.clients.git.merges.calculate_merge", wraps=calculate_merge)
     response = client.get(f"{pull}/mergeability", params={"method": method})
     assert response.status_code == 200, response.text
     data = response.json()
@@ -199,7 +199,7 @@ async def test_rebase_checks_each_commit_even_when_the_combined_diff_merges_clea
     result = client.get(f"{pull}/mergeability", params={"method": "rebase"}).json()
     assert result["mergeable"] is False
     assert result["conflicting_files"] == ["code.txt"]
-    git = DulwichMergeClient(fake_stores.blob, fake_stores.redis, fake_stores.cache, BlobBackend())
+    git = GitMergeClient(fake_stores.blob, fake_stores.redis, fake_stores.cache, BlobBackend())
     repo = await git.load(OWNER, "repo")
     before = repo.get_pending_changes()
     calculate_merge(
@@ -282,7 +282,7 @@ async def test_retry_recovers_after_git_publication(
 ) -> None:
     base, _, head = seed_merge_repository(fake_stores, OWNER, "repo")
     pull = create(client, superuser_token_headers)
-    git = DulwichMergeClient(fake_stores.blob, fake_stores.redis, fake_stores.cache, BlobBackend())
+    git = GitMergeClient(fake_stores.blob, fake_stores.redis, fake_stores.cache, BlobBackend())
     repo = await git.load(OWNER, "repo")
     result = calculate_merge(
         repo,

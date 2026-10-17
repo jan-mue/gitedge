@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 
-from app.clients.git.interfaces import MergeRequest
+from app.clients.git.types import MergeRequest
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.issues import IssueState
 from app.entities.pull_requests import PullRequest
@@ -23,11 +23,11 @@ from app.schemas.repositories import (
     PullRequestsListPublic,
     PullRequestUpdate,
 )
-from app.services.markdown import render_markdown
 from app.services.repositories import ensure_repository
+from app.utils.markdown import render_markdown
 
 if TYPE_CHECKING:
-    from app.clients.git.interfaces import GitMergeClient
+    from app.clients.git.merges import GitMergeClient
     from app.clients.pull_requests import PullRequestStore
     from app.clients.repositories import RepositoryStore
     from app.entities.users import User

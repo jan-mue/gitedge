@@ -1,4 +1,4 @@
-"""Markdown rendering service using markdown-it-py with GFM extensions."""
+"""Markdown rendering using markdown-it-py with GFM extensions."""
 
 from markdown_it import MarkdownIt
 from mdit_py_plugins.tasklists import tasklists_plugin

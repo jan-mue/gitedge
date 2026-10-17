@@ -26,10 +26,9 @@ from app.clients.cache import (
 )
 from app.clients.comments import CommentStore, SQLCommentStore
 from app.clients.email import EmailClient, SMTPClient
-from app.clients.git.dulwich.blob_backend import BlobBackend
-from app.clients.git.dulwich.merges import DulwichMergeClient
-from app.clients.git.dulwich.repositories import DulwichGitClient
-from app.clients.git.interfaces import GitClient, GitMergeClient
+from app.clients.git.blob_backend import BlobBackend
+from app.clients.git.merges import GitMergeClient
+from app.clients.git.repositories import GitClient
 from app.clients.git.storage import RepositoryStorage
 from app.clients.issues import IssueStore, SQLIssueStore
 from app.clients.organizations import OrganizationStore, SQLOrganizationStore
@@ -328,12 +327,12 @@ def get_git_client(
     cache_client: CacheClientDep,
     repository_store: RepositoryStoreDep,
 ) -> GitClient:
-    """Select the Git engine independently from the S3/Blob provider."""
+    """Create a request-scoped Git client."""
 
     async def exists(owner: str, name: str) -> bool:
         return await repository_store.find_by_owner_and_name(owner, name) is not None
 
-    return DulwichGitClient(backend, RepositoryStorage(blob_client, redis_client), cache_client, exists)
+    return GitClient(backend, RepositoryStorage(blob_client, redis_client), cache_client, exists)
 
 
 GitClientDep = Annotated[GitClient, Depends(get_git_client)]
@@ -345,7 +344,7 @@ def get_repository_service(
     repository_store: RepositoryStoreDep,
     star_store: StarStoreDep,
 ) -> RepositoryService:
-    """Wire metadata policy to the selected Git implementation."""
+    """Bind repository metadata stores and the Git client."""
     return RepositoryService(git, cache_client, repository_store, star_store)
 
 
@@ -488,7 +487,7 @@ def get_git_merge_client(
     blob: BlobStorageClientDep, redis: RedisClientDep, cache: CacheClientDep, backend: BackendDep
 ) -> GitMergeClient:
     """Create the merge storage adapter."""
-    return DulwichMergeClient(blob, redis, cache, backend)
+    return GitMergeClient(blob, redis, cache, backend)
 
 
 GitMergeClientDep = Annotated[GitMergeClient, Depends(get_git_merge_client)]
