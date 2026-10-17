@@ -251,12 +251,10 @@ class BlobRepository(BaseRepo):
             config = self.get_config_stack()
         git_attributes = self.get_gitattributes()
 
-        # Lazily create FilterContext if needed
         if self.filter_context is None:
             filter_registry = FilterRegistry(config, self)
             self.filter_context = FilterContext(filter_registry)
         else:
-            # Refresh the context with current config to handle config changes
             self.filter_context.refresh_config(config)
 
         return FilterBlobNormalizer(config, git_attributes, filter_context=self.filter_context)

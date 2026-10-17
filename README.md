@@ -95,9 +95,6 @@ Email sending is disabled unless both `SMTP_HOST` and `EMAILS_FROM_EMAIL` are
 set. In development, default secrets only produce warnings; in preview and
 production they raise an error at startup.
 
-See [Git engines and object storage](docs/git-backends.md) for the replaceable
-Git interfaces, pack catalog rollout requirements, and Blob operation costs.
-
 ### Dynamic CORS origins
 
 The allowed CORS origins are computed by a single property,

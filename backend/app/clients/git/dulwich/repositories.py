@@ -883,7 +883,6 @@ class DulwichGitClient:
                 wrapcode=True,
             )
 
-            # Create dark mode formatter for CSS only (same HTML, different colors)
             dark_formatter = HtmlFormatter(
                 style="github-dark",
                 cssclass="highlight",
@@ -1388,7 +1387,6 @@ class DulwichGitClient:
         if packs or refs:
             return self.backend.load_repository_from_data(key, packs, refs)
 
-        # A row without stored Git data is an empty repository, not a missing one.
         if await self.repository_exists(owner, name):
             return self.backend.create_repository(key)
         raise HTTPException(status_code=404, detail="Repository not found")

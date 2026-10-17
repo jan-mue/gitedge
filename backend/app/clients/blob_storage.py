@@ -89,7 +89,6 @@ class VercelBlobClient(BlobStorageClient):
             access=self._access,
             content_type="application/octet-stream",
             add_random_suffix=False,
-            # Git pack/index keys are content-addressed and never overwritten.
             cache_control_max_age=31536000,
         )
 

@@ -159,7 +159,6 @@ class BlobObjectStore(BucketBasedObjectStore):
         contents = PackContents(pack=pack_data, index=index_data)
         self._pending_uploads[basename] = contents
 
-        # Also add to loaded packs so it's immediately available
         self._loaded_packs[basename] = contents
 
     def _remove_pack_by_name(self, name: str) -> None:
@@ -214,7 +213,6 @@ class BlobObjectStore(BucketBasedObjectStore):
         Returns:
             Tuple of (file_object, commit_function, abort_function).
         """
-        # Use the parent implementation which calls _upload_pack
         return super().add_pack()
 
     def add_thin_pack(
