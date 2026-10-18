@@ -54,9 +54,31 @@ with 20 tiny fresh containers also missed 100 ms in every sample: minimum
 On a GitHub-hosted Docker machine, one fresh prepared-image provisioning call
 measured 90.52 ms. That measurement excludes job bootstrap and restoration before
 the first step, so it does not establish the full startup target.
-No warm-pool lease is reported as fresh provisioning. Validate time to the first
-step on the target Docker host and a live Vercel snapshot before promoting this
-implementation beyond draft status.
+Live Vercel validation on 2026-10-18 ran the five jobs at commit `4044396` in
+fresh two-vCPU Frankfurt sandboxes, using a prepared 1.17 GB snapshot colocated
+with the backend. All three workflows passed, covering matrix isolation,
+dependency outputs, checkout, prepared toolchains, pre-commit, Codecov dry-run,
+cache, artifact upload, and CodeQL. The PR checks and job-log links were verified
+in a browser against the preview deployment.
+
+| Job | Provider provisioning (ms) | Dispatch to first step (ms) |
+| --- | ---: | ---: |
+| Toolchains | 3451.60 | 3606.73 |
+| CodeQL | 2841.45 | 2997.16 |
+| Bun runner (alpha) | 2983.09 | 3147.91 |
+| Bun runner (beta) | 1026.47 | 1178.14 |
+| Dependency outputs | 1319.21 | 1464.54 |
+
+First-step startup: **minimum 1178.14 ms, median 2997.16 ms, maximum 3606.73 ms**
+(n=5). None met 100 ms. These measurements include provisioning and state
+restoration; repository source transfers in the subsequent checkout step.
+No warm-pool lease is reported as fresh provisioning. The sub-100 ms requirement
+remains unmet, so this implementation remains a draft.
+
+Preview PR: [GitEdge Actions verification](https://gitedge-frontend-git-feat-gitedge-actions-jan-mue-projects.vercel.app/actions-preview-1792310786111/gitedge-actions/pulls/1).
+The frontend preview retains Vercel deployment protection. The prepared snapshot
+expires after seven days; refresh it and update `ACTIONS_VERCEL_SNAPSHOT` before
+expiry. Keep its region aligned with `ACTIONS_VERCEL_REGION`.
 
 ## Configuration
 
