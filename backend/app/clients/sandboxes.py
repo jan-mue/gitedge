@@ -1,5 +1,6 @@
 """Provider-independent sandbox clients for one isolated, short-lived job each."""
 
+import asyncio
 import base64
 import io
 import json
@@ -248,19 +249,30 @@ class VercelSandboxClient(AbstractSandboxClient):
             box = await get_sandbox(name=name)
             if box.status != SandboxStatus.RUNNING:
                 return SandboxSnapshot(running=False)
-            result = SandboxSnapshot(running=False)
-            for process in await box.query_processes():
-                await process.refresh()
-                result.running |= process.returncode is None
-            for path in READ_FILES:
+
+            async def read(path: str) -> bytes | None:
                 try:
                     data = await box.fs.read_bytes(f"/gitedge/{path}")
                 except SandboxPathNotFoundError:
-                    continue
+                    return None
                 if len(data) > MAX_FILE_BYTES:
                     raise SandboxError(f"Sandbox file too large: {path}")
-                result.files[path] = data
-            return result
+                return data
+
+            marker = await read("exit-code")
+            if marker is None:
+                processes = await box.query_processes()
+                if any(process.returncode is None for process in processes):
+                    log = await read("log.jsonl")
+                    return SandboxSnapshot(running=True, files={"log.jsonl": log} if log is not None else {})
+                # A process can finish after the first marker read. Its result is
+                # complete once the marker is observed, without per-process refresh calls.
+                marker = await read("exit-code")
+            values = await asyncio.gather(*(read(path) for path in READ_FILES[1:]))
+            files = {path: data for path, data in zip(READ_FILES[1:], values, strict=True) if data is not None}
+            if marker is not None:
+                files["exit-code"] = marker
+            return SandboxSnapshot(running=False, files=files)
         except VercelSandboxError as exc:
             raise SandboxError(f"Vercel sandbox inspection failed: {exc}") from exc
 

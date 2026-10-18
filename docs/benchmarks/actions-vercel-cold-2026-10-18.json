@@ -1,0 +1,94 @@
+{
+  "methodology": "Fresh 2-vCPU Frankfurt Vercel sandboxes, identical prepared snapshot, no source checkout or state restore. Provider-reported requestedAt/startedAt and command.startedAt are used to separate VM start from command-to-step execution. mcp_request_to_first_step_ms includes multi-second connector gaps and is not comparable to colocated backend SDK timings.",
+  "snapshot": "snap_gJQj74JEGBh4hblUnAkymeRtQ6KR",
+  "region": "fra1",
+  "runner_samples": [
+    {
+      "variant": "optimized",
+      "vcpus": 2,
+      "requestedAt": 1792326288166,
+      "startedAt": 1792326288303,
+      "commandStartedAt": 1792326296633,
+      "provider_boot_ms": 137,
+      "command_to_first_step_ms": 69,
+      "command_to_first_process_ms": 80,
+      "mcp_request_to_first_step_ms": 8536
+    },
+    {
+      "variant": "optimized",
+      "vcpus": 2,
+      "requestedAt": 1792326468773,
+      "startedAt": 1792326468905,
+      "commandStartedAt": 1792326477507,
+      "provider_boot_ms": 132,
+      "command_to_first_step_ms": 53,
+      "command_to_first_process_ms": 63,
+      "mcp_request_to_first_step_ms": 8787
+    },
+    {
+      "variant": "baseline",
+      "vcpus": 2,
+      "requestedAt": 1792326524655,
+      "startedAt": 1792326524783,
+      "commandStartedAt": 1792326530566,
+      "provider_boot_ms": 128,
+      "command_to_first_step_ms": 62,
+      "command_to_first_process_ms": 73,
+      "mcp_request_to_first_step_ms": 5973
+    },
+    {
+      "variant": "optimized",
+      "vcpus": 2,
+      "requestedAt": 1792326589156,
+      "startedAt": 1792326589291,
+      "commandStartedAt": 1792326595210,
+      "provider_boot_ms": 135,
+      "command_to_first_step_ms": 69,
+      "command_to_first_process_ms": 80,
+      "mcp_request_to_first_step_ms": 6123
+    },
+    {
+      "variant": "baseline",
+      "vcpus": 2,
+      "requestedAt": 1792326741490,
+      "startedAt": 1792326741624,
+      "commandStartedAt": 1792326747388,
+      "provider_boot_ms": 134,
+      "command_to_first_step_ms": 63,
+      "command_to_first_process_ms": 75,
+      "mcp_request_to_first_step_ms": 5961
+    },
+    {
+      "variant": "baseline",
+      "vcpus": 2,
+      "requestedAt": 1792326853214,
+      "startedAt": 1792326853346,
+      "commandStartedAt": 1792326861244,
+      "provider_boot_ms": 132,
+      "command_to_first_step_ms": 82,
+      "command_to_first_process_ms": 93,
+      "mcp_request_to_first_step_ms": 8112
+    }
+  ],
+  "additional_boot_samples": [
+    {
+      "vcpus": 1,
+      "requestedAt": 1792326362815,
+      "startedAt": 1792326362943,
+      "provider_boot_ms": 128
+    },
+    {
+      "vcpus": 2,
+      "requestedAt": 1792326378929,
+      "startedAt": 1792326379062,
+      "provider_boot_ms": 133
+    },
+    {
+      "variant": "stock-universal",
+      "vcpus": 2,
+      "requestedAt": 1792326667507,
+      "startedAt": 1792326667631,
+      "provider_boot_ms": 124
+    }
+  ]
+}

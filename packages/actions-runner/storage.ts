@@ -28,7 +28,7 @@ async function body(request: IncomingMessage) {
   }
   return Buffer.concat(parts)
 }
-export async function startStorage(root: string, runId: string, jobId: string) {
+export async function startStorage(root: string, runId: string, jobId: string, restore?: () => Promise<void>) {
   const secret = randomBytes(32).toString("base64url")
   const header = Buffer.from('{"alg":"HS256","typ":"JWT"}').toString("base64url")
   const payload = Buffer.from(
@@ -44,12 +44,17 @@ export async function startStorage(root: string, runId: string, jobId: string) {
   await mkdir(join(root, "artifacts", runId), { recursive: true })
   const indexPath = join(root, "cache", "index.json")
   let caches: CacheEntry[] = []
-  try {
-    caches = JSON.parse(await readFile(indexPath, "utf8"))
-  } catch (cause) {
-    const error = cause as NodeJS.ErrnoException
-    if (error.code !== "ENOENT") throw error
-  }
+  let restoration: Promise<void> | undefined
+  const ensureRestored = () =>
+    (restoration ??= (async () => {
+      await restore?.()
+      try {
+        caches = JSON.parse(await readFile(indexPath, "utf8"))
+      } catch (cause) {
+        const error = cause as NodeJS.ErrnoException
+        if (error.code !== "ENOENT") throw error
+      }
+    })())
   const reservations = new Map<string, CacheReservation>()
   const pending = new Map<string, Map<string, Buffer>>()
   const files = new Map<string, string>()
@@ -110,6 +115,9 @@ export async function startStorage(root: string, runId: string, jobId: string) {
         return send({}, 405)
       }
       if (request.headers.authorization !== `Bearer ${token}`) return send({ error: "Unauthorized" }, 403)
+      // Checkout and shell-only jobs never need a remote state transfer. Concurrent
+      // cache/artifact requests share one restore before reading or mutating state.
+      await ensureRestored()
       // Official cache actions select this API on custom forge hostnames.
       if (target.pathname.startsWith("/_apis/artifactcache/")) {
         if (request.method === "GET" && target.pathname.endsWith("/cache")) {
@@ -281,10 +289,13 @@ export async function startStorage(root: string, runId: string, jobId: string) {
       ACTIONS_CACHE_URL: base,
       ACTIONS_CACHE_SERVICE_V2: "true",
     },
-    close: () =>
-      new Promise<void>((resolve, reject) => {
+    close: async () => {
+      // A terminated action can leave a restore request in flight. Finish it before export.
+      await restoration?.catch(() => undefined)
+      return new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()))
         server.closeAllConnections()
-      }),
+      })
+    },
   }
 }

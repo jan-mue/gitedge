@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import io
 import json
+import os
 import tarfile
 import time
 import zipfile
@@ -94,6 +95,20 @@ def test_push_runs_matrix_jobs_in_separate_sandboxes(
     assert len(run["jobs"]) == 3
     assert all(job["status"] == "success" for job in run["jobs"])
     assert all(job["sandbox"] is None for job in run["jobs"])
+    if report := os.environ.get("ACTIONS_STARTUP_REPORT"):
+        Path(report).write_text(
+            json.dumps(
+                {
+                    "provider": "docker",
+                    "runner": "Bun bytecode",
+                    "jobs": [
+                        {key: job[key] for key in ("name", "provisioning_ms", "startup_ms")} for job in run["jobs"]
+                    ],
+                },
+                indent=2,
+            )
+            + "\n"
+        )
     assert "Dependency outputs verified" in run["jobs"][-1]["log"]
     assert all(job["provisioning_ms"] is not None for job in run["jobs"])
     with closing(docker.from_env()) as sdk:

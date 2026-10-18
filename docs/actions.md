@@ -89,6 +89,51 @@ The frontend preview retains Vercel deployment protection. The prepared snapshot
 expires after seven days; refresh it and update `ACTIONS_VERCEL_SNAPSHOT` before
 expiry. Keep its region aligned with `ACTIONS_VERCEL_REGION`.
 
+### Startup optimizations and follow-up measurements
+
+The executor is now built by Bun into a minified bundle with precompiled Bun
+bytecode. Build and runtime must use the same Bun version (currently 1.4.3), and
+both `gitedge-launch` and `gitedge-launch.jsc` must be installed together.
+State restoration runs on the first authenticated cache/artifact request, rather
+than blocking every job before checkout. Jobs using only checkout and shell
+steps make no state request. Concurrent storage requests share one restore.
+Ready jobs provision concurrently within `ACTIONS_MAX_PARALLEL`. Vercel result
+collection reads the completion marker first, then fetches finished files in
+parallel without redundant process-status requests.
+
+A controlled benchmark on a two-vCPU Frankfurt Vercel sandbox used Bun 1.4.3
+and 20 fresh runner processes per variant. With an empty state endpoint delayed
+by 100 ms, median time to the **first step's process executing** fell from
+**161 ms to 39 ms**. Removing eager restoration accounted for about 105 ms;
+bytecode reduced the remaining median from 56 ms to 39 ms. These are fresh
+processes on an already-running VM, so they do **not** include VM provisioning.
+[Raw bootstrap measurements](benchmarks/actions-bootstrap-2026-10-18.json)
+include all 120 samples, with and without the delayed endpoint.
+
+Fresh-VM checks measured **132–137 ms** from provider request acceptance to
+session start, and **63–80 ms** from command start to the first step's process
+for three optimized jobs. Three baseline jobs measured 73–93 ms for the latter;
+the small, overlapping samples do not establish a cold-start bytecode speedup.
+A one-vCPU VM took 128 ms to start and the stock universal image took 124 ms;
+two vCPUs remain the default. These observed VM start times alone exceed the
+100 ms target, before control-plane calls and executor startup.
+[Raw cold measurements](benchmarks/actions-vercel-cold-2026-10-18.json) retain
+the timestamps and the multi-second MCP connector gaps. Those gaps make these
+dispatch-to-step measurements unsuitable for comparison with the colocated
+backend measurements above. Remeasuring that complete path requires the preview
+database recreation described earlier.
+
+Reproduce the process benchmark inside a disposable prepared sandbox:
+
+```sh
+bun run --filter @gitedge/actions-runner build
+bun run --filter @gitedge/actions-runner benchmark optimized=/path/to/dist/gitedge-launch
+```
+
+The Docker integration workflow uploads `actions-startup-measurements` with
+provisioning and dispatch-to-first-step timings for its three fresh matrix and
+dependency jobs. No performance assertion treats a warm sandbox as newly provisioned.
+
 ## Configuration
 
 | Setting | Purpose |

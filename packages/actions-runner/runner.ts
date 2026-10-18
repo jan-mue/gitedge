@@ -52,8 +52,15 @@ export async function execute(
     root = "/gitedge",
     actionRoot = "/opt/gitedge/actions",
     signal = new AbortController().signal,
+    restoreState,
     log = (entry) => process.stdout.write(`${JSON.stringify(entry)}\n`),
-  }: { root?: string; actionRoot?: string; signal?: AbortSignal; log?: (entry: LogEntry) => void } = {},
+  }: {
+    root?: string
+    actionRoot?: string
+    signal?: AbortSignal
+    log?: (entry: LogEntry) => void
+    restoreState?: () => Promise<void>
+  } = {},
 ): Promise<JobResult> {
   const workflow = parse(input.workflow) as Workflow
   const job = workflow.jobs[input.job]
@@ -64,7 +71,7 @@ export async function execute(
   await mkdir(temporary, { recursive: true })
   const eventPath = join(root, "event.json")
   await writeFile(eventPath, JSON.stringify(input.event || {}))
-  const storage = await startStorage(join(root, "state"), input.env.GITHUB_RUN_ID, input.job)
+  const storage = await startStorage(join(root, "state"), input.env.GITHUB_RUN_ID, input.job, restoreState)
   const protectedEnvironment = {
     ...input.env,
     ...storage.environment,
@@ -144,6 +151,7 @@ export async function execute(
   delete environment.GITEDGE_JOB
   delete environment.GITEDGE_JOB_ENCODING
   delete environment.GITEDGE_RESTORE_URL
+  delete environment.GITEDGE_JOB_ROOT
   const evaluateMap = (values: ExpressionMap | undefined, ctx: ExpressionContext, status: JobStatus) =>
     Object.fromEntries(
       Object.entries(values || {}).map(([key, value]) => [key, string(interpolate(value, ctx, status))]),

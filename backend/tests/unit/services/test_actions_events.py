@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,56 @@ if TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
     from tests.unit.utils.fakes import FakeStores
+
+
+async def test_ready_jobs_provision_concurrently_without_exceeding_the_limit(
+    mocker: MockerFixture, fake_stores: FakeStores
+) -> None:
+    provider = mocker.AsyncMock(spec=AbstractSandboxClient)
+    started: list[str] = []
+    both_started = asyncio.Event()
+
+    async def start(name: str, _files: dict[str, bytes], _lifetime: int) -> None:
+        started.append(name)
+        if len(started) == 2:
+            both_started.set()
+        await asyncio.wait_for(both_started.wait(), timeout=1)
+
+    provider.start.side_effect = start
+    store = FakeActionsStore()
+    run = await store.add_run(
+        WorkflowRun(
+            id=uuid.uuid4(),
+            repo_id=uuid.uuid4(),
+            workflow=".gitedge/workflow/ci.yaml",
+            definition="jobs: {}",
+            event={"repository": {"full_name": "owner/repo"}},
+            event_name="push",
+            event_key="push-1",
+            actor="owner",
+            provider="docker",
+            sha="a" * 40,
+            ref="refs/heads/main",
+            status="queued",
+            jobs=[
+                job.model_dump(mode="json")
+                for job in plan_jobs({"jobs": {key: {"steps": [{"run": "echo ready"}]} for key in "abc"}}, 60)
+            ],
+        )
+    )
+    service = ActionsService(
+        store,
+        mocker.Mock(),
+        fake_stores.repository,
+        fake_stores.blob,
+        {"docker": provider},
+        provider="docker",
+        max_timeout=60,
+        max_parallel=2,
+    )
+    assert await service.advance_run(run.repo_id, run.id)
+    assert len(started) == 2
+    assert [job["status"] for job in run.jobs] == ["running", "running", "queued"]
 
 
 async def test_provisioning_failures_finish_out_of_order_dependencies_without_periodic_recovery(
