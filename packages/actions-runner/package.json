@@ -5,7 +5,7 @@
   "scripts": {
     "build": "bun build.ts",
     "benchmark": "bun benchmark.ts",
-    "test": "vitest run",
+    "test": "bun --bun vitest run",
     "lint": "biome check --write --unsafe .",
     "check": "biome check .",
     "prepare:sandbox": "bun prepare.ts",
@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@actions/expressions": "0.3.61",
-    "yaml": "2.9.1"
+    "yaml": "2.9.1",
+    "zod": "4.6.7"
   },
   "devDependencies": {}
 }

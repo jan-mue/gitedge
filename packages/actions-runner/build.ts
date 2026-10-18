@@ -1,5 +1,5 @@
 for (const [entry, filename] of [
-  ["launch.ts", "gitedge-launch"],
+  ["src/main.ts", "gitedge-launch"],
   ["prepare.ts", "prepare.mjs"],
   ["artifact-compat.ts", "artifact-compat.cjs"],
 ]) {

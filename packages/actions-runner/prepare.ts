@@ -1,7 +1,8 @@
 // Image/snapshot preparation only; nothing here runs during job startup.
-import { chmod, mkdir, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises"
+import { chmod, mkdir, realpath, rm, symlink } from "node:fs/promises"
 import { dirname, join } from "node:path"
-import { parse } from "yaml"
+import { parseAction } from "./src/domain/workflow.ts"
+import { writeFile } from "./src/runtime/files.ts"
 
 async function run(command: string, ...args: string[]) {
   const child = Bun.spawn([command, ...args], { stdout: "pipe", stderr: "inherit" })
@@ -20,8 +21,8 @@ async function prepareActions() {
   const root = "/opt/gitedge/actions"
   const cache = "/opt/gitedge/action-cache"
   await mkdir(cache, { recursive: true })
-  const queue = (await readFile(new URL("./actions.txt", import.meta.url), "utf8")).trim().split(/\r?\n/)
-  const seen = new Set()
+  const queue = (await Bun.file(new URL("./actions.txt", import.meta.url)).text()).trim().split(/\r?\n/)
+  const seen = new Set<string>()
   const manifest: Record<string, string> = {}
   while (queue.length) {
     const action = queue.pop()!
@@ -45,9 +46,11 @@ async function prepareActions() {
     for (const filename of ["action.yml", "action.yaml"]) {
       const metadata = Bun.file(join(tree, subpath, filename))
       if (!(await metadata.exists())) continue
-      for (const step of parse(await metadata.text()).runs?.steps || []) {
-        if (step.uses && !step.uses.startsWith("./")) queue.push(step.uses)
-      }
+      const { runs } = parseAction(await metadata.text())
+      if (runs.using === "composite")
+        for (const step of runs.steps) {
+          if (step.kind === "action" && !step.uses.startsWith("./")) queue.push(step.uses)
+        }
       break
     }
   }

@@ -9,6 +9,7 @@ from pytest_socket import disable_socket
 
 from app.api.dependencies import (
     check_database_connection,
+    get_actions_cache_store,
     get_actions_store,
     get_activity_store,
     get_blob_client,
@@ -27,7 +28,7 @@ from app.api.dependencies import (
 )
 from app.index import app
 from app.services.crud import CrudService
-from tests.unit.utils.actions import FakeActionsStore
+from tests.unit.utils.actions import FakeActionsCacheStore, FakeActionsStore
 from tests.unit.utils.fakes import FakeStores, build_fake_stores
 from tests.unit.utils.user import EMAIL_TEST_USER, authentication_token_from_email
 from tests.unit.utils.utils import get_superuser_token_headers
@@ -50,6 +51,8 @@ def fake_stores() -> Generator[FakeStores]:
     fakes = build_fake_stores()
     actions = FakeActionsStore()
     app.dependency_overrides[get_actions_store] = lambda: actions
+    cache_entries = FakeActionsCacheStore()
+    app.dependency_overrides[get_actions_cache_store] = lambda: cache_entries
     app.dependency_overrides[get_user_store] = lambda: fakes.users
     app.dependency_overrides[get_issue_store] = lambda: fakes.issues
     app.dependency_overrides[get_pull_request_store] = lambda: fakes.pull_requests
@@ -68,6 +71,7 @@ def fake_stores() -> Generator[FakeStores]:
     yield fakes
 
     app.dependency_overrides.pop(get_actions_store, None)
+    app.dependency_overrides.pop(get_actions_cache_store, None)
     app.dependency_overrides.pop(get_user_store, None)
     app.dependency_overrides.pop(get_issue_store, None)
     app.dependency_overrides.pop(get_pull_request_store, None)

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import gzip
 import json
 import logging
-import tarfile
 import time
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -20,7 +20,6 @@ from app.entities.actions import WorkflowRun
 from app.entities.issues import IssueState
 from app.entities.principals import PrincipalType
 from app.schemas.actions import ActionJob, ActionRun, ActionStatus, PullRequestChecks, WorkflowInfo
-from app.services.actions.cache import MAX_CACHE_ENTRIES, STATE_LIMIT, cache_blobs, restore_archive
 from app.services.actions.runtime import finish_job, redact, update_logs
 from app.services.actions.workflows import (
     WORKFLOW_PREFIX,
@@ -42,6 +41,8 @@ if TYPE_CHECKING:
     from app.clients.sandboxes import AbstractSandboxClient
     from app.entities.repositories import Repository as RepositoryEntity
     from app.entities.users import User
+    from app.schemas.actions_cache import CacheEntry, CacheIdentity
+    from app.services.actions.cache import ActionsCacheService
     from app.services.repositories import RepositoryService
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,7 @@ class ActionsService:
         max_parallel: int,
         secrets: dict[str, dict[str, str]] | None = None,
         pull_requests: PullRequestStore | None = None,
+        cache: ActionsCacheService | None = None,
     ) -> None:
         """Inject data access and sandbox clients; keep provider policy out of workflows."""
         self.store = store
@@ -77,6 +79,7 @@ class ActionsService:
         self.max_parallel = max_parallel
         self.secrets = secrets or {}
         self.pull_requests = pull_requests
+        self.cache = cache
 
     async def _repository(
         self, owner: str, name: str, user: User | None = None, *, write: bool = False
@@ -297,17 +300,6 @@ class ActionsService:
                             if state:
                                 await self.blobs.put(f"actions/{repo_id}/{run.id}/jobs/{job.id}.tar.gz", state)
                                 await self.blobs.put(f"actions/{repo_id}/{run.id}/state.tar.gz", state)
-                                cache = snapshot.files.get("cache.tar.gz")
-                                if job.status == ActionStatus.SUCCESS and cache:
-                                    try:
-                                        for identifier, data in cache_blobs(cache).items():
-                                            await self.blobs.put(f"actions/{repo_id}/cache/{identifier}.tar.gz", data)
-                                    except (ValueError, KeyError, OSError, tarfile.TarError) as exc:
-                                        job.status = ActionStatus.FAILURE
-                                        job.error = "Sandbox produced an invalid cache archive"
-                                        logger.warning(
-                                            "Invalid cache archive for job %s: %s", job.id, type(exc).__name__
-                                        )
                     if job.status in TERMINAL:
                         await provider.delete(job.sandbox)
                         job.sandbox = None
@@ -420,7 +412,7 @@ class ActionsService:
             "env": env,
             "secrets": secrets,
         }
-        for purpose, field in (("state", "restore_url"), ("complete", "complete_url")):
+        for purpose, field in (("state", "restore_url"), ("complete", "complete_url"), ("cache", "cache_url")):
             token = jwt.encode(
                 {
                     "repo": str(run.repo_id),
@@ -516,24 +508,38 @@ class ActionsService:
             raise HTTPException(status_code=503, detail="Workflow is busy; retry completion callback")
 
     async def restore_state(self, token: str) -> bytes:
-        """Serve a repository-scoped state archive to a newly provisioned sandbox."""
+        """Serve run-scoped artifacts on demand; cache data never enters this archive."""
         repo_id, run_id = self._token_ids(token, "actions:state")
-        state = await self.blobs.get_current(
-            f"actions/{repo_id}/{run_id}/state.tar.gz"
-        ) or await self.blobs.get_current(f"actions/{repo_id}/cache.tar.gz")
-        # Independent cache-entry blobs avoid last-writer-wins loss between jobs.
-        keys = (await self.blobs.list_keys(f"actions/{repo_id}/cache/"))[:MAX_CACHE_ENTRIES]
-        archives: list[bytes] = []
-        budget = STATE_LIMIT
-        for offset in range(0, len(keys), 4):
-            batch = await asyncio.gather(*(self.blobs.get_current(key) for key in keys[offset : offset + 4]))
-            for data in batch:
-                if data and len(data) <= budget:
-                    archives.append(data)
-                    budget -= len(data)
-            if budget == 0:
-                break
-        return restore_archive(state, archives)
+        return await self.blobs.get_current(f"actions/{repo_id}/{run_id}/state.tar.gz") or gzip.compress(bytes(1024))
+
+    def cache_scope(self, token: str) -> uuid.UUID:
+        """Validate the cache capability before accepting a bounded upload."""
+        repo_id, _ = self._token_ids(token, "actions:cache")
+        self._cache_service()
+        return repo_id
+
+    def _cache_service(self) -> ActionsCacheService:
+        if self.cache is None:
+            raise HTTPException(status_code=503, detail="Actions cache is unavailable")
+        return self.cache
+
+    async def lookup_cache(self, token: str, identity: CacheIdentity, restore_keys: list[str]) -> CacheEntry | None:
+        """Find a repository cache without exposing provider credentials."""
+        repo_id = self.cache_scope(token)
+        return await self._cache_service().lookup(repo_id, identity, restore_keys)
+
+    async def save_cache(self, token: str, identity: CacheIdentity, payload: bytes) -> CacheEntry:
+        """Persist a bounded immutable cache entry."""
+        repo_id = self.cache_scope(token)
+        return await self._cache_service().save(repo_id, identity, payload)
+
+    async def download_cache(self, token: str, payload_id: uuid.UUID) -> bytes:
+        """Read only payload generations belonging to the capability's repository."""
+        repo_id = self.cache_scope(token)
+        payload = await self._cache_service().download(repo_id, payload_id)
+        if payload is None:
+            raise HTTPException(status_code=404, detail="Cache entry expired or was evicted")
+        return payload
 
     async def cancel_repository(self, owner: str, name: str, user: User) -> uuid.UUID:
         """Stop active sandboxes before their repository rows can be deleted."""
@@ -547,3 +553,5 @@ class ActionsService:
         """Remove Actions blobs after the repository deletion has committed."""
         for key in await self.blobs.list_keys(f"actions/{repo_id}/"):
             await self.blobs.delete(key)
+        if self.cache:
+            await self.cache.delete_repository(repo_id)

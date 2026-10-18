@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import UUID, DateTime, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import UUID, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -34,3 +34,20 @@ class WorkflowRun(Base):
     jobs: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error: Mapped[str | None] = mapped_column(Text)
+
+
+class WorkflowCacheEntry(Base):
+    """Repository cache metadata; payloads live in Vercel Runtime Cache or Redis."""
+
+    __tablename__ = "workflow_cache_entry"
+    __table_args__ = (UniqueConstraint("repo_id", "key", "version"),)
+
+    repo_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("repository.id", ondelete="CASCADE"), index=True
+    )
+    key: Mapped[str] = mapped_column(String(512))
+    version: Mapped[str] = mapped_column(String(512))
+    payload_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True)
+    size: Mapped[int] = mapped_column(Integer)
+    checksum: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

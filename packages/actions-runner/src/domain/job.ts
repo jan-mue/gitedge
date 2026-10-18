@@ -1,0 +1,48 @@
+import { z } from "zod"
+
+const statusSchema = z.enum(["success", "failure", "cancelled", "skipped"])
+const strings = z.record(z.string(), z.string())
+export const jobSchema = z.object({
+  workflow: z.string(),
+  job: z.string(),
+  timeout_seconds: z.number().positive().default(1200),
+  dispatched_at_ms: z.number().optional(),
+  restore_url: z.string().url().optional(),
+  complete_url: z.string().url().optional(),
+  cache_url: z.string().url().optional(),
+  event_name: z.string().default(""),
+  actor: z.string().default(""),
+  event: z.record(z.string(), z.json()).default({}),
+  env: strings.default({}),
+  matrix: z.record(z.string(), z.json()).default({}),
+  needs: z.record(z.string(), z.object({ result: statusSchema, outputs: strings.default({}) })).default({}),
+  secrets: strings.default({}),
+  vars: strings.default({}),
+})
+export type JobInput = z.input<typeof jobSchema>
+export type JobSpec = z.output<typeof jobSchema>
+export type JobStatus = z.infer<typeof statusSchema>
+export interface StepResult {
+  outcome: JobStatus
+  conclusion: JobStatus
+  outputs: Record<string, string>
+}
+export interface JobResult {
+  status: JobStatus
+  steps: Record<string, StepResult>
+  outputs: Record<string, string>
+  error?: string
+  startup_ms?: number | null
+}
+export interface LogEntry {
+  msg: string
+  stepID?: string[]
+  stepResult?: JobStatus
+}
+export interface LogSink {
+  write(entry: LogEntry): void
+  close(): Promise<void>
+}
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}

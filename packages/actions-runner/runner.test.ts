@@ -3,22 +3,43 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "vitest"
-import { condition, evaluate, interpolate } from "./expressions.ts"
-import { commands, execute } from "./runner.ts"
-import type { LogEntry } from "./types.ts"
+import { type JobInput, jobSchema, type LogEntry } from "./src/domain/job.ts"
+import { ExpressionEngine } from "./src/expressions/evaluator.ts"
+import { parseFileCommands as commands } from "./src/runtime/commands.ts"
+import { Workspace } from "./src/runtime/files.ts"
+import { WorkflowRunner } from "./src/workflow-runner.ts"
 
-test("official expressions preserve types, context wildcards, and status conditions", () => {
+async function execute(
+  input: JobInput,
+  options: { root: string; actionRoot?: string; log: (entry: LogEntry) => void },
+) {
+  return new WorkflowRunner(jobSchema.parse(input), {
+    root: options.root,
+    actions: options.actionRoot,
+    signal: new AbortController().signal,
+    log: { write: options.log, close: async () => {} },
+  }).run()
+}
+
+test("official expressions preserve types, context wildcards, and status conditions", async () => {
+  const expressions = new ExpressionEngine(new Workspace("/tmp"))
   const context = {
     matrix: { version: 24 },
     needs: { one: { result: "failure" }, two: { result: "success" } },
     github: { workspace: "/tmp" },
   }
-  assert.equal(interpolate("${{ matrix.version }}", context), 24)
-  assert.equal(interpolate("node-${{ format('{0}', matrix.version) }}", context), "node-24")
-  assert.equal(evaluate("contains(needs.*.result, 'failure')", context).coerceString(), "true")
-  assert.equal(condition("always()", context, "failure"), true)
-  assert.equal(condition("matrix.version == 24", context, "failure"), false)
-  assert.equal(condition("failure() && matrix.version == 24", context, "failure"), true)
+  assert.equal(await expressions.interpolate("${{ matrix.version }}", context, "success"), 24)
+  assert.equal(
+    await expressions.interpolate("node-${{ format('{0}', matrix.version) }}", context, "success"),
+    "node-24",
+  )
+  assert.equal(
+    (await expressions.evaluate("contains(needs.*.result, 'failure')", context, "success")).coerceString(),
+    "true",
+  )
+  assert.equal(await expressions.condition("always()", context, "failure"), true)
+  assert.equal(await expressions.condition("matrix.version == 24", context, "failure"), false)
+  assert.equal(await expressions.condition("failure() && matrix.version == 24", context, "failure"), true)
 })
 test("file commands support multiline and preserve embedded equals", () => {
   assert.deepEqual(commands("a=one=two\nb<<END\nline1\nline2\nEND\n"), { a: "one=two", b: "line1\nline2" })
