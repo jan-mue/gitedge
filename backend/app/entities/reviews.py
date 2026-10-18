@@ -44,7 +44,7 @@ class PullRequestReview(Base):
     head_commit: Mapped[str] = mapped_column(String(40))
     author: Mapped["User"] = relationship()
     comments: Mapped[list["PullRequestComment"]] = relationship(
-        back_populates="review", cascade="all, delete-orphan", order_by="PullRequestComment.position"
+        back_populates="review", cascade="all, delete-orphan", order_by=lambda: PullRequestComment.position
     )
 
     @property

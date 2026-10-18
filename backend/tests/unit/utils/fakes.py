@@ -8,7 +8,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from sqlalchemy.schema import ColumnDefault
 
@@ -60,6 +60,7 @@ logger = logging.getLogger(__name__)
 
 
 class FakeEmailClient(EmailClient):
+    @override
     def send_email(self, email_to: str, subject: str = "", html_content: str = "") -> None:
         logger.info("Sending email to %s with subject %s and content %s", email_to, subject, html_content)
 
@@ -71,18 +72,22 @@ class FakeBlobStorageClient(BlobStorageClient):
         """Initialize the client."""
         self.objects: dict[str, bytes] = {}
 
+    @override
     async def put(self, key: str, data: bytes) -> None:
         """Store binary data at the given key."""
         self.objects[key] = data
 
+    @override
     async def get(self, key: str) -> bytes | None:
         """Retrieve binary data for the given key."""
         return self.objects.get(key)
 
+    @override
     async def delete(self, key: str) -> None:
         """Delete data at the given key."""
         self.objects.pop(key, None)
 
+    @override
     async def list_keys(self, prefix: str) -> list[str]:
         """List all keys with the given prefix."""
         return [key for key in self.objects if key.startswith(prefix)]
@@ -95,6 +100,7 @@ class FakeRedisClient(AbstractRedisClient):
         """Initialize the client."""
         self.values: dict[str, bytes] = {}
 
+    @override
     async def compare_and_set(self, expected: dict[str, str | None], updates: dict[str, str | None]) -> bool:
         """Check and update the fake without yielding between reads and writes."""
         if any(
@@ -108,18 +114,22 @@ class FakeRedisClient(AbstractRedisClient):
                 self.values[key] = value.encode()
         return True
 
+    @override
     async def get(self, key: str) -> bytes | None:
         """Get a value from Redis."""
         return self.values.get(key)
 
+    @override
     async def set(self, key: str, value: str | bytes) -> None:
         """Set a value in Redis."""
         self.values[key] = value.encode() if isinstance(value, str) else value
 
+    @override
     async def delete(self, key: str) -> None:
         """Delete a key from Redis."""
         self.values.pop(key, None)
 
+    @override
     async def scan_keys(self, pattern: str) -> list[str]:
         """Scan for keys matching a pattern."""
         return fnmatch.filter(self.values, pattern)
@@ -132,14 +142,17 @@ class FakeCacheClient(AbstractCacheClient):
         """Initialize the client."""
         self.values: dict[tuple[str, str], str] = {}
 
+    @override
     async def get(self, key: str, *, group: str) -> str | None:
         """Get a value from the cache."""
         return self.values.get((group, key))
 
-    async def set(self, key: str, value: str, *, ttl: int, group: str) -> None:  # noqa: ARG002
+    @override
+    async def set(self, key: str, value: str, *, ttl: int, group: str) -> None:
         """Set a value in the cache."""
         self.values[(group, key)] = value
 
+    @override
     async def invalidate(self, group: str) -> None:
         """Drop every entry in a group."""
         for entry in [entry for entry in self.values if entry[0] == group]:
@@ -169,10 +182,12 @@ class FakeCrudStore[T: Base](CrudStore[T]):
             obj.updated_at = datetime.now(UTC)
         self.items[obj.id] = obj
 
+    @override
     async def find(self, primary_key: uuid.UUID) -> T | None:
         """Find an entity by its primary key."""
         return self.items.get(primary_key)
 
+    @override
     async def get(self, primary_key: uuid.UUID) -> T:
         """Get an entity by its primary key, raising when absent."""
         entity = self.items.get(primary_key)
@@ -180,18 +195,22 @@ class FakeCrudStore[T: Base](CrudStore[T]):
             raise NotFoundError(f"{self.entity_name} not found")
         return entity
 
+    @override
     async def get_all(self, offset: int = 0, limit: int = 100) -> list[T]:
         """Get all entities with pagination."""
         return list(self.items.values())[offset : offset + limit]
 
+    @override
     async def count(self) -> int:
         """Count all entities."""
         return len(self.items)
 
+    @override
     async def add(self, obj: T) -> None:
         """Add a new entity."""
         self.persist(obj)
 
+    @override
     async def update(self, obj: T, new_data: dict[str, Any] | None = None) -> None:
         """Update an existing entity."""
         if new_data:
@@ -200,10 +219,12 @@ class FakeCrudStore[T: Base](CrudStore[T]):
         obj.updated_at = datetime.now(UTC)
         self.items[obj.id] = obj
 
+    @override
     async def delete(self, obj: T) -> None:
         """Delete an entity."""
         self.items.pop(obj.id, None)
 
+    @override
     async def refresh(self, obj: T) -> None:
         """Refresh an entity (no-op for in-memory storage)."""
 
@@ -213,12 +234,14 @@ class FakeUserStore(FakeCrudStore[User], UserStore):
 
     entity_name = "User"
 
+    @override
     async def get_by_email(self, email: str) -> User | None:
         """Get a user by their email address."""
         return next((user for user in self.items.values() if user.email == email), None)
 
-    async def get_by_name(self, name: str) -> User | None:
-        """Get a user by their name (case-insensitive)."""
+    @override
+    async def find_by_name(self, name: str) -> User | None:
+        """Find a user by their name (case-insensitive)."""
         return next((user for user in self.items.values() if user.lower_name == name.lower()), None)
 
 
@@ -227,8 +250,9 @@ class FakeOrganizationStore(FakeCrudStore[Organization], OrganizationStore):
 
     entity_name = "Organization"
 
-    async def get_by_name(self, name: str) -> Organization | None:
-        """Get an organization by its name (case-insensitive)."""
+    @override
+    async def find_by_name(self, name: str) -> Organization | None:
+        """Find an organization by its name (case-insensitive)."""
         return next(
             (organization for organization in self.items.values() if organization.lower_name == name.lower()), None
         )
@@ -275,6 +299,7 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
             repository.releases = self.release_store.releases_for(repository.id)
         return repository
 
+    @override
     async def delete(self, obj: Repository) -> None:
         """Delete dependent records and detach independent forks."""
         for fork in self.items.values():
@@ -304,20 +329,24 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
                         store.items.pop(record.id, None)
         await super().delete(obj)
 
+    @override
     async def find(self, primary_key: uuid.UUID) -> Repository | None:
         """Find a repository by its primary key."""
         repository = self.items.get(primary_key)
         return self._hydrate(repository) if repository is not None else None
 
+    @override
     async def get_all(self, offset: int = 0, limit: int = 100) -> list[Repository]:
         """Get all repositories with pagination."""
         return [self._hydrate(repository) for repository in list(self.items.values())[offset : offset + limit]]
 
+    @override
     async def add(self, obj: Repository) -> None:
         """Add a repository and populate its relationships."""
         self.persist(obj)
         self._hydrate(obj)
 
+    @override
     async def find_by_owner_and_name(
         self, owner: str, name: str, *, include_releases: bool = False
     ) -> Repository | None:
@@ -328,6 +357,7 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
                 return self._hydrate(repository, include_releases=include_releases)
         return None
 
+    @override
     async def get_by_owner_and_name(self, owner: str, name: str, *, include_releases: bool = False) -> Repository:
         """Get a repository by its owner name and name, raising when absent."""
         repository = await self.find_by_owner_and_name(owner, name, include_releases=include_releases)
@@ -335,6 +365,7 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
             raise RepositoryNotFoundError
         return repository
 
+    @override
     async def resolve_owner(self, owner: str) -> tuple[uuid.UUID, PrincipalType]:
         """Resolve an owner name to its principal id and type, raising when absent."""
         if self.users is not None:
@@ -347,20 +378,24 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
                     return organization.id, PrincipalType.ORGANIZATION
         raise OwnerNotFoundError
 
+    @override
     async def get_by_owner(self, owner_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
         """Get all repositories owned by a principal."""
         repositories = [repository for repository in self.items.values() if repository.owner_id == owner_id]
         return [self._hydrate(repository) for repository in repositories[offset : offset + limit]]
 
+    @override
     async def list_by_fork_of(self, fork_of_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
         """Get all repositories forked from a given repository."""
         repositories = [repository for repository in self.items.values() if repository.fork_of_id == fork_of_id]
         return [self._hydrate(repository) for repository in repositories[offset : offset + limit]]
 
+    @override
     async def count_by_fork_of(self, fork_of_id: uuid.UUID) -> int:
         """Count repositories forked from a given repository."""
         return sum(1 for repository in self.items.values() if repository.fork_of_id == fork_of_id)
 
+    @override
     async def count_forks_by_repos(self, repo_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
         """Count forks for multiple repositories, keyed by repository id."""
         return {
@@ -390,11 +425,13 @@ class FakeIssueStore(FakeCrudStore[Issue], IssueStore):
             issue.comments = self.comment_store.comments_for(issue.id)
         return issue
 
+    @override
     async def add(self, obj: Issue) -> None:
         """Add an issue and populate its relationships."""
         self.persist(obj)
         self._hydrate(obj)
 
+    @override
     async def get_by_number(self, repo_id: uuid.UUID, number: int) -> Issue:
         """Get an issue by repository id and number, raising when absent."""
         issue = next(
@@ -405,6 +442,7 @@ class FakeIssueStore(FakeCrudStore[Issue], IssueStore):
             raise IssueNotFoundError
         return self._hydrate(issue)
 
+    @override
     async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[Issue]:
         """List issues for a repository, newest first."""
         issues = [issue for issue in self.items.values() if issue.repo_id == repo_id]
@@ -412,10 +450,12 @@ class FakeIssueStore(FakeCrudStore[Issue], IssueStore):
             issues = [issue for issue in issues if issue.state == state]
         return [self._hydrate(issue) for issue in sorted(issues, key=lambda issue: issue.number, reverse=True)]
 
+    @override
     async def count_by_state(self, repo_id: uuid.UUID, state: IssueState) -> int:
         """Count issues in a repository by state."""
         return sum(1 for issue in self.items.values() if issue.repo_id == repo_id and issue.state == state)
 
+    @override
     async def next_number(self, repo_id: uuid.UUID) -> int:
         """Get the next issue number for a repository."""
         numbers = [issue.number for issue in self.items.values() if issue.repo_id == repo_id]
@@ -443,12 +483,14 @@ class FakePullRequestStore(FakeCrudStore[PullRequest], PullRequestStore):
             pr.comments = self.comment_store.comments_for(pr.id)
         return pr
 
+    @override
     async def add(self, obj: PullRequest) -> None:
         """Add a pull request, applying the has_merged default."""
         obj.has_merged = bool(obj.has_merged)
         self.persist(obj)
         self._hydrate(obj)
 
+    @override
     async def get_by_number(self, repo_id: uuid.UUID, number: int) -> PullRequest:
         """Get a pull request by repository id and number, raising when absent."""
         pr = next(
@@ -459,6 +501,7 @@ class FakePullRequestStore(FakeCrudStore[PullRequest], PullRequestStore):
             raise PullRequestNotFoundError
         return self._hydrate(pr)
 
+    @override
     async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[PullRequest]:
         """List pull requests for a repository, newest first."""
         pull_requests = [pr for pr in self.items.values() if pr.repo_id == repo_id]
@@ -466,14 +509,17 @@ class FakePullRequestStore(FakeCrudStore[PullRequest], PullRequestStore):
             pull_requests = [pr for pr in pull_requests if pr.state == state]
         return [self._hydrate(pr) for pr in sorted(pull_requests, key=lambda pr: pr.number, reverse=True)]
 
+    @override
     async def count_by_state(self, repo_id: uuid.UUID, state: IssueState) -> int:
         """Count pull requests in a repository by state."""
         return sum(1 for pr in self.items.values() if pr.repo_id == repo_id and pr.state == state)
 
+    @override
     async def count_by_states(self, repo_id: uuid.UUID, states: list[IssueState]) -> int:
         """Count pull requests in a repository matching any of the given states."""
         return sum(1 for pr in self.items.values() if pr.repo_id == repo_id and pr.state in states)
 
+    @override
     async def next_number(self, repo_id: uuid.UUID) -> int:
         """Get the next pull request number for a repository."""
         numbers = [pr.number for pr in self.items.values() if pr.repo_id == repo_id]
@@ -498,6 +544,7 @@ class FakeStarStore(FakeCrudStore[Star], StarStore):
                 star.user = user
         return star
 
+    @override
     async def get_by_user_and_repo(self, user_id: uuid.UUID, repo_id: uuid.UUID) -> Star | None:
         """Get a star for a user and repository, if it exists."""
         return next(
@@ -505,22 +552,26 @@ class FakeStarStore(FakeCrudStore[Star], StarStore):
             None,
         )
 
+    @override
     async def list_by_repo(self, repo_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Star]:
         """List stars for a repository, newest first."""
         stars = [star for star in self.items.values() if star.repo_id == repo_id]
         stars.sort(key=lambda star: star.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
         return [self._hydrate(star) for star in stars[offset : offset + limit]]
 
+    @override
     async def list_by_user(self, user_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Star]:
         """List repositories starred by a user, newest first."""
         stars = [star for star in self.items.values() if star.user_id == user_id]
         stars.sort(key=lambda star: star.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
         return stars[offset : offset + limit]
 
+    @override
     async def count_by_repo(self, repo_id: uuid.UUID) -> int:
         """Count stars for a repository."""
         return sum(1 for star in self.items.values() if star.repo_id == repo_id)
 
+    @override
     async def count_by_repos(self, repo_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
         """Count stars for multiple repositories, keyed by repository id."""
         return {repo_id: sum(1 for star in self.items.values() if star.repo_id == repo_id) for repo_id in repo_ids}
@@ -544,6 +595,7 @@ class FakeWatcherStore(FakeCrudStore[Watcher], WatcherStore):
                 watcher.user = user
         return watcher
 
+    @override
     async def get_by_user_and_repo(self, user_id: uuid.UUID, repo_id: uuid.UUID) -> Watcher | None:
         """Get a watcher for a user and repository, if it exists."""
         return next(
@@ -551,12 +603,14 @@ class FakeWatcherStore(FakeCrudStore[Watcher], WatcherStore):
             None,
         )
 
+    @override
     async def list_by_repo(self, repo_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Watcher]:
         """List watchers for a repository, newest first."""
         watchers = [watcher for watcher in self.items.values() if watcher.repo_id == repo_id]
         watchers.sort(key=lambda watcher: watcher.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
         return [self._hydrate(watcher) for watcher in watchers[offset : offset + limit]]
 
+    @override
     async def count_by_repo(self, repo_id: uuid.UUID) -> int:
         """Count watchers for a repository."""
         return sum(1 for watcher in self.items.values() if watcher.repo_id == repo_id)
@@ -565,6 +619,7 @@ class FakeWatcherStore(FakeCrudStore[Watcher], WatcherStore):
 class FakeCommentStore(FakeCrudStore[Comment], CommentStore):
     """In-memory comment store."""
 
+    @override
     async def list_by_issue(self, issue_id: uuid.UUID) -> list[Comment]:
         """Read hydrated comments for one discussion."""
         return sorted(
@@ -605,16 +660,19 @@ class FakeCommentStore(FakeCrudStore[Comment], CommentStore):
             comment.issue = issue
         return comment
 
+    @override
     async def find(self, primary_key: uuid.UUID) -> Comment | None:
         """Find a comment by id, hydrating its relationships."""
         comment = self.items.get(primary_key)
         return self._hydrate(comment) if comment is not None else None
 
+    @override
     async def add(self, obj: Comment) -> None:
         """Add a comment and populate its relationships."""
         self.persist(obj)
         self._hydrate(obj)
 
+    @override
     async def delete(self, obj: Comment) -> None:
         """Mirror database cascades for a comment thread and its review anchor."""
         for child in list(self.items.values()):
@@ -652,6 +710,7 @@ class FakeReleaseStore(FakeCrudStore[Release], ReleaseStore):
                 release.author = author
         return release
 
+    @override
     async def add(self, obj: Release) -> None:
         """Add a release and populate its relationships."""
         self.persist(obj)
@@ -669,6 +728,7 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
 
     entity_name = "Activity"
 
+    @override
     async def list_pull_request_events(self, repo_id: uuid.UUID, number: int) -> list[Activity]:
         """Read only state events belonging to this pull request, oldest first."""
         return [
@@ -681,6 +741,7 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
             in (ActivityKind.PULL_REQUEST_MERGE, ActivityKind.PULL_REQUEST_CLOSE, ActivityKind.PULL_REQUEST_REOPEN)
         ]
 
+    @override
     async def list_in_period(self, repo_id: uuid.UUID, start: datetime, end: datetime) -> list[Activity]:
         """List all events in the inclusive period for a repository."""
         return [
@@ -695,6 +756,7 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
         self.users = users
         self.repository = repository
 
+    @override
     async def list_feed(self, user_id: uuid.UUID, offset: int = 0, limit: int = 50) -> list[Activity]:
         """List personalized events using the fake repository and star stores."""
         if self.repository is None:
@@ -704,8 +766,12 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
             repo_ids.update(
                 star.repo_id for star in self.repository.stores.stars.items.values() if star.user_id == user_id
             )
-        return await self.list_by_repos(list(repo_ids), offset, limit)
+        if not repo_ids:
+            return []
+        activities = [activity for activity in self._sorted() if activity.repo_id in repo_ids]
+        return [self._hydrate(activity) for activity in activities[offset : offset + limit]]
 
+    @override
     async def get_target_previews(self, activities: list[Activity]) -> dict[uuid.UUID, ActivityTargetPreview]:
         """Build feed previews from the fake issue, pull request, and comment stores."""
         if self.repository is None or self.repository.stores is None:
@@ -744,6 +810,7 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
                 activity.repo = repo
         return activity
 
+    @override
     async def add(self, obj: Activity) -> None:
         """Add an activity and populate its relationships."""
         self.persist(obj)
@@ -756,20 +823,15 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
             reverse=True,
         )
 
+    @override
     async def list_recent(self, offset: int = 0, limit: int = 50) -> list[Activity]:
         """List recent activity across all repositories, newest first."""
         return [self._hydrate(activity) for activity in self._sorted()[offset : offset + limit]]
 
+    @override
     async def list_by_repo(self, repo_id: uuid.UUID, offset: int = 0, limit: int = 50) -> list[Activity]:
         """List activity for a repository, newest first."""
         activities = [activity for activity in self._sorted() if activity.repo_id == repo_id]
-        return [self._hydrate(activity) for activity in activities[offset : offset + limit]]
-
-    async def list_by_repos(self, repo_ids: list[uuid.UUID], offset: int = 0, limit: int = 50) -> list[Activity]:
-        """List activity for a set of repositories, newest first."""
-        if not repo_ids:
-            return []
-        activities = [activity for activity in self._sorted() if activity.repo_id in repo_ids]
         return [self._hydrate(activity) for activity in activities[offset : offset + limit]]
 
 
@@ -782,19 +844,23 @@ class FakeReviewStore(ReviewStore):
         self.reviews = FakeCrudStore[PullRequestReview]()
         self.workspaces: dict[tuple[uuid.UUID, uuid.UUID], PullRequestReviewWorkspace] = {}
 
+    @override
     async def list_reviews(self, pull_request_id: uuid.UUID) -> list[PullRequestReview]:
         """List only submitted reviews for a pull request."""
         return [review for review in self.reviews.items.values() if review.pull_request_id == pull_request_id]
 
+    @override
     async def get_review(self, pull_request_id: uuid.UUID, review_id: uuid.UUID) -> PullRequestReview | None:
         """Find published reviews within the requested PR."""
         review = self.reviews.items.get(review_id)
         return review if review is not None and review.pull_request_id == pull_request_id else None
 
+    @override
     async def add_reply(self, reply: Comment) -> None:
         """Persist a reply in the regular comment store."""
         self.comments.persist(reply)
 
+    @override
     async def workspace(
         self, pull_request_id: uuid.UUID, author_id: uuid.UUID, *, for_update: bool = False
     ) -> PullRequestReviewWorkspace:
@@ -804,10 +870,12 @@ class FakeReviewStore(ReviewStore):
             return self.workspaces.setdefault((pull_request_id, author_id), workspace)
         return self.workspaces.get((pull_request_id, author_id)) or workspace
 
+    @override
     async def save_workspace(self, workspace: PullRequestReviewWorkspace) -> None:
         """Save private state under the pull request and author."""
         self.workspaces[workspace.pull_request_id, workspace.author_id] = workspace
 
+    @override
     async def submit(self, review: PullRequestReview, workspace: PullRequestReviewWorkspace) -> None:
         """Publish all review comments and clear the draft together."""
         self.reviews.persist(review)

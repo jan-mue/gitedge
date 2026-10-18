@@ -701,7 +701,7 @@ export class ProfilesService {
      * List repositories starred by a user.
      *
      * Raises:
-     * HTTPException: If no user matches the name (organizations cannot star).
+     * UserNotFoundError: If no user matches the name (organizations cannot star).
      */
     public static listUserStarredRepositories<ThrowOnError extends boolean = true>(options: Options<profilesListUserStarredRepositoriesData, ThrowOnError>): RequestResult<profilesListUserStarredRepositoriesResponses, profilesListUserStarredRepositoriesErrors, ThrowOnError> {
         return (options.client ?? client).get<profilesListUserStarredRepositoriesResponses, profilesListUserStarredRepositoriesErrors, ThrowOnError>({ url: '/api/v1/users/{username}/starred', ...options });

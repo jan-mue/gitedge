@@ -292,7 +292,6 @@ def create_user_via_api(api_base_url: str, email: str, password: str) -> dict[st
         {
             "email": email,
             "password": password,
-            "is_verified": True,
             "display_name": "Test User",
         }
     ).encode("utf-8")

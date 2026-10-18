@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 import botocore.exceptions  # type: ignore[import-untyped]
 from aiobotocore.session import get_session  # type: ignore[import-untyped]
@@ -81,6 +81,7 @@ class VercelBlobClient(BlobStorageClient):
         self._client = AsyncBlobClient(token=token) if token else AsyncBlobClient()
         self._access = access
 
+    @override
     async def put(self, key: str, data: bytes) -> None:
         """Store binary data in Vercel Blob Storage."""
         await self._client.put(
@@ -92,6 +93,7 @@ class VercelBlobClient(BlobStorageClient):
             cache_control_max_age=31536000,
         )
 
+    @override
     async def get(self, key: str) -> bytes | None:
         """Retrieve binary data from Vercel Blob Storage."""
         try:
@@ -103,6 +105,7 @@ class VercelBlobClient(BlobStorageClient):
             return None
         return result.content  # type: ignore[no-any-return]
 
+    @override
     async def delete(self, key: str) -> None:
         """Delete data from Vercel Blob Storage."""
         try:
@@ -110,6 +113,7 @@ class VercelBlobClient(BlobStorageClient):
         except BlobNotFoundError:
             logger.debug("Blob not found while deleting: %s", key)
 
+    @override
     async def list_keys(self, prefix: str) -> list[str]:
         """List all keys with the given prefix in Vercel Blob Storage."""
         keys: list[str] = []
@@ -173,6 +177,7 @@ class S3Client(BlobStorageClient):
                     raise
             self._bucket_created = True
 
+    @override
     async def put(self, key: str, data: bytes) -> None:
         """Store binary data in S3."""
         await self._ensure_bucket()
@@ -184,6 +189,7 @@ class S3Client(BlobStorageClient):
                 ContentType="application/octet-stream",
             )
 
+    @override
     async def get(self, key: str) -> bytes | None:
         """Retrieve binary data from S3."""
         await self._ensure_bucket()
@@ -198,12 +204,14 @@ class S3Client(BlobStorageClient):
                 return None
             raise
 
+    @override
     async def delete(self, key: str) -> None:
         """Delete data from S3."""
         await self._ensure_bucket()
         async with self._create_client() as client:
             await client.delete_object(Bucket=self._bucket, Key=key)
 
+    @override
     async def list_keys(self, prefix: str) -> list[str]:
         """List all keys with the given prefix in S3."""
         await self._ensure_bucket()

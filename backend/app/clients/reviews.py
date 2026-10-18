@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -55,6 +55,7 @@ class SQLReviewStore(ReviewStore):
         """Initialize with the request's database session."""
         self.db = db
 
+    @override
     async def list_reviews(self, pull_request_id: uuid.UUID) -> list[PullRequestReview]:
         """Load submitted reviews in chronological order."""
         result = await self.db.scalars(
@@ -70,6 +71,7 @@ class SQLReviewStore(ReviewStore):
         )
         return list(result.all())
 
+    @override
     async def get_review(self, pull_request_id: uuid.UUID, review_id: uuid.UUID) -> PullRequestReview | None:
         """Scope lookups so reviews cannot be addressed through another PR."""
         return await self.db.scalar(
@@ -82,12 +84,14 @@ class SQLReviewStore(ReviewStore):
             .where(PullRequestReview.id == review_id, PullRequestReview.pull_request_id == pull_request_id)
         )
 
+    @override
     async def add_reply(self, reply: Comment) -> None:
         """Save the reply and load server-generated dates."""
         self.db.add(reply)
         await self.db.commit()
         await self.db.refresh(reply, attribute_names=["id", "created_at", "updated_at"])
 
+    @override
     async def workspace(
         self, pull_request_id: uuid.UUID, author_id: uuid.UUID, *, for_update: bool = False
     ) -> PullRequestReviewWorkspace:
@@ -123,11 +127,13 @@ class SQLReviewStore(ReviewStore):
             statement.on_conflict_do_update(index_elements=["pull_request_id", "author_id"], set_=values)
         )
 
+    @override
     async def save_workspace(self, workspace: PullRequestReviewWorkspace) -> None:
         """Upsert a user's workspace."""
         await self._save_workspace(workspace)
         await self.db.commit()
 
+    @override
     async def submit(self, review: PullRequestReview, workspace: PullRequestReviewWorkspace) -> None:
         """Persist a review and remove its draft in one transaction."""
         self.db.add(review)

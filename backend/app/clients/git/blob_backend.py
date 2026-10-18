@@ -6,7 +6,7 @@ object storage and Redis for refs.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from dulwich.errors import NotGitRepository
 from dulwich.server import Backend
@@ -32,6 +32,7 @@ class BlobBackend(Backend):
         super().__init__()
         self._repos: dict[str, BlobRepository] = {}
 
+    @override
     def open_repository(self, path: str | bytes) -> BlobRepository:
         """Open a repository at the given path.
 

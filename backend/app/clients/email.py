@@ -2,6 +2,7 @@
 
 import logging
 from abc import ABC, abstractmethod
+from typing import override
 
 from emails.message import Message
 
@@ -39,6 +40,7 @@ class SMTPClient(EmailClient):
         if settings.SMTP_PASSWORD:
             self.smtp_options["password"] = settings.SMTP_PASSWORD
 
+    @override
     def send_email(self, email_to: str, subject: str = "", html_content: str = "") -> None:
         """Send an email via SMTP.
 

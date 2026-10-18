@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload, selectinload
@@ -58,6 +58,7 @@ class SQLPullRequestStore(PullRequestStore, SQLStore[PullRequest]):
         """
         super().__init__(db, PullRequest)
 
+    @override
     async def get_by_number(self, repo_id: uuid.UUID, number: int) -> PullRequest:
         """Get a pull request by repository id and number, raising when absent."""
         pull_request = await self.db.scalar(
@@ -69,6 +70,7 @@ class SQLPullRequestStore(PullRequestStore, SQLStore[PullRequest]):
             raise PullRequestNotFoundError
         return pull_request
 
+    @override
     async def get_for_merge(self, repo_id: uuid.UUID, number: int) -> PullRequest:
         """Serialize merges of a PR, including recovery after Git publication."""
         pull = await self.db.scalar(
@@ -82,6 +84,7 @@ class SQLPullRequestStore(PullRequestStore, SQLStore[PullRequest]):
             raise PullRequestNotFoundError
         return pull
 
+    @override
     async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[PullRequest]:
         """List pull requests for a repository, newest first."""
         stmt = select(PullRequest).options(selectinload(PullRequest.author)).where(PullRequest.repo_id == repo_id)
@@ -91,6 +94,7 @@ class SQLPullRequestStore(PullRequestStore, SQLStore[PullRequest]):
         result = await self.db.scalars(stmt)
         return list(result.all())
 
+    @override
     async def count_by_state(self, repo_id: uuid.UUID, state: IssueState) -> int:
         """Count pull requests in a repository by state."""
         result = await self.db.execute(
@@ -100,6 +104,7 @@ class SQLPullRequestStore(PullRequestStore, SQLStore[PullRequest]):
         )
         return result.scalar_one()
 
+    @override
     async def count_by_states(self, repo_id: uuid.UUID, states: list[IssueState]) -> int:
         """Count pull requests in a repository matching any of the given states."""
         result = await self.db.execute(
@@ -109,6 +114,7 @@ class SQLPullRequestStore(PullRequestStore, SQLStore[PullRequest]):
         )
         return result.scalar_one()
 
+    @override
     async def next_number(self, repo_id: uuid.UUID) -> int:
         """Get the next issue or pull request number for a repository."""
         result = await self.db.execute(select(func.max(Issue.number)).where(Issue.repo_id == repo_id))

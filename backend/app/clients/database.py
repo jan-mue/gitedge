@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -98,6 +98,7 @@ class SQLStore[T: Base](CrudStore[T]):
         self.db = db
         self.entity_class = entity_class
 
+    @override
     async def find(self, primary_key: uuid.UUID) -> T | None:
         """Find an entity by its primary key, returning None when absent.
 
@@ -106,6 +107,7 @@ class SQLStore[T: Base](CrudStore[T]):
         """
         return await self.db.scalar(select(self.entity_class).where(self.entity_class.id == primary_key))
 
+    @override
     async def get(self, primary_key: uuid.UUID) -> T:
         """Get an entity by its primary key, raising when absent.
 
@@ -120,22 +122,26 @@ class SQLStore[T: Base](CrudStore[T]):
             raise NotFoundError(f"{self.entity_class.__name__} not found")
         return entity
 
+    @override
     async def get_all(self, offset: int = 0, limit: int = 100) -> list[T]:
         """Get all entities with pagination."""
         result = await self.db.scalars(select(self.entity_class).offset(offset).limit(limit))
         return list(result.all())
 
+    @override
     async def count(self) -> int:
         """Count all entities."""
         result = await self.db.execute(select(func.count()).select_from(self.entity_class))
         return result.scalar_one()
 
+    @override
     async def add(self, obj: T) -> None:
         """Add a new entity."""
         self.db.add(obj)
         await self.db.commit()
         await self.db.refresh(obj)
 
+    @override
     async def update(self, obj: T, new_data: dict[str, Any] | None = None) -> None:
         """Update an existing entity."""
         if new_data:
@@ -143,11 +149,13 @@ class SQLStore[T: Base](CrudStore[T]):
                 setattr(obj, key, value)
         await self.db.commit()
 
+    @override
     async def delete(self, obj: T) -> None:
         """Delete an entity."""
         await self.db.delete(obj)
         await self.db.commit()
 
+    @override
     async def refresh(self, obj: T) -> None:
         """Refresh an entity from the database."""
         await self.db.refresh(obj)
