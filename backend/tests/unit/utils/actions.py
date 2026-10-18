@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
     from uuid import UUID
 
-    from app.entities.actions import WorkflowRun
+    from app.entities.actions import WorkflowCacheEntry, WorkflowRun
 
 
 class FakeActionsStore:
@@ -43,3 +43,38 @@ class FakeActionsStore:
     async def locked(self, repo_id: UUID, run_id: UUID) -> AsyncGenerator[WorkflowRun | None]:
         run = self.runs.get(run_id)
         yield run if run and run.repo_id == repo_id else None
+
+
+class FakeActionsCacheStore:
+    def __init__(self) -> None:
+        self.entries: dict[tuple[UUID, str, str], WorkflowCacheEntry] = {}
+
+    async def candidates(self, repo_id: UUID, prefix: str, version: str) -> list[WorkflowCacheEntry]:
+        return sorted(
+            [
+                entry
+                for entry in self.entries.values()
+                if entry.repo_id == repo_id and entry.version == version and entry.key.startswith(prefix)
+            ],
+            key=lambda entry: entry.updated_at,
+            reverse=True,
+        )
+
+    async def payload(self, repo_id: UUID, payload_id: UUID) -> WorkflowCacheEntry | None:
+        return next(
+            (
+                entry
+                for entry in self.entries.values()
+                if entry.repo_id == repo_id and entry.payload_id == payload_id and entry.expires_at > datetime.now(UTC)
+            ),
+            None,
+        )
+
+    async def publish(self, entry: WorkflowCacheEntry, previous: UUID | None) -> WorkflowCacheEntry:
+        key = (entry.repo_id, entry.key, entry.version)
+        existing = self.entries.get(key)
+        if existing and existing.payload_id != previous and existing.expires_at > datetime.now(UTC):
+            return existing
+        entry.created_at = entry.updated_at = datetime.now(UTC)
+        self.entries[key] = entry
+        return entry

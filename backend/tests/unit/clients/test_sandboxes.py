@@ -77,7 +77,7 @@ async def test_completed_vercel_job_reads_results_concurrently_without_process_p
         if path == "/gitedge/exit-code":
             return b"0"
         readers += 1
-        if readers == 4:
+        if readers == 3:
             all_reading.set()
         await asyncio.wait_for(all_reading.wait(), timeout=1)
         return b"result"
@@ -87,7 +87,7 @@ async def test_completed_vercel_job_reads_results_concurrently_without_process_p
     snapshot = await VercelSandboxClient("prepared").inspect("job")
     assert not snapshot.running
     assert snapshot.files["exit-code"] == b"0"
-    assert len(snapshot.files) == 5
+    assert len(snapshot.files) == 4
     box.query_processes.assert_not_called()
 
 

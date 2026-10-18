@@ -4,7 +4,7 @@ import { createServer } from "node:http"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "vitest"
-import { launch } from "./launch.ts"
+import { launch } from "./src/job-lifecycle.ts"
 
 test("Bun launcher exports state and publishes its completion marker before callback", async () => {
   const root = await mkdtemp(join(tmpdir(), "gitedge-launch-"))

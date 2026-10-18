@@ -61,7 +61,7 @@ MAX_VERCEL_ENV_BYTES = 4096
 MAX_FILE_BYTES = 32 * 1024 * 1024
 CLEANUP_GRACE_SECONDS = 30
 # Read the marker first: if it exists, subsequent result/state reads are complete.
-READ_FILES = ("exit-code", "result.json", "log.jsonl", "state.tar.gz", "cache.tar.gz")
+READ_FILES = ("exit-code", "result.json", "log.jsonl", "state.tar.gz")
 
 
 class DockerSandboxClient(AbstractSandboxClient):

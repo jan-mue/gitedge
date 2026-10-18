@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { execFile } from "node:child_process"
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises"
+import { chmod, mkdtemp, readFile, rm, stat } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -18,7 +18,8 @@ test("distributed Bun bytecode launcher executes a job and keeps launch controls
     })
     assert.ok((await stat(join(directory, "gitedge-launch.jsc"))).size > 0)
     const root = join(directory, "job")
-    await execute("bun", [join(directory, "gitedge-launch")], {
+    await chmod(join(directory, "gitedge-launch"), 0o755)
+    await execute(join(directory, "gitedge-launch"), [], {
       env: {
         ...process.env,
         GITEDGE_JOB_ROOT: root,

@@ -1,107 +1,120 @@
-"""Bounded cache archives with independent, content-addressed entry blobs."""
+"""Bounded repository caches backed by Vercel Runtime Cache or local Redis."""
 
+from __future__ import annotations
+
+import asyncio
+import base64
+import binascii
 import hashlib
-import io
-import json
-import tarfile
-from pathlib import PurePosixPath
+import uuid
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
-from pydantic import Field
+from app.entities.actions import WorkflowCacheEntry
+from app.schemas.actions_cache import CacheEntry
 
-from app.schemas.base import GitEdgeBaseModel
+if TYPE_CHECKING:
+    from app.clients.actions_cache import ActionsCacheStore
+    from app.clients.cache import AbstractCacheClient
+    from app.schemas.actions_cache import CacheIdentity
 
 STATE_LIMIT = 32 * 1024 * 1024
-MAX_CACHE_ENTRIES = 128
+CHUNK_SIZE = 256 * 1024
+CACHE_TTL = 7 * 24 * 60 * 60
 
 
-class CacheEntry(GitEdgeBaseModel):
-    """Metadata written by either version of the job-local cache protocol."""
+class ActionsCacheService:
+    """Publish chunks before metadata; eviction/corruption is a cache miss."""
 
-    id: str = Field(pattern=r"^[a-f0-9]{64}$")
-    key: str = Field(min_length=1, max_length=512)
-    version: str = Field(min_length=1, max_length=512)
-    created: float = Field(ge=0, allow_inf_nan=False)
+    def __init__(self, store: ActionsCacheStore, cache: AbstractCacheClient) -> None:
+        """Reuse the application's provider-selected cache client."""
+        self.store = store
+        self.cache = cache
 
+    @staticmethod
+    def _metadata(entry: WorkflowCacheEntry) -> CacheEntry:
+        return CacheEntry(id=entry.payload_id, key=entry.key, version=entry.version, size=entry.size)
 
-def _read(archive: tarfile.TarFile, member: tarfile.TarInfo, budget: int) -> bytes:
-    if not member.isfile() or member.size > budget:
-        raise ValueError("State archive exceeds the transfer limit or contains a non-file entry")
-    stream = archive.extractfile(member)
-    if stream is None:
-        raise ValueError("Missing archive entry")
-    return stream.read(budget + 1)
+    @staticmethod
+    def _group(repo_id: uuid.UUID) -> str:
+        return f"actions:{repo_id}"
 
+    async def _read(self, entry: WorkflowCacheEntry) -> bytes | None:
+        if entry.expires_at <= datetime.now(UTC) or not 0 <= entry.size <= STATE_LIMIT:
+            return None
+        count = (entry.size + CHUNK_SIZE - 1) // CHUNK_SIZE
+        chunks = []
+        for start in range(0, count, 8):
+            batch = await asyncio.gather(
+                *(
+                    self.cache.get(f"{entry.payload_id}:{index}", group=self._group(entry.repo_id))
+                    for index in range(start, min(start + 8, count))
+                )
+            )
+            for chunk in batch:
+                if chunk is None or len(chunk) > 4 * ((CHUNK_SIZE + 2) // 3):
+                    return None
+                try:
+                    chunks.append(base64.b64decode(chunk, validate=True))
+                except binascii.Error, ValueError:
+                    return None
+        payload = b"".join(chunks)
+        if len(payload) != entry.size or hashlib.sha256(payload).hexdigest() != entry.checksum:
+            return None
+        return payload
 
-def _pack(files: dict[str, bytes]) -> bytes:
-    output = io.BytesIO()
-    with tarfile.open(fileobj=output, mode="w:gz") as archive:
-        for name, data in files.items():
-            member = tarfile.TarInfo(name)
-            member.mode = 0o600
-            member.size = len(data)
-            archive.addfile(member, io.BytesIO(data))
-    if output.tell() > STATE_LIMIT:
-        raise ValueError("State archive exceeds the transfer limit")
-    return output.getvalue()
-
-
-def _entries(data: bytes) -> list[tuple[CacheEntry, bytes]]:
-    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
-        try:
-            index = archive.getmember("cache/index.json")
-        except KeyError:
-            return []
-        raw = json.loads(_read(archive, index, STATE_LIMIT))
-        if not isinstance(raw, list) or len(raw) > MAX_CACHE_ENTRIES:
-            raise ValueError("Invalid cache index or too many cache entries")
-        entries = []
-        budget = STATE_LIMIT
-        for item in raw:
-            entry = CacheEntry.model_validate(item)
-            expected = hashlib.sha256(f"{entry.key}\0{entry.version}".encode()).hexdigest()
-            if entry.id != expected:
-                raise ValueError("Cache identifier does not match its key/version")
-            payload = _read(archive, archive.getmember(f"cache/{entry.id}"), budget)
-            budget -= len(payload)
-            entries.append((entry, payload))
-        return entries
-
-
-def cache_blobs(data: bytes) -> dict[str, bytes]:
-    """Split a job archive so parallel writers cannot erase unrelated cache keys."""
-    return {
-        entry.id: _pack({"cache/index.json": json.dumps([entry.model_dump()]).encode(), f"cache/{entry.id}": payload})
-        for entry, payload in _entries(data)
-    }
-
-
-def restore_archive(state: bytes | None, caches: list[bytes]) -> bytes:
-    """Overlay all cache keys while retaining the current run's artifact state."""
-    files: dict[str, bytes] = {}
-    budget = STATE_LIMIT
-    entries: dict[str, tuple[CacheEntry, bytes]] = {}
-    if state:
-        entries.update((entry.id, (entry, payload)) for entry, payload in _entries(state))
-        with tarfile.open(fileobj=io.BytesIO(state), mode="r:gz") as archive:
-            for member in archive:
-                path = PurePosixPath(member.name)
-                if not path.parts or path.parts[0] != "artifacts" or member.isdir():
+    async def lookup(self, repo_id: uuid.UUID, identity: CacheIdentity, restore_keys: list[str]) -> CacheEntry | None:
+        """Prefer exact keys, then the newest viable match for each ordered prefix."""
+        seen: set[uuid.UUID] = set()
+        for prefix in [identity.key, *restore_keys]:
+            candidates = await self.store.candidates(repo_id, prefix, identity.version)
+            if prefix == identity.key:
+                candidates.sort(key=lambda entry: entry.key != identity.key)
+            for entry in candidates:
+                if entry.payload_id in seen:
                     continue
-                if ".." in path.parts or path.is_absolute():
-                    raise ValueError("Unsafe artifact path in state archive")
-                files[str(path)] = _read(archive, member, budget)
-                budget -= len(files[str(path)])
-    for cache in caches:
-        for entry, payload in _entries(cache):
-            existing = entries.get(entry.id)
-            if existing is None or entry.created > existing[0].created:
-                entries[entry.id] = (entry, payload)
-    selected = []
-    for entry, payload in sorted(entries.values(), key=lambda item: item[0].created, reverse=True):
-        if len(selected) >= MAX_CACHE_ENTRIES or len(payload) > budget:
-            continue
-        selected.append(entry.model_dump())
-        files[f"cache/{entry.id}"] = payload
-        budget -= len(payload)
-    files["cache/index.json"] = json.dumps(selected).encode()
-    return _pack(files)
+                seen.add(entry.payload_id)
+                if await self._read(entry) is not None:
+                    return self._metadata(entry)
+        return None
+
+    async def save(self, repo_id: uuid.UUID, identity: CacheIdentity, payload: bytes) -> CacheEntry:
+        """Write independent generations so parallel jobs preserve unrelated keys."""
+        if len(payload) > STATE_LIMIT:
+            raise ValueError("Cache exceeds the 32 MiB transfer limit")
+        candidates = await self.store.candidates(repo_id, identity.key, identity.version)
+        existing = next((entry for entry in candidates if entry.key == identity.key), None)
+        if existing and await self._read(existing) is not None:
+            return self._metadata(existing)
+        entry = WorkflowCacheEntry(
+            repo_id=repo_id,
+            key=identity.key,
+            version=identity.version,
+            payload_id=uuid.uuid4(),
+            size=len(payload),
+            checksum=hashlib.sha256(payload).hexdigest(),
+            expires_at=datetime.now(UTC) + timedelta(seconds=CACHE_TTL),
+        )
+        chunks = [payload[offset : offset + CHUNK_SIZE] for offset in range(0, len(payload), CHUNK_SIZE)]
+        for start in range(0, len(chunks), 8):
+            await asyncio.gather(
+                *(
+                    self.cache.set(
+                        f"{entry.payload_id}:{index}",
+                        base64.b64encode(chunks[index]).decode(),
+                        ttl=CACHE_TTL,
+                        group=self._group(repo_id),
+                    )
+                    for index in range(start, min(start + 8, len(chunks)))
+                )
+            )
+        return self._metadata(await self.store.publish(entry, existing.payload_id if existing else None))
+
+    async def download(self, repo_id: uuid.UUID, payload_id: uuid.UUID) -> bytes | None:
+        """Revalidate chunks after lookup; eviction remains an ordinary miss."""
+        entry = await self.store.payload(repo_id, payload_id)
+        return await self._read(entry) if entry else None
+
+    async def delete_repository(self, repo_id: uuid.UUID) -> None:
+        """Invalidate chunks after repository deletion; metadata cascades in SQL."""
+        await self.cache.invalidate(self._group(repo_id))

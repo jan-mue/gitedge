@@ -17,8 +17,29 @@ The Docker provider uses aiodocker's native asynchronous API; the synchronous
 Docker SDK is only a development dependency for integration-test tooling.
 
 The Actions migration is generated directly on main's `c1e7092e3487` revision,
-with new head `084d6e4246d8`. Preview databases stamped with the superseded
+with the workflow-run revision `084d6e4246d8` and cache-metadata head `d4ada64ab07e`.
+Preview databases stamped with the superseded
 feature/merge revisions need recreation before applying this linear history.
+
+## Runner structure
+
+The old executor has been replaced by modules with explicit responsibilities:
+
+- `domain/`: Zod-validated job, workflow, and action contracts; inferred TypeScript
+  unions distinguish shell, JavaScript, and composite actions.
+- `expressions/`: the official expression evaluator, with asynchronous Bun file
+  hashing that preserves lazy expression evaluation.
+- `runtime/` and `actions/`: process lifetimes, environments, command files,
+  secret masking, prepared action resolution, and reverse-order cleanup hooks.
+- `storage/`: Bun HTTP protocol adapters, signed block transfers, controller
+  cache access, and lazy artifact handoff.
+- `workflow-runner.ts` and `job-lifecycle.ts`: job orchestration, deadlines,
+  artifact export, completion markers, and bounded callback retries.
+
+Bun provides web requests, the loopback SDK server, file contents, subprocesses,
+hashing, and archives. Node compatibility APIs are used for directory management,
+path validation, signals, and bounded decompression. Vitest runs under Bun so
+unit tests exercise the same native APIs as deployed jobs.
 
 ## Startup and image preparation
 
@@ -52,11 +73,10 @@ that every action in this repository's GitHub workflows also has a prepared refe
 integration example.
 
 **The requested sub-100 ms cold provisioning target is not met.**
-`ActionJob.startup_ms` records dispatch through the first step, including fresh
-provisioning and state restoration, using controller/sandbox UTC timestamps.
+`ActionJob.startup_ms` records dispatch through spawning the first step process,
+including fresh provisioning, using controller/sandbox UTC timestamps.
 It assumes synchronized clocks. `ActionJob.provisioning_ms` measures the provider call, including creation and
-starting the command, separately from source checkout. Time to the first step
-also includes state restoration after provisioning. The managed test host uses
+starting the command, separately from source checkout. Artifact restoration and cache reads happen only when an action requests them. The managed test host uses
 Docker's `vfs` driver, which copies complete filesystems and takes seconds to start the prepared image. A separate experiment
 with 20 tiny fresh containers also missed 100 ms in every sample: minimum
 101.82 ms, median 112.78 ms, maximum 297.61 ms, including creation and start.
@@ -94,9 +114,11 @@ expiry. Keep its region aligned with `ACTIONS_VERCEL_REGION`.
 The executor is now built by Bun into a minified bundle with precompiled Bun
 bytecode. Build and runtime must use the same Bun version (currently 1.4.3), and
 both `gitedge-launch` and `gitedge-launch.jsc` must be installed together.
-State restoration runs on the first authenticated cache/artifact request, rather
-than blocking every job before checkout. Jobs using only checkout and shell
-steps make no state request. Concurrent storage requests share one restore.
+Artifact restoration runs on the first authenticated artifact request. Cache
+operations go directly to the controller's Vercel Runtime Cache client (Redis
+locally). Jobs using only checkout and shell steps make no state request.
+Concurrent artifact requests share one restore. Bun serves the job-local SDK
+protocol and builds artifact archives without starting extra server or tar processes.
 Ready jobs provision concurrently within `ACTIONS_MAX_PARALLEL`. Vercel result
 collection reads the completion marker first, then fetches finished files in
 parallel without redundant process-status requests.
@@ -178,11 +200,15 @@ names make repeated event handling idempotent. A job-local timeout leaves the
 launcher alive to archive state and send completion, including on failure. A
 30-second provider cleanup grace bounds finalization. Provider timeouts bound execution;
 cleanup failures retain handles for retry. There is no background recovery sweep.
-Cache/artifact state is stored in the
-configured blob backend, with individual job archives retained under each run.
-Repository cache snapshots contain cache data only; artifacts stay in run state.
-Mutable Vercel Blob writes allow replacement, and restores bypass stale CDN
-responses; immutable repository reads retain their normal caching behavior.
+Artifacts stay in run-scoped archives in the configured blob backend. Caches
+use the application's `AbstractCacheClient`: Vercel Runtime Cache when deployed
+and Redis locally. The controller stores payloads in 256 KiB chunks with a
+seven-day TTL; PostgreSQL holds searchable key/version metadata. Immutable
+payload generations prevent concurrent uploads from mixing chunks. Missing,
+expired, or corrupt chunks cause a cache miss. Provider credentials remain in
+the controller; sandboxes receive repository-scoped cache capabilities.
+Mutable Vercel Blob writes allow artifact state replacement, and restores bypass
+stale CDN responses; immutable repository reads retain their normal caching behavior.
 
 The Actions tab provides the reference UI's workflow sidebar, actor/status
 filters, run list, jobs sidebar, expandable plain-text logs, dispatch, and
@@ -203,9 +229,9 @@ Linux labels select the prepared Linux environment; they do not install a
 particular Ubuntu release. Host resource limits and image selection are
 operator policy and cannot be overridden by workflow YAML. Each transferred
 sandbox file is limited to 32 MiB. Cache entries are persisted independently,
-so parallel jobs and jobs without cache writes preserve unrelated keys. Restore
-is bounded to 128 entries and 32 MiB; concurrent writes to the same key/version
-remain last-writer-wins.
+so parallel jobs and jobs without cache writes preserve unrelated keys. Each lookup considers at most 128 candidates per restore prefix, and each cache
+payload is limited to 32 MiB. The first live entry for a key/version remains
+immutable; an evicted or expired generation can be replaced.
 Artifact uploads use the executor's job-local results service. For official
 artifact steps, the adapter adjusts the toolkit's hostname probe to allow this
 protocol on GitEdge; checkout and the workflow's GitHub context keep GitEdge's

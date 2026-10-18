@@ -133,7 +133,7 @@ def test_tooling_actions_cache_and_artifacts(
     client, _, path = actions_repo
     wait_for_run(client, path)
 
-    async def artifact_state(run_id: str) -> tuple[bytes | None, bytes | None]:
+    async def artifact_state(run_id: str) -> bytes | None:
         blobs = S3Client(
             endpoint=infrastructure["S3_ENDPOINT"],
             access_key=infrastructure["S3_ACCESS_KEY"],
@@ -142,8 +142,8 @@ def test_tooling_actions_cache_and_artifacts(
         )
         keys = await blobs.list_keys("actions/")
         key = next(key for key in keys if key.endswith(f"/{run_id}/state.tar.gz"))
-        cache_key = next(key for key in keys if "/cache/" in key and key.endswith(".tar.gz"))
-        return await blobs.get(key), await blobs.get(cache_key)
+        assert not any("/cache/" in key or key.endswith("/cache.tar.gz") for key in keys)
+        return await blobs.get(key)
 
     for iteration in range(2):
         if iteration:
@@ -157,11 +157,8 @@ def test_tooling_actions_cache_and_artifacts(
         for step in run["jobs"][0]["steps"]:
             expected = "skipped" if step["name"] == "Verify restored cache" and not iteration else "success"
             assert step["status"] == expected, json.dumps({"iteration": iteration, "run": run}, indent=2)
-        state, cache = asyncio.run(artifact_state(run["id"]))
+        state = asyncio.run(artifact_state(run["id"]))
         assert state is not None
-        assert cache is not None
-        with tarfile.open(fileobj=io.BytesIO(cache), mode="r:gz") as archive:
-            assert all(member.name == "cache" or member.name.startswith("cache/") for member in archive)
         with tarfile.open(fileobj=io.BytesIO(state), mode="r:gz") as archive:
             member = next(member for member in archive if member.name.endswith("/example-results.zip"))
             uploaded = archive.extractfile(member)
