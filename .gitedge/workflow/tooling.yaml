@@ -41,7 +41,7 @@ jobs:
           writeFileSync(".gitedge-results/result.txt", "Prepared toolchains verified")
       - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd
         with:
-          extra_args: --version
+          extra_args: --all-files --config .gitedge/fixtures/pre-commit-config.yaml
       - name: Generate coverage
         run: |
           import assert from "node:assert/strict"
@@ -60,3 +60,5 @@ jobs:
         with:
           name: prepared-toolchain-results
           path: .gitedge-results/
+          include-hidden-files: true
+          if-no-files-found: error
