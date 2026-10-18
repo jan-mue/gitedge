@@ -127,10 +127,14 @@ def test_tooling_actions_cache_and_artifacts(
         )
         keys = await blobs.list_keys("actions/")
         key = next(key for key in keys if key.endswith(f"/{run_id}/state.tar.gz"))
-        cache_key = next(key for key in keys if key.endswith("/cache.tar.gz"))
+        cache_key = next(key for key in keys if "/cache/" in key and key.endswith(".tar.gz"))
         return await blobs.get(key), await blobs.get(cache_key)
 
     for iteration in range(2):
+        if iteration:
+            bystander = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cache-bystander.yaml"})
+            bystander.raise_for_status()
+            assert wait_for_run(client, path, bystander.json()["id"])["status"] == "success"
         dispatch = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/tooling.yaml"})
         dispatch.raise_for_status()
         run = wait_for_run(client, path, dispatch.json()["id"], seconds=600)

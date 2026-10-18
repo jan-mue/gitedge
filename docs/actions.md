@@ -4,12 +4,21 @@ GitEdge discovers GitHub/Gitea-style YAML in `.gitedge/workflow/*.yml` and
 `*.yaml`. Every expanded matrix job gets a separate disposable sandbox. There is
 no registered runner, polling worker, shared job container, or mounted Docker
 socket. The Bun workspace project `@gitedge/actions-runner` in
-`packages/actions-runner` is a one-shot Bun executor, linted by Biome. It uses the official `@actions/expressions`
+`packages/actions-runner` is a one-shot TypeScript executor running on Bun,
+linted by Biome and tested with Vitest. Its dedicated GitHub Actions workflow
+runs Vitest and strict `tsc` checks. Shared development dependencies live in the
+workspace root. It uses the official `@actions/expressions`
 library for workflow expressions, with JavaScript/composite actions, step
 conditions, outputs, environment files, and action pre/post hooks. It contains
 no Go executor or Bash launcher. JavaScript actions run in the prepared Node
 runtime; workflow `run:` steps use their declared shell. Both provider adapters inherit `AbstractSandboxClient` in
 `backend/app/clients/sandboxes.py`.
+The Docker provider uses aiodocker's native asynchronous API; the synchronous
+Docker SDK is only a development dependency for integration-test tooling.
+
+The Actions migration is generated directly on main's `c1e7092e3487` revision,
+with new head `084d6e4246d8`. Preview databases stamped with the superseded
+feature/merge revisions need recreation before applying this linear history.
 
 ## Startup and image preparation
 
@@ -148,8 +157,10 @@ Windows/macOS runners, and nested Docker execution are rejected explicitly.
 Linux labels select the prepared Linux environment; they do not install a
 particular Ubuntu release. Host resource limits and image selection are
 operator policy and cannot be overridden by workflow YAML. Each transferred
-sandbox file is limited to 32 MiB. Cache writes are atomic last-writer-wins;
-parallel jobs can overwrite a cache snapshot rather than merge cache entries.
+sandbox file is limited to 32 MiB. Cache entries are persisted independently,
+so parallel jobs and jobs without cache writes preserve unrelated keys. Restore
+is bounded to 128 entries and 32 MiB; concurrent writes to the same key/version
+remain last-writer-wins.
 Artifact uploads use the executor's job-local results service. For official
 artifact steps, the adapter adjusts the toolkit's hostname probe to allow this
 protocol on GitEdge; checkout and the workflow's GitHub context keep GitEdge's
@@ -166,6 +177,7 @@ external account. Other uses must supply an appropriate external integration.
 
 ```sh
 bun install --frozen-lockfile
+bun run --filter @gitedge/actions-runner typecheck
 bun run --filter @gitedge/actions-runner test
 uv run --directory backend pytest tests/unit
 ACTIONS_IMAGE=gitedge-actions:integration \

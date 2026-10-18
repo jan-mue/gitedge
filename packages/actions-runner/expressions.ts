@@ -3,8 +3,9 @@ import { globSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { data, Evaluator, Lexer, Parser } from "@actions/expressions"
 import { truthy } from "@actions/expressions/result"
+import type { ExpressionContext, JobStatus, JsonValue } from "./types.ts"
 
-function convert(value) {
+function convert(value: unknown): data.ExpressionData {
   if (value == null) return new data.Null()
   if (typeof value === "string") return new data.StringData(value)
   if (typeof value === "boolean") return new data.BooleanData(value)
@@ -12,29 +13,29 @@ function convert(value) {
   if (Array.isArray(value)) return new data.Array(...value.map(convert))
   return new data.Dictionary(...Object.entries(value).map(([key, value]) => ({ key, value: convert(value) })))
 }
-function plain(value) {
+function plain(value: data.ExpressionData): JsonValue {
   if (value.kind === data.Kind.Dictionary)
     return Object.fromEntries(value.pairs().map(({ key, value }) => [key, plain(value)]))
   if (value.kind === data.Kind.Array) return value.values().map(plain)
   if (value.kind === data.Kind.Null) return null
-  return value.value
+  if ("value" in value) return value.value
+  throw new Error("Unsupported expression value")
 }
-export function evaluate(expression, context, status = "success") {
-  const functions = new Map()
-  for (const [name, call, minArgs, maxArgs] of [
-    ["success", () => status === "success", 0, 0],
-    ["failure", () => status === "failure", 0, 0],
-    ["cancelled", () => status === "cancelled", 0, 0],
-    ["always", () => true, 0, 0],
-  ])
-    functions.set(name, { name, minArgs, maxArgs, call: () => convert(call()) })
+export function evaluate(expression: string, context: ExpressionContext, status: JobStatus = "success") {
+  const functions = new Map<
+    string,
+    { name: string; minArgs: number; maxArgs: number; call: (...args: data.ExpressionData[]) => data.ExpressionData }
+  >()
+  for (const name of ["success", "failure", "cancelled", "always"]) {
+    functions.set(name, { name, minArgs: 0, maxArgs: 0, call: () => convert(name === "always" || status === name) })
+  }
   functions.set("hashfiles", {
     name: "hashFiles",
     minArgs: 1,
     maxArgs: 255,
     call: (...patterns) => {
-      const workspace = context.github.workspace
-      const paths = new Set()
+      const workspace = (context.github as { workspace: string }).workspace
+      const paths = new Set<string>()
       for (const pattern of patterns) {
         const raw = pattern.coerceString()
         for (const path of globSync(raw.replace(/^!/, ""), { cwd: workspace })) {
@@ -51,7 +52,7 @@ export function evaluate(expression, context, status = "success") {
           combined.update(createHash("sha256").update(readFileSync(path)).digest())
           count++
         } catch (error) {
-          if (error.code !== "EISDIR") throw error
+          if ((error as NodeJS.ErrnoException).code !== "EISDIR") throw error
         }
       }
       return convert(count ? combined.digest("hex") : "")
@@ -60,15 +61,17 @@ export function evaluate(expression, context, status = "success") {
   const ast = new Parser(new Lexer(expression.trim()).lex().tokens, Object.keys(context), [
     ...functions.values(),
   ]).parse()
-  return new Evaluator(ast, convert(context), functions).evaluate()
+  const dictionary = convert(context)
+  if (dictionary.kind !== data.Kind.Dictionary) throw new Error("Invalid expression context")
+  return new Evaluator(ast, dictionary, functions).evaluate()
 }
-export function interpolate(value, context, status = "success") {
+export function interpolate(value: unknown, context: ExpressionContext, status: JobStatus = "success"): unknown {
   if (typeof value !== "string") return value
   const whole = value.match(/^\s*\$\{\{([\s\S]*?)\}\}\s*$/)
   if (whole) return plain(evaluate(whole[1], context, status))
   return value.replace(/\$\{\{([\s\S]*?)\}\}/g, (_, expression) => evaluate(expression, context, status).coerceString())
 }
-export function condition(value, context, status = "success") {
+export function condition(value: unknown, context: ExpressionContext, status: JobStatus = "success"): boolean {
   if (value == null) return status === "success"
   if (typeof value === "boolean") return value && status === "success"
   const expression = String(value).replace(/^\s*\$\{\{([\s\S]*?)\}\}\s*$/, "$1")

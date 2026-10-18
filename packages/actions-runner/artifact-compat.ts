@@ -3,7 +3,7 @@
 const repository = process.env.GITHUB_ACTION_REPOSITORY
 const results = process.env.ACTIONS_RESULTS_URL
 if (
-  ["actions/upload-artifact", "actions/download-artifact"].includes(repository) &&
+  ["actions/upload-artifact", "actions/download-artifact"].includes(repository || "") &&
   results &&
   new URL(results).hostname === "127.0.0.1"
 ) {

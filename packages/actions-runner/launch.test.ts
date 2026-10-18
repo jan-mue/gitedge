@@ -1,23 +1,30 @@
-import { test } from "bun:test"
 import assert from "node:assert/strict"
 import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { createServer } from "node:http"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { launch } from "./launch.mjs"
+import { test } from "vitest"
+import { launch } from "./launch.ts"
 
 test("Bun launcher exports state and publishes its completion marker before callback", async () => {
   const root = await mkdtemp(join(tmpdir(), "gitedge-launch-"))
   let delivered = 0
-  const server = Bun.serve({
-    port: 0,
-    hostname: "127.0.0.1",
-    async fetch() {
+  let callbackError: unknown
+  const server = createServer(async (_request, response) => {
+    try {
       assert.equal(await readFile(join(root, "exit-code"), "utf8"), "0")
       assert.equal(JSON.parse(await readFile(join(root, "result.json"), "utf8")).status, "success")
       delivered++
-      return Response.json({ status: "accepted" })
-    },
+      response.end(JSON.stringify({ status: "accepted" }))
+    } catch (error) {
+      callbackError = error
+      response.statusCode = 500
+      response.end()
+    }
   })
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()))
+  const address = server.address()
+  assert.ok(address && typeof address !== "string")
   try {
     const { code, result } = await launch(
       {
@@ -26,16 +33,17 @@ test("Bun launcher exports state and publishes its completion marker before call
         timeout_seconds: 10,
         dispatched_at_ms: Date.now(),
         env: { GITHUB_RUN_ID: "1" },
-        complete_url: `http://127.0.0.1:${server.port}`,
+        complete_url: `http://127.0.0.1:${address.port}`,
       },
       { root },
     )
     assert.equal(code, 0)
     assert.equal(delivered, 1)
-    assert.ok(result.startup_ms >= 0)
+    assert.ok(result.startup_ms != null && result.startup_ms >= 0)
+    assert.equal(callbackError, undefined)
     assert.ok((await readFile(join(root, "state.tar.gz"))).length > 0)
   } finally {
-    server.stop(true)
+    await new Promise<void>((resolve) => server.close(() => resolve()))
     await rm(root, { recursive: true, force: true })
   }
 })

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import tarfile
 import time
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -18,6 +20,7 @@ from app.entities.actions import WorkflowRun
 from app.entities.issues import IssueState
 from app.entities.principals import PrincipalType
 from app.schemas.actions import ActionJob, ActionRun, ActionStatus, PullRequestChecks, WorkflowInfo
+from app.services.actions.cache import MAX_CACHE_ENTRIES, STATE_LIMIT, cache_blobs, restore_archive
 from app.services.actions.runtime import finish_job, redact, update_logs
 from app.services.actions.workflows import (
     WORKFLOW_PREFIX,
@@ -296,7 +299,15 @@ class ActionsService:
                                 await self.blobs.put(f"actions/{repo_id}/{run.id}/state.tar.gz", state)
                                 cache = snapshot.files.get("cache.tar.gz")
                                 if job.status == ActionStatus.SUCCESS and cache:
-                                    await self.blobs.put(f"actions/{repo_id}/cache.tar.gz", cache)
+                                    try:
+                                        for identifier, data in cache_blobs(cache).items():
+                                            await self.blobs.put(f"actions/{repo_id}/cache/{identifier}.tar.gz", data)
+                                    except (ValueError, KeyError, OSError, tarfile.TarError) as exc:
+                                        job.status = ActionStatus.FAILURE
+                                        job.error = "Sandbox produced an invalid cache archive"
+                                        logger.warning(
+                                            "Invalid cache archive for job %s: %s", job.id, type(exc).__name__
+                                        )
                     if job.status in TERMINAL:
                         await provider.delete(job.sandbox)
                         job.sandbox = None
@@ -503,19 +514,23 @@ class ActionsService:
 
     async def restore_state(self, token: str) -> bytes:
         """Serve a repository-scoped state archive to a newly provisioned sandbox."""
-        import io  # noqa: PLC0415
-        import tarfile  # noqa: PLC0415
-
         repo_id, run_id = self._token_ids(token, "actions:state")
-        data = await self.blobs.get_current(f"actions/{repo_id}/{run_id}/state.tar.gz") or await self.blobs.get_current(
-            f"actions/{repo_id}/cache.tar.gz"
-        )
-        if data:
-            return data
-        empty = io.BytesIO()
-        with tarfile.open(fileobj=empty, mode="w:gz"):
-            pass
-        return empty.getvalue()
+        state = await self.blobs.get_current(
+            f"actions/{repo_id}/{run_id}/state.tar.gz"
+        ) or await self.blobs.get_current(f"actions/{repo_id}/cache.tar.gz")
+        # Independent cache-entry blobs avoid last-writer-wins loss between jobs.
+        keys = (await self.blobs.list_keys(f"actions/{repo_id}/cache/"))[:MAX_CACHE_ENTRIES]
+        archives: list[bytes] = []
+        budget = STATE_LIMIT
+        for offset in range(0, len(keys), 4):
+            batch = await asyncio.gather(*(self.blobs.get_current(key) for key in keys[offset : offset + 4]))
+            for data in batch:
+                if data and len(data) <= budget:
+                    archives.append(data)
+                    budget -= len(data)
+            if budget == 0:
+                break
+        return restore_archive(state, archives)
 
     async def cancel_repository(self, owner: str, name: str, user: User) -> uuid.UUID:
         """Stop active sandboxes before their repository rows can be deleted."""

@@ -1,10 +1,11 @@
-import { test } from "bun:test"
 import assert from "node:assert/strict"
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { condition, evaluate, interpolate } from "./expressions.mjs"
-import { commands, execute } from "./runner.mjs"
+import { test } from "vitest"
+import { condition, evaluate, interpolate } from "./expressions.ts"
+import { commands, execute } from "./runner.ts"
+import type { LogEntry } from "./types.ts"
 
 test("official expressions preserve types, context wildcards, and status conditions", () => {
   const context = {
@@ -14,7 +15,7 @@ test("official expressions preserve types, context wildcards, and status conditi
   }
   assert.equal(interpolate("${{ matrix.version }}", context), 24)
   assert.equal(interpolate("node-${{ format('{0}', matrix.version) }}", context), "node-24")
-  assert.equal(evaluate("contains(needs.*.result, 'failure')", context).value, true)
+  assert.equal(evaluate("contains(needs.*.result, 'failure')", context).coerceString(), "true")
   assert.equal(condition("always()", context, "failure"), true)
   assert.equal(condition("matrix.version == 24", context, "failure"), false)
   assert.equal(condition("failure() && matrix.version == 24", context, "failure"), true)
@@ -62,7 +63,7 @@ runs:
       run: test "$MESSAGE" = present
 `,
     )
-    const entries = []
+    const entries: LogEntry[] = []
     const result = await execute(
       {
         workflow: `on: workflow_dispatch
@@ -136,7 +137,7 @@ test("repository subdirectory actions share JavaScript entrypoints and cleanup h
       "require('fs').appendFileSync(process.env.GITHUB_OUTPUT,'value=shared\\n')",
     )
     await writeFile(join(repository, "lib", "post.cjs"), "console.log('shared cleanup')")
-    const entries = []
+    const entries: LogEntry[] = []
     const result = await execute(
       {
         workflow: "jobs:\n  test:\n    steps:\n      - id: nested\n        uses: owner/repo/init@sha\n",

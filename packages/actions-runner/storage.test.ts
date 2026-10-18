@@ -1,15 +1,15 @@
-import { test } from "bun:test"
 import assert from "node:assert/strict"
 import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { startStorage } from "./storage.mjs"
+import { test } from "vitest"
+import { startStorage } from "./storage.ts"
 
 test("cache protocol restores finalized entries across job servers and authenticates transfers", async () => {
   const root = await mkdtemp(join(tmpdir(), "gitedge-storage-"))
   let storage = await startStorage(root, "123", "build")
   try {
-    const call = async (method, data) => {
+    const call = async (method: string, data: Record<string, unknown>) => {
       const response = await fetch(
         `${storage.environment.ACTIONS_RESULTS_URL}twirp/github.actions.results.api.v1.CacheService/${method}`,
         {
@@ -49,7 +49,7 @@ test("artifact protocol accepts optional metadata and persists ZIP content with 
   const root = await mkdtemp(join(tmpdir(), "gitedge-artifact-"))
   const storage = await startStorage(root, "123", "build")
   try {
-    const call = async (method, data) =>
+    const call = async (method: string, data: Record<string, unknown>) =>
       (
         await fetch(
           `${storage.environment.ACTIONS_RESULTS_URL}twirp/github.actions.results.api.v1.ArtifactService/${method}`,
@@ -84,7 +84,12 @@ test("legacy cache protocol supports custom forge actions and ordered chunk comm
   const root = await mkdtemp(join(tmpdir(), "gitedge-legacy-cache-"))
   let storage = await startStorage(root, "123", "build")
   try {
-    const call = (path, method = "GET", data, headers = {}) =>
+    const call = (
+      path: string,
+      method = "GET",
+      data?: Record<string, unknown> | string,
+      headers: Record<string, string> = {},
+    ) =>
       fetch(`${storage.environment.ACTIONS_CACHE_URL}_apis/artifactcache/${path}`, {
         method,
         headers: { authorization: `Bearer ${storage.environment.ACTIONS_RUNTIME_TOKEN}`, ...headers },

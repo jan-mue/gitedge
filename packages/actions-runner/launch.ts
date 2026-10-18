@@ -1,35 +1,56 @@
 #!/usr/local/bin/bun
 // One Bun invocation owns the job, its deadline, state export and completion callback.
+import { spawn } from "node:child_process"
 import { appendFileSync } from "node:fs"
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
+import { setTimeout as delay } from "node:timers/promises"
 import { fileURLToPath } from "node:url"
 import { inflateSync } from "node:zlib"
-import { execute } from "./runner.mjs"
+import { execute } from "./runner.ts"
+import type { JobInput, JobResult, LogEntry } from "./types.ts"
 
 const MAX_STATE_BYTES = 32 * 1024 * 1024
 
-async function archive(args, signal) {
-  const child = Bun.spawn(["tar", ...args], { stdout: "ignore", stderr: "pipe", signal })
-  const [code, error] = await Promise.all([child.exited, new Response(child.stderr).text()])
-  if (code !== 0) throw new Error(`State archive failed: ${error}`)
+async function archive(args: string[], signal: AbortSignal) {
+  const child = spawn("tar", args, { stdio: ["ignore", "ignore", "pipe"], signal })
+  const errors: Buffer[] = []
+  child.stderr.on("data", (chunk: Buffer) => errors.push(chunk))
+  const code = await new Promise<number | null>((resolve, reject) => {
+    child.once("error", reject)
+    child.once("close", resolve)
+  })
+  if (code !== 0) throw new Error(`State archive failed: ${Buffer.concat(errors).toString()}`)
 }
 
-export async function launch(input, { root = "/gitedge", restoreUrl, actionRoot, signal } = {}) {
+export async function launch(
+  input: JobInput,
+  {
+    root = "/gitedge",
+    restoreUrl,
+    actionRoot,
+    signal,
+  }: { root?: string; restoreUrl?: string; actionRoot?: string; signal?: AbortSignal } = {},
+) {
   const state = join(root, "state")
   const controller = new AbortController()
-  const deadline = setTimeout(() => controller.abort(new Error("Job timed out")), input.timeout_seconds * 1000)
+  const deadline = setTimeout(
+    () => controller.abort(new Error("Job timed out")),
+    (input.timeout_seconds || 1200) * 1000,
+  )
   const jobSignal = signal ? AbortSignal.any([controller.signal, signal]) : controller.signal
-  let result = { status: "failure", steps: {}, outputs: {} }
+  let result: JobResult = { status: "failure", steps: {}, outputs: {} }
   let code = 1
   await mkdir(join(state, "cache"), { recursive: true })
   await mkdir(join(state, "artifacts"), { recursive: true })
-  const log = (entry) => appendFileSync(join(root, "log.jsonl"), `${JSON.stringify(entry)}\n`, { mode: 0o600 })
+  const log = (entry: LogEntry) =>
+    appendFileSync(join(root, "log.jsonl"), `${JSON.stringify(entry)}\n`, { mode: 0o600 })
   try {
     if (restoreUrl) {
       const response = await fetch(restoreUrl, { signal: jobSignal })
       if (!response.ok) throw new Error(`State restore failed: HTTP ${response.status}`)
-      const chunks = []
+      const chunks: Uint8Array[] = []
+      if (!response.body) throw new Error("Missing state response body")
       let size = 0
       for await (const chunk of response.body) {
         size += chunk.length
@@ -42,7 +63,8 @@ export async function launch(input, { root = "/gitedge", restoreUrl, actionRoot,
     }
     result = await execute(input, { root, actionRoot, signal: jobSignal, log })
     code = ["success", "skipped"].includes(result.status) ? 0 : 1
-  } catch (error) {
+  } catch (cause) {
+    const error = cause as Error
     result.error = jobSignal.aborted ? "Job timed out or cancelled" : error.message
     log({ msg: result.error })
   } finally {
@@ -56,7 +78,8 @@ export async function launch(input, { root = "/gitedge", restoreUrl, actionRoot,
       const exportSignal = AbortSignal.timeout(15000)
       await archive(["-czf", join(root, "state.tar.gz"), "-C", state, "cache", "artifacts"], exportSignal)
       await archive(["-czf", join(root, "cache.tar.gz"), "-C", state, "cache"], exportSignal)
-    } catch (error) {
+    } catch (cause) {
+      const error = cause as Error
       code = 1
       result = { ...result, status: "failure", error: error.message }
       log({ msg: error.message })
@@ -71,11 +94,12 @@ export async function launch(input, { root = "/gitedge", restoreUrl, actionRoot,
           const response = await fetch(input.complete_url, { method: "POST", signal: callbackSignal })
           await response.body?.cancel()
           if (response.ok) break
-        } catch (error) {
+        } catch (cause) {
+          const error = cause as Error
           if (callbackSignal.aborted) break
           log({ msg: `Completion delivery failed: ${error.name}` })
         }
-        await Bun.sleep(250 * (attempt + 1))
+        await delay(250 * (attempt + 1))
       }
     }
   }
@@ -91,7 +115,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       : encoded
     : await readFile("/gitedge/job.json", "utf8")
   if (!encoded) await rm("/gitedge/job.json")
-  const input = JSON.parse(descriptor)
+  const input = JSON.parse(descriptor) as JobInput
   const restoreUrl = process.env.GITEDGE_RESTORE_URL || input.restore_url
   delete process.env.GITEDGE_JOB
   delete process.env.GITEDGE_JOB_ENCODING
