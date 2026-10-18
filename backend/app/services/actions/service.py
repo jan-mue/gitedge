@@ -15,6 +15,7 @@ from app.config import settings
 from app.entities.actions import WorkflowRun
 from app.entities.issues import IssueState
 from app.entities.principals import PrincipalType
+from app.exceptions import WorkflowError
 from app.schemas.actions import ActionJob, ActionRun, ActionStatus, PullRequestChecks, WorkflowInfo
 from app.schemas.workflow_events import (
     DispatchEvent,
@@ -29,7 +30,6 @@ from app.schemas.workflow_events import (
 )
 from app.services.actions.scheduler import TERMINAL, RunScheduler
 from app.services.actions.workflows import (
-    WorkflowError,
     matches_event,
     parse_workflow,
     plan_jobs,
@@ -62,7 +62,7 @@ class ActionsService:
         repositories: RepositoryService,
         repository_store: RepositoryStore,
         blobs: BlobStorageClient,
-        providers: dict[str, AbstractSandboxClient],
+        sandbox: AbstractSandboxClient,
         *,
         provider: str,
         max_timeout: int,
@@ -80,7 +80,7 @@ class ActionsService:
         self.max_timeout = max_timeout
         self.pull_requests = pull_requests
         self.cache = cache
-        self.scheduler = RunScheduler(store, blobs, providers, max_parallel, secrets or {})
+        self.scheduler = RunScheduler(store, blobs, sandbox, max_parallel, secrets or {})
 
     async def _repository(
         self, owner: str, name: str, user: User | None = None, *, write: bool = False
@@ -374,5 +374,3 @@ class ActionsService:
         """Remove Actions blobs after the repository deletion has committed."""
         for key in await self.blobs.list_keys(f"actions/{repo_id}/"):
             await self.blobs.delete(key)
-        if self.cache:
-            await self.cache.delete_repository(repo_id)

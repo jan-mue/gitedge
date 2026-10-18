@@ -31,14 +31,14 @@ class RunScheduler:
         self,
         store: ActionsStore,
         blobs: BlobStorageClient,
-        providers: dict[str, AbstractSandboxClient],
+        sandbox: AbstractSandboxClient,
         max_parallel: int,
         secrets: dict[str, dict[str, str]],
     ) -> None:
         """Inject sandbox, persistence, and concurrency policies."""
         self.store = store
         self.blobs = blobs
-        self.providers = providers
+        self.sandbox = sandbox
         self.max_parallel = max_parallel
         self.secrets = secrets
         self.inputs = JobInputBuilder()
@@ -51,13 +51,12 @@ class RunScheduler:
             if run.status in TERMINAL:
                 return True
             run.updated_at = datetime.now(UTC)
-            provider = self.providers[run.provider]
             secrets = self.secrets.get(str(repo_id), {})
             jobs = [ActionJob.model_validate(job) for job in run.jobs]
             for job in jobs:
-                await self._collect(run, job, provider, secrets)
+                await self._collect(run, job, secrets)
             while ready := self._ready(jobs):
-                await asyncio.gather(*(self._start(run, job, jobs, provider, secrets) for job in ready))
+                await asyncio.gather(*(self._start(run, job, jobs, secrets) for job in ready))
             run.jobs = [job.model_dump(mode="json") for job in jobs]
             finished = all(job.status in TERMINAL and job.sandbox is None for job in jobs)
             failed = any(job.status == ActionStatus.FAILURE and not job.continue_on_error for job in jobs)
@@ -73,14 +72,12 @@ class RunScheduler:
             :available
         ]
 
-    async def _collect(
-        self, run: WorkflowRun, job: ActionJob, provider: AbstractSandboxClient, secrets: dict[str, str]
-    ) -> None:
+    async def _collect(self, run: WorkflowRun, job: ActionJob, secrets: dict[str, str]) -> None:
         if not job.sandbox:
             return
         try:
             if job.status == ActionStatus.RUNNING:
-                snapshot = await provider.inspect(job.sandbox)
+                snapshot = await self.sandbox.inspect(job.sandbox)
                 update_logs(job, snapshot.files.get("log.jsonl", b""), secrets)
                 if not snapshot.running or "exit-code" in snapshot.files:
                     finish_job(job, snapshot.files, secrets)
@@ -89,7 +86,7 @@ class RunScheduler:
                         await self.blobs.put(f"{prefix}/jobs/{job.id}.tar.gz", state)
                         await self.blobs.put(f"{prefix}/state.tar.gz", state)
             if job.status in TERMINAL:
-                await provider.delete(job.sandbox)
+                await self.sandbox.delete(job.sandbox)
                 job.sandbox = None
         except SandboxError as exc:
             self._fail(job, exc, secrets)
@@ -99,18 +96,17 @@ class RunScheduler:
         run: WorkflowRun,
         job: ActionJob,
         jobs: list[ActionJob],
-        provider: AbstractSandboxClient,
         secrets: dict[str, str],
     ) -> None:
         job.started_at = datetime.now(UTC)
         job.sandbox = f"gitedge-job-{job.id}"
         job.status = ActionStatus.RUNNING
         try:
-            await provider.start(job.sandbox, self.inputs.build(run, job, jobs, secrets), job.timeout_seconds)
+            await self.sandbox.start(job.sandbox, self.inputs.build(run, job, jobs, secrets), job.timeout_seconds)
         except SandboxError as exc:
             self._fail(job, exc, secrets)
             try:
-                await provider.delete(job.sandbox)
+                await self.sandbox.delete(job.sandbox)
                 job.sandbox = None
             except SandboxError:
                 logger.exception("Sandbox cleanup failed after launch for job %s", job.id)
@@ -135,7 +131,7 @@ class RunScheduler:
                     job.status = ActionStatus.CANCELLED
                     job.completed_at = datetime.now(UTC)
                 if job.sandbox:
-                    await self.providers[run.provider].delete(job.sandbox)
+                    await self.sandbox.delete(job.sandbox)
                     job.sandbox = None
             run.status = "cancelled"
             run.completed_at = datetime.now(UTC)

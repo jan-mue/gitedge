@@ -129,7 +129,10 @@ def test_tooling_actions_cache_and_artifacts(
         )
         keys = await blobs.list_keys("actions/")
         key = next(key for key in keys if key.endswith(f"/{run_id}/state.tar.gz"))
-        assert not any("/cache/" in key or key.endswith("/cache.tar.gz") for key in keys)
+        caches = [key for key in keys if "/cache/" in key]
+        assert caches, "Workflow cache archives must be persisted in S3"
+        for cache_key in caches:
+            assert await blobs.get(cache_key)
         return await blobs.get(key)
 
     for iteration in range(2):
@@ -154,6 +157,7 @@ def test_tooling_actions_cache_and_artifacts(
                 assert artifact.read("result.txt") == b"artifact contents\n"
         if iteration:
             assert "Portable cache restored" in run["jobs"][0]["log"]
+            assert "uv cache restored" in run["jobs"][0]["log"]
 
 
 def test_codeql_init_and_analyze_use_prepared_tools(actions_repo: tuple[httpx.Client, Path, str]) -> None:

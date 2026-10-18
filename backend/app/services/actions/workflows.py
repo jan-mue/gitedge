@@ -9,16 +9,13 @@ from typing import Any
 import yaml
 from pydantic import ValidationError
 
+from app.exceptions import WorkflowError
 from app.schemas.actions import ActionJob, ActionStep, WorkflowInfo
 from app.schemas.workflow_events import PullRequestEvent, ScheduleEvent, WorkflowEvent
 from app.schemas.workflows import EventFilters, WorkflowJob
 
 MAX_JOBS = 256
 WORKFLOW_PREFIX = ".gitedge/workflow/"
-
-
-class WorkflowError(ValueError):
-    """A workflow cannot be scheduled safely or is outside supported syntax."""
 
 
 class WorkflowLoader(yaml.SafeLoader):

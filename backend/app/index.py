@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from app.api.main import api_router
 from app.api.routes import git
 from app.config import settings
-from app.exceptions import EmailDeliveryError, NotFoundError
+from app.exceptions import EmailDeliveryError, NotFoundError, WorkflowError
 from app.lifespan import lifespan
 from app.utils.setup_logging import setup_logging
 
@@ -59,6 +59,12 @@ async def email_delivery_exception_handler(request: Request, exc: EmailDeliveryE
 async def not_found_exception_handler(_request: Request, exc: NotFoundError) -> JSONResponse:
     """Handle not-found errors raised by the store layer."""
     return JSONResponse(status_code=404, content={"detail": exc.detail})
+
+
+@app.exception_handler(WorkflowError)
+async def workflow_exception_handler(_request: Request, exc: WorkflowError) -> JSONResponse:
+    """Report invalid workflows consistently across Actions endpoints."""
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 
 app.add_middleware(

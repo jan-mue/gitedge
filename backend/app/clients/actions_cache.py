@@ -29,7 +29,7 @@ class ActionsCacheStore(Protocol):
         ...
 
     async def publish(self, entry: WorkflowCacheEntry, previous: UUID | None) -> WorkflowCacheEntry:
-        """Publish complete chunks without mixing concurrent payload generations."""
+        """Publish uploaded archives without mixing concurrent generations."""
         ...
 
 
@@ -66,7 +66,7 @@ class SQLActionsCacheStore(SQLStore[WorkflowCacheEntry]):
         )
 
     async def publish(self, entry: WorkflowCacheEntry, previous: UUID | None) -> WorkflowCacheEntry:
-        """Replace only the evicted generation observed before uploading."""
+        """Replace only the missing or expired generation observed before uploading."""
         statement = insert(WorkflowCacheEntry).values(
             repo_id=entry.repo_id,
             key=entry.key,

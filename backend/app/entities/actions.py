@@ -37,7 +37,7 @@ class WorkflowRun(Base):
 
 
 class WorkflowCacheEntry(Base):
-    """Repository cache metadata; payloads live in Vercel Runtime Cache or Redis."""
+    """Repository cache metadata; archive payloads live in Blob or S3."""
 
     __tablename__ = "workflow_cache_entry"
     __table_args__ = (UniqueConstraint("repo_id", "key", "version"),)

@@ -1,4 +1,4 @@
-"""Domain exceptions raised by the client (store) layer."""
+"""Domain exceptions handled by the application."""
 
 from __future__ import annotations
 
@@ -68,3 +68,7 @@ class ReleaseNotFoundError(NotFoundError):
 
 class EmailDeliveryError(Exception):
     """Raised when the email transport cannot deliver a message."""
+
+
+class WorkflowError(ValueError):
+    """A workflow is invalid or requests unsupported capabilities."""
