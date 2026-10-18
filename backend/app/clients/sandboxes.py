@@ -1,9 +1,11 @@
 """Provider-independent sandbox clients for one isolated, short-lived job each."""
 
 import asyncio
+import base64
 import io
 import json
 import tarfile
+import zlib
 from abc import ABC, abstractmethod
 from contextlib import closing
 from dataclasses import dataclass, field
@@ -56,6 +58,7 @@ class AbstractSandboxClient(ABC):
         ...
 
 
+MAX_VERCEL_ENV_BYTES = 4096
 MAX_FILE_BYTES = 32 * 1024 * 1024
 CLEANUP_GRACE_SECONDS = 30
 # Read the marker first: if it exists, subsequent result/state reads are complete.
@@ -201,36 +204,46 @@ class VercelSandboxClient(AbstractSandboxClient):
         """Boot a prepared snapshot and pass only a small job descriptor."""
         if not self.snapshot_id:
             raise SandboxError("Vercel jobs require ACTIONS_VERCEL_SNAPSHOT prepared before dispatch")
-        config = json.loads(files["input.json"])
+        descriptor = files["input.json"]
+        environment = {
+            "NODE_OPTIONS": "--require=/opt/gitedge/artifact-compat.cjs",
+            "RUNNER_TOOL_CACHE": "/opt/hostedtoolcache",
+            "AGENT_TOOLSDIRECTORY": "/opt/hostedtoolcache",
+        }
+        compressed = {
+            **environment,
+            "GITEDGE_JOB": base64.b64encode(zlib.compress(descriptor)).decode(),
+            "GITEDGE_JOB_ENCODING": "deflate",
+        }
+        # Vercel limits the complete environment payload to 4 KiB. Large workflows
+        # use one descriptor-file upload, never a source archive or job-time install.
+        inline = len(json.dumps(compressed).encode()) <= MAX_VERCEL_ENV_BYTES
+        if inline:
+            environment = compressed
         try:
-            box = await create_sandbox(
-                name=name,
-                image=None,
-                source=SnapshotSource(snapshot_id=self.snapshot_id),
-                persistent=False,
-                execution_time_limit=lifetime + CLEANUP_GRACE_SECONDS,
-                resources=SandboxResources(vcpus=2),
-                env={
-                    "GITEDGE_JOB": files["input.json"].decode(),
-                    "GITEDGE_RESTORE_URL": config.get("restore_url", ""),
-                    "NODE_OPTIONS": "--require=/opt/gitedge/artifact-compat.cjs",
-                    "RUNNER_TOOL_CACHE": "/opt/hostedtoolcache",
-                    "AGENT_TOOLSDIRECTORY": "/opt/hostedtoolcache",
-                },
-            )
+            try:
+                box = await create_sandbox(
+                    name=name,
+                    image=None,
+                    source=SnapshotSource(snapshot_id=self.snapshot_id),
+                    persistent=False,
+                    execution_time_limit=lifetime + CLEANUP_GRACE_SECONDS,
+                    resources=SandboxResources(vcpus=2),
+                    env=environment,
+                )
+            except SandboxApiError as exc:
+                if exc.status_code != HTTPStatus.CONFLICT:
+                    raise
+                box = await get_sandbox(name=name)
+                if box.status != SandboxStatus.RUNNING:
+                    raise SandboxError("Job sandbox already stopped") from exc
+                if await box.query_processes():
+                    return
+            if not inline:
+                await box.fs.write_bytes("/gitedge/job.json", descriptor)
             await box.create_process(
                 "/usr/local/bin/gitedge-launch", kill_after=lifetime + CLEANUP_GRACE_SECONDS, sudo=True
             )
-        except SandboxApiError as exc:
-            if exc.status_code != HTTPStatus.CONFLICT:
-                raise SandboxError(f"Vercel sandbox start failed: {exc}") from exc
-            box = await get_sandbox(name=name)
-            if box.status != SandboxStatus.RUNNING:
-                raise SandboxError("Job sandbox already stopped") from exc
-            if not await box.query_processes():
-                await box.create_process(
-                    "/usr/local/bin/gitedge-launch", kill_after=lifetime + CLEANUP_GRACE_SECONDS, sudo=True
-                )
         except VercelSandboxError as exc:
             raise SandboxError(f"Vercel sandbox start failed: {exc}") from exc
 

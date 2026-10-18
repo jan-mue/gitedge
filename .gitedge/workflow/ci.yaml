@@ -5,7 +5,7 @@ defaults:
     shell: bun {0}
 jobs:
   runner:
-    name: Bun runner (${{ matrix.variant }})
+    name: Bun runner
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import base64
 import io
 import json
+import secrets
 import tarfile
+import zlib
 from typing import TYPE_CHECKING
 
 import pytest
@@ -42,13 +45,9 @@ async def test_vercel_uses_prepared_snapshot_and_never_receives_source(mocker: M
     assert kwargs["persistent"] is False
     assert kwargs["image"] is None
     assert kwargs["source"].snapshot_id == "snapshot-123"
-    assert set(kwargs["env"]) == {
-        "GITEDGE_JOB",
-        "GITEDGE_RESTORE_URL",
-        "NODE_OPTIONS",
-        "RUNNER_TOOL_CACHE",
-        "AGENT_TOOLSDIRECTORY",
-    }
+    assert kwargs["env"]["GITEDGE_JOB_ENCODING"] == "deflate"
+    assert zlib.decompress(base64.b64decode(kwargs["env"]["GITEDGE_JOB"])) == b'{"job":"test"}'
+    assert len(json.dumps(kwargs["env"]).encode()) <= 4096
     box.fs.write_bytes.assert_not_called()
 
 
@@ -97,3 +96,15 @@ async def test_vercel_refuses_job_time_image_preparation(mocker: MockerFixture) 
     with pytest.raises(SandboxError, match="prepared before dispatch"):
         await VercelSandboxClient("unprepared-image").start("job", {"input.json": b"{}"}, 60)
     create.assert_not_called()
+
+
+async def test_vercel_uploads_only_the_descriptor_when_it_exceeds_the_environment_limit(mocker: MockerFixture) -> None:
+    box = mocker.MagicMock()
+    box.create_process = mocker.AsyncMock()
+    box.fs.write_bytes = mocker.AsyncMock()
+    create = mocker.patch("app.clients.sandboxes.create_sandbox", new=mocker.AsyncMock(return_value=box))
+    descriptor = json.dumps({"job": "test", "value": secrets.token_hex(8192)}).encode()
+    await VercelSandboxClient("prepared", "snapshot-123").start("job", {"input.json": descriptor}, 60)
+    assert "GITEDGE_JOB" not in create.call_args.kwargs["env"]
+    box.fs.write_bytes.assert_awaited_once_with("/gitedge/job.json", descriptor)
+    box.create_process.assert_awaited_once()

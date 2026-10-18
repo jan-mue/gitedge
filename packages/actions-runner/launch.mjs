@@ -1,9 +1,10 @@
 #!/usr/local/bin/bun
 // One Bun invocation owns the job, its deadline, state export and completion callback.
 import { appendFileSync } from "node:fs"
-import { mkdir, writeFile } from "node:fs/promises"
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { inflateSync } from "node:zlib"
 import { execute } from "./runner.mjs"
 
 const MAX_STATE_BYTES = 32 * 1024 * 1024
@@ -23,7 +24,6 @@ export async function launch(input, { root = "/gitedge", restoreUrl, actionRoot,
   let code = 1
   await mkdir(join(state, "cache"), { recursive: true })
   await mkdir(join(state, "artifacts"), { recursive: true })
-  await writeFile(join(root, "input.json"), JSON.stringify(input), { mode: 0o600 })
   const log = (entry) => appendFileSync(join(root, "log.jsonl"), `${JSON.stringify(entry)}\n`, { mode: 0o600 })
   try {
     if (restoreUrl) {
@@ -84,9 +84,17 @@ export async function launch(input, { root = "/gitedge", restoreUrl, actionRoot,
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.umask(0o077)
-  const input = JSON.parse(process.env.GITEDGE_JOB)
-  const restoreUrl = process.env.GITEDGE_RESTORE_URL
+  const encoded = process.env.GITEDGE_JOB
+  const descriptor = encoded
+    ? process.env.GITEDGE_JOB_ENCODING === "deflate"
+      ? inflateSync(Buffer.from(encoded, "base64"), { maxOutputLength: MAX_STATE_BYTES }).toString()
+      : encoded
+    : await readFile("/gitedge/job.json", "utf8")
+  if (!encoded) await rm("/gitedge/job.json")
+  const input = JSON.parse(descriptor)
+  const restoreUrl = process.env.GITEDGE_RESTORE_URL || input.restore_url
   delete process.env.GITEDGE_JOB
+  delete process.env.GITEDGE_JOB_ENCODING
   delete process.env.GITEDGE_RESTORE_URL
   const controller = new AbortController()
   process.once("SIGTERM", () => controller.abort())
