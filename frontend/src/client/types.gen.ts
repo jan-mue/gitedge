@@ -50,14 +50,6 @@ export type ActionJob = {
      */
     timeout_seconds?: number;
     /**
-     * Provisioning Ms
-     */
-    provisioning_ms?: number | null;
-    /**
-     * Startup Ms
-     */
-    startup_ms?: number | null;
-    /**
      * Outputs
      */
     outputs?: {

@@ -5,18 +5,16 @@ from __future__ import annotations
 import asyncio
 import io
 import json
-import os
 import tarfile
 import time
 import zipfile
-from contextlib import closing
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import docker
 import httpx2 as httpx
 import psycopg
 import pytest
+from aiodocker import Docker
 
 from app.clients.blob_storage import S3Client
 from tests.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD
@@ -95,24 +93,13 @@ def test_push_runs_matrix_jobs_in_separate_sandboxes(
     assert len(run["jobs"]) == 3
     assert all(job["status"] == "success" for job in run["jobs"])
     assert all(job["sandbox"] is None for job in run["jobs"])
-    if report := os.environ.get("ACTIONS_STARTUP_REPORT"):
-        Path(report).write_text(
-            json.dumps(
-                {
-                    "provider": "docker",
-                    "runner": "Bun bytecode",
-                    "jobs": [
-                        {key: job[key] for key in ("name", "provisioning_ms", "startup_ms")} for job in run["jobs"]
-                    ],
-                },
-                indent=2,
-            )
-            + "\n"
-        )
     assert "Dependency outputs verified" in run["jobs"][-1]["log"]
-    assert all(job["provisioning_ms"] is not None for job in run["jobs"])
-    with closing(docker.from_env()) as sdk:
-        assert not sdk.containers.list(all=True, filters={"label": "gitedge.actions=true"})
+
+    async def has_remaining_jobs() -> bool:
+        async with Docker() as client:
+            return bool(await client.containers.list(all=True, filters={"label": ["gitedge.actions=true"]}))
+
+    assert not asyncio.run(has_remaining_jobs())
 
 
 def test_failed_jobs_skip_dependents_but_run_always_cleanup(actions_repo: tuple[httpx.Client, Path, str]) -> None:

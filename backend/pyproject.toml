@@ -42,7 +42,6 @@ dependencies = [
 dev = [
     "coverage==7.16.2",
     "deptry==0.25.1",
-    "docker==7.2.0",
     "httpx2==2.13.1",
     "inline-snapshot[black]==0.36.0",
     "pytest==9.1.1",
@@ -151,11 +150,9 @@ ignore_names = [
     "log",
     "mergeable",
     "no_newline",
-    "provisioning_ms",
     "reason",
     "series",
     "started_at",
-    "startup_ms",
     # Group: LogLevel enum values
     "CRITICAL",
     "DEBUG",

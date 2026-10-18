@@ -723,9 +723,7 @@ def get_actions_service(
 ) -> ActionsService:
     """Configure injectable sandbox providers without starting a runner daemon."""
     providers: dict[str, AbstractSandboxClient] = {
-        "docker": DockerSandboxClient(
-            settings.ACTIONS_IMAGE, ca_bundle=settings.ACTIONS_DOCKER_CA_BUNDLE, environment=settings.ACTIONS_DOCKER_ENV
-        ),
+        "docker": DockerSandboxClient(settings.ACTIONS_IMAGE),
         "vercel": VercelSandboxClient(
             settings.ACTIONS_IMAGE, settings.ACTIONS_VERCEL_SNAPSHOT, settings.ACTIONS_VERCEL_REGION
         ),

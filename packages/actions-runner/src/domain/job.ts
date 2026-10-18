@@ -6,7 +6,6 @@ export const jobSchema = z.object({
   workflow: z.string(),
   job: z.string(),
   timeout_seconds: z.number().positive().default(1200),
-  dispatched_at_ms: z.number().optional(),
   restore_url: z.string().url().optional(),
   complete_url: z.string().url().optional(),
   cache_url: z.string().url().optional(),
@@ -32,7 +31,6 @@ export interface JobResult {
   steps: Record<string, StepResult>
   outputs: Record<string, string>
   error?: string
-  startup_ms?: number | null
 }
 export interface LogEntry {
   msg: string

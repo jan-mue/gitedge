@@ -61,7 +61,7 @@ async def test_ready_jobs_provision_concurrently_without_exceeding_the_limit(
         max_timeout=60,
         max_parallel=2,
     )
-    assert await service.advance_run(run.repo_id, run.id)
+    assert await service.scheduler.advance(run.repo_id, run.id)
     assert len(started) == 2
     assert [job["status"] for job in run.jobs] == ["running", "running", "queued"]
 
@@ -105,7 +105,7 @@ async def test_provisioning_failures_finish_out_of_order_dependencies_without_pe
         max_timeout=60,
         max_parallel=1,
     )
-    assert await service.advance_run(run.repo_id, run.id)
+    assert await service.scheduler.advance(run.repo_id, run.id)
     assert run.status == "failure"
     assert all(job["status"] == "failure" and job["sandbox"] is None for job in run.jobs)
     assert provider.start.await_count == 2

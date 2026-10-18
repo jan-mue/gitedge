@@ -802,7 +802,6 @@ dependencies = [
 dev = [
     { name = "coverage" },
     { name = "deptry" },
-    { name = "docker" },
     { name = "httpx2" },
     { name = "inline-snapshot", extra = ["black"] },
     { name = "pytest" },
@@ -850,7 +849,6 @@ requires-dist = [
 dev = [
     { name = "coverage", specifier = "==7.16.2" },
     { name = "deptry", specifier = "==0.25.1" },
-    { name = "docker", specifier = "==7.2.0" },
     { name = "httpx2", specifier = "==2.13.1" },
     { name = "inline-snapshot", extras = ["black"], specifier = "==0.36.0" },
     { name = "pytest", specifier = "==9.1.1" },

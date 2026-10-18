@@ -20,7 +20,6 @@ export class ProcessExecutor {
     private readonly workspace: Workspace,
     private readonly environment: JobEnvironment,
     private readonly logger: JobLogger,
-    private readonly onStart: () => void = () => {},
   ) {}
   async run(request: ProcessRequest): Promise<void> {
     request.signal.throwIfAborted()
@@ -34,7 +33,6 @@ export class ProcessExecutor {
       stderr: "pipe",
       detached: true,
     })
-    this.onStart()
     const output = new OutputCommands(this.environment, this.logger, request.step, request.outputs, request.state)
     let escalation: ReturnType<typeof setTimeout> | undefined
     const kill = (signal: NodeJS.Signals) => {

@@ -243,9 +243,6 @@ def backend_url(infrastructure: dict[str, str], xprocess: XProcess) -> Generator
     backend_env.update(
         {
             "ACTIONS_SERVER_URL": f"http://host.docker.internal:{backend_port}",
-            "ACTIONS_DOCKER_CA_BUNDLE": os.environ.get(
-                "ACTIONS_DOCKER_CA_BUNDLE", "/etc/ssl/certs/ca-certificates.crt"
-            ),
         }
     )
     backend_cwd = BACKEND_DIR

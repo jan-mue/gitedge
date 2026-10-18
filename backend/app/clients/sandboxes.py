@@ -9,7 +9,6 @@ import zlib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from http import HTTPStatus
-from pathlib import Path
 from typing import override
 
 from aiodocker import Docker
@@ -67,36 +66,12 @@ READ_FILES = ("exit-code", "result.json", "log.jsonl", "state.tar.gz")
 class DockerSandboxClient(AbstractSandboxClient):
     """Run jobs without privileged mode, host source mounts, or a Docker socket."""
 
-    def __init__(self, image: str, *, ca_bundle: str | None = None, environment: dict[str, str] | None = None) -> None:
-        """Configure the managed local Docker daemon and optional explicit network trust."""
+    def __init__(self, image: str) -> None:
+        """Use a locally prepared image."""
         self.image = image
-        self.ca_bundle = str(Path(ca_bundle).resolve()) if ca_bundle else None
-        self.environment = environment or {}
 
     @override
     async def start(self, name: str, files: dict[str, bytes], lifetime: int) -> None:
-        """Create and start a prepared container through the native async Docker client."""
-        env = dict(self.environment)
-        env["GITEDGE_JOB"] = files["input.json"].decode()
-        env["GITEDGE_RESTORE_URL"] = json.loads(files["input.json"]).get("restore_url", "")
-        env["NO_PROXY"] = env.get("NO_PROXY", "localhost,127.0.0.1") + ",host.docker.internal"
-        env["no_proxy"] = env["NO_PROXY"]
-        binds = []
-        if self.ca_bundle:
-            binds.append(f"{self.ca_bundle}:/run/gitedge-ca.pem:ro")
-            env.update(
-                dict.fromkeys(
-                    (
-                        "NODE_EXTRA_CA_CERTS",
-                        "SSL_CERT_FILE",
-                        "REQUESTS_CA_BUNDLE",
-                        "PIP_CERT",
-                        "CURL_CA_BUNDLE",
-                        "GIT_SSL_CAINFO",
-                    ),
-                    "/run/gitedge-ca.pem",
-                )
-            )
         config = {
             "Image": self.image,
             "Cmd": [
@@ -106,9 +81,8 @@ class DockerSandboxClient(AbstractSandboxClient):
                 str(lifetime + CLEANUP_GRACE_SECONDS),
                 "/usr/local/bin/gitedge-launch",
             ],
-            "Env": [f"{key}={value}" for key, value in env.items()],
+            "Env": [f"GITEDGE_JOB={files['input.json'].decode()}"],
             "HostConfig": {
-                "Binds": binds,
                 "Memory": 2 * 1024**3,
                 "NanoCpus": 2_000_000_000,
                 "PidsLimit": 512,
@@ -116,7 +90,6 @@ class DockerSandboxClient(AbstractSandboxClient):
                 "SecurityOpt": ["no-new-privileges:true"],
                 "ExtraHosts": ["host.docker.internal:host-gateway"],
             },
-            "Volumes": {"/run/gitedge-ca.pem": {}} if self.ca_bundle else {},
             "Labels": {"gitedge.actions": "true"},
         }
         try:
@@ -200,7 +173,7 @@ class VercelSandboxClient(AbstractSandboxClient):
             raise SandboxError("Vercel jobs require ACTIONS_VERCEL_SNAPSHOT prepared before dispatch")
         descriptor = files["input.json"]
         environment = {
-            "NODE_OPTIONS": "--require=/opt/gitedge/artifact-compat.cjs",
+            "NODE_OPTIONS": "--import=/opt/gitedge/artifact-compat.mjs",
             "RUNNER_TOOL_CACHE": "/opt/hostedtoolcache",
             "AGENT_TOOLSDIRECTORY": "/opt/hostedtoolcache",
         }

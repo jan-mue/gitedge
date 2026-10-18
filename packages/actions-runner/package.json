@@ -4,7 +4,6 @@
   "type": "module",
   "scripts": {
     "build": "bun build.ts",
-    "benchmark": "bun benchmark.ts",
     "test": "bun --bun vitest run",
     "lint": "biome check --write --unsafe .",
     "check": "biome check .",

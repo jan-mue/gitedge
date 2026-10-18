@@ -69,10 +69,7 @@ export class WorkflowRunner {
         : "success"
       if (!(await expressions.condition(job.if, scope.expressionContext(), dependencyStatus)))
         return { status: "skipped", steps: {}, outputs: {} }
-      let firstProcessAt: number | undefined
-      const process = new ProcessExecutor(workspace, environment, logger, () => {
-        firstProcessAt ??= Date.now()
-      })
+      const process = new ProcessExecutor(workspace, environment, logger)
       const resolver = new ActionResolver(workspace.source, options.actions || "/opt/gitedge/actions")
       const actions = new ActionExecutor(resolver, expressions, process, workspace, environment, logger)
       const steps = new StepExecutor(
@@ -97,7 +94,6 @@ export class WorkflowRunner {
         status,
         steps: scope.steps,
         outputs: await expressions.environment(job.outputs, scope.expressionContext(), status),
-        startup_ms: firstProcessAt && input.dispatched_at_ms ? firstProcessAt - input.dispatched_at_ms : null,
       }
     } finally {
       await storage.close()
