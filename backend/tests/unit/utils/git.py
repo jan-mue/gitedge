@@ -1,13 +1,23 @@
 """Real Git graphs backed by in-memory storage."""
 
+import json
 from typing import TYPE_CHECKING
 
 from dulwich.objects import Blob, Commit, ObjectID, Tree
 from dulwich.refs import Ref
 
-from app.services.blob_repository import BlobRepository
+from app.clients.git.blob_repository import BlobRepository
+from app.clients.git.repositories import GitClient
+from app.clients.git.storage import RepositoryStorage
+from app.services.repositories import RepositoryService
 
 if TYPE_CHECKING:
+    from app.clients.blob_storage import BlobStorageClient
+    from app.clients.cache import AbstractCacheClient
+    from app.clients.git.blob_backend import BlobBackend
+    from app.clients.redis import AbstractRedisClient
+    from app.clients.repositories import RepositoryStore
+    from app.clients.stars import StarStore
     from tests.unit.utils.fakes import FakeStores
 
 
@@ -62,5 +72,23 @@ def seed_merge_repository(
         stores.blob.objects[f"{key}/packs/{basename}.idx"] = contents.index
     for ref, value in changes["ref_puts"].items():
         stores.redis.values[f"{key}/refs/{ref.decode()}"] = value
+    stores.redis.values[f"{key}/pack-catalog:v1"] = json.dumps(sorted(changes["pack_uploads"])).encode()
     repo.object_store.close()
     return base.id.decode(), first.id.decode(), head.id.decode()
+
+
+def build_repository_service(
+    backend: BlobBackend,
+    blob: BlobStorageClient,
+    redis: AbstractRedisClient,
+    cache: AbstractCacheClient,
+    repository_store: RepositoryStore,
+    star_store: StarStore,
+) -> RepositoryService:
+    """Wire the actual Git adapter to in-memory persistence for unit tests."""
+
+    async def exists(owner: str, name: str) -> bool:
+        return await repository_store.find_by_owner_and_name(owner, name) is not None
+
+    git = GitClient(backend, RepositoryStorage(blob, redis), cache, exists)
+    return RepositoryService(git, cache, repository_store, star_store)

@@ -14,6 +14,7 @@ from app.schemas.users import UserCreate
 from app.utils import security
 from app.utils.security import create_access_token, verify_password
 from tests.unit.utils.fakes import FakeEmailClient
+from tests.unit.utils.user import EMAIL_TEST_USER
 from tests.unit.utils.utils import random_email, random_lower_string
 
 if TYPE_CHECKING:
@@ -38,7 +39,7 @@ async def test_get_users_normal_user_me(client: TestClient, normal_user_token_he
     assert current_user
     assert current_user["is_active"] is True
     assert current_user["is_superuser"] is False
-    assert current_user["email"] == settings.EMAIL_TEST_USER
+    assert current_user["email"] == EMAIL_TEST_USER
 
 
 def test_get_users_me_with_unknown_user_returns_401(client: TestClient) -> None:

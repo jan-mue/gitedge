@@ -6,12 +6,13 @@ from typing import TYPE_CHECKING
 import pytest
 from dulwich.objects import Blob, Commit, ObjectID, Tree
 
-from app.clients.git_merges import GitMergeClient
+from app.clients.git.blob_backend import BlobBackend
+from app.clients.git.blob_repository import BlobRepository
+from app.clients.git.merges import GitMergeClient
+from app.clients.git.merging import calculate_merge
+from app.clients.git.storage import RepositoryStorage
 from app.config import settings
 from app.schemas.repositories import MergeMessage, MergeMethod
-from app.services.blob_backend import BlobBackend, load_repository_from_storage
-from app.services.blob_repository import BlobRepository
-from app.services.merging import calculate_merge
 from tests.unit.utils.git import seed_merge_repository
 
 if TYPE_CHECKING:
@@ -55,7 +56,7 @@ async def test_merge_graph_messages_and_retained_views(
     assert data["has_merged"]
     assert data["state"] == "merged"
     assert data["merged_commit_id"] != head
-    packs, refs = await load_repository_from_storage(fake_stores.blob, fake_stores.redis, f"{OWNER}/repo.git")
+    packs, refs = await RepositoryStorage(fake_stores.blob, fake_stores.redis).load(f"{OWNER}/repo.git")
     assert "refs/heads/feature" not in refs
     repo = BlobRepository()
     repo.load_from_storage(packs, refs)
@@ -131,7 +132,7 @@ def test_mergeability_is_read_only_cached_and_tracks_both_tips(
     base, first, head = seed_merge_repository(fake_stores, OWNER, "repo", conflict=conflict)
     pull = create(client, superuser_token_headers)
     blobs, refs = fake_stores.blob.objects.copy(), fake_stores.redis.values.copy()
-    calculate = mocker.patch("app.clients.git_merges.calculate_merge", wraps=calculate_merge)
+    calculate = mocker.patch("app.clients.git.merges.calculate_merge", wraps=calculate_merge)
     response = client.get(f"{pull}/mergeability", params={"method": method})
     assert response.status_code == 200, response.text
     data = response.json()

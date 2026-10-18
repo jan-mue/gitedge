@@ -1,6 +1,5 @@
 """Git merge calculation without changing branch refs."""
 
-from dataclasses import dataclass
 from time import time
 from typing import TYPE_CHECKING
 
@@ -10,10 +9,11 @@ from dulwich.object_store import MemoryObjectStore, OverlayObjectStore
 from dulwich.objects import Commit, ObjectID
 from fastapi import HTTPException
 
+from app.clients.git.types import MergeResult
 from app.schemas.repositories import MergeMessage, MergeMethod
 
 if TYPE_CHECKING:
-    from app.services.blob_repository import BlobRepository
+    from app.clients.git.blob_repository import BlobRepository
 
 
 MAX_CONFLICT_PATHS = 10
@@ -41,15 +41,6 @@ def reject_conflicts(conflicts: list[bytes], operation: str) -> None:
     )
 
 
-@dataclass(frozen=True)
-class MergeResult:
-    """Immutable revisions retained for the PR and publication."""
-
-    base: str
-    head: str
-    commit: str
-
-
 def merge_message(
     template: MergeMessage, title: str, body: str | None, head: str, base: str, commits: list[Commit]
 ) -> bytes:
@@ -61,7 +52,7 @@ def merge_message(
     elif template == MergeMessage.TITLE_COMMITS:
         details = "\n\n".join(commit.message.decode("utf-8", errors="replace").strip() for commit in commits)
         message = title + (f"\n\n{details}" if details else "")
-    else:
+    elif template == MergeMessage.TITLE:
         message = title
     return (message.rstrip() + "\n").encode()
 

@@ -1297,7 +1297,7 @@ export const profilesListUserStarredRepositoriesQueryKey = (options: Options<pro
  * List repositories starred by a user.
  *
  * Raises:
- * HTTPException: If no user matches the name (organizations cannot star).
+ * UserNotFoundError: If no user matches the name (organizations cannot star).
  */
 export const profilesListUserStarredRepositoriesOptions = (options: Options<profilesListUserStarredRepositoriesData>) => queryOptions<profilesListUserStarredRepositoriesResponse, profilesListUserStarredRepositoriesError, profilesListUserStarredRepositoriesResponse, ReturnType<typeof profilesListUserStarredRepositoriesQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {

@@ -12,6 +12,9 @@ if TYPE_CHECKING:
     from app.services.crud import CrudService
 
 
+EMAIL_TEST_USER = "test@example.com"
+
+
 def user_authentication_headers(*, client: TestClient, email: str, password: str) -> dict[str, str]:
     data = {"username": email, "password": password}
 

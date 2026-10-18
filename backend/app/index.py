@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-setup_logging(level=logging.DEBUG if settings.VERCEL_ENV == "development" else logging.INFO, logger_name="app")
+setup_logging(level=settings.LOG_LEVEL, logger_name="app")
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:

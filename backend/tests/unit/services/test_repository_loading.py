@@ -3,7 +3,7 @@
 import asyncio
 from typing import TYPE_CHECKING
 
-from app.services.blob_backend import load_repository_from_storage
+from app.clients.git.storage import RepositoryStorage
 from tests.unit.utils.fakes import FakeBlobStorageClient, FakeRedisClient
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ async def test_pack_downloads_overlap_without_unbounded_fanout(mocker: MockerFix
         return blob.objects.get(key)
 
     mocker.patch.object(blob, "get", side_effect=read)
-    packs, _ = await load_repository_from_storage(blob, redis, "owner/repo.git")
+    packs, _ = await RepositoryStorage(blob, redis).load("owner/repo.git")
     assert len(packs) == 10
     assert 2 <= peak <= 8
     assert all(pack.pack == b"pack" and pack.index == b"index" for pack in packs.values())

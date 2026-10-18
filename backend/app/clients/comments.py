@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload, selectinload
@@ -36,12 +36,14 @@ class SQLCommentStore(CommentStore, SQLStore[Comment]):
         """
         super().__init__(db, Comment)
 
+    @override
     async def find(self, primary_key: uuid.UUID) -> Comment | None:
         """Find a comment by id, loading its author."""
         return await self.db.scalar(
             select(Comment).options(selectinload(Comment.author)).where(Comment.id == primary_key)
         )
 
+    @override
     async def list_by_issue(self, issue_id: uuid.UUID) -> list[Comment]:
         """Read comments chronologically in one query, without metadata-route eager loads."""
         result = await self.db.scalars(

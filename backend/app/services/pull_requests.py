@@ -5,11 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from dulwich.objects import ObjectID
-from dulwich.refs import Ref
 from fastapi import HTTPException
-from fastapi.concurrency import run_in_threadpool
 
+from app.clients.git.types import MergeRequest
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.issues import IssueState
 from app.entities.pull_requests import PullRequest
@@ -25,12 +23,11 @@ from app.schemas.repositories import (
     PullRequestsListPublic,
     PullRequestUpdate,
 )
-from app.services.markdown import render_markdown
-from app.services.merging import calculate_merge, merge_message
 from app.services.repositories import ensure_repository
+from app.utils.markdown import render_markdown
 
 if TYPE_CHECKING:
-    from app.clients.git_merges import GitMergeClient
+    from app.clients.git.merges import GitMergeClient
     from app.clients.pull_requests import PullRequestStore
     from app.clients.repositories import RepositoryStore
     from app.entities.users import User
@@ -242,54 +239,27 @@ class PullRequestService:
             raise HTTPException(status_code=409, detail="The PR must have different base and head branches")
         result = await self.git_merges.completed(owner, name, pull.id)
         if result is None:
-            repo = await self.git_merges.load(owner, name)
-            try:
-                base_ref, head_ref = (
-                    Ref(f"refs/heads/{pull.base_branch}".encode()),
-                    Ref(f"refs/heads/{pull.head_branch}".encode()),
-                )
-                base, head = repo.refs.read_loose_ref(base_ref), repo.refs.read_loose_ref(head_ref)
-                if base is None or head is None:
-                    raise HTTPException(status_code=409, detail="The base or PR branch no longer exists")
-                if body.head_commit and head.decode() != body.head_commit:
-                    raise HTTPException(status_code=409, detail="The PR branch changed. Reload before merging.")
-                if body.base_commit and base.decode() != body.base_commit:
-                    raise HTTPException(status_code=409, detail="The base branch changed. Reload before merging.")
-                commits = await run_in_threadpool(
-                    lambda: [
-                        entry.commit
-                        for entry in repo.get_walker(
-                            include=[ObjectID(head)], exclude=[ObjectID(base)], order="topo", reverse=True
-                        )
-                    ]
-                )
-                if not commits:
-                    raise HTTPException(status_code=409, detail="The PR has no commits to merge")
-                message = merge_message(template, pull.title, pull.body, pull.head_branch, pull.base_branch, commits)
-                identity = f"{current_user.name} <{current_user.email}>".encode()
-                result = await run_in_threadpool(
-                    calculate_merge, repo, ObjectID(base), ObjectID(head), body.method, message, identity
-                )
-                delete_branch = policies.delete_branch_on_merge and pull.head_branch != repository.default_branch
-                if not await self.git_merges.publish(
-                    owner,
-                    name,
-                    number,
-                    repo,
-                    pull.base_branch,
-                    pull.head_branch,
-                    result,
-                    delete_branch,
+            result = await self.git_merges.merge(
+                MergeRequest(
+                    owner=owner,
+                    name=name,
+                    number=number,
                     pull_id=pull.id,
-                ):
-                    raise HTTPException(
-                        status_code=409, detail="A branch changed during merging. Reload and try again."
-                    )
-            finally:
-                repo.object_store.close()
+                    base_branch=pull.base_branch,
+                    head_branch=pull.head_branch,
+                    method=body.method,
+                    template=template,
+                    title=pull.title,
+                    body=pull.body,
+                    identity=f"{current_user.name} <{current_user.email}>".encode(),
+                    delete_branch=policies.delete_branch_on_merge and pull.head_branch != repository.default_branch,
+                    expected_base=body.base_commit,
+                    expected_head=body.head_commit,
+                )
+            )
         pull.state, pull.has_merged = IssueState.MERGED, True
         pull.merge_base, pull.merged_head_commit, pull.merged_commit_id = result.base, result.head, result.commit
-        pull.merger_id, pull.updated_at = current_user.id, datetime.now(UTC)
+        pull.updated_at = datetime.now(UTC)
         await self.pull_request_store.update(pull)
         await self.activity_service.record(
             actor=current_user,
