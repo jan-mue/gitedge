@@ -145,6 +145,13 @@ dispatch-to-step measurements unsuitable for comparison with the colocated
 backend measurements above. Remeasuring that complete path requires the preview
 database recreation described earlier.
 
+The TypeScript rewrite was compared with the previous bytecode runner in 80
+interleaved fresh processes on a two-vCPU Frankfurt sandbox. Median time to the
+first step's code was 41–42 ms (previous runner: 40–42 ms); median total time
+for the tiny job was 45–46 ms (previous runner: 50–51 ms). These samples exclude
+VM provisioning and show similar startup with less finalization overhead.
+[Raw rewrite measurements](benchmarks/actions-rewrite-bootstrap-2026-10-18.json).
+
 Reproduce the process benchmark inside a disposable prepared sandbox:
 
 ```sh
