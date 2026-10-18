@@ -194,10 +194,11 @@ class DockerSandboxClient(AbstractSandboxClient):
 class VercelSandboxClient(AbstractSandboxClient):
     """Launch detached one-shot jobs; provider credentials never enter the VM."""
 
-    def __init__(self, image: str, snapshot_id: str | None = None) -> None:
+    def __init__(self, image: str, snapshot_id: str | None = None, region: str | None = None) -> None:
         """Use an operator-provisioned image containing the JavaScript executor and toolchains."""
         self.image = image
         self.snapshot_id = snapshot_id
+        self.region = region
 
     @override
     async def start(self, name: str, files: dict[str, bytes], lifetime: int) -> None:
@@ -226,6 +227,7 @@ class VercelSandboxClient(AbstractSandboxClient):
                     name=name,
                     image=None,
                     source=SnapshotSource(snapshot_id=self.snapshot_id),
+                    region=self.region,
                     persistent=False,
                     execution_time_limit=lifetime + CLEANUP_GRACE_SECONDS,
                     resources=SandboxResources(vcpus=2),

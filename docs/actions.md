@@ -16,7 +16,8 @@ runtime; workflow `run:` steps use their declared shell. Both provider adapters 
 Image builds, action downloads (including nested composite actions), and common
 toolchain installation happen **before** jobs are dispatched. Missing action
 versions fail explicitly and require a new prepared image. Provisioning sends
-only a job descriptor. The actual `actions/checkout` action fetches source from
+only a job descriptor. Vercel descriptors use compressed environment data within
+the 4 KiB platform limit, with a descriptor-file fallback for larger workflows. The actual `actions/checkout` action fetches source from
 GitEdge at the recorded commit; source archives are not uploaded during startup.
 
 Build the base image and the optional Python CodeQL image:
@@ -64,6 +65,7 @@ implementation beyond draft status.
 | `ACTIONS_PROVIDER` | `docker` locally or `vercel` in production |
 | `ACTIONS_IMAGE` | Prepared local Docker image |
 | `ACTIONS_VERCEL_SNAPSHOT` | Required prepared Vercel snapshot ID; no image fallback at dispatch |
+| `ACTIONS_VERCEL_REGION` | Snapshot region; defaults to the SDK region, which must match the snapshot |
 | `ACTIONS_SERVER_URL` | Backend origin reachable from sandbox jobs |
 | `ACTIONS_MAX_TIMEOUT` | Maximum job lifetime, in seconds (default 1200) |
 | `ACTIONS_MAX_PARALLEL` | Maximum simultaneous jobs in a workflow (default 2) |

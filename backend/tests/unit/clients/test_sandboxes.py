@@ -39,9 +39,10 @@ async def test_vercel_uses_prepared_snapshot_and_never_receives_source(mocker: M
     box = mocker.MagicMock()
     box.create_process = mocker.AsyncMock()
     create = mocker.patch("app.clients.sandboxes.create_sandbox", new=mocker.AsyncMock(return_value=box))
-    provider = VercelSandboxClient("prepared", "snapshot-123")
+    provider = VercelSandboxClient("prepared", "snapshot-123", region="iad1")
     await provider.start("job", {"input.json": b'{"job":"test"}'}, 60)
     kwargs = create.call_args.kwargs
+    assert kwargs["region"] == "iad1"
     assert kwargs["persistent"] is False
     assert kwargs["image"] is None
     assert kwargs["source"].snapshot_id == "snapshot-123"
