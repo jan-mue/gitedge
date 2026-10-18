@@ -26,12 +26,11 @@ test("Bun launcher exports state and publishes its completion marker before call
   const address = server.address()
   assert.ok(address && typeof address !== "string")
   try {
-    const { code, result } = await launch(
+    const { code } = await launch(
       {
         workflow: "jobs:\n  test:\n    steps:\n      - run: echo hello\n",
         job: "test",
         timeout_seconds: 10,
-        dispatched_at_ms: Date.now(),
         env: { GITHUB_RUN_ID: "1" },
         complete_url: `http://127.0.0.1:${address.port}`,
       },
@@ -39,7 +38,6 @@ test("Bun launcher exports state and publishes its completion marker before call
     )
     assert.equal(code, 0)
     assert.equal(delivered, 1)
-    assert.ok(result.startup_ms != null && result.startup_ms >= 0)
     assert.equal(callbackError, undefined)
     assert.ok((await readFile(join(root, "state.tar.gz"))).length > 0)
   } finally {

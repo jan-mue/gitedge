@@ -42,8 +42,6 @@ class ActionJob(GitEdgeBaseModel):
     started_at: datetime | None = None
     completed_at: datetime | None = None
     timeout_seconds: int = 1200
-    provisioning_ms: float | None = None
-    startup_ms: float | None = None
     outputs: dict[str, str] = Field(default_factory=dict)
     steps: list[ActionStep] = Field(default_factory=list)
     log: str = ""

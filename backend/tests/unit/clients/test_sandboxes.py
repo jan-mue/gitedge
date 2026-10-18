@@ -35,8 +35,8 @@ async def test_docker_provisioning_does_not_pull_images_or_upload_source(mocker:
     config = sdk.containers.create.call_args.kwargs["config"]
     assert config["Image"] == "prepared@sha256:abc"
     assert config["HostConfig"]["CapDrop"] == ["ALL"]
-    assert not config["HostConfig"]["Binds"]
-    assert not config["Volumes"]
+    assert "Binds" not in config["HostConfig"]
+    assert "Volumes" not in config
     assert not any(value.startswith("source=") for value in config["Env"])
     sdk.__aexit__.assert_awaited_once()
 

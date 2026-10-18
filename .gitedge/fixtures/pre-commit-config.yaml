@@ -1,8 +1,0 @@
-repos:
-  - repo: local
-    hooks:
-      - id: preview-python-syntax
-        name: Check preview Python syntax
-        language: system
-        entry: python -m py_compile
-        files: ^\.gitedge/fixtures/example\.py$

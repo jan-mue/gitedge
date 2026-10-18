@@ -69,11 +69,7 @@ export const RunDetail = ({
                 <h3 className="text-sm font-semibold">{job.name}</h3>
                 <p className="text-xs capitalize text-muted-foreground">{job.status}</p>
               </div>
-              <span className="text-xs text-muted-foreground">
-                {duration(job.started_at, job.completed_at)}
-                {job.startup_ms != null && ` · First step in ${Math.round(job.startup_ms)} ms`}
-                {job.provisioning_ms != null && ` · Provisioned in ${Math.round(job.provisioning_ms)} ms`}
-              </span>
+              <span className="text-xs text-muted-foreground">{duration(job.started_at, job.completed_at)}</span>
             </div>
             {job.error && (
               <p role="alert" className="p-4 text-sm text-destructive">
