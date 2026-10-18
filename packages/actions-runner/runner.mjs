@@ -384,7 +384,8 @@ export async function execute(
       else if (step.run != null) {
         const defaults = { ...(workflow.defaults?.run || {}), ...(job.defaults?.run || {}) }
         const shell = string(interpolate(step.shell || defaults.shell || "bash", ctx, currentStatus))
-        const script = join(temporary, `${randomUUID()}.sh`)
+        const extension = shell === "bash" || shell === "sh" ? "sh" : shell === "python" ? "py" : "mjs"
+        const script = join(temporary, `${randomUUID()}.${extension}`)
         await writeFile(script, string(interpolate(step.run, ctx, currentStatus)))
         let command, args
         if (shell === "bash") {
