@@ -152,3 +152,33 @@ test("repository subdirectory actions share JavaScript entrypoints and cleanup h
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test("custom Bun shells execute JavaScript without treating it as a shell script", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gitedge-bun-shell-"))
+  try {
+    const result = await execute(
+      {
+        workflow: `defaults:
+  run:
+    shell: bun {0}
+jobs:
+  test:
+    steps:
+      - run: |
+          import { appendFileSync } from "node:fs"
+          appendFileSync(process.env.GITHUB_OUTPUT, "value=bun\\n")
+        id: bun
+    outputs:
+      value: \${{ steps.bun.outputs.value }}
+`,
+        job: "test",
+        env: { GITHUB_RUN_ID: "1" },
+      },
+      { root, log: () => {} },
+    )
+    assert.equal(result.status, "success")
+    assert.equal(result.outputs.value, "bun")
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
