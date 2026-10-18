@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Request, Response
 
 from app.api.dependencies import RepositoryServiceDep
-from app.clients.git.types import GitHttpRequest
+from app.types import GitHttpRequest
 from app.utils.cache_headers import CACHE_CONTROL_NO_STORE
 
 if TYPE_CHECKING:
@@ -72,7 +72,7 @@ async def _handle_git_request(
             port=request.url.port or 80,
         )
     )
-    await repository_service.save_changes(owner, name)
+    await repository_service.git.save_changes(owner, name)
     headers = dict(result.headers)
     headers["Cache-Control"] = await _git_cache_control(repository_service, owner, name, service_path)
     return Response(content=result.body, status_code=result.status, headers=headers)

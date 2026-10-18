@@ -9,13 +9,14 @@ import re
 import stat
 import time
 from difflib import SequenceMatcher
-from typing import TYPE_CHECKING, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 from dulwich.annotate import annotate_lines
 from dulwich.diff_tree import tree_changes
 from dulwich.objects import S_ISGITLINK, Blob, Commit, ObjectID, Tag, Tree
 from dulwich.patch import write_object_diff, write_tree_diff
 from dulwich.refs import SYMREF, Ref, check_ref_format
+from dulwich.server import DictBackend
 from fastapi import HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, TypeAdapter
@@ -24,10 +25,6 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import TextLexer, get_lexer_for_filename
 from pygments.util import ClassNotFound
 
-from app.clients.git.activity import collect_git_activity
-from app.clients.git.diffs import enrich_diff
-from app.clients.git.http import handle_http
-from app.clients.git.refs import GitRefStore
 from app.config import settings
 from app.schemas.releases import TagInfo, TagsPublic
 from app.schemas.repositories import (
@@ -53,11 +50,15 @@ from app.schemas.repositories import (
     TreeListing,
 )
 from app.schemas.repository_activity import GitActivityHistory
+from app.services.git.http import handle_http
+from app.services.git.repository import BlobRepository
 from app.utils.cache_headers import (
     is_commit_sha,
 )
+from app.utils.diffs import enrich_diff
 from app.utils.languages import source_language
 from app.utils.markdown import render_markdown
+from app.utils.repository_activity import collect_git_activity
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Iterator
@@ -65,10 +66,9 @@ if TYPE_CHECKING:
     from dulwich.object_store import BaseObjectStore
 
     from app.clients.cache import AbstractCacheClient
-    from app.clients.git.blob_backend import BlobBackend
-    from app.clients.git.blob_repository import BlobRepository
-    from app.clients.git.storage import RepositoryStorage
-    from app.clients.git.types import GitHttpRequest, GitHttpResponse
+    from app.clients.git import GitStore
+    from app.clients.repositories import RepositoryStore
+    from app.types import GitHttpRequest, GitHttpResponse
 
 logger = logging.getLogger(__name__)
 
@@ -104,26 +104,6 @@ def _split_author(raw: str) -> tuple[str, str]:
     return raw.strip(), ""
 
 
-class StyleDefsProvider(Protocol):
-    """Protocol for formatters that expose get_style_defs()."""
-
-    def get_style_defs(self, arg: str = "") -> str:
-        """Return the CSS style definitions for the given scope."""
-
-
-def _get_style_defs(formatter: StyleDefsProvider, arg: str) -> str:
-    """Return CSS style definitions for a formatter.
-
-    Args:
-        formatter: Pygments formatter.
-        arg: CSS scope selector.
-
-    Returns:
-        The CSS definitions as a string.
-    """
-    return formatter.get_style_defs(arg)
-
-
 def repo_key(owner: str, name: str) -> str:
     """Build the storage key for a repository.
 
@@ -137,22 +117,20 @@ def repo_key(owner: str, name: str) -> str:
     return f"{owner}/{name}.git"
 
 
-class GitClient:
-    """Request-scoped Git client over shared object and ref storage."""
+class GitService:
+    """Request-scoped Git service over shared object and ref storage."""
 
     def __init__(
         self,
-        backend: BlobBackend,
-        storage: RepositoryStorage,
+        storage: GitStore,
         cache_client: AbstractCacheClient,
-        repository_exists: Callable[[str, str], Awaitable[bool]],
+        repository_store: RepositoryStore,
     ) -> None:
         """Bind storage, derived-response caching, and the empty-repository lookup."""
-        self.backend = backend
+        self.repositories: dict[str, BlobRepository] = {}
         self.storage = storage
         self.cache_client = cache_client
-        self.repository_exists = repository_exists
-        self.git_refs = GitRefStore(storage.redis)
+        self.repository_store = repository_store
 
     def _cache_group(self, owner: str, name: str) -> str:
         """Build the cache group for a repository.
@@ -209,7 +187,7 @@ class GitClient:
     @staticmethod
     def _revision_files(repo: BlobRepository, sha: bytes) -> Iterator[tuple[str, ObjectID]]:
         """Iterate file paths and object IDs, skipping submodules and symlinks."""
-        root = GitClient._get_tree_at_path(repo, sha, "")
+        root = GitService._get_tree_at_path(repo, sha, "")
         pending = [("", root)]
         while pending:
             prefix, tree = pending.pop()
@@ -227,7 +205,7 @@ class GitClient:
         """Compute source language shares, total bytes, and reachable commit count."""
         sizes: dict[str, int] = {}
         total = 0
-        for path, blob_sha in GitClient._revision_files(repo, sha):
+        for path, blob_sha in GitService._revision_files(repo, sha):
             blob = repo.object_store[blob_sha]
             if not isinstance(blob, Blob):
                 continue
@@ -470,7 +448,7 @@ class GitClient:
         Raises:
             HTTPException: If the ref is not found.
         """
-        sha = GitClient._try_resolve_ref(repo, ref_name)
+        sha = GitService._try_resolve_ref(repo, ref_name)
         if sha is None:
             raise HTTPException(status_code=404, detail=f"Ref '{ref_name}' not found")
         return sha
@@ -639,7 +617,7 @@ class GitClient:
                     for parent_sha in unchanged_parents:
                         pending.setdefault(parent_sha, set()).add(path)
                 else:
-                    result[path] = GitClient._get_commit_info(repo, commit.id)
+                    result[path] = GitService._get_commit_info(repo, commit.id)
                     remaining.remove(path)
             if not remaining:
                 break
@@ -889,12 +867,12 @@ class GitClient:
             )
 
             highlighted_html = cast(str, await run_in_threadpool(highlight, content, lexer, formatter))
-            css = _get_style_defs(formatter, ".highlight")
+            css = formatter.get_style_defs(".highlight")
 
             # Scope all dark CSS rules under .dark to prevent them from leaking into
             # light mode. get_style_defs() only prefixes .highlight rules, but Pygments
             # also emits global rules (td.linenos, span.linenos, pre) that need scoping.
-            raw_dark_css = _get_style_defs(dark_formatter, ".highlight")
+            raw_dark_css = dark_formatter.get_style_defs(".highlight")
             css_dark = "\n".join(
                 f".dark {line}" if line and not line.startswith(".dark") else line for line in raw_dark_css.split("\n")
             )
@@ -1216,7 +1194,7 @@ class GitClient:
 
     async def branch_heads(self, owner: str, name: str, base: str, head: str) -> tuple[str | None, str | None]:
         """Read two branch tips without opening packs, walking history, or calculating a diff."""
-        return await self.git_refs.branch_heads(owner, name, base, head)
+        return await self.storage.branch_heads(owner, name, base, head)
 
     async def compare_commits(
         self, owner: str, name: str, base_ref: str, head_ref: str, offset: int = 0, limit: int = 50
@@ -1362,59 +1340,38 @@ class GitClient:
             compute=compute,
         )
 
-    async def load_repository(self, owner: str, name: str) -> BlobRepository:
-        """Load a repository from storage.
-
-        Args:
-            owner: Owner name.
-            name: Repository name.
-
-        Returns:
-            The loaded repository.
-
-        Raises:
-            HTTPException: If the repository does not exist.
-        """
+    async def load_repository(self, owner: str, name: str, *, fresh: bool = False) -> BlobRepository:
+        """Load live storage or reuse the repository held by this request."""
         key = repo_key(owner, name)
-        logger.debug("Loading repository: %s", key)
-
-        if self.backend.repository_exists(key):
-            logger.debug("Repository found in cache: %s", key)
-            return self.backend.open_repository(key)
-
+        if not fresh and key in self.repositories:
+            return self.repositories[key]
         packs, refs = await self.storage.load(key)
-        logger.debug("Loaded from storage: %s (packs=%d, refs=%d)", key, len(packs), len(refs))
-        if packs or refs:
-            return self.backend.load_repository_from_data(key, packs, refs)
-
-        if await self.repository_exists(owner, name):
-            return self.backend.create_repository(key)
-        raise HTTPException(status_code=404, detail="Repository not found")
+        if not packs and not refs:
+            if await self.repository_store.find_by_owner_and_name(owner, name) is None:
+                raise HTTPException(status_code=404, detail="Repository not found")
+            repo = BlobRepository.create()
+        else:
+            repo = BlobRepository()
+            repo.load_from_storage(packs, refs)
+        if not fresh:
+            self.repositories[key] = repo
+        return repo
 
     async def save_changes(self, owner: str, name: str) -> None:
-        """Persist pending repository changes to storage.
-
-        Args:
-            owner: Owner name.
-            name: Repository name.
-        """
-        key = repo_key(owner, name)
-        changes = self.backend.get_repository_changes(key)
-        if not any(changes.values()):
+        """Persist staged objects before refs, then invalidate cached responses."""
+        repo = self.repositories.get(repo_key(owner, name))
+        if repo is None:
             return
-
-        await self.storage.save(key, changes)
-        self.backend.clear_repository_changes(key)
-        await self.cache_client.invalidate(self._cache_group(owner, name))
+        changes = repo.get_pending_changes()
+        if any(changes.values()):
+            await self.storage.save(repo_key(owner, name), changes)
+            repo.clear_pending_changes()
+            await self.cache_client.invalidate(self._cache_group(owner, name))
 
     async def create_repository(self, owner: str, name: str) -> None:
         """Create and persist a bare repository's HEAD."""
-        self.backend.create_repository(repo_key(owner, name))
+        self.repositories[repo_key(owner, name)] = BlobRepository.create()
         await self.save_changes(owner, name)
-
-    async def ensure_loaded(self, owner: str, name: str) -> None:
-        """Load an existing repository, or initialize an empty metadata row."""
-        await self.load_repository(owner, name)
 
     async def set_default_branch(self, owner: str, name: str, branch_name: str) -> None:
         """Validate a branch and update the symbolic HEAD."""
@@ -1430,13 +1387,14 @@ class GitClient:
     async def copy_repository(self, owner: str, name: str, target_owner: str, target_name: str) -> None:
         """Copy persisted objects and refs, evicting any loaded destination."""
         await self.storage.copy(repo_key(owner, name), repo_key(target_owner, target_name))
-        self.backend.remove_repository(repo_key(target_owner, target_name))
+        self.repositories.pop(repo_key(target_owner, target_name), None)
 
     async def delete_repository(self, owner: str, name: str) -> None:
         """Remove persisted objects, refs, and the request-local repository."""
         await self.storage.delete(repo_key(owner, name))
-        self.backend.remove_repository(repo_key(owner, name))
+        self.repositories.pop(repo_key(owner, name), None)
 
     async def handle_http(self, request: GitHttpRequest) -> GitHttpResponse:
         """Run synchronous protocol processing off the event loop."""
-        return await run_in_threadpool(handle_http, self.backend, request)
+        backend = DictBackend({f"/{key}": repo for key, repo in self.repositories.items()})
+        return await run_in_threadpool(handle_http, backend, request)

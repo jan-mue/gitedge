@@ -11,9 +11,11 @@ import asyncio
 import json
 from typing import TYPE_CHECKING
 
-from app.types import PackContents
+from app.types import MergeResult, PackContents
 
 if TYPE_CHECKING:
+    import uuid
+
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.redis import AbstractRedisClient
     from app.types import RepositoryChanges
@@ -29,7 +31,7 @@ def normalize_path(path: str) -> str:
     return path if path.endswith(".git") else f"{path}.git"
 
 
-class RepositoryStorage:
+class GitStore:
     """Persist standard Git pack/index pairs independently of the Git engine."""
 
     def __init__(self, blob: BlobStorageClient, redis: AbstractRedisClient) -> None:
@@ -139,3 +141,34 @@ class RepositoryStorage:
             await self.blob.delete(key)
         for key in await self.redis.scan_keys(f"{path}/*"):
             await self.redis.delete(key)
+
+    @staticmethod
+    def _ref(owner: str, name: str, ref: str) -> str:
+        return f"{owner}/{name}.git/{REF_PREFIX}{ref}"
+
+    @staticmethod
+    def _checkpoint(owner: str, name: str, pull_id: uuid.UUID) -> str:
+        return f"{owner}/{name}.git/merge-state/{pull_id}"
+
+    async def branch_heads(self, owner: str, name: str, base: str, head: str) -> tuple[str | None, str | None]:
+        """Read live branch tips without loading Git objects."""
+        before, after = await asyncio.gather(
+            self.redis.get(self._ref(owner, name, f"refs/heads/{base}")),
+            self.redis.get(self._ref(owner, name, f"refs/heads/{head}")),
+        )
+        return before.decode() if before else None, after.decode() if after else None
+
+    async def completed_merge(self, owner: str, name: str, pull_id: uuid.UUID) -> MergeResult | None:
+        """Read the durable result of a previously published merge."""
+        checkpoint = await self.redis.get(self._checkpoint(owner, name, pull_id))
+        return MergeResult(**json.loads(checkpoint)) if checkpoint else None
+
+    async def compare_and_set(
+        self, repo_path: str, expected: dict[str, str | None], updates: dict[str, str | None]
+    ) -> bool:
+        """Atomically apply relative metadata updates while expected values still match."""
+        prefix = f"{normalize_path(repo_path)}/"
+        return await self.redis.compare_and_set(
+            {prefix + key: value for key, value in expected.items()},
+            {prefix + key: value for key, value in updates.items()},
+        )

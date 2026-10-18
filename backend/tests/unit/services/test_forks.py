@@ -8,7 +8,6 @@ from dulwich.objects import Blob, Commit, Tree
 from dulwich.refs import Ref
 from fastapi import HTTPException
 
-from app.clients.git.blob_backend import BlobBackend
 from app.entities.repositories import Repository
 from app.entities.users import User
 from app.schemas.social import ForkCreate
@@ -47,7 +46,7 @@ def _setup() -> tuple[FakeRepositoryStore, FakeUserStore, User, User, ForkServic
 
     activity_service = ActivityService(activity_store, repository_store, star_store)
     repository_service = build_repository_service(
-        BlobBackend(), FakeBlobStorageClient(), FakeRedisClient(), FakeCacheClient(), repository_store, star_store
+        FakeBlobStorageClient(), FakeRedisClient(), FakeCacheClient(), repository_store, star_store
     )
     fork_service = ForkService(repository_store, repository_service, activity_service, star_store)
     return repository_store, users, owner, alice, fork_service, repository_service
@@ -114,9 +113,9 @@ async def test_fork_copies_persisted_objects_and_refs() -> None:
     commit.message = b"Initial commit"
     repo.object_store.add_objects([(blob, None), (tree, None), (commit, None)])
     repo.refs.set_if_equals(Ref(b"refs/heads/main"), None, commit.id)
-    await repository_service.save_changes("owner", "repo")
+    await repository_service.git.save_changes("owner", "repo")
     await fork_service.fork("owner", "repo", ForkCreate(), alice)
-    assert await repository_service.get_raw("alice", "repo", "main", "file.txt") == b"fork content\n"
+    assert await repository_service.git.get_raw("alice", "repo", "main", "file.txt") == b"fork content\n"
     info = await repository_service.get_info("alice", "repo", "HEAD")
     assert info.last_commit is not None
     assert info.last_commit.sha == commit.id.decode()

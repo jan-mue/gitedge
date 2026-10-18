@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from app.clients.git.storage import CATALOG, RepositoryStorage
+from app.clients.git import CATALOG, GitStore
 from app.types import PackContents, RepositoryChanges
 from tests.unit.utils.fakes import FakeBlobStorageClient, FakeRedisClient
 
@@ -23,8 +23,8 @@ async def test_legacy_catalog_lists_once_and_ignores_incomplete_pairs(mocker: Mo
     await blob.put(f"{PATH}/packs/complete.idx", PACK.index)
     await blob.put(f"{PATH}/packs/orphan.pack", b"partial")
     listing = mocker.spy(blob, "list_keys")
-    first, _ = await RepositoryStorage(blob, redis).load(PATH)
-    second, _ = await RepositoryStorage(blob, redis).load(PATH)
+    first, _ = await GitStore(blob, redis).load(PATH)
+    second, _ = await GitStore(blob, redis).load(PATH)
     assert first == second == {"complete": PACK}
     assert listing.await_count == 1
     assert json.loads(redis.values[f"{PATH}/{CATALOG}"]) == ["complete"]
@@ -32,7 +32,7 @@ async def test_legacy_catalog_lists_once_and_ignores_incomplete_pairs(mocker: Mo
 
 async def test_retry_skips_existing_uploads_and_ref_only_writes_do_not_list(mocker: MockerFixture) -> None:
     blob, redis = FakeBlobStorageClient(), FakeRedisClient()
-    storage = RepositoryStorage(blob, redis)
+    storage = GitStore(blob, redis)
     listing, put = mocker.spy(blob, "list_keys"), mocker.spy(blob, "put")
     changes: RepositoryChanges = {"pack_uploads": {"one": PACK}, "ref_puts": {b"refs/heads/main": b"1" * 40}}
     await storage.save(PATH, changes)
@@ -40,7 +40,7 @@ async def test_retry_skips_existing_uploads_and_ref_only_writes_do_not_list(mock
     await storage.save(PATH, {"ref_puts": {b"refs/heads/main": b"2" * 40}})
     assert put.await_count == 2
     assert listing.await_count == 1
-    _, refs = await RepositoryStorage(blob, redis).load(PATH)
+    _, refs = await GitStore(blob, redis).load(PATH)
     assert refs["refs/heads/main"] == b"2" * 40
     assert listing.await_count == 1
 
@@ -56,7 +56,7 @@ async def test_failed_index_upload_never_publishes_catalog_or_refs(mocker: Mocke
 
     mocker.patch.object(blob, "put", side_effect=fail_index)
     with pytest.raises(OSError, match="Interrupted upload"):
-        await RepositoryStorage(blob, redis).save(
+        await GitStore(blob, redis).save(
             PATH, {"pack_uploads": {"one": PACK}, "ref_puts": {b"refs/heads/main": b"1" * 40}}
         )
     assert json.loads(redis.values[f"{PATH}/{CATALOG}"]) == []
@@ -65,7 +65,7 @@ async def test_failed_index_upload_never_publishes_catalog_or_refs(mocker: Mocke
 
 async def test_concurrent_writers_retain_both_packs_after_cas_retry(mocker: MockerFixture) -> None:
     blob, redis = FakeBlobStorageClient(), FakeRedisClient()
-    storage = RepositoryStorage(blob, redis)
+    storage = GitStore(blob, redis)
     await storage.load(PATH)
     original_cas = redis.compare_and_set
     conflicts = 0
@@ -80,7 +80,7 @@ async def test_concurrent_writers_retain_both_packs_after_cas_retry(mocker: Mock
     mocker.patch.object(redis, "compare_and_set", side_effect=delayed_cas)
     await asyncio.gather(
         storage.save(PATH, {"pack_uploads": {"one": PACK}}),
-        RepositoryStorage(blob, redis).save(PATH, {"pack_uploads": {"two": PACK}}),
+        GitStore(blob, redis).save(PATH, {"pack_uploads": {"two": PACK}}),
     )
     assert conflicts >= 1
     packs, _ = await storage.load(PATH)
@@ -89,7 +89,7 @@ async def test_concurrent_writers_retain_both_packs_after_cas_retry(mocker: Mock
 
 async def test_catalog_is_published_before_new_refs_and_read_after_refs(mocker: MockerFixture) -> None:
     blob, redis = FakeBlobStorageClient(), FakeRedisClient()
-    storage = RepositoryStorage(blob, redis)
+    storage = GitStore(blob, redis)
     ref_key = f"{PATH}/refs/refs/heads/main"
     original_set = redis.set
 
@@ -108,7 +108,7 @@ async def test_catalog_is_published_before_new_refs_and_read_after_refs(mocker: 
 
 async def test_pack_deletion_and_catalog_recovery(mocker: MockerFixture) -> None:
     blob, redis = FakeBlobStorageClient(), FakeRedisClient()
-    storage = RepositoryStorage(blob, redis)
+    storage = GitStore(blob, redis)
     await storage.save(PATH, {"pack_uploads": {"one": PACK, "two": PACK}})
     await storage.save(PATH, {"pack_deletes": {"one"}})
     assert set((await storage.load(PATH))[0]) == {"two"}
@@ -120,7 +120,7 @@ async def test_pack_deletion_and_catalog_recovery(mocker: MockerFixture) -> None
 
 async def test_copy_uses_catalog_and_delete_cleans_orphans_without_touching_neighbors(mocker: MockerFixture) -> None:
     blob, redis = FakeBlobStorageClient(), FakeRedisClient()
-    storage = RepositoryStorage(blob, redis)
+    storage = GitStore(blob, redis)
     await storage.save(PATH, {"pack_uploads": {"one": PACK}, "ref_puts": {b"HEAD": b"ref: refs/heads/main"}})
     target = "other/fork.git"
     await storage.load(target)
@@ -137,7 +137,7 @@ async def test_copy_uses_catalog_and_delete_cleans_orphans_without_touching_neig
 
 async def test_missing_cataloged_pack_fails_instead_of_serving_incomplete_history() -> None:
     blob, redis = FakeBlobStorageClient(), FakeRedisClient()
-    storage = RepositoryStorage(blob, redis)
+    storage = GitStore(blob, redis)
     await storage.save(PATH, {"pack_uploads": {"one": PACK}})
     await blob.delete(f"{PATH}/packs/one.idx")
     with pytest.raises(FileNotFoundError, match="Incomplete Git pack"):

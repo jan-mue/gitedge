@@ -10,9 +10,8 @@ from dulwich.object_store import MemoryObjectStore
 from dulwich.objects import Blob, ObjectID, Tree
 from dulwich.patch import write_tree_diff
 
-from app.clients.git.diffs import enrich_diff
-from app.clients.git.repositories import GitClient
-from app.utils.diffs import comment_context
+from app.services.git.repositories import GitService
+from app.utils.diffs import comment_context, enrich_diff
 
 if TYPE_CHECKING:
     from app.schemas.repositories import CommitFileChange
@@ -31,7 +30,7 @@ def make_diff(before: bytes | None, after: bytes | None, path: str = "example.py
         trees.append(tree)
     patch = io.BytesIO()
     write_tree_diff(patch, store, trees[0].id, trees[1].id)
-    files = GitClient._parse_patch(patch.getvalue().decode())  # noqa: SLF001
+    files = GitService._parse_patch(patch.getvalue().decode())  # noqa: SLF001
     enrich_diff(files, store, trees[0].id, trees[1].id)
     return files
 
@@ -58,7 +57,7 @@ def test_compact_context_ends_at_anchor_and_preserves_token_changes(side: Litera
         tree.add(b"code.py", 0o100644, blob.id)
         store.add_object(tree)
         trees.append(tree)
-    file = GitClient._diff_file(store, trees[0].id, trees[1].id, "code.py", (side, 1))  # noqa: SLF001
+    file = GitService._diff_file(store, trees[0].id, trees[1].id, "code.py", (side, 1))  # noqa: SLF001
     lines = file.hunks[0].lines
     assert (lines[-1].old_line if side == "old" else lines[-1].new_line) == 1
     assert len(lines) <= 4
@@ -142,8 +141,8 @@ def test_compact_index_statistics_match_highlighted_patch(before: bytes | None, 
             tree.add(b"example.py", 0o100644, blob.id)
         store.add_object(tree)
         trees.append(tree)
-    summary = GitClient._diff_files(store, trees[0].id, trees[1].id, False)[0]  # noqa: SLF001
-    full = GitClient._diff_files(store, trees[0].id, trees[1].id, True)[0]  # noqa: SLF001
+    summary = GitService._diff_files(store, trees[0].id, trees[1].id, False)[0]  # noqa: SLF001
+    full = GitService._diff_files(store, trees[0].id, trees[1].id, True)[0]  # noqa: SLF001
     fields = {"path", "change_type", "additions", "deletions", "diff_line_count", "is_binary"}
     assert summary.model_dump(include=fields) == full.model_dump(include=fields)
     assert not summary.patch
@@ -160,7 +159,7 @@ def test_submodule_commit_does_not_need_to_exist_in_parent_object_store() -> Non
     store.add_object(new)
     patch = io.BytesIO()
     write_tree_diff(patch, store, old.id, new.id)
-    files = GitClient._parse_patch(patch.getvalue().decode())  # noqa: SLF001
+    files = GitService._parse_patch(patch.getvalue().decode())  # noqa: SLF001
     enrich_diff(files, store, old.id, new.id)
     assert files[0].hunks
     assert "Subproject commit" in files[0].patch

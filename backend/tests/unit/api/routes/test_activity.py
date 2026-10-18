@@ -269,7 +269,7 @@ def test_activity_statistics_period_and_complete_event_totals(
             ),
         ],
     )
-    mocker.patch("app.services.repositories.RepositoryService.activity_history", return_value=history)
+    mocker.patch("app.services.git.repositories.GitService.activity_history", return_value=history)
     week = client.get(f"{ACTIVITY_URL}/statistics?days=7")
     assert week.status_code == 200
     payload = week.json()
@@ -337,7 +337,7 @@ def test_activity_statistics_unique_merges_before_display_limit(
             )
         )
     mocker.patch(
-        "app.services.repositories.RepositoryService.activity_history",
+        "app.services.git.repositories.GitService.activity_history",
         return_value=GitActivityHistory(default_branch="main", commits=[]),
     )
     payload = client.get(f"{ACTIVITY_URL}/statistics").json()
@@ -356,7 +356,7 @@ def test_activity_statistics_supported_periods(
 ) -> None:
     client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Recent issue"})
     mocker.patch(
-        "app.services.repositories.RepositoryService.activity_history",
+        "app.services.git.repositories.GitService.activity_history",
         return_value=GitActivityHistory(default_branch="main", commits=[]),
     )
     response = client.get(f"{ACTIVITY_URL}/statistics?days={days}")

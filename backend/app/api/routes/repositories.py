@@ -94,7 +94,7 @@ async def get_source(
     source_path: str = "",
 ) -> TreeListing | FileContent:
     """Resolve a directory or file in one source request."""
-    result = await repository_service.get_source(owner, repo, ref, source_path)
+    result = await repository_service.git.get_source(owner, repo, ref, source_path)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
     return result
 
@@ -109,7 +109,7 @@ async def get_tree(
     tree_path: str = "",
 ) -> TreeListing:
     """Get directory listing for a repository path."""
-    result = await repository_service.get_tree(owner, repo, ref, tree_path)
+    result = await repository_service.git.get_tree(owner, repo, ref, tree_path)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
     return result
 
@@ -124,7 +124,7 @@ async def get_blob(
     file_path: str = "",
 ) -> FileContent:
     """Get file content with syntax highlighting."""
-    result = await repository_service.get_blob(owner, repo, ref, file_path)
+    result = await repository_service.git.get_blob(owner, repo, ref, file_path)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
     return result
 
@@ -139,7 +139,7 @@ async def get_blame(
     file_path: str = "",
 ) -> BlameContent:
     """Get line attribution for a file at a revision."""
-    result = await repository_service.get_blame(owner, repo, ref, file_path)
+    result = await repository_service.git.get_blame(owner, repo, ref, file_path)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
     return result
 
@@ -153,7 +153,7 @@ async def get_statistics(
     ref: str = "HEAD",
 ) -> RepositoryStatistics:
     """Get byte-weighted language, size, and commit statistics."""
-    result = await repository_service.get_statistics(owner, repo, ref)
+    result = await repository_service.git.get_statistics(owner, repo, ref)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
     return result
 
@@ -167,7 +167,7 @@ async def get_file_index(
     ref: str = "HEAD",
 ) -> FileIndex:
     """Get searchable file paths at a revision."""
-    result = await repository_service.get_file_index(owner, repo, ref)
+    result = await repository_service.git.get_file_index(owner, repo, ref)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
     return result
 
@@ -181,7 +181,7 @@ async def get_raw(
     file_path: str = "",
 ) -> Response:
     """Serve original file bytes without interpreting repository content as HTML."""
-    data = await repository_service.get_raw(owner, repo, ref, file_path)
+    data = await repository_service.git.get_raw(owner, repo, ref, file_path)
     response = Response(data, media_type="text/plain", headers={"X-Content-Type-Options": "nosniff"})
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
     return response
@@ -211,7 +211,7 @@ async def get_readme(
     tree_path: str = "",
 ) -> ReadmeContent:
     """Get README content from a repository directory."""
-    result = await repository_service.get_readme(owner, repo, ref, tree_path)
+    result = await repository_service.git.get_readme(owner, repo, ref, tree_path)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
     return result
 
@@ -221,7 +221,7 @@ async def list_branches(
     owner: str, repo: str, response: Response, repository_service: RepositoryServiceDep
 ) -> list[BranchInfo]:
     """List all branches in a repository."""
-    result = await repository_service.list_branches(owner, repo)
+    result = await repository_service.git.list_branches(owner, repo)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=False)
     return result
 
@@ -238,7 +238,7 @@ async def list_commits(
     file_path: str = "",
 ) -> CommitsPublic:
     """List commit history for a repository ref."""
-    result = await repository_service.list_commits(owner, repo, ref, offset, limit, file_path)
+    result = await repository_service.git.list_commits(owner, repo, ref, offset, limit, file_path)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=is_commit_sha(ref))
     return result
 
@@ -253,7 +253,7 @@ async def get_commit(
     include_diff: bool = True,
 ) -> CommitDetail:
     """Get a single commit with its diff."""
-    result = await repository_service.get_commit(owner, repo, sha, include_diff=include_diff)
+    result = await repository_service.git.get_commit(owner, repo, sha, include_diff=include_diff)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=True)
     return result
 
@@ -404,7 +404,7 @@ async def compare_revisions(
     include_diff: bool = True,
 ) -> CompareResult:
     """Compare two branches, tags or commits using the shared diff response."""
-    result = await repository_service.compare(owner, repo, base, head, include_diff=include_diff)
+    result = await repository_service.git.compare(owner, repo, base, head, include_diff=include_diff)
     if is_commit_sha(base) and is_commit_sha(head):
         await _apply_cache_headers(response, repository_service, owner, repo, immutable=True)
     return result
@@ -421,7 +421,7 @@ async def get_diff_file(
     base: Annotated[str, Query(pattern=r"^(?:[0-9a-f]{40})?$")] = "",
 ) -> CommitFileChange:
     """Load one highlighted file at immutable base and head revisions."""
-    result = await repository_service.get_diff_file(owner, repo, head, file_path, base)
+    result = await repository_service.git.get_diff_file(owner, repo, head, file_path, base)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=True)
     return result
 

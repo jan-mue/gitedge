@@ -6,15 +6,14 @@ from typing import TYPE_CHECKING
 from dulwich.objects import Blob, Commit, ObjectID, Tree
 from dulwich.refs import Ref
 
-from app.clients.git.blob_repository import BlobRepository
-from app.clients.git.repositories import GitClient
-from app.clients.git.storage import RepositoryStorage
+from app.clients.git import GitStore
+from app.services.git.repositories import GitService
+from app.services.git.repository import BlobRepository
 from app.services.repositories import RepositoryService
 
 if TYPE_CHECKING:
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.cache import AbstractCacheClient
-    from app.clients.git.blob_backend import BlobBackend
     from app.clients.redis import AbstractRedisClient
     from app.clients.repositories import RepositoryStore
     from app.clients.stars import StarStore
@@ -31,7 +30,7 @@ def seed_merge_repository(
     revert_first: bool = False,
 ) -> tuple[str, str, str]:
     """Persist a diverged base and two PR commits without external services."""
-    repo = BlobRepository.init_bare()
+    repo = BlobRepository.create()
 
     def commit(files: dict[str, bytes], parents: list[ObjectID], message: bytes) -> Commit:
         tree = Tree()
@@ -78,17 +77,13 @@ def seed_merge_repository(
 
 
 def build_repository_service(
-    backend: BlobBackend,
     blob: BlobStorageClient,
     redis: AbstractRedisClient,
     cache: AbstractCacheClient,
     repository_store: RepositoryStore,
     star_store: StarStore,
 ) -> RepositoryService:
-    """Wire the actual Git adapter to in-memory persistence for unit tests."""
+    """Wire the actual Git service to in-memory persistence for unit tests."""
 
-    async def exists(owner: str, name: str) -> bool:
-        return await repository_store.find_by_owner_and_name(owner, name) is not None
-
-    git = GitClient(backend, RepositoryStorage(blob, redis), cache, exists)
+    git = GitService(GitStore(blob, redis), cache, repository_store)
     return RepositoryService(git, cache, repository_store, star_store)

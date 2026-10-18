@@ -1,31 +1,19 @@
-"""Repository metadata and policy using the Git client."""
+"""Repository metadata and policy using the Git service."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 
 from app.config import settings
 from app.entities.repositories import Repository as RepositoryEntity
 from app.schemas.repositories import (
-    BlameContent,
-    BranchInfo,
-    CommitDetail,
-    CommitFileChange,
-    CommitsPublic,
-    CompareResult,
-    DiffHunk,
-    FileContent,
-    FileIndex,
     MergeSettings,
-    ReadmeContent,
     RepositoriesPublic,
     Repository,
     RepositoryInfo,
-    RepositoryStatistics,
     RepositoryUpdate,
-    TreeListing,
 )
 from app.utils.cache_headers import (
     CACHE_CONTROL_IMMUTABLE,
@@ -37,12 +25,10 @@ if TYPE_CHECKING:
     import uuid
 
     from app.clients.cache import AbstractCacheClient
-    from app.clients.git.repositories import GitClient
     from app.clients.repositories import RepositoryStore
     from app.clients.stars import StarStore
     from app.entities.users import User
-    from app.schemas.releases import TagsPublic
-    from app.schemas.repository_activity import GitActivityHistory
+    from app.services.git.repositories import GitService
 
 
 async def ensure_repository(
@@ -73,16 +59,16 @@ async def ensure_repository(
 
 
 class RepositoryService:
-    """Repository metadata and policy using the Git client."""
+    """Repository metadata and policy using the Git service."""
 
     def __init__(
         self,
-        git: GitClient,
+        git: GitService,
         cache_client: AbstractCacheClient,
         repository_store: RepositoryStore,
         star_store: StarStore,
     ) -> None:
-        """Bind the Git client, metadata stores, and response cache."""
+        """Bind the Git service, metadata stores, and response cache."""
         self.git = git
         self.cache_client = cache_client
         self.repository_store = repository_store
@@ -266,11 +252,7 @@ class RepositoryService:
     async def ensure_loaded(self, owner: str, name: str) -> None:
         """Ensure metadata exists before handling a Git protocol request."""
         await ensure_repository(self.repository_store, owner, name)
-        await self.git.ensure_loaded(owner, name)
-
-    async def save_changes(self, owner: str, name: str) -> None:
-        """Persist objects before refs and invalidate repository responses."""
-        await self.git.save_changes(owner, name)
+        await self.git.load_repository(owner, name)
 
     async def copy_repository(self, owner: str, name: str, target_owner: str, target_name: str) -> None:
         """Copy a repository and invalidate source and destination metadata."""
@@ -303,34 +285,6 @@ class RepositoryService:
             await self.cache_client.invalidate(self._cache_group(entity.fork_of.owner.name, entity.fork_of.name))
         return await self._to_schema(entity)
 
-    async def get_file_index(self, owner: str, name: str, ref: str) -> FileIndex:
-        """Delegate get file index to the configured Git engine."""
-        return await self.git.get_file_index(owner, name, ref)
-
-    async def get_statistics(self, owner: str, name: str, ref: str) -> RepositoryStatistics:
-        """Delegate get statistics to the configured Git engine."""
-        return await self.git.get_statistics(owner, name, ref)
-
-    async def get_blame(self, owner: str, name: str, ref: str, file_path: str) -> BlameContent:
-        """Delegate get blame to the configured Git engine."""
-        return await self.git.get_blame(owner, name, ref, file_path)
-
-    async def get_raw(self, owner: str, name: str, ref: str, file_path: str) -> bytes:
-        """Delegate get raw to the configured Git engine."""
-        return await self.git.get_raw(owner, name, ref, file_path)
-
-    async def get_source(self, owner: str, name: str, ref: str, path: str) -> TreeListing | FileContent:
-        """Delegate get source to the configured Git engine."""
-        return await self.git.get_source(owner, name, ref, path)
-
-    async def get_tree(self, owner: str, name: str, ref: str, tree_path: str) -> TreeListing:
-        """Delegate get tree to the configured Git engine."""
-        return await self.git.get_tree(owner, name, ref, tree_path)
-
-    async def get_blob(self, owner: str, name: str, ref: str, file_path: str) -> FileContent:
-        """Delegate get blob to the configured Git engine."""
-        return await self.git.get_blob(owner, name, ref, file_path)
-
     async def get_info(self, owner: str, name: str, ref: str) -> RepositoryInfo:
         """Enrich engine-neutral Git information with current repository metadata."""
         group = self._cache_group(owner, name)
@@ -349,55 +303,3 @@ class RepositoryService:
                 info.fork_of = f"{entity.fork_of.owner.name}/{entity.fork_of.name}"
         await self.cache_client.set(key, info.model_dump_json(), ttl=settings.CACHE_TTL, group=group)
         return info
-
-    async def get_readme(self, owner: str, name: str, ref: str, tree_path: str) -> ReadmeContent:
-        """Delegate get readme to the configured Git engine."""
-        return await self.git.get_readme(owner, name, ref, tree_path)
-
-    async def list_branches(self, owner: str, name: str) -> list[BranchInfo]:
-        """Delegate list branches to the configured Git engine."""
-        return await self.git.list_branches(owner, name)
-
-    async def list_tags(self, owner: str, name: str) -> TagsPublic:
-        """Delegate list tags to the configured Git engine."""
-        return await self.git.list_tags(owner, name)
-
-    async def activity_history(self, owner: str, name: str) -> GitActivityHistory:
-        """Delegate activity history to the configured Git engine."""
-        return await self.git.activity_history(owner, name)
-
-    async def list_commits(
-        self, owner: str, name: str, ref: str = "main", offset: int = 0, limit: int = 50, file_path: str = ""
-    ) -> CommitsPublic:
-        """Delegate list commits to the configured Git engine."""
-        return await self.git.list_commits(owner, name, ref, offset, limit, file_path)
-
-    async def get_commit(self, owner: str, name: str, sha: str, *, include_diff: bool = True) -> CommitDetail:
-        """Delegate get commit to the configured Git engine."""
-        return await self.git.get_commit(owner, name, sha, include_diff=include_diff)
-
-    async def branch_heads(self, owner: str, name: str, base: str, head: str) -> tuple[str | None, str | None]:
-        """Delegate branch heads to the configured Git engine."""
-        return await self.git.branch_heads(owner, name, base, head)
-
-    async def compare_commits(
-        self, owner: str, name: str, base_ref: str, head_ref: str, offset: int = 0, limit: int = 50
-    ) -> CommitsPublic:
-        """Delegate compare commits to the configured Git engine."""
-        return await self.git.compare_commits(owner, name, base_ref, head_ref, offset, limit)
-
-    async def compare(
-        self, owner: str, name: str, base_ref: str, head_ref: str, *, include_diff: bool = True
-    ) -> CompareResult:
-        """Delegate compare to the configured Git engine."""
-        return await self.git.compare(owner, name, base_ref, head_ref, include_diff=include_diff)
-
-    async def get_diff_file(self, owner: str, name: str, head: str, file_path: str, base: str = "") -> CommitFileChange:
-        """Delegate get diff file to the configured Git engine."""
-        return await self.git.get_diff_file(owner, name, head, file_path, base)
-
-    async def get_diff_context(
-        self, owner: str, name: str, base: str, head: str, path: str, side: Literal["old", "new"], line: int
-    ) -> DiffHunk:
-        """Delegate get diff context to the configured Git engine."""
-        return await self.git.get_diff_context(owner, name, base, head, path, side, line)

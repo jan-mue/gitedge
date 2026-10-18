@@ -8,7 +8,7 @@ import pytest
 
 from app.config import settings
 from app.schemas.repositories import CommitFileChange, CompareResult, DiffHunk, DiffLine, DiffToken
-from app.services.repositories import RepositoryService
+from app.services.git.repositories import GitService
 from tests.unit.utils.git import seed_merge_repository
 
 if TYPE_CHECKING:
@@ -52,7 +52,7 @@ def comparison(mocker: MockerFixture) -> CompareResult:
         additions=1,
         deletions=1,
     )
-    mocker.patch.object(RepositoryService, "compare", return_value=comparison)
+    mocker.patch.object(GitService, "compare", return_value=comparison)
     return comparison
 
 
@@ -267,11 +267,11 @@ def test_new_review_context_and_listing_do_not_recalculate_git(
     review = client.post(
         f"{pull}/reviews", headers=normal_user_token_headers, json={**DRAFT, "state": "comment"}
     ).json()
-    compare = mocker.patch.object(RepositoryService, "compare", side_effect=AssertionError("Unexpected comparison"))
+    compare = mocker.patch.object(GitService, "compare", side_effect=AssertionError("Unexpected comparison"))
     context = mocker.patch.object(
-        RepositoryService, "get_diff_context", side_effect=AssertionError("Unexpected Git context load")
+        GitService, "get_diff_context", side_effect=AssertionError("Unexpected Git context load")
     )
-    mocker.patch.object(RepositoryService, "branch_heads", return_value=(BASE, "c" * 40))
+    mocker.patch.object(GitService, "branch_heads", return_value=(BASE, "c" * 40))
     result = client.get(f"{pull}/reviews/{review['id']}/comments/0/context")
     assert result.json() == review["comments"][0]["context"]
     assert client.get(f"{pull}/reviews").json()[0]["outdated"] is True
@@ -292,7 +292,7 @@ def test_legacy_context_uses_original_revisions_and_validates_its_anchor(
     ).json()
     stored = next(review for review in fake_stores.reviews.reviews.items.values())
     stored.line_comments[0].context = None
-    context = mocker.patch.object(RepositoryService, "get_diff_context", return_value=comparison.files[0].hunks[0])
+    context = mocker.patch.object(GitService, "get_diff_context", return_value=comparison.files[0].hunks[0])
     url = f"{pull}/reviews/{review['id']}/comments"
     assert client.get(f"{url}/0/context").status_code == 200
     context.assert_called_once_with(OWNER, "repo", BASE, HEAD, "code.py", "new", 2)

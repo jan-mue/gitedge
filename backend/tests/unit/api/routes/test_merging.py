@@ -6,13 +6,12 @@ from typing import TYPE_CHECKING
 import pytest
 from dulwich.objects import Blob, Commit, ObjectID, Tree
 
-from app.clients.git.blob_backend import BlobBackend
-from app.clients.git.blob_repository import BlobRepository
-from app.clients.git.merges import GitMergeClient
-from app.clients.git.merging import calculate_merge
-from app.clients.git.storage import RepositoryStorage
+from app.clients.git import GitStore
 from app.config import settings
 from app.schemas.repositories import MergeMessage, MergeMethod
+from app.services.git.merges import GitMergeService, calculate_merge
+from app.services.git.repositories import GitService
+from app.services.git.repository import BlobRepository
 from tests.unit.utils.git import seed_merge_repository
 
 if TYPE_CHECKING:
@@ -56,7 +55,7 @@ async def test_merge_graph_messages_and_retained_views(
     assert data["has_merged"]
     assert data["state"] == "merged"
     assert data["merged_commit_id"] != head
-    packs, refs = await RepositoryStorage(fake_stores.blob, fake_stores.redis).load(f"{OWNER}/repo.git")
+    packs, refs = await GitStore(fake_stores.blob, fake_stores.redis).load(f"{OWNER}/repo.git")
     assert "refs/heads/feature" not in refs
     repo = BlobRepository()
     repo.load_from_storage(packs, refs)
@@ -132,7 +131,7 @@ def test_mergeability_is_read_only_cached_and_tracks_both_tips(
     base, first, head = seed_merge_repository(fake_stores, OWNER, "repo", conflict=conflict)
     pull = create(client, superuser_token_headers)
     blobs, refs = fake_stores.blob.objects.copy(), fake_stores.redis.values.copy()
-    calculate = mocker.patch("app.clients.git.merges.calculate_merge", wraps=calculate_merge)
+    calculate = mocker.patch("app.services.git.merges.calculate_merge", wraps=calculate_merge)
     response = client.get(f"{pull}/mergeability", params={"method": method})
     assert response.status_code == 200, response.text
     data = response.json()
@@ -199,8 +198,10 @@ async def test_rebase_checks_each_commit_even_when_the_combined_diff_merges_clea
     result = client.get(f"{pull}/mergeability", params={"method": "rebase"}).json()
     assert result["mergeable"] is False
     assert result["conflicting_files"] == ["code.txt"]
-    git = GitMergeClient(fake_stores.blob, fake_stores.redis, fake_stores.cache, BlobBackend())
-    repo = await git.load(OWNER, "repo")
+    git = GitMergeService(
+        GitService(GitStore(fake_stores.blob, fake_stores.redis), fake_stores.cache, fake_stores.repository)
+    )
+    repo = await git.git.load_repository(OWNER, "repo", fresh=True)
     before = repo.get_pending_changes()
     calculate_merge(
         repo,
@@ -282,8 +283,10 @@ async def test_retry_recovers_after_git_publication(
 ) -> None:
     base, _, head = seed_merge_repository(fake_stores, OWNER, "repo")
     pull = create(client, superuser_token_headers)
-    git = GitMergeClient(fake_stores.blob, fake_stores.redis, fake_stores.cache, BlobBackend())
-    repo = await git.load(OWNER, "repo")
+    git = GitMergeService(
+        GitService(GitStore(fake_stores.blob, fake_stores.redis), fake_stores.cache, fake_stores.repository)
+    )
+    repo = await git.git.load_repository(OWNER, "repo", fresh=True)
     result = calculate_merge(
         repo,
         ObjectID(base.encode()),

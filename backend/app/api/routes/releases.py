@@ -48,4 +48,4 @@ async def update_release(
 @router.get("/{owner}/{repo}/tags")
 async def list_tags(owner: str, repo: str, repository_service: RepositoryServiceDep) -> TagsPublic:
     """List Git tags for a repository."""
-    return await repository_service.list_tags(owner, repo)
+    return await repository_service.git.list_tags(owner, repo)

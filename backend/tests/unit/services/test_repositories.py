@@ -12,14 +12,14 @@ import pytest
 from dulwich.object_format import DEFAULT_OBJECT_FORMAT
 from dulwich.objects import Blob, Commit, ObjectID, ShaFile, Tree
 from dulwich.pack import write_pack
-from dulwich.refs import SYMREF, Ref
+from dulwich.refs import Ref
 from fastapi import HTTPException
 
-import app.clients.git.repositories as repository_module
-from app.clients.git.blob_backend import BlobBackend
+import app.services.git.repositories as repository_module
 from app.entities.users import User
 from app.exceptions import RepositoryNotFoundError
 from app.schemas.repositories import FileContent, RepositoryUpdate, TreeListing
+from app.services.git.repository import BlobRepository
 from app.services.repositories import RepositoryService, ensure_repository
 from app.types import PackContents
 from app.utils.cache_headers import (
@@ -42,7 +42,8 @@ from tests.unit.utils.git import build_repository_service
 if TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
-    from app.clients.git.blob_repository import BlobRepository
+    from app.services.git.repositories import GitService
+
 
 OWNER_ID = uuid.uuid4()
 OWNER = "owner"
@@ -79,19 +80,21 @@ def _make_commit(tree_id: ObjectID, message: str = "Initial commit") -> Commit:
 
 
 def _load_repository(
-    backend: BlobBackend,
+    git: GitService,
     key: str,
     objects: list[ShaFile],
     commit_id: ObjectID,
 ) -> BlobRepository:
-    refs = {"HEAD": SYMREF + b"refs/heads/main", "refs/heads/main": commit_id}
-    repo = backend.load_repository_from_data(key, _pack(objects), refs)
+    repo = BlobRepository()
+    repo.load_from_storage(_pack(objects), {})
+    repo.refs.set_symbolic_ref(Ref(b"HEAD"), Ref(b"refs/heads/main"))
+    git.repositories[key] = repo
     # Mark the branch as a pending change so save_changes persists it.
     repo.refs.set_if_equals(Ref(b"refs/heads/main"), None, commit_id)
     return repo
 
 
-def _populate_repo(backend: BlobBackend, key: str = "owner/repo.git") -> ObjectID:
+def _populate_repo(git: GitService, key: str = "owner/repo.git") -> ObjectID:
     readme = Blob.from_string(b"# Title\n\nHello world\n")
     main_py = Blob.from_string(b'def main():\n    print("hi")\n')
     src_tree = _write_tree({"main.py": (stat.S_IFREG | 0o644, main_py.id)})
@@ -102,18 +105,18 @@ def _populate_repo(backend: BlobBackend, key: str = "owner/repo.git") -> ObjectI
         }
     )
     commit = _make_commit(root_tree.id)
-    _load_repository(backend, key, [readme, main_py, src_tree, root_tree, commit], commit.id)
+    _load_repository(git, key, [readme, main_py, src_tree, root_tree, commit], commit.id)
     return commit.id
 
 
-def _populate_single_file(backend: BlobBackend, key: str, name: str, data: bytes) -> None:
+def _populate_single_file(git: GitService, key: str, name: str, data: bytes) -> None:
     blob = Blob.from_string(data)
     tree = _write_tree({name: (stat.S_IFREG | 0o644, blob.id)})
     commit = _make_commit(tree.id)
-    _load_repository(backend, key, [blob, tree, commit], commit.id)
+    _load_repository(git, key, [blob, tree, commit], commit.id)
 
 
-def _populate_path_history(backend: BlobBackend) -> dict[str, Commit]:
+def _populate_path_history(git: GitService) -> dict[str, Commit]:
     objects: list[ShaFile] = []
 
     def snapshot(readme: bytes, code: bytes, parents: list[ObjectID], message: str, timestamp: int) -> Commit:
@@ -132,7 +135,7 @@ def _populate_path_history(backend: BlobBackend) -> dict[str, Commit]:
     docs = snapshot(b"Updated README", b"updated code", [code.id], "Update documentation", 1_700_002_000)
     feature = snapshot(b"Original README", b"feature code", [initial.id], "Implement feature", 1_700_003_000)
     merge = snapshot(b"Updated README", b"feature code", [docs.id, feature.id], "Merge feature", 1_700_004_000)
-    repo = _load_repository(backend, "owner/repo.git", list({obj.id: obj for obj in objects}.values()), docs.id)
+    repo = _load_repository(git, "owner/repo.git", list({obj.id: obj for obj in objects}.values()), docs.id)
     repo.refs[Ref(b"refs/heads/merged")] = merge.id
     repo.refs[Ref(b"refs/tags/v1")] = initial.id
     return {"initial": initial, "code": code, "docs": docs, "feature": feature, "merge": merge}
@@ -151,7 +154,7 @@ def _stores() -> tuple[FakeUserStore, FakeOrganizationStore, FakeRepositoryStore
 def service() -> RepositoryService:
     _, _, repository_store = _stores()
     return build_repository_service(
-        BlobBackend(), FakeBlobStorageClient(), FakeRedisClient(), FakeCacheClient(), repository_store, FakeStarStore()
+        FakeBlobStorageClient(), FakeRedisClient(), FakeCacheClient(), repository_store, FakeStarStore()
     )
 
 
@@ -182,12 +185,12 @@ async def test_activity_history_deduplicates_branches_and_excludes_merge_diffs(s
     feature = commit_file(b"feature\n", [root.id], "Feature")
     merged = commit_file(b"one\nnew\nfeature\n", [main.id, feature.id], "Merge")
     branch = commit_file(b"one\n+++ tricky\nside\n", [root.id], "Unmerged")
-    repo = _load_repository(service.git.backend, "owner/repo.git", objects, merged.id)
+    repo = _load_repository(service.git, "owner/repo.git", objects, merged.id)
     repo.refs[Ref(b"refs/heads/feature")] = feature.id
     repo.refs[Ref(b"refs/heads/side")] = branch.id
     repo.refs[Ref(b"refs/heads/side-copy")] = branch.id
 
-    history = await service.activity_history(OWNER, REPO)
+    history = await service.git.activity_history(OWNER, REPO)
     assert history.default_branch == "main"
     assert len(history.commits) == 5
     by_sha = {commit.sha: commit for commit in history.commits}
@@ -200,8 +203,8 @@ async def test_activity_history_deduplicates_branches_and_excludes_merge_diffs(s
     assert by_sha[merged.id.decode()].files == []
     assert not by_sha[branch.id.decode()].is_default
     assert by_sha[branch.id.decode()].files == ["file.txt"]
-    assert (await service.activity_history(OWNER, REPO)) == history
-    assert (await service.get_statistics(OWNER, REPO, "main")).commit_count == 4
+    assert (await service.git.activity_history(OWNER, REPO)) == history
+    assert (await service.git.get_statistics(OWNER, REPO, "main")).commit_count == 4
 
 
 async def test_create_repository(service: RepositoryService) -> None:
@@ -209,15 +212,15 @@ async def test_create_repository(service: RepositoryService) -> None:
 
     assert repository.name == "newrepo"
     assert repository.owner == OWNER
-    assert service.git.backend.repository_exists("owner/newrepo.git")
+    assert "owner/newrepo.git" in service.git.repositories
 
     result = await service.list_repositories()
     assert result.count == 1
 
 
 async def test_list_repositories(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
-    await service.save_changes(OWNER, REPO)
+    _populate_repo(service.git)
+    await service.git.save_changes(OWNER, REPO)
     assert service.repository_store is not None
     await ensure_repository(service.repository_store, OWNER, REPO)
 
@@ -228,8 +231,8 @@ async def test_list_repositories(service: RepositoryService) -> None:
 
 
 async def test_get_repository(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
-    await service.save_changes(OWNER, REPO)
+    _populate_repo(service.git)
+    await service.git.save_changes(OWNER, REPO)
     assert service.repository_store is not None
     await ensure_repository(service.repository_store, OWNER, REPO)
 
@@ -261,27 +264,27 @@ async def test_load_repository_empty_when_row_exists(service: RepositoryService)
 
 async def test_ensure_loaded_creates_repository(service: RepositoryService) -> None:
     await service.ensure_loaded(OWNER, "new")
-    assert service.git.backend.repository_exists("owner/new.git")
+    assert "owner/new.git" in service.git.repositories
 
 
 async def test_ensure_loaded_keeps_existing_repository(service: RepositoryService) -> None:
-    commit_id = _populate_repo(service.git.backend)
+    commit_id = _populate_repo(service.git)
     await service.ensure_loaded(OWNER, REPO)
 
-    repo = service.git.backend.open_repository("owner/repo.git")
+    repo = service.git.repositories["owner/repo.git"]
     assert repo.refs.read_loose_ref(Ref(b"refs/heads/main")) == commit_id
 
 
 async def test_save_changes_noop_for_unknown_repository(service: RepositoryService) -> None:
-    await service.save_changes(OWNER, "unknown")
+    await service.git.save_changes(OWNER, "unknown")
     result = await service.list_repositories()
     assert result.count == 0
 
 
 async def test_get_tree(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
+    _populate_repo(service.git)
 
-    listing = await service.get_tree(OWNER, REPO, "main", "")
+    listing = await service.git.get_tree(OWNER, REPO, "main", "")
     assert [entry.name for entry in listing.entries] == ["src", "README.md"]
     assert listing.entries[0].type == "tree"
     assert listing.entries[1].type == "blob"
@@ -289,25 +292,25 @@ async def test_get_tree(service: RepositoryService) -> None:
 
 
 async def test_get_tree_subdirectory(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
+    _populate_repo(service.git)
 
-    listing = await service.get_tree(OWNER, REPO, "main", "src")
+    listing = await service.git.get_tree(OWNER, REPO, "main", "src")
     assert [entry.name for entry in listing.entries] == ["main.py"]
     assert listing.entries[0].path == "src/main.py"
 
 
 async def test_source_last_commits_are_specific_to_files_and_directories(service: RepositoryService) -> None:
-    commits = _populate_path_history(service.git.backend)
+    commits = _populate_path_history(service.git)
 
-    listing = await service.get_tree(OWNER, REPO, "main", "")
+    listing = await service.git.get_tree(OWNER, REPO, "main", "")
     by_name = {entry.name: entry for entry in listing.entries}
     assert by_name["src"].last_commit is not None
     assert by_name["src"].last_commit.sha == commits["code"].id.decode()
     assert by_name["README.md"].last_commit is not None
     assert by_name["README.md"].last_commit.sha == commits["docs"].id.decode()
 
-    nested = await service.get_tree(OWNER, REPO, "main", "src")
-    file = await service.get_blob(OWNER, REPO, "main", "src/main.py")
+    nested = await service.git.get_tree(OWNER, REPO, "main", "src")
+    file = await service.git.get_blob(OWNER, REPO, "main", "src/main.py")
     assert file.last_commit == nested.entries[0].last_commit == by_name["src"].last_commit
     assert file.last_commit is not None
     assert file.last_commit.message == "Update source"
@@ -316,43 +319,43 @@ async def test_source_last_commits_are_specific_to_files_and_directories(service
 
 @pytest.mark.parametrize("ref", ["refs/tags/v1", "initial"])
 async def test_source_last_commits_follow_the_selected_revision(service: RepositoryService, ref: str) -> None:
-    commits = _populate_path_history(service.git.backend)
+    commits = _populate_path_history(service.git)
     revision = commits["initial"].id.decode() if ref == "initial" else ref
 
-    listing = await service.get_tree(OWNER, REPO, revision, "")
+    listing = await service.git.get_tree(OWNER, REPO, revision, "")
     assert all(
         entry.last_commit and entry.last_commit.sha == commits["initial"].id.decode() for entry in listing.entries
     )
-    file = await service.get_blob(OWNER, REPO, revision, "src/main.py")
+    file = await service.git.get_blob(OWNER, REPO, revision, "src/main.py")
     assert file.last_commit is not None
     assert file.last_commit.sha == commits["initial"].id.decode()
     assert file.content == "original code"
 
 
 async def test_source_last_commits_follow_unchanged_merge_parents(service: RepositoryService) -> None:
-    commits = _populate_path_history(service.git.backend)
+    commits = _populate_path_history(service.git)
 
-    listing = await service.get_tree(OWNER, REPO, "merged", "")
+    listing = await service.git.get_tree(OWNER, REPO, "merged", "")
     by_name = {entry.name: entry for entry in listing.entries}
     assert by_name["src"].last_commit is not None
     assert by_name["src"].last_commit.sha == commits["feature"].id.decode()
     assert by_name["README.md"].last_commit is not None
     assert by_name["README.md"].last_commit.sha == commits["docs"].id.decode()
-    file = await service.get_blob(OWNER, REPO, "merged", "src/main.py")
+    file = await service.git.get_blob(OWNER, REPO, "merged", "src/main.py")
     assert file.last_commit == by_name["src"].last_commit
 
 
 async def test_get_tree_unknown_ref(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
+    _populate_repo(service.git)
 
     with pytest.raises(HTTPException):
-        await service.get_tree(OWNER, REPO, "missing", "")
+        await service.git.get_tree(OWNER, REPO, "missing", "")
 
 
 async def test_get_blob(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
+    _populate_repo(service.git)
 
-    file = await service.get_blob(OWNER, REPO, "main", "src/main.py")
+    file = await service.git.get_blob(OWNER, REPO, "main", "src/main.py")
     assert file.name == "main.py"
     assert file.language == "Python"
     assert 'print("hi")' in file.content
@@ -361,33 +364,33 @@ async def test_get_blob(service: RepositoryService) -> None:
 
 
 async def test_get_blob_binary(service: RepositoryService) -> None:
-    _populate_single_file(service.git.backend, "owner/binary.git", "data.bin", b"\xff\xfe\x00")
+    _populate_single_file(service.git, "owner/binary.git", "data.bin", b"\xff\xfe\x00")
 
-    file = await service.get_blob(OWNER, "binary", "main", "data.bin")
+    file = await service.git.get_blob(OWNER, "binary", "main", "data.bin")
     assert file.content == "(binary file)"
 
 
 async def test_get_blob_requires_file_path(service: RepositoryService) -> None:
     with pytest.raises(HTTPException):
-        await service.get_blob(OWNER, REPO, "main", "")
+        await service.git.get_blob(OWNER, REPO, "main", "")
 
 
 async def test_get_blob_not_a_file(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
+    _populate_repo(service.git)
 
     with pytest.raises(HTTPException):
-        await service.get_blob(OWNER, REPO, "main", "src")
+        await service.git.get_blob(OWNER, REPO, "main", "src")
 
 
 async def test_get_blob_not_found(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
+    _populate_repo(service.git)
 
     with pytest.raises(HTTPException):
-        await service.get_blob(OWNER, REPO, "main", "missing.py")
+        await service.git.get_blob(OWNER, REPO, "main", "missing.py")
 
 
 async def test_get_info(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
+    _populate_repo(service.git)
 
     info = await service.get_info(OWNER, REPO, "main")
     assert info.name == REPO
@@ -401,41 +404,41 @@ async def test_get_info(service: RepositoryService) -> None:
 
 
 async def test_get_info_missing_ref(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
+    _populate_repo(service.git)
 
     info = await service.get_info(OWNER, REPO, "missing")
     assert info.last_commit is None
 
 
 async def test_get_readme(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
+    _populate_repo(service.git)
 
-    readme = await service.get_readme(OWNER, REPO, "main", "")
+    readme = await service.git.get_readme(OWNER, REPO, "main", "")
     assert readme.filename == "README.md"
     assert "<h1>" in readme.html
     assert "Title" in readme.html
 
 
 async def test_get_readme_not_found(service: RepositoryService) -> None:
-    _populate_single_file(service.git.backend, "owner/noreadme.git", "file.txt", b"content")
+    _populate_single_file(service.git, "owner/noreadme.git", "file.txt", b"content")
 
     with pytest.raises(HTTPException):
-        await service.get_readme(OWNER, "noreadme", "main", "")
+        await service.git.get_readme(OWNER, "noreadme", "main", "")
 
 
 async def test_list_branches(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
+    _populate_repo(service.git)
 
-    branches = await service.list_branches(OWNER, REPO)
+    branches = await service.git.list_branches(OWNER, REPO)
     assert len(branches) == 1
     assert branches[0].name == "main"
     assert branches[0].is_default is True
 
 
 async def test_list_commits(service: RepositoryService) -> None:
-    commit_id = _populate_repo(service.git.backend)
+    commit_id = _populate_repo(service.git)
 
-    commits = await service.list_commits(OWNER, REPO, "main")
+    commits = await service.git.list_commits(OWNER, REPO, "main")
     assert commits.count == 1
     assert commits.ref == "main"
     assert commits.data[0].sha == commit_id.decode()
@@ -444,17 +447,17 @@ async def test_list_commits(service: RepositoryService) -> None:
 
 
 async def test_list_commits_missing_ref(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
+    _populate_repo(service.git)
 
-    commits = await service.list_commits(OWNER, REPO, "missing")
+    commits = await service.git.list_commits(OWNER, REPO, "missing")
     assert commits.count == 0
     assert commits.data == []
 
 
 async def test_get_commit(service: RepositoryService) -> None:
-    commit_id = _populate_repo(service.git.backend)
+    commit_id = _populate_repo(service.git)
 
-    detail = await service.get_commit(OWNER, REPO, commit_id.decode())
+    detail = await service.git.get_commit(OWNER, REPO, commit_id.decode())
     assert detail.sha == commit_id.decode()
     assert detail.message == "Initial commit"
     assert detail.author == "Test User"
@@ -466,10 +469,10 @@ async def test_get_commit(service: RepositoryService) -> None:
 
 
 async def test_get_commit_not_found(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
+    _populate_repo(service.git)
 
     with pytest.raises(HTTPException):
-        await service.get_commit(OWNER, REPO, "0" * 40)
+        await service.git.get_commit(OWNER, REPO, "0" * 40)
 
 
 def test_is_commit_sha() -> None:
@@ -478,11 +481,11 @@ def test_is_commit_sha() -> None:
 
 
 async def test_get_tree_is_cached(service: RepositoryService, mocker: MockerFixture) -> None:
-    _populate_repo(service.git.backend)
+    _populate_repo(service.git)
     load = mocker.spy(service.git, "load_repository")
 
-    first = await service.get_tree(OWNER, REPO, "main", "")
-    second = await service.get_tree(OWNER, REPO, "main", "")
+    first = await service.git.get_tree(OWNER, REPO, "main", "")
+    second = await service.git.get_tree(OWNER, REPO, "main", "")
 
     assert second == first
     assert load.await_count == 1
@@ -490,13 +493,13 @@ async def test_get_tree_is_cached(service: RepositoryService, mocker: MockerFixt
 
 async def test_save_changes_invalidates_cache(service: RepositoryService) -> None:
     cache = cast(FakeCacheClient, service.cache_client)
-    _populate_repo(service.git.backend)
-    await service.get_tree(OWNER, REPO, "main", "")
+    _populate_repo(service.git)
+    await service.git.get_tree(OWNER, REPO, "main", "")
     group = f"repo:{OWNER}/{REPO}"
     assert any(entry[0] == group for entry in cache.values)
 
-    _populate_repo(service.git.backend)
-    await service.save_changes(OWNER, REPO)
+    _populate_repo(service.git)
+    await service.git.save_changes(OWNER, REPO)
 
     assert not any(entry[0] == group for entry in cache.values)
 
@@ -527,26 +530,26 @@ async def test_cache_headers_private(service: RepositoryService) -> None:
 
 
 async def test_statistics_file_index_and_raw(service: RepositoryService) -> None:
-    sha = _populate_repo(service.git.backend)
-    stats = await service.get_statistics(OWNER, REPO, "main")
+    sha = _populate_repo(service.git)
+    stats = await service.git.get_statistics(OWNER, REPO, "main")
     assert stats.commit_count == 1
     assert stats.size == len(b"# Title\n\nHello world\n") + len(b'def main():\n    print("hi")\n')
     assert {language.name for language in stats.languages} == {"Python"}
     assert sum(language.percentage for language in stats.languages) == pytest.approx(100, abs=0.02)
-    assert (await service.get_file_index(OWNER, REPO, sha.decode())).paths == ["README.md", "src/main.py"]
-    assert await service.get_raw(OWNER, REPO, "main", "README.md") == b"# Title\n\nHello world\n"
-    assert isinstance(await service.get_source(OWNER, REPO, "main", "src"), TreeListing)
-    assert isinstance(await service.get_source(OWNER, REPO, "main", "src/main.py"), FileContent)
+    assert (await service.git.get_file_index(OWNER, REPO, sha.decode())).paths == ["README.md", "src/main.py"]
+    assert await service.git.get_raw(OWNER, REPO, "main", "README.md") == b"# Title\n\nHello world\n"
+    assert isinstance(await service.git.get_source(OWNER, REPO, "main", "src"), TreeListing)
+    assert isinstance(await service.git.get_source(OWNER, REPO, "main", "src/main.py"), FileContent)
 
 
 async def test_statistics_binary_and_empty_files(service: RepositoryService) -> None:
-    _populate_single_file(service.git.backend, "owner/repo.git", "image.png", b"\x89PNG\0\xff")
-    result = await service.get_statistics(OWNER, REPO, "main")
+    _populate_single_file(service.git, "owner/repo.git", "image.png", b"\x89PNG\0\xff")
+    result = await service.git.get_statistics(OWNER, REPO, "main")
     assert result.size == 6
     assert result.languages == []
     await service.create_repository(OWNER, "empty")
-    assert (await service.get_statistics(OWNER, "empty", "HEAD")).commit_count == 0
-    assert (await service.get_file_index(OWNER, "empty", "HEAD")).paths == []
+    assert (await service.git.get_statistics(OWNER, "empty", "HEAD")).commit_count == 0
+    assert (await service.git.get_file_index(OWNER, "empty", "HEAD")).paths == []
 
 
 async def test_statistics_groups_source_bytes_and_excludes_non_source(service: RepositoryService) -> None:
@@ -562,9 +565,9 @@ async def test_statistics_groups_source_bytes_and_excludes_non_source(service: R
     blobs = {path: Blob.from_string(content) for path, content in contents.items()}
     tree = _write_tree({path: (stat.S_IFREG | 0o644, blob.id) for path, blob in blobs.items()})
     commit = _make_commit(tree.id)
-    _load_repository(service.git.backend, "owner/repo.git", [*blobs.values(), tree, commit], commit.id)
+    _load_repository(service.git, "owner/repo.git", [*blobs.values(), tree, commit], commit.id)
 
-    stats = await service.get_statistics(OWNER, REPO, "main")
+    stats = await service.git.get_statistics(OWNER, REPO, "main")
     source_bytes = len(contents["main.ts"]) + len(contents["view.tsx"]) + len(contents["main.py"])
     assert stats.size == sum(len(content) for content in contents.values())
     assert {language.name: language.size for language in stats.languages} == {
@@ -576,24 +579,24 @@ async def test_statistics_groups_source_bytes_and_excludes_non_source(service: R
 
 
 async def test_statistics_reuses_commit_cache_across_refs(service: RepositoryService, mocker: MockerFixture) -> None:
-    sha = _populate_repo(service.git.backend)
-    compute = mocker.spy(repository_module.GitClient, "_compute_statistics")
-    original = await service.get_statistics(OWNER, REPO, "main")
-    assert await service.get_statistics(OWNER, REPO, sha.decode()) == original
-    assert await service.get_statistics(OWNER, REPO, "HEAD") == original
+    sha = _populate_repo(service.git)
+    compute = mocker.spy(repository_module.GitService, "_compute_statistics")
+    original = await service.git.get_statistics(OWNER, REPO, "main")
+    assert await service.git.get_statistics(OWNER, REPO, sha.decode()) == original
+    assert await service.git.get_statistics(OWNER, REPO, "HEAD") == original
     assert compute.call_count == 1
 
-    _populate_single_file(service.git.backend, "owner/repo.git", "changed.tsx", b"<p>Changed</p>")
-    changed = await service.get_statistics(OWNER, REPO, "main")
+    _populate_single_file(service.git, "owner/repo.git", "changed.tsx", b"<p>Changed</p>")
+    changed = await service.git.get_statistics(OWNER, REPO, "main")
     assert [language.name for language in changed.languages] == ["TypeScript"]
     assert compute.call_count == 2
 
 
 async def test_file_index_does_not_load_blob_contents(service: RepositoryService, mocker: MockerFixture) -> None:
-    _populate_repo(service.git.backend)
-    repo = service.git.backend.open_repository("owner/repo.git")
+    _populate_repo(service.git)
+    repo = service.git.repositories["owner/repo.git"]
     read = mocker.spy(repo.object_store, "get_raw")
-    assert (await service.get_file_index(OWNER, REPO, "main")).paths == ["README.md", "src/main.py"]
+    assert (await service.git.get_file_index(OWNER, REPO, "main")).paths == ["README.md", "src/main.py"]
     blob_ids = {
         Blob.from_string(content).id for content in [b"# Title\n\nHello world\n", b'def main():\n    print("hi")\n']
     }
@@ -613,67 +616,67 @@ async def test_blame_tracks_lines_across_commits_and_renames(service: Repository
     second.parents = [rename.id]
     second.author = b"Second Author <second@example.com>"
     _load_repository(
-        service.git.backend,
+        service.git,
         "owner/repo.git",
         [first_blob, first_tree, first, rename_tree, rename, second_blob, second_tree, second],
         second.id,
     )
-    result = await service.get_blame(OWNER, REPO, "main", "renamed.txt")
+    result = await service.git.get_blame(OWNER, REPO, "main", "renamed.txt")
     assert result.revision == second.id.decode()
     assert [line.content for line in result.lines] == ["unchanged", "changed", "added"]
     assert [line.commit.sha for line in result.lines] == [first.id.decode(), second.id.decode(), second.id.decode()]
     assert result.lines[-1].commit.author == "Second Author"
-    historical = await service.get_blame(OWNER, REPO, first.id.decode(), "old.txt")
+    historical = await service.git.get_blame(OWNER, REPO, first.id.decode(), "old.txt")
     assert [line.content for line in historical.lines] == ["unchanged", "original"]
-    history = await service.list_commits(OWNER, REPO, "main", file_path="renamed.txt")
+    history = await service.git.list_commits(OWNER, REPO, "main", file_path="renamed.txt")
     assert history.data[0].sha == second.id.decode()
 
 
 @pytest.mark.parametrize("data", [b"\0binary", b"\xff", b"x" * (1024 * 1024 + 1)])
 async def test_blame_rejects_unrenderable_files(service: RepositoryService, data: bytes) -> None:
-    _populate_single_file(service.git.backend, "owner/repo.git", "file.txt", data)
+    _populate_single_file(service.git, "owner/repo.git", "file.txt", data)
     with pytest.raises(HTTPException) as error:
-        await service.get_blame(OWNER, REPO, "main", "file.txt")
+        await service.git.get_blame(OWNER, REPO, "main", "file.txt")
     assert error.value.status_code in (400, 413)
 
 
 async def test_blame_empty_and_missing_files(service: RepositoryService) -> None:
-    _populate_single_file(service.git.backend, "owner/repo.git", "empty.txt", b"")
-    assert (await service.get_blame(OWNER, REPO, "main", "empty.txt")).lines == []
+    _populate_single_file(service.git, "owner/repo.git", "empty.txt", b"")
+    assert (await service.git.get_blame(OWNER, REPO, "main", "empty.txt")).lines == []
     with pytest.raises(HTTPException) as error:
-        await service.get_blame(OWNER, REPO, "main", "missing.txt")
+        await service.git.get_blame(OWNER, REPO, "main", "missing.txt")
     assert error.value.status_code == 404
 
 
 async def test_settings_rename_preserves_git_and_updates_head(service: RepositoryService) -> None:
-    sha = _populate_repo(service.git.backend)
-    await service.save_changes(OWNER, REPO)
+    sha = _populate_repo(service.git)
+    await service.git.save_changes(OWNER, REPO)
     entity = await ensure_repository(service.repository_store, OWNER, REPO)
     user = entity.owner
     assert isinstance(user, User)
-    repo = service.git.backend.open_repository("owner/repo.git")
+    repo = service.git.repositories["owner/repo.git"]
     for basename, pack in _pack([repo.object_store[oid] for oid in repo.object_store]).items():
         await service.git.storage.blob.put(f"owner/repo.git/packs/{basename}.pack", pack.pack)
         await service.git.storage.blob.put(f"owner/repo.git/packs/{basename}.idx", pack.index)
     repo.refs.set_if_equals(Ref(b"refs/heads/develop"), None, sha)
-    await service.save_changes(OWNER, REPO)
+    await service.git.save_changes(OWNER, REPO)
     updated = await service.update_repository(
         OWNER, REPO, RepositoryUpdate(name="renamed", description="Updated", default_branch="develop"), user
     )
     assert updated.name == "renamed"
     assert updated.description == "Updated"
     assert updated.default_branch == "develop"
-    assert not service.git.backend.repository_exists("owner/repo.git")
+    assert "owner/repo.git" not in service.git.repositories
     assert not await service.git.storage.redis.scan_keys("owner/repo.git/refs/*")
     assert not await service.git.storage.blob.list_keys("owner/repo.git/")
     assert (await service.get_info(OWNER, "renamed", "HEAD")).default_branch == "develop"
-    assert await service.get_raw(OWNER, "renamed", "HEAD", "README.md") == b"# Title\n\nHello world\n"
+    assert await service.git.get_raw(OWNER, "renamed", "HEAD", "README.md") == b"# Title\n\nHello world\n"
     with pytest.raises(RepositoryNotFoundError):
         await service.get_repository(OWNER, REPO)
 
 
 async def test_settings_reject_invalid_branch_or_duplicate_name(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
+    _populate_repo(service.git)
     entity = await ensure_repository(service.repository_store, OWNER, REPO)
     user = entity.owner
     assert isinstance(user, User)
@@ -699,65 +702,65 @@ async def test_settings_and_deletion_require_owner(service: RepositoryService) -
     with pytest.raises(HTTPException) as error:
         await service.delete_repository(OWNER, REPO, outsider)
     assert error.value.status_code == 403
-    assert service.git.backend.repository_exists("owner/repo.git")
+    assert "owner/repo.git" in service.git.repositories
 
 
 async def test_delete_evicts_storage_and_cache_without_deleting_neighbor(service: RepositoryService) -> None:
-    _populate_repo(service.git.backend)
-    await service.save_changes(OWNER, REPO)
+    _populate_repo(service.git)
+    await service.git.save_changes(OWNER, REPO)
     entity = await ensure_repository(service.repository_store, OWNER, REPO)
     user = entity.owner
     assert isinstance(user, User)
-    await service.get_statistics(OWNER, REPO, "main")
+    await service.git.get_statistics(OWNER, REPO, "main")
     await service.create_repository(OWNER, "repo-other")
     await service.delete_repository(OWNER, REPO, user)
-    assert not service.git.backend.repository_exists("owner/repo.git")
+    assert "owner/repo.git" not in service.git.repositories
     assert not await service.git.storage.redis.scan_keys("owner/repo.git/refs/*")
     assert not await service.git.storage.blob.list_keys("owner/repo.git/")
     assert await service.repository_store.find_by_owner_and_name(OWNER, REPO) is None
     assert await service.repository_store.find_by_owner_and_name(OWNER, "repo-other") is not None
     with pytest.raises(HTTPException):
-        await service.get_statistics(OWNER, REPO, "main")
+        await service.git.get_statistics(OWNER, REPO, "main")
 
 
 async def test_compact_commit_skips_highlighting_and_lazy_files_are_cached(
     service: RepositoryService, mocker: MockerFixture
 ) -> None:
-    commit_id = _populate_repo(service.git.backend)
+    commit_id = _populate_repo(service.git)
     highlight = mocker.spy(repository_module, "enrich_diff")
-    summary = await service.get_commit(OWNER, REPO, commit_id.decode(), include_diff=False)
+    summary = await service.git.get_commit(OWNER, REPO, commit_id.decode(), include_diff=False)
     assert summary.files
     assert all(not file.diff_loaded and not file.patch and not file.hunks for file in summary.files)
     assert all(file.diff_line_count > 0 for file in summary.files)
     highlight.assert_not_called()
-    file = await service.get_diff_file(OWNER, REPO, commit_id.decode(), "src/main.py")
+    file = await service.git.get_diff_file(OWNER, REPO, commit_id.decode(), "src/main.py")
     assert file.diff_loaded
     assert file.language == "Python"
     assert file.hunks
     assert file.diff_line_count > 0
     highlight.assert_called_once()
-    assert await service.get_diff_file(OWNER, REPO, commit_id.decode(), "src/main.py") == file
+    assert await service.git.get_diff_file(OWNER, REPO, commit_id.decode(), "src/main.py") == file
     highlight.assert_called_once()
 
 
 async def test_lazy_diff_rejects_unchanged_paths_directories_and_missing_revisions(service: RepositoryService) -> None:
-    commit_id = _populate_repo(service.git.backend).decode()
+    commit_id = _populate_repo(service.git).decode()
     for path in ("src/main.py", "missing.py", "src"):
         with pytest.raises(HTTPException) as error:
-            await service.get_diff_file(OWNER, REPO, commit_id, path, commit_id)
+            await service.git.get_diff_file(OWNER, REPO, commit_id, path, commit_id)
         assert error.value.status_code == 404
     with pytest.raises(HTTPException) as error:
-        await service.get_diff_file(OWNER, REPO, "0" * 40, "src/main.py")
+        await service.git.get_diff_file(OWNER, REPO, "0" * 40, "src/main.py")
     assert error.value.status_code == 404
 
 
 async def test_pr_commit_range_excludes_base_ancestors_and_paginates(service: RepositoryService) -> None:
-    commits = _populate_path_history(service.git.backend)
-    first = await service.compare_commits(OWNER, REPO, "main", "merged", limit=1)
-    second = await service.compare_commits(OWNER, REPO, "main", "merged", offset=1, limit=1)
+    commits = _populate_path_history(service.git)
+    first = await service.git.compare_commits(OWNER, REPO, "main", "merged", limit=1)
+    second = await service.git.compare_commits(OWNER, REPO, "main", "merged", offset=1, limit=1)
     assert first.count == second.count == 2
     assert [item.sha for item in first.data + second.data] == [
         commits["merge"].id.decode(),
         commits["feature"].id.decode(),
     ]
-    assert not (await service.compare_commits(OWNER, REPO, "merged", "main")).data
+    assert not (await service.git.compare_commits(OWNER, REPO, "merged", "main")).data

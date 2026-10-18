@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 
-from app.clients.git.types import MergeRequest
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.issues import IssueState
 from app.entities.pull_requests import PullRequest
@@ -24,15 +23,16 @@ from app.schemas.repositories import (
     PullRequestUpdate,
 )
 from app.services.repositories import ensure_repository
+from app.types import MergeRequest
 from app.utils.markdown import render_markdown
 
 if TYPE_CHECKING:
-    from app.clients.git.merges import GitMergeClient
     from app.clients.pull_requests import PullRequestStore
     from app.clients.repositories import RepositoryStore
     from app.entities.users import User
     from app.schemas.activity import ActivityPublic
     from app.services.activity import ActivityService
+    from app.services.git.merges import GitMergeService
     from app.services.repositories import RepositoryService
 
 
@@ -45,7 +45,7 @@ class PullRequestService:
         repository_store: RepositoryStore,
         repository_service: RepositoryService,
         activity_service: ActivityService,
-        git_merges: GitMergeClient,
+        git_merges: GitMergeService,
     ) -> None:
         """Initialize the pull request service.
 
@@ -158,7 +158,7 @@ class PullRequestService:
     ) -> CommitsPublic:
         """Return the head branch's commits that are not already in the base branch."""
         pull = await self._find_pull_request(owner, name, number)
-        return await self.repository_service.compare_commits(
+        return await self.repository_service.git.compare_commits(
             owner, name, pull.merge_base or pull.base_branch, pull.merged_head_commit or pull.head_branch, offset, limit
         )
 
@@ -180,7 +180,7 @@ class PullRequestService:
             HTTPException: If the pull request is not found.
         """
         pull_request = await self._find_pull_request(owner, name, number)
-        return await self.repository_service.compare(
+        return await self.repository_service.git.compare(
             owner,
             name,
             pull_request.merge_base or pull_request.base_branch,
@@ -210,7 +210,7 @@ class PullRequestService:
         completed = await self.git_merges.completed(owner, name, pull.id)
         if completed:
             return PullRequestMergeability(mergeable=True, base_commit=completed.base, head_commit=completed.head)
-        base, head = await self.repository_service.branch_heads(owner, name, pull.base_branch, pull.head_branch)
+        base, head = await self.repository_service.git.branch_heads(owner, name, pull.base_branch, pull.head_branch)
         if base is None or head is None:
             return PullRequestMergeability(mergeable=False, reason="The base or PR branch no longer exists")
         return await self.git_merges.check(owner, name, base, head, method)

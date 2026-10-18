@@ -52,7 +52,7 @@ class ActivityService:
             raise HTTPException(status_code=404, detail="Repository not found")
         end = datetime.now(UTC)
         start = end - timedelta(days=days)
-        history = await repository_service.activity_history(owner, name)
+        history = await repository_service.git.activity_history(owner, name)
         events = await self.activity_store.list_in_period(repository.id, start, end)
         merged_by_number: dict[int, Activity] = {}
         for event in events:

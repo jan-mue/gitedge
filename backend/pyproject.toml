@@ -140,8 +140,8 @@ exclude = [ "app/schemas/" ]
 ignore_names = [
     # Group: used dynamically by dulwich
     "add_thin_pack",
-    "bare",
     "commit_timezone",
+    "committer",
     # Group: serialized to JSON payloads
     "conflicting_files",
     "diff_line_count",

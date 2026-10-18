@@ -10,11 +10,11 @@ from dulwich.pack import write_pack_objects
 from dulwich.protocol import pkt_line
 from starlette.requests import Request
 
-from app.clients.git.blob_repository import BlobRepository
-from app.clients.git.http import create_wsgi_environ
-from app.clients.git.storage import RepositoryStorage
-from app.clients.git.types import GitHttpRequest
+from app.clients.git import GitStore
 from app.config import settings
+from app.services.git.http import create_wsgi_environ
+from app.services.git.repository import BlobRepository
+from app.types import GitHttpRequest
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -143,7 +143,7 @@ async def test_receive_pack_persists_objects_and_refs(
     assert b"unpack ok\n" in response.content
     assert b"ok refs/heads/main\n" in response.content
 
-    packs, refs = await RepositoryStorage(fake_stores.blob, fake_stores.redis).load(repo_path)
+    packs, refs = await GitStore(fake_stores.blob, fake_stores.redis).load(repo_path)
     assert refs["refs/heads/main"] == commit.id
     repo = BlobRepository()
     repo.load_from_storage(packs, refs)

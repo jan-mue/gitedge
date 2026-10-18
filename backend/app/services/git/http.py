@@ -7,14 +7,15 @@ from typing import TYPE_CHECKING, Any
 
 from dulwich.web import GunzipFilter, HTTPGitApplication, LimitedInputFilter
 
-from app.clients.git.types import GitHttpResponse
+from app.types import GitHttpResponse
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from types import TracebackType
 
-    from app.clients.git.blob_backend import BlobBackend
-    from app.clients.git.types import GitHttpRequest
+    from dulwich.server import Backend
+
+    from app.types import GitHttpRequest
 
 
 def create_wsgi_environ(request: GitHttpRequest) -> dict[str, Any]:
@@ -45,7 +46,7 @@ def create_wsgi_environ(request: GitHttpRequest) -> dict[str, Any]:
     return environ
 
 
-def handle_http(backend: BlobBackend, request: GitHttpRequest) -> GitHttpResponse:
+def handle_http(backend: Backend, request: GitHttpRequest) -> GitHttpResponse:
     """Run Dulwich and close its response iterator before returning buffered output."""
     response_status = "200 OK"
     response_headers: list[tuple[str, str]] = []

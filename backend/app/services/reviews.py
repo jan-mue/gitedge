@@ -62,7 +62,7 @@ class ReviewService:
         return await self.pull_requests.get_by_number(repository.id, number)
 
     async def _comparison(self, owner: str, repo: str, pull: PullRequest) -> CompareResult:
-        return await self.repository_service.compare(
+        return await self.repository_service.git.compare(
             owner,
             repo,
             pull.merge_base or pull.base_branch,
@@ -88,7 +88,7 @@ class ReviewService:
             raise HTTPException(status_code=422, detail="File is not in this comparison")
         for path, file in files.items():
             if not file.diff_loaded:
-                files[path] = await self.repository_service.get_diff_file(
+                files[path] = await self.repository_service.git.get_diff_file(
                     owner, repo, comparison.head_commit or "", path, comparison.base_commit or ""
                 )
         anchors = {
@@ -170,7 +170,7 @@ class ReviewService:
         if pull.merged_head_commit and pull.merge_base:
             base, head = pull.merge_base, pull.merged_head_commit
         else:
-            base, head = await self.repository_service.branch_heads(owner, repo, pull.base_branch, pull.head_branch)
+            base, head = await self.repository_service.git.branch_heads(owner, repo, pull.base_branch, pull.head_branch)
         return [
             self._public(review).model_copy(
                 update={
@@ -197,7 +197,7 @@ class ReviewService:
         comment = self._comment_public(review.line_comments[index])
         if comment.context is not None:
             return comment.context
-        return await self.repository_service.get_diff_context(
+        return await self.repository_service.git.get_diff_context(
             owner, repo, review.base_commit, review.head_commit, comment.path, comment.side, comment.line
         )
 

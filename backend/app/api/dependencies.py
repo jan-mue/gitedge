@@ -26,10 +26,7 @@ from app.clients.cache import (
 )
 from app.clients.comments import CommentStore, SQLCommentStore
 from app.clients.email import EmailClient, SMTPClient
-from app.clients.git.blob_backend import BlobBackend
-from app.clients.git.merges import GitMergeClient
-from app.clients.git.repositories import GitClient
-from app.clients.git.storage import RepositoryStorage
+from app.clients.git import GitStore
 from app.clients.issues import IssueStore, SQLIssueStore
 from app.clients.organizations import OrganizationStore, SQLOrganizationStore
 from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
@@ -47,6 +44,8 @@ from app.services.activity import ActivityService
 from app.services.comments import CommentService
 from app.services.crud import CrudService
 from app.services.forks import ForkService
+from app.services.git.merges import GitMergeService
+from app.services.git.repositories import GitService
 from app.services.issues import IssueService
 from app.services.organizations import OrganizationService
 from app.services.pull_requests import PullRequestService
@@ -293,18 +292,6 @@ async def get_cache_client(request: Request) -> AbstractCacheClient:
 CacheClientDep = Annotated[AbstractCacheClient, Depends(get_cache_client)]
 
 
-def get_backend() -> BlobBackend:
-    """Create a request-scoped Git backend instance.
-
-    Returns:
-        A new BlobBackend instance.
-    """
-    return BlobBackend()
-
-
-BackendDep = Annotated[BlobBackend, Depends(get_backend)]
-
-
 def get_star_store(session: SessionDep) -> StarStore:
     """Get the star store dependency.
 
@@ -320,31 +307,26 @@ def get_star_store(session: SessionDep) -> StarStore:
 StarStoreDep = Annotated[StarStore, Depends(get_star_store)]
 
 
-def get_git_client(
-    backend: BackendDep,
+def get_git_service(
     blob_client: BlobStorageClientDep,
     redis_client: RedisClientDep,
     cache_client: CacheClientDep,
     repository_store: RepositoryStoreDep,
-) -> GitClient:
-    """Create a request-scoped Git client."""
-
-    async def exists(owner: str, name: str) -> bool:
-        return await repository_store.find_by_owner_and_name(owner, name) is not None
-
-    return GitClient(backend, RepositoryStorage(blob_client, redis_client), cache_client, exists)
+) -> GitService:
+    """Create a request-scoped Git service."""
+    return GitService(GitStore(blob_client, redis_client), cache_client, repository_store)
 
 
-GitClientDep = Annotated[GitClient, Depends(get_git_client)]
+GitServiceDep = Annotated[GitService, Depends(get_git_service)]
 
 
 def get_repository_service(
-    git: GitClientDep,
+    git: GitServiceDep,
     cache_client: CacheClientDep,
     repository_store: RepositoryStoreDep,
     star_store: StarStoreDep,
 ) -> RepositoryService:
-    """Bind repository metadata stores and the Git client."""
+    """Bind repository metadata stores and the Git service."""
     return RepositoryService(git, cache_client, repository_store, star_store)
 
 
@@ -483,18 +465,16 @@ def get_issue_service(
 IssueServiceDep = Annotated[IssueService, Depends(get_issue_service)]
 
 
-def get_git_merge_client(
-    blob: BlobStorageClientDep, redis: RedisClientDep, cache: CacheClientDep, backend: BackendDep
-) -> GitMergeClient:
-    """Create the merge storage adapter."""
-    return GitMergeClient(blob, redis, cache, backend)
+def get_git_merge_service(git: GitServiceDep) -> GitMergeService:
+    """Create merge orchestration over the request's Git service."""
+    return GitMergeService(git)
 
 
-GitMergeClientDep = Annotated[GitMergeClient, Depends(get_git_merge_client)]
+GitMergeServiceDep = Annotated[GitMergeService, Depends(get_git_merge_service)]
 
 
 def get_pull_request_service(
-    git_merges: GitMergeClientDep,
+    git_merges: GitMergeServiceDep,
     pull_request_store: PullRequestStoreDep,
     repository_store: RepositoryStoreDep,
     repository_service: RepositoryServiceDep,
