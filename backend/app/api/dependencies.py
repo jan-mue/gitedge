@@ -714,7 +714,9 @@ def get_actions_service(
         "docker": DockerSandboxClient(
             settings.ACTIONS_IMAGE, ca_bundle=settings.ACTIONS_DOCKER_CA_BUNDLE, environment=settings.ACTIONS_DOCKER_ENV
         ),
-        "vercel": VercelSandboxClient(settings.ACTIONS_IMAGE, settings.ACTIONS_VERCEL_SNAPSHOT),
+        "vercel": VercelSandboxClient(
+            settings.ACTIONS_IMAGE, settings.ACTIONS_VERCEL_SNAPSHOT, settings.ACTIONS_VERCEL_REGION
+        ),
     }
     return ActionsService(
         store,

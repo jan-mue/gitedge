@@ -135,6 +135,7 @@ class Settings(BaseSettings):
     ACTIONS_MAX_PARALLEL: int = 2
     ACTIONS_SERVER_URL: str = "http://host.docker.internal:8000"
     ACTIONS_VERCEL_SNAPSHOT: str | None = None
+    ACTIONS_VERCEL_REGION: str | None = None
     ACTIONS_DOCKER_CA_BUNDLE: str | None = None
     ACTIONS_DOCKER_ENV: dict[str, str] = {}
     # Explicitly scoped by repository UUID. Values are never stored in workflow rows.
