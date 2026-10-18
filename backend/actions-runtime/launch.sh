@@ -4,8 +4,7 @@ umask 077
 export TAR_OPTIONS="--no-same-owner"
 exec >/gitedge/log.jsonl 2>&1
 trap 'code=$?; printf "%s" "$code" > /gitedge/exit-code' EXIT
-mkdir -p /gitedge/source /gitedge/state/cache /gitedge/state/artifacts /gitedge/actions
-ln -s /opt/hostedtoolcache /gitedge/actions/tool_cache
+mkdir -p /gitedge/source /gitedge/state/cache /gitedge/state/artifacts
 printf '%s' "$GITEDGE_JOB" >/gitedge/input.json
 unset GITEDGE_JOB
 if [ -n "${GITEDGE_RESTORE_URL:-}" ]; then
@@ -13,7 +12,7 @@ if [ -n "${GITEDGE_RESTORE_URL:-}" ]; then
 fi
 unset GITEDGE_RESTORE_URL
 set +e
-gitedge-exec
+node /opt/gitedge/runtime/runner.mjs
 code=$?
 if ! tar -czf /gitedge/state.tar.gz -C /gitedge/state cache artifacts; then
 	code=1

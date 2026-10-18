@@ -1,20 +1,67 @@
-"""Docker Python SDK implementation for local execution and integration tests."""
+"""Provider-independent sandbox clients for one isolated, short-lived job each."""
 
 import asyncio
 import io
 import json
 import tarfile
+from abc import ABC, abstractmethod
 from contextlib import closing
+from dataclasses import dataclass, field
 from http import HTTPStatus
 from pathlib import Path
+from typing import override
 
 import docker
 from docker.errors import APIError, DockerException, NotFound
+from vercel.sandbox import (
+    SandboxApiError,
+    SandboxPathNotFoundError,
+    SandboxResources,
+    SandboxStatus,
+    SnapshotSource,
+    create_sandbox,
+    get_sandbox,
+)
+from vercel.sandbox import SandboxError as VercelSandboxError
 
-from app.clients.sandboxes.base import MAX_FILE_BYTES, READ_FILES, SandboxError, SandboxSnapshot
+
+class SandboxError(RuntimeError):
+    """A provider could not create, inspect, or clean up a job sandbox."""
 
 
-class DockerSandboxClient:
+@dataclass
+class SandboxSnapshot:
+    """Bounded data read from a job sandbox."""
+
+    running: bool
+    files: dict[str, bytes] = field(default_factory=dict)
+
+
+class AbstractSandboxClient(ABC):
+    """Implement this contract to add another sandbox provider."""
+
+    @abstractmethod
+    async def start(self, name: str, files: dict[str, bytes], lifetime: int) -> None:
+        """Idempotently start one isolated job under a stable name."""
+        ...
+
+    @abstractmethod
+    async def inspect(self, name: str) -> SandboxSnapshot:
+        """Read logs/result and portable state without resuming stopped sandboxes."""
+        ...
+
+    @abstractmethod
+    async def delete(self, name: str) -> None:
+        """Idempotently destroy a sandbox, including any running commands."""
+        ...
+
+
+MAX_FILE_BYTES = 32 * 1024 * 1024
+# Read the marker first: if it exists, subsequent result/state reads are complete.
+READ_FILES = ("exit-code", "result.json", "log.jsonl", "state.tar.gz", "cache.tar.gz")
+
+
+class DockerSandboxClient(AbstractSandboxClient):
     """Run jobs without privileged mode, host source mounts, or a Docker socket."""
 
     def __init__(self, image: str, *, ca_bundle: str | None = None, environment: dict[str, str] | None = None) -> None:
@@ -23,6 +70,7 @@ class DockerSandboxClient:
         self.ca_bundle = ca_bundle
         self.environment = environment or {}
 
+    @override
     async def start(self, name: str, files: dict[str, bytes], lifetime: int) -> None:
         """Create and start from an already-local image; transfer no repository source."""
         await asyncio.to_thread(self._start, name, files, lifetime)
@@ -82,6 +130,7 @@ class DockerSandboxClient:
         except DockerException as exc:
             raise SandboxError(f"Docker sandbox start failed: {exc}") from exc
 
+    @override
     async def inspect(self, name: str) -> SandboxSnapshot:
         """Collect bounded files; an exited container stays inspectable until cleanup."""
         return await asyncio.to_thread(self._inspect, name)
@@ -115,6 +164,7 @@ class DockerSandboxClient:
         except DockerException as exc:
             raise SandboxError(f"Docker sandbox inspection failed: {exc}") from exc
 
+    @override
     async def delete(self, name: str) -> None:
         """Remove a container even after a failed or cancelled job."""
         await asyncio.to_thread(self._delete, name)
@@ -129,3 +179,75 @@ class DockerSandboxClient:
                     return
         except DockerException as exc:
             raise SandboxError(f"Docker sandbox cleanup failed: {exc}") from exc
+
+
+class VercelSandboxClient(AbstractSandboxClient):
+    """Launch detached one-shot jobs; provider credentials never enter the VM."""
+
+    def __init__(self, image: str, snapshot_id: str | None = None) -> None:
+        """Use an operator-provisioned image containing the JavaScript executor and toolchains."""
+        self.image = image
+        self.snapshot_id = snapshot_id
+
+    @override
+    async def start(self, name: str, files: dict[str, bytes], lifetime: int) -> None:
+        """Boot a prepared snapshot and pass only a small job descriptor."""
+        if not self.snapshot_id:
+            raise SandboxError("Vercel jobs require ACTIONS_VERCEL_SNAPSHOT prepared before dispatch")
+        config = json.loads(files["input.json"])
+        try:
+            box = await create_sandbox(
+                name=name,
+                image=None,
+                source=SnapshotSource(snapshot_id=self.snapshot_id),
+                persistent=False,
+                execution_time_limit=lifetime,
+                resources=SandboxResources(vcpus=2),
+                env={"GITEDGE_JOB": files["input.json"].decode(), "GITEDGE_RESTORE_URL": config.get("restore_url", "")},
+            )
+            await box.create_process("/usr/local/bin/gitedge-launch", kill_after=lifetime, sudo=True)
+        except SandboxApiError as exc:
+            if exc.status_code != HTTPStatus.CONFLICT:
+                raise SandboxError(f"Vercel sandbox start failed: {exc}") from exc
+            box = await get_sandbox(name=name)
+            if box.status != SandboxStatus.RUNNING:
+                raise SandboxError("Job sandbox already stopped") from exc
+            if not await box.query_processes():
+                await box.create_process("/usr/local/bin/gitedge-launch", kill_after=lifetime, sudo=True)
+        except VercelSandboxError as exc:
+            raise SandboxError(f"Vercel sandbox start failed: {exc}") from exc
+
+    @override
+    async def inspect(self, name: str) -> SandboxSnapshot:
+        """Read an active job without auto-resuming an expired session."""
+        try:
+            box = await get_sandbox(name=name)
+            if box.status != SandboxStatus.RUNNING:
+                return SandboxSnapshot(running=False)
+            result = SandboxSnapshot(running=False)
+            for process in await box.query_processes():
+                await process.refresh()
+                result.running |= process.returncode is None
+            for path in READ_FILES:
+                try:
+                    data = await box.fs.read_bytes(f"/gitedge/{path}")
+                except SandboxPathNotFoundError:
+                    continue
+                if len(data) > MAX_FILE_BYTES:
+                    raise SandboxError(f"Sandbox file too large: {path}")
+                result.files[path] = data
+            return result
+        except VercelSandboxError as exc:
+            raise SandboxError(f"Vercel sandbox inspection failed: {exc}") from exc
+
+    @override
+    async def delete(self, name: str) -> None:
+        """Destroy all job resources instead of leaving a persistent snapshot."""
+        try:
+            box = await get_sandbox(name=name)
+            await box.destroy()
+        except SandboxApiError as exc:
+            if exc.status_code != HTTPStatus.NOT_FOUND:
+                raise SandboxError(f"Vercel sandbox cleanup failed: {exc}") from exc
+        except VercelSandboxError as exc:
+            raise SandboxError(f"Vercel sandbox cleanup failed: {exc}") from exc

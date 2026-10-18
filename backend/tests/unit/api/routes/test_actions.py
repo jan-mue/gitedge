@@ -9,7 +9,6 @@ from app.config import settings
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
-    from pytest_mock import MockerFixture
 
     from tests.unit.utils.fakes import FakeStores
 
@@ -53,9 +52,7 @@ async def test_private_actions_history_requires_owner(
     )
 
 
-def test_scheduler_requires_configured_secret(client: TestClient, mocker: MockerFixture) -> None:
-    mocker.patch.object(settings, "CRON_SECRET", None)
-    assert client.get(f"{settings.API_V1_STR}/actions/reconcile").status_code == 401
+def test_sandbox_endpoints_require_scoped_tokens(client: TestClient) -> None:
     assert client.get(f"{settings.API_V1_STR}/actions/state", params={"token": "invalid"}).status_code == 403
     assert client.post(f"{settings.API_V1_STR}/actions/complete", params={"token": "invalid"}).status_code == 403
 

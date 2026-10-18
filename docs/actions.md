@@ -3,9 +3,11 @@
 GitEdge discovers GitHub/Gitea-style YAML in `.gitedge/workflow/*.yml` and
 `*.yaml`. Every expanded matrix job gets a separate disposable sandbox. There is
 no registered runner, polling worker, shared job container, or mounted Docker
-socket. An ephemeral native executor uses the pinned `nektos/act` execution
-library for JavaScript and composite actions, expressions, step conditions,
-outputs, environment files, and action pre/post hooks.
+socket. A one-shot JavaScript executor uses the official `@actions/expressions`
+library for workflow expressions, with JavaScript/composite actions, step
+conditions, outputs, environment files, and action pre/post hooks. It contains
+no Go executor. Both provider adapters inherit `AbstractSandboxClient` in
+`backend/app/clients/sandboxes.py`.
 
 ## Startup and image preparation
 
@@ -57,13 +59,12 @@ snapshot before promoting this implementation beyond draft status.
 | Setting | Purpose |
 | --- | --- |
 | `ACTIONS_PROVIDER` | `docker` locally or `vercel` in production |
-| `ACTIONS_IMAGE` | Prepared local image or operator-provisioned Vercel image |
+| `ACTIONS_IMAGE` | Prepared local Docker image |
 | `ACTIONS_VERCEL_SNAPSHOT` | Required prepared Vercel snapshot ID; no image fallback at dispatch |
 | `ACTIONS_SERVER_URL` | Backend origin reachable from sandbox jobs |
 | `ACTIONS_MAX_TIMEOUT` | Maximum job lifetime, in seconds (default 1200) |
 | `ACTIONS_MAX_PARALLEL` | Maximum simultaneous jobs in a workflow (default 2) |
 | `ACTIONS_SECRETS` | JSON mapping repository UUIDs to explicitly scoped secret maps |
-| `CRON_SECRET` | Bearer token protecting scheduled reconciliation |
 
 Vercel SDK authentication stays in the controller. It is not passed into job
 sandboxes. Create an image/snapshot out of band, including the executor and
@@ -77,21 +78,20 @@ contract is also unit tested without making billable calls.
 Authenticated pushes by a repository owner or administrator deliver push events
 after Git refs are persisted. For Git clients, pass the normal GitEdge bearer
 token through `http.extraHeader`. Anonymous Git traffic does not authorize
-workflow execution. Owner-authored pull requests deliver an `opened` event. UTC cron schedules are
-delivered by the scheduled endpoint, with one run per matching minute.
-Schedules require a default-branch revision recorded by an authenticated owner
-or administrator push. Anonymous ref changes do not authorize scheduled CI;
-the scheduler pins the trusted commit before reading or executing its workflows.
+workflow execution. Owner-authored pull requests deliver an `opened` event.
+There are no cron jobs, scheduled reconciliation endpoints, or periodic workers.
+`on.schedule` syntax is accepted but automatic scheduled delivery is unavailable.
 Manual dispatch requires `on: workflow_dispatch` and repository-owner or
 administrator authorization. Private run history requires the same access.
 
 Runs persist their exact definition, commit, event, provider, matrix variants,
 masked logs, outputs, and lifecycle state in PostgreSQL. Short API invocations
-reconcile state under a row lock with `SKIP LOCKED`. Short-lived signed completion
-callbacks advance dependent jobs without waiting for UI polling. The authenticated scheduled
-endpoint recovers missed callbacks and cleanup retries. Stable sandbox names allow
-retries to recover a previously created job. Provider timeouts bound execution;
-cleanup failures retain handles for retry. Cache/artifact state is stored in the
+advance state under a row lock with `SKIP LOCKED`. Short-lived signed completion
+callbacks advance dependent jobs without waiting for UI polling. Reading run
+history refreshes live logs and can retry collection or cleanup. Stable sandbox
+names make repeated event handling idempotent. Provider timeouts bound execution;
+cleanup failures retain handles for retry. There is no background recovery sweep.
+Cache/artifact state is stored in the
 configured blob backend, with individual job archives retained under each run.
 Repository cache snapshots contain cache data only; artifacts stay in run state.
 Mutable Vercel Blob writes allow replacement, and restores bypass stale CDN
@@ -104,10 +104,10 @@ Run URLs preserve the selected run in a query parameter.
 
 ## Compatibility and limits
 
-Supported workflow features include push branch/tag/path filters, dispatch, UTC cron schedules,
+Supported workflow features include push branch/tag/path filters, dispatch,
 job dependencies and outputs, literal matrices with include/exclude, workflow,
 job, and step environments, shell steps, local actions, prepared remote
-JavaScript/composite actions, native expressions, step `if`, `always()`,
+JavaScript/composite actions, GitHub expressions, step `if`, `always()`,
 `failure()`, step `continue-on-error`, and action cleanup hooks.
 
 Dynamic matrices, reusable workflows, job/service containers, Docker actions,
@@ -132,6 +132,8 @@ external account. Other uses must supply an appropriate external integration.
 ## Verification
 
 ```sh
+npm ci --prefix backend/actions-runtime
+npm test --prefix backend/actions-runtime
 uv run --directory backend pytest tests/unit
 ACTIONS_IMAGE=gitedge-actions:integration \
   uv run --directory backend pytest tests/integration/actions
@@ -149,10 +151,6 @@ repository's testing guidelines.
 ## Upstream references
 
 - Runner architecture: <https://gitea.com/gitea/runner>
-- Execution library: <https://github.com/nektos/act/tree/v0.2.89>
+- Expression library: <https://github.com/actions/languageservices/tree/main/expressions>
 - UI adapted from `src/pages/ActionsPage.tsx` at
   <https://github.com/jan-mue/gitea-clone/commit/11d7444379a8f0006b881081cedf0a34b9f77614>
-- The act library's license is included in `backend/actions-runtime/ACT-LICENSE`.
-- `artifact-v7.patch` accepts optional protobuf metadata and escapes signed URL
-  values for newer artifact clients. It is applied to an isolated copy of the pinned act source during
-  preparation; shared module caches and the upstream checksum stay unchanged.

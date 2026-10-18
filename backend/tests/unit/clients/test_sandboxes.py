@@ -9,9 +9,7 @@ import pytest
 from docker.errors import NotFound
 from vercel.sandbox import SandboxStatus
 
-from app.clients.sandboxes.base import SandboxError
-from app.clients.sandboxes.docker import DockerSandboxClient
-from app.clients.sandboxes.vercel import VercelSandboxClient
+from app.clients.sandboxes import DockerSandboxClient, SandboxError, VercelSandboxClient
 
 if TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -21,7 +19,7 @@ async def test_docker_provisioning_does_not_pull_images_or_upload_source(mocker:
     sdk = mocker.MagicMock()
     sdk.__enter__.return_value = sdk
     sdk.api.create_container.return_value = {"Id": "job-container"}
-    mocker.patch("app.clients.sandboxes.docker.docker.from_env", return_value=sdk)
+    mocker.patch("app.clients.sandboxes.docker.from_env", return_value=sdk)
     provider = DockerSandboxClient("prepared@sha256:abc")
     await provider.start("job", {"input.json": json.dumps({"job": "test"}).encode()}, 60)
     sdk.images.pull.assert_not_called()
@@ -37,7 +35,7 @@ async def test_docker_provisioning_does_not_pull_images_or_upload_source(mocker:
 async def test_vercel_uses_prepared_snapshot_and_never_receives_source(mocker: MockerFixture) -> None:
     box = mocker.MagicMock()
     box.create_process = mocker.AsyncMock()
-    create = mocker.patch("app.clients.sandboxes.vercel.create_sandbox", new=mocker.AsyncMock(return_value=box))
+    create = mocker.patch("app.clients.sandboxes.create_sandbox", new=mocker.AsyncMock(return_value=box))
     provider = VercelSandboxClient("prepared", "snapshot-123")
     await provider.start("job", {"input.json": b'{"job":"test"}'}, 60)
     kwargs = create.call_args.kwargs
@@ -50,7 +48,7 @@ async def test_vercel_uses_prepared_snapshot_and_never_receives_source(mocker: M
 
 async def test_inspecting_expired_vercel_sandbox_never_resumes_it(mocker: MockerFixture) -> None:
     box = mocker.MagicMock(status=SandboxStatus.STOPPED)
-    mocker.patch("app.clients.sandboxes.vercel.get_sandbox", new=mocker.AsyncMock(return_value=box))
+    mocker.patch("app.clients.sandboxes.get_sandbox", new=mocker.AsyncMock(return_value=box))
     result = await VercelSandboxClient("prepared").inspect("job")
     assert result.running is False
     box.query_processes.assert_not_called()
@@ -82,14 +80,14 @@ async def test_docker_reads_complete_result_when_job_finishes_during_inspection(
         return [output.getvalue()], {"size": len(data)}
 
     container.get_archive.side_effect = archive
-    mocker.patch("app.clients.sandboxes.docker.docker.from_env", return_value=sdk)
+    mocker.patch("app.clients.sandboxes.docker.from_env", return_value=sdk)
     snapshot = await DockerSandboxClient("prepared").inspect("job")
     assert snapshot.running
     assert snapshot.files == expected
 
 
 async def test_vercel_refuses_job_time_image_preparation(mocker: MockerFixture) -> None:
-    create = mocker.patch("app.clients.sandboxes.vercel.create_sandbox", new=mocker.AsyncMock())
+    create = mocker.patch("app.clients.sandboxes.create_sandbox", new=mocker.AsyncMock())
     with pytest.raises(SandboxError, match="prepared before dispatch"):
         await VercelSandboxClient("unprepared-image").start("job", {"input.json": b"{}"}, 60)
     create.assert_not_called()

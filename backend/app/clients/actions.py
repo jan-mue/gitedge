@@ -1,4 +1,4 @@
-"""Workflow persistence with database locks for concurrent reconcilers."""
+"""Workflow persistence with database locks for concurrent event handlers."""
 
 from __future__ import annotations
 
@@ -30,11 +30,11 @@ class ActionsStore(Protocol):
         ...
 
     async def active_runs(self, repo_id: UUID | None = None) -> list[tuple[UUID, UUID]]:
-        """List runs needing reconciliation, paired with their repository."""
+        """List runs needing collection, paired with their repository."""
         ...
 
     def locked(self, repo_id: UUID, run_id: UUID) -> AbstractAsyncContextManager[WorkflowRun | None]:
-        """Lock a run for mutation; concurrent reconcilers skip it."""
+        """Lock a run for mutation; concurrent event handlers skip it."""
         ...
 
 
@@ -77,7 +77,7 @@ class SQLActionsStore(SQLStore[WorkflowRun]):
         )
 
     async def active_runs(self, repo_id: UUID | None = None) -> list[tuple[UUID, UUID]]:
-        """Bound each scheduled reconciliation invocation."""
+        """List active runs for repository cancellation."""
         query = select(WorkflowRun.repo_id, WorkflowRun.id).where(WorkflowRun.status.in_(["queued", "running"]))
         query = query.where(WorkflowRun.repo_id == repo_id) if repo_id is not None else query.limit(50)
         rows = await self.db.execute(query.order_by(WorkflowRun.updated_at))

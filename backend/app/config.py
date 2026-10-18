@@ -139,7 +139,6 @@ class Settings(BaseSettings):
     ACTIONS_DOCKER_ENV: dict[str, str] = {}
     # Explicitly scoped by repository UUID. Values are never stored in workflow rows.
     ACTIONS_SECRETS: dict[str, dict[str, str]] = {}
-    CRON_SECRET: str | None = None
 
     # Email settings
     SMTP_TLS: bool = True

@@ -137,7 +137,7 @@ def test_tooling_actions_cache_and_artifacts(
         assert run["status"] == "success", json.dumps(run, indent=2)
         for step in run["jobs"][0]["steps"]:
             expected = "skipped" if step["name"] == "Verify restored cache" and not iteration else "success"
-            assert step["status"] == expected
+            assert step["status"] == expected, json.dumps({"iteration": iteration, "run": run}, indent=2)
         state, cache = asyncio.run(artifact_state(run["id"]))
         assert state is not None
         assert cache is not None

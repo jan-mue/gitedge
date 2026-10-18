@@ -4,6 +4,7 @@
 
 import json
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -33,7 +34,13 @@ while queue:
         check=True,
     )
     sha = subprocess.check_output(["/usr/bin/git", "-C", str(directory), "rev-parse", "FETCH_HEAD"], text=True).strip()
-    manifest[f"{repository}@{ref}"] = sha
+    tree = Path("/opt/gitedge/actions") / repository.replace("/", "-") / sha
+    tree.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        ["/usr/bin/git", "--git-dir", str(directory), "--work-tree", str(tree), "checkout", "--force", sha, "--", "."],
+        check=True,
+    )
+    manifest[f"{repository}@{ref}"] = str(tree.relative_to("/opt/gitedge/actions"))
     subprocess.run(["/usr/bin/git", "-C", str(directory), "update-ref", f"refs/gitedge/{sha}", sha], check=True)
     subpath = "/".join(repository_path.split("/")[2:])
     for filename in ("action.yml", "action.yaml"):
@@ -51,4 +58,5 @@ while queue:
                 if re.match(r"^[\w.-]+/[\w.-]+(?:/[\w./-]+)?@[^\s]+$", uses):
                     queue.append(uses)
             break
-(root / "manifest.json").write_text(json.dumps(manifest, sort_keys=True))
+Path("/opt/gitedge/actions/manifest.json").write_text(json.dumps(manifest, sort_keys=True))
+shutil.rmtree(root)
