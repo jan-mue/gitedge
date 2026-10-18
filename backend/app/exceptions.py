@@ -1,4 +1,4 @@
-"""Domain exceptions raised by the client (store) layer."""
+"""Domain exceptions handled by the application."""
 
 from __future__ import annotations
 
@@ -58,3 +58,7 @@ class ReleaseNotFoundError(NotFoundError):
     """Raised when a release cannot be found."""
 
     default_detail = "Release not found"
+
+
+class WorkflowError(ValueError):
+    """A workflow is invalid or requests unsupported capabilities."""

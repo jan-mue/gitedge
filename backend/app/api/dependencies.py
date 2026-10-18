@@ -39,7 +39,7 @@ from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClie
 from app.clients.releases import ReleaseStore, SQLReleaseStore
 from app.clients.repositories import RepositoryStore, SQLRepositoryStore
 from app.clients.reviews import ReviewStore, SQLReviewStore
-from app.clients.sandboxes import DockerSandboxClient, VercelSandboxClient
+from app.clients.sandboxes import AbstractSandboxClient, DockerSandboxClient, VercelSandboxClient
 from app.clients.stars import SQLStarStore, StarStore
 from app.clients.users import SQLUserStore, UserStore
 from app.clients.watchers import SQLWatcherStore, WatcherStore
@@ -67,7 +67,6 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import async_sessionmaker
 
-    from app.clients.sandboxes import AbstractSandboxClient
 
 logger = logging.getLogger(__name__)
 
@@ -712,6 +711,18 @@ def get_actions_cache_store(session: SessionDep) -> ActionsCacheStore:
 ActionsCacheStoreDep = Annotated[ActionsCacheStore, Depends(get_actions_cache_store)]
 
 
+def get_sandbox_client() -> AbstractSandboxClient:
+    """Select the configured job sandbox provider."""
+    if settings.ACTIONS_PROVIDER == "vercel":
+        return VercelSandboxClient(
+            settings.ACTIONS_IMAGE, settings.ACTIONS_VERCEL_SNAPSHOT, settings.ACTIONS_VERCEL_REGION
+        )
+    return DockerSandboxClient(settings.ACTIONS_IMAGE)
+
+
+SandboxClientDep = Annotated[AbstractSandboxClient, Depends(get_sandbox_client)]
+
+
 def get_actions_service(
     store: ActionsStoreDep,
     repositories: RepositoryServiceDep,
@@ -719,27 +730,21 @@ def get_actions_service(
     blobs: BlobStorageClientDep,
     pull_requests: PullRequestStoreDep,
     cache_store: ActionsCacheStoreDep,
-    cache: CacheClientDep,
+    sandbox: SandboxClientDep,
 ) -> ActionsService:
-    """Configure injectable sandbox providers without starting a runner daemon."""
-    providers: dict[str, AbstractSandboxClient] = {
-        "docker": DockerSandboxClient(settings.ACTIONS_IMAGE),
-        "vercel": VercelSandboxClient(
-            settings.ACTIONS_IMAGE, settings.ACTIONS_VERCEL_SNAPSHOT, settings.ACTIONS_VERCEL_REGION
-        ),
-    }
+    """Inject one sandbox provider and durable workflow cache storage."""
     return ActionsService(
         store,
         repositories,
         repository_store,
         blobs,
-        providers,
+        sandbox,
         provider=settings.ACTIONS_PROVIDER,
         max_timeout=settings.ACTIONS_MAX_TIMEOUT,
         max_parallel=settings.ACTIONS_MAX_PARALLEL,
         secrets=settings.ACTIONS_SECRETS,
         pull_requests=pull_requests,
-        cache=ActionsCacheService(cache_store, cache),
+        cache=ActionsCacheService(cache_store, blobs),
     )
 
 

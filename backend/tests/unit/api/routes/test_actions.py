@@ -4,11 +4,15 @@ import uuid
 from typing import TYPE_CHECKING
 
 import jwt
+import pytest
 
 from app.config import settings
+from app.exceptions import WorkflowError
+from app.services.actions.service import ActionsService
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
+    from pytest_mock import MockerFixture
 
     from tests.unit.utils.fakes import FakeStores
 
@@ -93,3 +97,27 @@ def test_cache_capabilities_scope_upload_lookup_and_download_to_one_repository(c
         assert client.post(path, params=bad_params, content=b"invalid").status_code == 403
         assert client.get(f"{path}/lookup", params=bad_params).status_code == 403
     assert client.get(f"{path}/lookup", params={**params, "restore_keys": "x" * 513}).status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("method", "endpoint", "operation"), [("GET", "workflows", "workflows"), ("POST", "dispatch", "dispatch")]
+)
+def test_workflow_errors_use_the_global_handler(
+    client: TestClient,
+    mocker: MockerFixture,
+    superuser_token_headers: dict[str, str],
+    method: str,
+    endpoint: str,
+    operation: str,
+) -> None:
+    mocker.patch.object(
+        ActionsService, operation, new=mocker.AsyncMock(side_effect=WorkflowError("Invalid workflow YAML"))
+    )
+    response = client.request(
+        method,
+        f"{PATH}/actions/{endpoint}",
+        headers=superuser_token_headers,
+        json={"workflow": ".gitedge/workflow/ci.yaml"} if method == "POST" else None,
+    )
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid workflow YAML"}

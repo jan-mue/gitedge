@@ -1,10 +1,7 @@
-"""Bounded repository caches backed by Vercel Runtime Cache or local Redis."""
+"""Repository-scoped cache archives in Blob/S3 with searchable SQL metadata."""
 
 from __future__ import annotations
 
-import asyncio
-import base64
-import binascii
 import hashlib
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -15,56 +12,42 @@ from app.schemas.actions_cache import CacheEntry
 
 if TYPE_CHECKING:
     from app.clients.actions_cache import ActionsCacheStore
-    from app.clients.cache import AbstractCacheClient
+    from app.clients.blob_storage import BlobStorageClient
     from app.schemas.actions_cache import CacheIdentity
 
 STATE_LIMIT = 32 * 1024 * 1024
-CHUNK_SIZE = 256 * 1024
 CACHE_TTL = 7 * 24 * 60 * 60
 
 
 class ActionsCacheService:
-    """Publish chunks before metadata; eviction/corruption is a cache miss."""
+    """Upload complete archives before publishing their immutable identities."""
 
-    def __init__(self, store: ActionsCacheStore, cache: AbstractCacheClient) -> None:
-        """Reuse the application's provider-selected cache client."""
+    def __init__(self, store: ActionsCacheStore, blobs: BlobStorageClient) -> None:
+        """Reuse the application's object storage provider."""
         self.store = store
-        self.cache = cache
+        self.blobs = blobs
 
     @staticmethod
     def _metadata(entry: WorkflowCacheEntry) -> CacheEntry:
         return CacheEntry(id=entry.payload_id, key=entry.key, version=entry.version, size=entry.size)
 
     @staticmethod
-    def _group(repo_id: uuid.UUID) -> str:
-        return f"actions:{repo_id}"
+    def _key(entry: WorkflowCacheEntry) -> str:
+        return f"actions/{entry.repo_id}/cache/{entry.payload_id}.bin"
 
     async def _read(self, entry: WorkflowCacheEntry) -> bytes | None:
-        if entry.expires_at <= datetime.now(UTC) or not 0 <= entry.size <= STATE_LIMIT:
+        if entry.expires_at <= datetime.now(UTC):
+            await self.blobs.delete(self._key(entry))
             return None
-        count = (entry.size + CHUNK_SIZE - 1) // CHUNK_SIZE
-        chunks = []
-        for start in range(0, count, 8):
-            batch = await asyncio.gather(
-                *(
-                    self.cache.get(f"{entry.payload_id}:{index}", group=self._group(entry.repo_id))
-                    for index in range(start, min(start + 8, count))
-                )
-            )
-            for chunk in batch:
-                if chunk is None or len(chunk) > 4 * ((CHUNK_SIZE + 2) // 3):
-                    return None
-                try:
-                    chunks.append(base64.b64decode(chunk, validate=True))
-                except binascii.Error, ValueError:
-                    return None
-        payload = b"".join(chunks)
-        if len(payload) != entry.size or hashlib.sha256(payload).hexdigest() != entry.checksum:
+        if not 0 <= entry.size <= STATE_LIMIT:
+            return None
+        payload = await self.blobs.get_current(self._key(entry))
+        if payload is None or len(payload) != entry.size or hashlib.sha256(payload).hexdigest() != entry.checksum:
             return None
         return payload
 
     async def lookup(self, repo_id: uuid.UUID, identity: CacheIdentity, restore_keys: list[str]) -> CacheEntry | None:
-        """Prefer exact keys, then the newest viable match for each ordered prefix."""
+        """Prefer exact keys, then the newest valid match for each ordered prefix."""
         seen: set[uuid.UUID] = set()
         for prefix in [identity.key, *restore_keys]:
             candidates = await self.store.candidates(repo_id, prefix, identity.version)
@@ -79,13 +62,15 @@ class ActionsCacheService:
         return None
 
     async def save(self, repo_id: uuid.UUID, identity: CacheIdentity, payload: bytes) -> CacheEntry:
-        """Write independent generations so parallel jobs preserve unrelated keys."""
+        """Publish one complete generation and remove replaced or losing uploads."""
         if len(payload) > STATE_LIMIT:
             raise ValueError("Cache exceeds the 32 MiB transfer limit")
         candidates = await self.store.candidates(repo_id, identity.key, identity.version)
         existing = next((entry for entry in candidates if entry.key == identity.key), None)
         if existing and await self._read(existing) is not None:
             return self._metadata(existing)
+        previous_id = existing.payload_id if existing else None
+        previous_key = self._key(existing) if existing else None
         entry = WorkflowCacheEntry(
             repo_id=repo_id,
             key=identity.key,
@@ -95,26 +80,15 @@ class ActionsCacheService:
             checksum=hashlib.sha256(payload).hexdigest(),
             expires_at=datetime.now(UTC) + timedelta(seconds=CACHE_TTL),
         )
-        chunks = [payload[offset : offset + CHUNK_SIZE] for offset in range(0, len(payload), CHUNK_SIZE)]
-        for start in range(0, len(chunks), 8):
-            await asyncio.gather(
-                *(
-                    self.cache.set(
-                        f"{entry.payload_id}:{index}",
-                        base64.b64encode(chunks[index]).decode(),
-                        ttl=CACHE_TTL,
-                        group=self._group(repo_id),
-                    )
-                    for index in range(start, min(start + 8, len(chunks)))
-                )
-            )
-        return self._metadata(await self.store.publish(entry, existing.payload_id if existing else None))
+        await self.blobs.put(self._key(entry), payload)
+        published = await self.store.publish(entry, previous_id)
+        if published.payload_id != entry.payload_id:
+            await self.blobs.delete(self._key(entry))
+        elif previous_key:
+            await self.blobs.delete(previous_key)
+        return self._metadata(published)
 
     async def download(self, repo_id: uuid.UUID, payload_id: uuid.UUID) -> bytes | None:
-        """Revalidate chunks after lookup; eviction remains an ordinary miss."""
+        """Validate repository ownership, expiry, size, and archive integrity."""
         entry = await self.store.payload(repo_id, payload_id)
         return await self._read(entry) if entry else None
-
-    async def delete_repository(self, repo_id: uuid.UUID) -> None:
-        """Invalidate chunks after repository deletion; metadata cascades in SQL."""
-        await self.cache.invalidate(self._group(repo_id))

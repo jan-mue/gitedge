@@ -9,7 +9,6 @@ from app.api.dependencies import ActionsServiceDep, CurrentUser, OptionalUser
 from app.schemas.actions import ActionRun, PullRequestChecks, WorkflowDispatch, WorkflowInfo
 from app.schemas.actions_cache import CacheEntry, CacheIdentity
 from app.services.actions.cache import STATE_LIMIT
-from app.services.actions.workflows import WorkflowError
 
 router = APIRouter(tags=["actions"])
 MAX_CACHE_KEY_LENGTH = 512
@@ -21,10 +20,7 @@ async def list_workflows(
 ) -> list[WorkflowInfo]:
     """Discover workflows in .gitedge/workflow at a repository revision."""
     response.headers["Cache-Control"] = "private, no-store"
-    try:
-        return await service.workflows(owner, repo, ref, user)
-    except WorkflowError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return await service.workflows(owner, repo, ref, user)
 
 
 @router.get("/repositories/{owner}/{repo}/actions/runs")
@@ -50,10 +46,7 @@ async def dispatch_workflow(
     owner: str, repo: str, body: WorkflowDispatch, service: ActionsServiceDep, user: CurrentUser
 ) -> ActionRun:
     """Run an explicitly enabled workflow as its repository owner."""
-    try:
-        return await service.dispatch(owner, repo, body.workflow, body.ref, body.inputs, user)
-    except WorkflowError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return await service.dispatch(owner, repo, body.workflow, body.ref, body.inputs, user)
 
 
 @router.post("/repositories/{owner}/{repo}/actions/runs/{run_id}/cancel", status_code=204)
@@ -116,7 +109,7 @@ async def save_cache(
 
 @router.get("/actions/cache/{payload_id}", include_in_schema=False)
 async def download_cache(token: str, payload_id: uuid.UUID, service: ActionsServiceDep) -> Response:
-    """Download a live immutable generation from Vercel Runtime Cache or Redis."""
+    """Download an immutable cache archive from Blob or S3."""
     return Response(
         await service.download_cache(token, payload_id),
         media_type="application/octet-stream",

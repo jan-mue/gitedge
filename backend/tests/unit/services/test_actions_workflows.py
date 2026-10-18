@@ -1,7 +1,8 @@
 import pytest
 
+from app.exceptions import WorkflowError
 from app.schemas.workflow_events import PullRequestContext, PullRequestEvent, PullRequestRef, PushEvent, ScheduleEvent
-from app.services.actions.workflows import WorkflowError, expand_matrix, matches_event, parse_workflow, plan_jobs
+from app.services.actions.workflows import expand_matrix, matches_event, parse_workflow, plan_jobs
 
 
 def test_yaml_actions_on_key_and_boolean_inputs() -> None:

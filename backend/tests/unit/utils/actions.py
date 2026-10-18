@@ -75,6 +75,12 @@ class FakeActionsCacheStore:
         existing = self.entries.get(key)
         if existing and existing.payload_id != previous and existing.expires_at > datetime.now(UTC):
             return existing
-        entry.created_at = entry.updated_at = datetime.now(UTC)
+        if existing:
+            for name in ("payload_id", "size", "checksum", "expires_at"):
+                setattr(existing, name, getattr(entry, name))
+            entry = existing
+        else:
+            entry.created_at = datetime.now(UTC)
+        entry.updated_at = datetime.now(UTC)
         self.entries[key] = entry
         return entry
