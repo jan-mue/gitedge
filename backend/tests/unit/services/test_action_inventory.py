@@ -10,6 +10,6 @@ def test_every_repository_action_has_an_integration_workflow_and_is_prepared() -
     examples = set()
     for workflow in (root / "backend/tests/integration/actions/workflows").glob("*.yaml"):
         examples.update(re.findall(r"uses:\s*([^\s#]+)", workflow.read_text()))
-    prepared = set((root / "backend/actions-runtime/actions.txt").read_text().splitlines())
+    prepared = set((root / "packages/actions-runner/actions.txt").read_text().splitlines())
     assert references <= examples
     assert references <= prepared

@@ -1,0 +1,62 @@
+name: Prepared actions and toolchains
+on: [pull_request, workflow_dispatch]
+defaults:
+  run:
+    shell: bun {0}
+jobs:
+  tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.14.0'
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884
+        with:
+          version: '0.13.0'
+          enable-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.3'
+      - id: cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .gitedge-cache
+          key: gitedge-preview-${{ hashFiles('.gitedge/fixtures/example.py') }}
+      - name: Verify tools and write portable cache
+        run: |
+          import assert from "node:assert/strict"
+          import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+          if (existsSync(".gitedge-cache/value.txt")) assert.equal(readFileSync(".gitedge-cache/value.txt", "utf8"), "portable cache")
+          for (const command of ["node", "python", "uv", "bun"]) {
+            assert.equal(Bun.spawnSync([command, "--version"], { stdout: "inherit", stderr: "inherit" }).exitCode, 0)
+          }
+          mkdirSync(".gitedge-cache", { recursive: true })
+          mkdirSync(".gitedge-results", { recursive: true })
+          writeFileSync(".gitedge-cache/value.txt", "portable cache")
+          writeFileSync(".gitedge-results/result.txt", "Prepared toolchains verified")
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd
+        with:
+          extra_args: --version
+      - name: Generate coverage
+        run: |
+          import assert from "node:assert/strict"
+          for (const args of [["-m", "coverage", "run", ".gitedge/fixtures/example.py"], ["-m", "coverage", "xml"]]) {
+            assert.equal(Bun.spawnSync(["python", ...args], { stdout: "inherit", stderr: "inherit" }).exitCode, 0)
+          }
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5
+        with:
+          binary: /opt/hostedtoolcache/Python/3.14.0/x64/bin/codecovcli
+          dry_run: true
+          disable_telem: true
+          fail_ci_if_error: true
+          files: coverage.xml
+          run_command: upload-coverage
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: prepared-toolchain-results
+          path: .gitedge-results/

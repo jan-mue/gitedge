@@ -21,11 +21,13 @@ export const RepositoryActions = ({
   owner,
   repo,
   runId,
+  jobId,
   onSelectRun,
 }: {
   owner: string
   repo: string
   runId?: string
+  jobId?: string
   onSelectRun: (id?: string) => void
 }) => {
   const path = { owner, repo }
@@ -86,6 +88,7 @@ export const RepositoryActions = ({
           ← Back to runs
         </Button>
         <RunDetail
+          initialJob={jobId}
           key={selected.id}
           run={selected}
           canManage={canManage}

@@ -34,8 +34,8 @@ jobs:
 
       - name: Prepare Actions runtime
         run: |
-          docker build -t gitedge-actions:local backend/actions-runtime
-          docker build -f backend/actions-runtime/Dockerfile.codeql -t gitedge-actions:integration backend/actions-runtime
+          docker build -f packages/actions-runner/Dockerfile -t gitedge-actions:local .
+          docker build -f packages/actions-runner/Dockerfile.codeql -t gitedge-actions:integration .
 
       - name: Run integration tests
         working-directory: backend
@@ -98,7 +98,7 @@ jobs:
         run: uv run --no-sync playwright install chromium --with-deps
 
       - name: Prepare Actions runtime
-        run: docker build -t gitedge-actions:local backend/actions-runtime
+        run: docker build -f packages/actions-runner/Dockerfile -t gitedge-actions:local .
 
       - name: Run E2E tests
         working-directory: backend

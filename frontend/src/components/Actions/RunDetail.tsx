@@ -1,31 +1,24 @@
 // Adapted from jan-mue/gitea-clone's ActionsPage: job sidebar and expandable step logs.
-import { ChevronDown, ChevronRight } from "lucide-react"
 import { useState } from "react"
 import type { ActionRun } from "@/client"
-import { Badge, Button } from "@/components/design-system"
+import { Badge, Button, LogViewer } from "@/components/design-system"
 import { duration, StatusIcon } from "./StatusIcon"
 
 export const RunDetail = ({
   run,
+  initialJob,
   canManage,
   cancelling,
   onCancel,
 }: {
+  initialJob?: string
   run: ActionRun
   canManage: boolean
   cancelling: boolean
   onCancel: () => void
 }) => {
-  const [selectedJob, setSelectedJob] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+  const [selectedJob, setSelectedJob] = useState<string | null>(initialJob ?? null)
   const job = run.jobs.find((job) => job.id === selectedJob) ?? run.jobs[0]
-  const toggle = (id: string) =>
-    setExpanded((old) => {
-      const next = new Set(old)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -78,6 +71,7 @@ export const RunDetail = ({
               </div>
               <span className="text-xs text-muted-foreground">
                 {duration(job.started_at, job.completed_at)}
+                {job.startup_ms != null && ` · First step in ${Math.round(job.startup_ms)} ms`}
                 {job.provisioning_ms != null && ` · Provisioned in ${Math.round(job.provisioning_ms)} ms`}
               </span>
             </div>
@@ -86,40 +80,11 @@ export const RunDetail = ({
                 {job.error}
               </p>
             )}
-            <div className="divide-y divide-border bg-secondary/40">
-              {job.steps?.map((step) => {
-                const id = `${job.id}:${step.id}`
-                return (
-                  <div key={step.id}>
-                    <Button
-                      variant="actionStep"
-                      size="file-row"
-                      aria-expanded={expanded.has(id)}
-                      aria-controls={`log-${id}`}
-                      onClick={() => toggle(id)}
-                    >
-                      {expanded.has(id) ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-                      <StatusIcon status={step.status ?? "queued"} />
-                      <span className="flex-1 text-left">{step.name}</span>
-                    </Button>
-                    {expanded.has(id) && (
-                      <pre
-                        id={`log-${id}`}
-                        className="overflow-x-auto whitespace-pre-wrap break-all px-4 py-3 font-mono text-xs text-foreground"
-                      >
-                        {step.log || "No log output."}
-                      </pre>
-                    )}
-                  </div>
-                )
-              })}
-              <details className="px-4 py-3 text-sm">
-                <summary className="cursor-pointer">Complete job log</summary>
-                <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs">
-                  {job.log || "Waiting for log output…"}
-                </pre>
-              </details>
-            </div>
+            <LogViewer
+              key={job.id}
+              sections={(job.steps ?? []).map((step) => ({ ...step, status: step.status ?? "queued" }))}
+              log={job.log ?? undefined}
+            />
           </div>
         )}
       </div>

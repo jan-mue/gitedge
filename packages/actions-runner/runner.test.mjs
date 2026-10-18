@@ -1,8 +1,8 @@
+import { test } from "bun:test"
 import assert from "node:assert/strict"
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import test from "node:test"
 import { condition, evaluate, interpolate } from "./expressions.mjs"
 import { commands, execute } from "./runner.mjs"
 

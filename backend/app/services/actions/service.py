@@ -15,8 +15,9 @@ from fastapi import HTTPException
 from app.clients.sandboxes import SandboxError
 from app.config import settings
 from app.entities.actions import WorkflowRun
+from app.entities.issues import IssueState
 from app.entities.principals import PrincipalType
-from app.schemas.actions import ActionJob, ActionRun, ActionStatus, WorkflowInfo
+from app.schemas.actions import ActionJob, ActionRun, ActionStatus, PullRequestChecks, WorkflowInfo
 from app.services.actions.runtime import finish_job, redact, update_logs
 from app.services.actions.workflows import (
     WORKFLOW_PREFIX,
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
 
     from app.clients.actions import ActionsStore
     from app.clients.blob_storage import BlobStorageClient
+    from app.clients.pull_requests import PullRequestStore
     from app.clients.repositories import RepositoryStore
     from app.clients.sandboxes import AbstractSandboxClient
     from app.entities.repositories import Repository as RepositoryEntity
@@ -59,6 +61,7 @@ class ActionsService:
         max_timeout: int,
         max_parallel: int,
         secrets: dict[str, dict[str, str]] | None = None,
+        pull_requests: PullRequestStore | None = None,
     ) -> None:
         """Inject data access and sandbox clients; keep provider policy out of workflows."""
         self.store = store
@@ -70,6 +73,7 @@ class ActionsService:
         self.max_timeout = max_timeout
         self.max_parallel = max_parallel
         self.secrets = secrets or {}
+        self.pull_requests = pull_requests
 
     async def _repository(
         self, owner: str, name: str, user: User | None = None, *, write: bool = False
@@ -226,6 +230,25 @@ class ActionsService:
                 await self.advance_run(repository.id, run.id)
         return [self.public(run) for run in await self.store.list_runs(repository.id)]
 
+    async def pull_request_checks(self, owner: str, name: str, number: int, user: User | None) -> PullRequestChecks:
+        """Pin checks to the current head and retain the latest delivery per workflow/event."""
+        repository = await self._repository(owner, name, user)
+        if self.pull_requests is None:
+            raise RuntimeError("Pull request store is not configured")
+        pull = await self.pull_requests.get_by_number(repository.id, number)
+        sha, _ = await self.repositories.action_revision(owner, name, pull.head_branch)
+        selected: dict[tuple[str, str], WorkflowRun] = {}
+        for run in await self.store.runs_for_commit(repository.id, sha):
+            if run.event_name == "pull_request" and run.event.get("pull_request", {}).get("number") != number:
+                continue
+            key = (run.workflow, run.event_name)
+            if key in selected:
+                continue
+            if run.status not in TERMINAL:
+                await self.advance_run(repository.id, run.id)
+            selected[key] = run
+        return PullRequestChecks(head_sha=sha, runs=[self.public(run) for run in selected.values()])
+
     async def cancel(self, owner: str, name: str, run_id: uuid.UUID, user: User) -> None:
         """Cancel queued/running jobs and destroy their resources."""
         repository = await self._repository(owner, name, user, write=True)
@@ -371,6 +394,7 @@ class ActionsService:
         )
         secrets = {**secrets, "GITHUB_TOKEN": read_token}
         config = {
+            "dispatched_at_ms": time.time() * 1000,
             "workflow": run.definition,
             "job": job.key,
             "timeout_seconds": job.timeout_seconds,
@@ -398,7 +422,8 @@ class ActionsService:
 
     async def on_push(self, owner: str, name: str, before: dict[str, str], after: dict[str, str], user: User) -> None:
         """Accept CI events only from an authenticated repository owner or administrator."""
-        await self._repository(owner, name, user, write=True)
+        repository = await self._repository(owner, name, user, write=True)
+        pulls = await self.pull_requests.list_by_repo(repository.id, IssueState.OPEN) if self.pull_requests else []
         for ref, sha in after.items():
             old = before.get(ref)
             if old == sha:
@@ -417,9 +442,22 @@ class ActionsService:
                 actor=user.name,
                 event_key=f"push:{ref}:{old}:{sha}",
             )
+            for pull in pulls:
+                if ref == f"refs/heads/{pull.head_branch}":
+                    await self.on_pull_request(
+                        owner, name, pull.number, pull.head_branch, pull.base_branch, user, action="synchronize"
+                    )
 
     async def on_pull_request(
-        self, owner: str, name: str, number: int, head_branch: str, base_branch: str, user: User
+        self,
+        owner: str,
+        name: str,
+        number: int,
+        head_branch: str,
+        base_branch: str,
+        user: User,
+        *,
+        action: str = "opened",
     ) -> None:
         """Trigger opened PR workflows using the submitted head and base context."""
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
@@ -432,7 +470,8 @@ class ActionsService:
         base_sha, _ = await self.repositories.action_revision(owner, name, base_branch)
         comparison = await self.repositories.compare(owner, name, base_sha, sha, include_diff=False)
         event = {
-            "action": "opened",
+            "action": action,
+            "number": number,
             "ref": f"refs/heads/{head_branch}",
             "changed_paths": [file.path for file in comparison.files],
             "pull_request": {
@@ -442,7 +481,7 @@ class ActionsService:
             },
         }
         await self.trigger(
-            owner, name, sha, "pull_request", event, actor=user.name, event_key=f"pr:{number}:opened:{sha}"
+            owner, name, sha, "pull_request", event, actor=user.name, event_key=f"pr:{number}:{action}:{sha}"
         )
 
     @staticmethod

@@ -3,7 +3,6 @@ import { spawn } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import { access, mkdir, readFile, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
 import { parse } from "yaml"
 import { condition, interpolate } from "./expressions.mjs"
 import { startStorage } from "./storage.mjs"
@@ -37,6 +36,7 @@ export async function execute(
   {
     root = "/gitedge",
     actionRoot = "/opt/gitedge/actions",
+    signal = new AbortController().signal,
     log = (entry) => process.stdout.write(`${JSON.stringify(entry)}\n`),
   } = {},
 ) {
@@ -134,12 +134,13 @@ export async function execute(
     )
   let status = Object.values(context.needs).some((need) => need.result !== "success") ? "failure" : "success"
   const posts = []
+  let firstStepAt
   let stopping = null
   const abort = () => {
     stopping = "cancelled"
   }
-  process.on("SIGTERM", abort)
-  process.on("SIGINT", abort)
+  signal.addEventListener("abort", abort, { once: true })
+  if (signal.aborted) abort()
   const setEnvironment = (values) => {
     for (const [key, value] of Object.entries(values)) {
       if (/^(GITHUB_|RUNNER_|ACTIONS_)/i.test(key) || key === "NODE_OPTIONS") continue
@@ -147,7 +148,7 @@ export async function execute(
       exportedEnvironment[key] = value
     }
   }
-  async function processRun(command, args, env, cwd, id, outputs, state) {
+  async function processRun(command, args, env, cwd, id, outputs, state, processSignal = signal) {
     const directory = join(temporary, randomUUID())
     await mkdir(directory)
     const paths = {
@@ -180,8 +181,8 @@ export async function execute(
       }, 5000)
       timer.unref()
     }
-    process.on("SIGTERM", onStop)
-    process.on("SIGINT", onStop)
+    processSignal.addEventListener("abort", onStop, { once: true })
+    if (processSignal.aborted) onStop()
     const consume = async (stream) => {
       let pending = ""
       let stopToken = null
@@ -231,8 +232,7 @@ export async function execute(
       const [code] = await Promise.all([exit, consume(child.stdout), consume(child.stderr)])
       if (code !== 0) failure = new Error(`Process exited with code ${code}`)
     } finally {
-      process.removeListener("SIGTERM", onStop)
-      process.removeListener("SIGINT", onStop)
+      processSignal.removeEventListener("abort", onStop)
       clearTimeout(timer)
     }
     Object.assign(outputs, commands(await readFile(paths.GITHUB_OUTPUT, "utf8")))
@@ -328,12 +328,28 @@ export async function execute(
         state,
       })
     if (runs.pre && condition(runs["pre-if"] ?? "always()", actionContext, status))
-      await processRun(process.execPath, [file(runs.pre)], actionEnvironment, workspace, id, outputs, state)
+      await processRun(
+        process.env.GITEDGE_NODE_BINARY || "node",
+        [file(runs.pre)],
+        actionEnvironment,
+        workspace,
+        id,
+        outputs,
+        state,
+      )
     const mainEnvironment = {
       ...actionEnvironment,
       ...Object.fromEntries(Object.entries(state).map(([key, value]) => [`STATE_${key}`, value])),
     }
-    await processRun(process.execPath, [file(runs.main)], mainEnvironment, workspace, id, outputs, state)
+    await processRun(
+      process.env.GITEDGE_NODE_BINARY || "node",
+      [file(runs.main)],
+      mainEnvironment,
+      workspace,
+      id,
+      outputs,
+      state,
+    )
   }
   async function runStep(step, ctx, rootId, generatedId, currentStatus, baseEnvironment = environment) {
     const id = step.id || generatedId
@@ -351,6 +367,7 @@ export async function execute(
       emit(`Skipped ${step.name || step.uses || id}`, displayId, "skipped")
       return result
     }
+    firstStepAt ??= Date.now()
     emit(`Run ${step.name || step.uses || id}`, displayId)
     try {
       const env = {
@@ -390,17 +407,9 @@ export async function execute(
         if (!cwd.startsWith(`${resolve(workspace)}/`) && cwd !== resolve(workspace))
           throw new Error("Working directory escapes workspace")
         await access(cwd)
-        let timeout
         const limit = Number(interpolate(step["timeout-minutes"], ctx, currentStatus))
-        if (limit > 0)
-          timeout = setTimeout(() => {
-            process.emit("SIGTERM")
-          }, limit * 60000)
-        try {
-          await processRun(command, args, env, cwd, displayId, result.outputs, {})
-        } finally {
-          clearTimeout(timeout)
-        }
+        const stepSignal = limit > 0 ? AbortSignal.any([signal, AbortSignal.timeout(limit * 60000)]) : signal
+        await processRun(command, args, env, cwd, displayId, result.outputs, {}, stepSignal)
       } else throw new Error("Step needs run or uses")
       result.outcome = "success"
       result.conclusion = "success"
@@ -429,7 +438,7 @@ export async function execute(
       emit("Post action cleanup", post.id)
       try {
         await processRun(
-          process.execPath,
+          process.env.GITEDGE_NODE_BINARY || "node",
           [post.file],
           {
             ...post.environment,
@@ -446,23 +455,15 @@ export async function execute(
         emit(error.message, post.id, "failure")
       }
     }
-    result = { status: stopping || status, outputs: evaluateMap(job.outputs, context, status), steps: context.steps }
+    result = {
+      startup_ms: firstStepAt && input.dispatched_at_ms ? firstStepAt - input.dispatched_at_ms : null,
+      status: stopping || status,
+      outputs: evaluateMap(job.outputs, context, status),
+      steps: context.steps,
+    }
     return result
   } finally {
-    process.removeListener("SIGTERM", abort)
-    process.removeListener("SIGINT", abort)
+    signal.removeEventListener("abort", abort)
     await storage.close()
   }
-}
-
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  let result
-  try {
-    result = await execute(JSON.parse(await readFile("/gitedge/input.json", "utf8")))
-  } catch (error) {
-    result = { status: "failure", error: error.message, steps: {}, outputs: {} }
-    console.log(JSON.stringify({ msg: error.stack }))
-  }
-  await writeFile("/gitedge/result.json", JSON.stringify(result), { mode: 0o600 })
-  if (result.status === "failure") process.exitCode = 1
 }

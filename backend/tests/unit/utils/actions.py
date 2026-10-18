@@ -29,6 +29,9 @@ class FakeActionsStore:
     async def list_runs(self, repo_id: UUID, limit: int = 100) -> list[WorkflowRun]:
         return [run for run in reversed(list(self.runs.values())) if run.repo_id == repo_id][:limit]
 
+    async def runs_for_commit(self, repo_id: UUID, sha: str) -> list[WorkflowRun]:
+        return [run for run in await self.list_runs(repo_id, limit=len(self.runs)) if run.sha == sha]
+
     async def active_runs(self, repo_id: UUID | None = None) -> list[tuple[UUID, UUID]]:
         return [
             (run.repo_id, run.id)
