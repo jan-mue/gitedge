@@ -29,6 +29,10 @@ class ActionsStore(Protocol):
         """List recent repository runs."""
         ...
 
+    async def runs_for_commit(self, repo_id: UUID, sha: str) -> list[WorkflowRun]:
+        """List runs for the exact PR head, newest first."""
+        ...
+
     async def active_runs(self, repo_id: UUID | None = None) -> list[tuple[UUID, UUID]]:
         """List runs needing collection, paired with their repository."""
         ...
@@ -73,6 +77,16 @@ class SQLActionsStore(SQLStore[WorkflowRun]):
                 .where(WorkflowRun.repo_id == repo_id)
                 .order_by(WorkflowRun.created_at.desc())
                 .limit(limit)
+            )
+        )
+
+    async def runs_for_commit(self, repo_id: UUID, sha: str) -> list[WorkflowRun]:
+        """Select commit checks without truncating to the recent history page."""
+        return list(
+            await self.db.scalars(
+                select(WorkflowRun)
+                .where(WorkflowRun.repo_id == repo_id, WorkflowRun.sha == sha)
+                .order_by(WorkflowRun.created_at.desc())
             )
         )
 

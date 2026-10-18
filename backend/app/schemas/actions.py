@@ -43,6 +43,7 @@ class ActionJob(GitEdgeBaseModel):
     completed_at: datetime | None = None
     timeout_seconds: int = 1200
     provisioning_ms: float | None = None
+    startup_ms: float | None = None
     outputs: dict[str, str] = Field(default_factory=dict)
     steps: list[ActionStep] = Field(default_factory=list)
     log: str = ""
@@ -65,6 +66,13 @@ class ActionRun(GitEdgeBaseModel):
     completed_at: datetime | None = None
     jobs: list[ActionJob]
     error: str | None = None
+
+
+class PullRequestChecks(GitEdgeBaseModel):
+    """Latest workflow results for the current pull request head commit."""
+
+    head_sha: str
+    runs: list[ActionRun]
 
 
 class WorkflowInfo(GitEdgeBaseModel):

@@ -707,6 +707,7 @@ def get_actions_service(
     repositories: RepositoryServiceDep,
     repository_store: RepositoryStoreDep,
     blobs: BlobStorageClientDep,
+    pull_requests: PullRequestStoreDep,
 ) -> ActionsService:
     """Configure injectable sandbox providers without starting a runner daemon."""
     providers: dict[str, AbstractSandboxClient] = {
@@ -725,6 +726,7 @@ def get_actions_service(
         max_timeout=settings.ACTIONS_MAX_TIMEOUT,
         max_parallel=settings.ACTIONS_MAX_PARALLEL,
         secrets=settings.ACTIONS_SECRETS,
+        pull_requests=pull_requests,
     )
 
 

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "extends": ["../../frontend/biome.json"],
+  "files": {
+    "includes": ["!**/dist", "!**/node_modules"]
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.test.mjs"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noTemplateCurlyInString": "off"
+          }
+        }
+      }
+    }
+  ]
+}

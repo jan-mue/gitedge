@@ -42,6 +42,10 @@ const config: KnipConfig = {
           ]
         : [],
     },
+    "packages/actions-runner": {
+      entry: ["launch.mjs", "artifact-compat.cjs", "**/*.test.mjs"],
+      project: ["*.mjs", "*.cjs"],
+    },
     "packages/react-email": {
       entry: ["emails/**/*.tsx!"],
       project: ["**/*.{js,jsx,ts,tsx}!"],

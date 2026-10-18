@@ -54,6 +54,10 @@ export type ActionJob = {
      */
     provisioning_ms?: number | null;
     /**
+     * Startup Ms
+     */
+    startup_ms?: number | null;
+    /**
      * Outputs
      */
     outputs?: {
@@ -1223,6 +1227,22 @@ export type ProfilePublic = {
      */
     display_name?: string | null;
     principal_type: PrincipalType;
+};
+
+/**
+ * PullRequestChecks
+ *
+ * Latest workflow results for the current pull request head commit.
+ */
+export type PullRequestChecks = {
+    /**
+     * Head Sha
+     */
+    head_sha: string;
+    /**
+     * Runs
+     */
+    runs: Array<ActionRun>;
 };
 
 /**
@@ -2538,6 +2558,44 @@ export type actionsListRunsResponses = {
 };
 
 export type actionsListRunsResponse = actionsListRunsResponses[keyof actionsListRunsResponses];
+
+export type actionsGetPullRequestChecksData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/checks';
+};
+
+export type actionsGetPullRequestChecksErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type actionsGetPullRequestChecksError = actionsGetPullRequestChecksErrors[keyof actionsGetPullRequestChecksErrors];
+
+export type actionsGetPullRequestChecksResponses = {
+    /**
+     * Successful Response
+     */
+    200: PullRequestChecks;
+};
+
+export type actionsGetPullRequestChecksResponse = actionsGetPullRequestChecksResponses[keyof actionsGetPullRequestChecksResponses];
 
 export type actionsDispatchWorkflowData = {
     body: WorkflowDispatch;

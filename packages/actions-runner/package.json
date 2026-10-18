@@ -1,0 +1,19 @@
+{
+  "name": "@gitedge/actions-runner",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build.mjs",
+    "test": "bun test",
+    "lint": "biome check --write --unsafe .",
+    "check": "biome check .",
+    "prepare:sandbox": "bun prepare.mjs"
+  },
+  "dependencies": {
+    "@actions/expressions": "0.3.61",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15"
+  }
+}

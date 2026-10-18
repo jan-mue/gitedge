@@ -28,7 +28,7 @@ def test_actions_dispatch_checkout_and_live_logs(page: Page, app_url: str, backe
     workflow = source / ".gitedge/workflow/browser.yaml"
     workflow.parent.mkdir(parents=True)
     workflow.write_text("""name: Browser CI
-on: workflow_dispatch
+on: [workflow_dispatch, pull_request]
 jobs:
   hello:
     runs-on: ubuntu-latest
@@ -61,6 +61,26 @@ jobs:
             page.reload()
             expect(page.get_by_role("heading", name="Browser CI", exact=True)).to_be_visible()
             page.screenshot(path="/tmp/gitedge-actions-browser.png", full_page=True)
+            run_git(source, ["config", "http.extraHeader", f"Authorization: {api.headers['Authorization']}"])
+            run_git(source, ["checkout", "-b", "feature"])
+            (source / "README.md").write_text("# Browser Actions\nPR checks use real sandbox results.\n")
+            run_git(source, ["add", "."])
+            run_git(source, ["commit", "-m", "Verify PR checks"])
+            run_git(source, ["push", "origin", "feature"])
+            pull = api.post(
+                "/api/v1/repositories/admin/browser-actions/pulls",
+                json={"title": "Verify sandbox checks", "head_branch": "feature", "base_branch": "main"},
+            )
+            pull.raise_for_status()
+            page.goto(f"{app_url}/admin/browser-actions/pulls/{pull.json()['number']}")
+            checks = page.get_by_role("region", name="Pull request checks")
+            expect(checks.get_by_text("All checks were successful")).to_be_visible(timeout=180000)
+            expect(checks.get_by_text("Browser CI / hello")).to_be_visible()
+            checks.get_by_role("link", name="Details").click()
+            expect(page.get_by_role("heading", name="Browser CI", exact=True)).to_be_visible()
+            page.get_by_role("button", name="success Say hello").click()
+            expect(page.get_by_text("Hello from the sandbox", exact=False).first).to_be_visible()
+
         finally:
             runs = api.get("/api/v1/repositories/admin/browser-actions/actions/runs")
             runs.raise_for_status()

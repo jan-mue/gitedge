@@ -59,3 +59,84 @@ async def test_provisioning_failures_finish_out_of_order_dependencies_without_pe
     assert all(job["status"] == "failure" and job["sandbox"] is None for job in run.jobs)
     assert provider.start.await_count == 2
     assert provider.delete.await_count == 2
+
+
+async def test_pr_checks_follow_the_head_and_ignore_other_prs_and_old_deliveries(
+    mocker: MockerFixture, fake_stores: FakeStores
+) -> None:
+    repository = mocker.Mock(id=uuid.uuid4(), owner_id=uuid.uuid4(), is_private=False)
+    repository_store = mocker.AsyncMock()
+    repository_store.get_by_owner_and_name.return_value = repository
+    repositories = mocker.AsyncMock()
+    repositories.action_revision.return_value = ("a" * 40, "refs/heads/feature")
+    pulls = mocker.AsyncMock()
+    pulls.get_by_number.return_value = mocker.Mock(head_branch="feature")
+    store = FakeActionsStore()
+    for sha, number, event_key in [
+        ("b" * 40, 1, "old-head"),
+        ("a" * 40, 1, "old-delivery"),
+        ("a" * 40, 2, "other-pr"),
+        ("a" * 40, 1, "latest"),
+    ]:
+        await store.add_run(
+            WorkflowRun(
+                id=uuid.uuid4(),
+                repo_id=repository.id,
+                workflow=".gitedge/workflow/ci.yaml",
+                name="CI",
+                definition="jobs: {}",
+                event={"pull_request": {"number": number}},
+                event_name="pull_request",
+                event_key=event_key,
+                actor="owner",
+                provider="docker",
+                sha=sha,
+                ref="refs/heads/feature",
+                status="success",
+                jobs=[],
+            )
+        )
+    service = ActionsService(
+        store,
+        repositories,
+        repository_store,
+        fake_stores.blob,
+        {},
+        provider="docker",
+        max_timeout=60,
+        max_parallel=1,
+        pull_requests=pulls,
+    )
+    checks = await service.pull_request_checks("owner", "repo", 1, None)
+    assert checks.head_sha == "a" * 40
+    assert len(checks.runs) == 1
+    assert store.runs[checks.runs[0].id].event_key == "latest"
+    repositories.action_revision.return_value = ("c" * 40, "refs/heads/feature")
+    assert (await service.pull_request_checks("owner", "repo", 1, None)).runs == []
+
+
+async def test_push_to_an_open_pr_triggers_synchronize(mocker: MockerFixture, fake_stores: FakeStores) -> None:
+    repository = mocker.Mock(id=uuid.uuid4(), owner_id=uuid.uuid4(), is_private=False)
+    user = mocker.Mock(id=repository.owner_id, is_superuser=False)
+    repository_store = mocker.AsyncMock()
+    repository_store.get_by_owner_and_name.return_value = repository
+    repositories = mocker.AsyncMock()
+    repositories.compare.return_value = mocker.Mock(files=[])
+    pulls = mocker.AsyncMock()
+    pulls.list_by_repo.return_value = [mocker.Mock(number=7, head_branch="feature", base_branch="main")]
+    service = ActionsService(
+        FakeActionsStore(),
+        repositories,
+        repository_store,
+        fake_stores.blob,
+        {},
+        provider="docker",
+        max_timeout=60,
+        max_parallel=1,
+        pull_requests=pulls,
+    )
+    trigger = mocker.patch.object(service, "trigger", new_callable=mocker.AsyncMock)
+    on_pull = mocker.patch.object(service, "on_pull_request", new_callable=mocker.AsyncMock)
+    await service.on_push("owner", "repo", {"refs/heads/feature": "a" * 40}, {"refs/heads/feature": "b" * 40}, user)
+    trigger.assert_awaited_once()
+    on_pull.assert_awaited_once_with("owner", "repo", 7, "feature", "main", user, action="synchronize")

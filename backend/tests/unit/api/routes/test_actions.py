@@ -39,6 +39,7 @@ async def test_private_actions_history_requires_owner(
     client.post(f"{settings.API_V1_STR}/repositories/", json={"owner": OWNER, "name": "actions-repo"})
     repository = await fake_stores.repository.get_by_owner_and_name(OWNER, "actions-repo")
     repository.is_private = True
+    assert client.get(f"{PATH}/pulls/1/checks").status_code == 404
     assert client.get(f"{PATH}/actions/runs").status_code == 404
     assert client.get(f"{PATH}/actions/runs", headers=normal_user_token_headers).status_code == 404
     assert client.get(f"{PATH}/actions/runs", headers=superuser_token_headers).status_code == 200

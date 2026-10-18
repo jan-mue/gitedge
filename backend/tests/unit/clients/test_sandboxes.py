@@ -42,7 +42,13 @@ async def test_vercel_uses_prepared_snapshot_and_never_receives_source(mocker: M
     assert kwargs["persistent"] is False
     assert kwargs["image"] is None
     assert kwargs["source"].snapshot_id == "snapshot-123"
-    assert set(kwargs["env"]) == {"GITEDGE_JOB", "GITEDGE_RESTORE_URL"}
+    assert set(kwargs["env"]) == {
+        "GITEDGE_JOB",
+        "GITEDGE_RESTORE_URL",
+        "NODE_OPTIONS",
+        "RUNNER_TOOL_CACHE",
+        "AGENT_TOOLSDIRECTORY",
+    }
     box.fs.write_bytes.assert_not_called()
 
 

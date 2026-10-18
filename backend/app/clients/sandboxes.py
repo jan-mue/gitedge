@@ -210,7 +210,13 @@ class VercelSandboxClient(AbstractSandboxClient):
                 persistent=False,
                 execution_time_limit=lifetime + CLEANUP_GRACE_SECONDS,
                 resources=SandboxResources(vcpus=2),
-                env={"GITEDGE_JOB": files["input.json"].decode(), "GITEDGE_RESTORE_URL": config.get("restore_url", "")},
+                env={
+                    "GITEDGE_JOB": files["input.json"].decode(),
+                    "GITEDGE_RESTORE_URL": config.get("restore_url", ""),
+                    "NODE_OPTIONS": "--require=/opt/gitedge/artifact-compat.cjs",
+                    "RUNNER_TOOL_CACHE": "/opt/hostedtoolcache",
+                    "AGENT_TOOLSDIRECTORY": "/opt/hostedtoolcache",
+                },
             )
             await box.create_process(
                 "/usr/local/bin/gitedge-launch", kill_after=lifetime + CLEANUP_GRACE_SECONDS, sudo=True

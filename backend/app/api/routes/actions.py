@@ -5,7 +5,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, Response
 
 from app.api.dependencies import ActionsServiceDep, CurrentUser, OptionalUser
-from app.schemas.actions import ActionRun, WorkflowDispatch, WorkflowInfo
+from app.schemas.actions import ActionRun, PullRequestChecks, WorkflowDispatch, WorkflowInfo
 from app.services.actions.workflows import WorkflowError
 
 router = APIRouter(tags=["actions"])
@@ -30,6 +30,15 @@ async def list_runs(
     """Read recent runs and refresh their sandbox state."""
     response.headers["Cache-Control"] = "private, no-store"
     return await service.list_runs(owner, repo, user)
+
+
+@router.get("/repositories/{owner}/{repo}/pulls/{number}/checks")
+async def get_pull_request_checks(
+    owner: str, repo: str, number: int, service: ActionsServiceDep, user: OptionalUser, response: Response
+) -> PullRequestChecks:
+    """Return real checks for this pull request's current head commit."""
+    response.headers["Cache-Control"] = "private, no-store"
+    return await service.pull_request_checks(owner, repo, number, user)
 
 
 @router.post("/repositories/{owner}/{repo}/actions/dispatch", status_code=201)

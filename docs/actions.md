@@ -3,10 +3,12 @@
 GitEdge discovers GitHub/Gitea-style YAML in `.gitedge/workflow/*.yml` and
 `*.yaml`. Every expanded matrix job gets a separate disposable sandbox. There is
 no registered runner, polling worker, shared job container, or mounted Docker
-socket. A one-shot JavaScript executor uses the official `@actions/expressions`
+socket. The Bun workspace project `@gitedge/actions-runner` in
+`packages/actions-runner` is a one-shot Bun executor, linted by Biome. It uses the official `@actions/expressions`
 library for workflow expressions, with JavaScript/composite actions, step
 conditions, outputs, environment files, and action pre/post hooks. It contains
-no Go executor. Both provider adapters inherit `AbstractSandboxClient` in
+no Go executor or Bash launcher. JavaScript actions run in the prepared Node
+runtime; workflow `run:` steps use their declared shell. Both provider adapters inherit `AbstractSandboxClient` in
 `backend/app/clients/sandboxes.py`.
 
 ## Startup and image preparation
@@ -20,19 +22,19 @@ GitEdge at the recorded commit; source archives are not uploaded during startup.
 Build the base image and the optional Python CodeQL image:
 
 ```sh
-docker build -t gitedge-actions:local backend/actions-runtime
-docker build -f backend/actions-runtime/Dockerfile.codeql \
-  -t gitedge-actions:integration backend/actions-runtime
+docker build -f packages/actions-runner/Dockerfile -t gitedge-actions:local .
+docker build -f packages/actions-runner/Dockerfile.codeql \
+  -t gitedge-actions:integration .
 ```
 
 For a managed environment with a proxy CA, add
 `--secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt`. The build mounts the
-CA for networked commands and does not copy it into the image. Runtime CA trust
+CA for networked commands; a managed build can install it into image trust. Runtime CA trust
 can be supplied using `ACTIONS_DOCKER_CA_BUNDLE`; `ACTIONS_DOCKER_ENV` accepts
 explicit proxy configuration. Local integration fixtures configure access from
 containers to their ephemeral backend using `host.docker.internal`.
 
-The base image prepares the action references in `actions-runtime/actions.txt`,
+The base image prepares the action references in `packages/actions-runner/actions.txt`,
 Python 3.14.0, Node 24, uv 0.13.0, and Bun 1.4.3. Change the preparation recipe
 for other tool versions. Pin deployed Docker images by digest so action code and
 tools remain consistent across every job in a run. The inventory unit test ensures
@@ -40,7 +42,9 @@ that every action in this repository's GitHub workflows also has a prepared refe
 integration example.
 
 **The requested sub-100 ms cold provisioning target is not met.**
-`ActionJob.provisioning_ms` measures the provider call, including creation and
+`ActionJob.startup_ms` records dispatch through the first step, including fresh
+provisioning and state restoration, using controller/sandbox UTC timestamps.
+It assumes synchronized clocks. `ActionJob.provisioning_ms` measures the provider call, including creation and
 starting the command, separately from source checkout. Time to the first step
 also includes state restoration after provisioning. The managed test host uses
 Docker's `vfs` driver, which copies complete filesystems and takes seconds to start the prepared image. A separate experiment
@@ -77,7 +81,11 @@ contract is also unit tested without making billable calls.
 Authenticated pushes by a repository owner or administrator deliver push events
 after Git refs are persisted. For Git clients, pass the normal GitEdge bearer
 token through `http.extraHeader`. Anonymous Git traffic does not authorize
-workflow execution. Owner-authored pull requests deliver an `opened` event.
+workflow execution. Owner-authored pull requests deliver an `opened` event;
+subsequent authenticated pushes to their head branches deliver `synchronize`.
+PR checks query the current head commit and cannot reuse an older commit's success.
+Their job links open the shared design-system log viewer. Both components have
+Storybook stories for loading, pending, passing, failing, and empty states.
 There are no cron jobs, scheduled reconciliation endpoints, or periodic workers.
 `on.schedule` syntax is accepted but automatic scheduled delivery is unavailable.
 Manual dispatch requires `on: workflow_dispatch` and repository-owner or
@@ -133,8 +141,8 @@ external account. Other uses must supply an appropriate external integration.
 ## Verification
 
 ```sh
-npm ci --prefix backend/actions-runtime
-npm test --prefix backend/actions-runtime
+bun install --frozen-lockfile
+bun run --filter @gitedge/actions-runner test
 uv run --directory backend pytest tests/unit
 ACTIONS_IMAGE=gitedge-actions:integration \
   uv run --directory backend pytest tests/integration/actions

@@ -6,6 +6,8 @@ from typing import Any
 
 from app.schemas.actions import ActionJob, ActionStatus
 
+MAX_STARTUP_MS = 24 * 60 * 60 * 1000
+
 
 def redact(value: str, secrets: dict[str, str]) -> str:
     """Keep configured secrets out of persisted errors and logs, including SDK failures."""
@@ -59,6 +61,9 @@ def finish_job(job: ActionJob, files: dict[str, bytes], secrets: dict[str, str])
         status = ActionStatus(result["status"])
         if status not in {ActionStatus.SUCCESS, ActionStatus.FAILURE, ActionStatus.SKIPPED, ActionStatus.CANCELLED}:
             raise ValueError("Nonterminal job result")
+        startup = result.get("startup_ms")
+        if isinstance(startup, (int, float)) and 0 <= startup < MAX_STARTUP_MS:
+            job.startup_ms = round(startup, 2)
         job.status = status
         job.error = redact(str(result["error"]), secrets) if result.get("error") else None
         if files["exit-code"].strip() == b"124":
