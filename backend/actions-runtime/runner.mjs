@@ -249,18 +249,19 @@ export async function execute(
     if (uses.startsWith("./")) {
       const path = resolve(workspace, uses)
       if (!path.startsWith(`${resolve(workspace)}/`)) throw new Error("Local action escapes workspace")
-      return path
+      return { directory: path, repositoryRoot: workspace }
     }
     const match = uses.match(/^([\w.-]+\/[\w.-]+)(\/[\w./-]+)?@([^\s]+)$/)
     if (!match || match[2]?.split("/").includes("..")) throw new Error(`Unsupported action: ${uses}`)
     const manifest = JSON.parse(await readFile(join(actionRoot, "manifest.json"), "utf8"))
     const tree = manifest[`${match[1]}@${match[3]}`]
     if (!tree) throw new Error(`Action ${uses} is not prepared in this image; rebuild the image before dispatch`)
-    return join(actionRoot, tree, match[2] || "")
+    const repositoryRoot = join(actionRoot, tree)
+    return { directory: join(repositoryRoot, match[2] || ""), repositoryRoot }
   }
   async function runAction(step, ctx, env, id, outputs) {
     const uses = string(interpolate(step.uses, ctx, status))
-    const directory = await actionDirectory(uses)
+    const { directory, repositoryRoot } = await actionDirectory(uses)
     let metadata
     for (const filename of ["action.yml", "action.yaml"]) {
       try {
@@ -313,7 +314,8 @@ export async function execute(
     const state = {}
     const file = (path) => {
       const absolute = resolve(directory, path)
-      if (!absolute.startsWith(`${resolve(directory)}/`)) throw new Error("Action entrypoint escapes action directory")
+      if (!absolute.startsWith(`${resolve(repositoryRoot)}/`))
+        throw new Error("Action entrypoint escapes its repository")
       return absolute
     }
     if (runs.post)
