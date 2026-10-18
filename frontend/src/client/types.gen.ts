@@ -1202,10 +1202,6 @@ export type PrivateUserCreate = {
      * Display Name
      */
     display_name: string;
-    /**
-     * Is Verified
-     */
-    is_verified?: boolean;
 };
 
 /**

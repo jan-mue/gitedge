@@ -11,7 +11,7 @@ from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.comments import Comment
 from app.exceptions import IssueNotFoundError, PullRequestNotFoundError
 from app.schemas.comments import CommentCreate, CommentPublic, CommentsPublic, CommentUpdate
-from app.services.markdown import render_markdown
+from app.utils.markdown import render_markdown
 
 if TYPE_CHECKING:
     import uuid

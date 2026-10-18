@@ -10,7 +10,7 @@ from __future__ import annotations
 import contextlib
 import sys
 from io import BytesIO
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, override
 
 from dulwich.config import Config, ConfigFile
 from dulwich.errors import NoIndexPresent
@@ -20,8 +20,8 @@ from dulwich.rebase import MemoryRebaseStateManager
 from dulwich.refs import HEADREF, LOCAL_BRANCH_PREFIX, Ref
 from dulwich.repo import BaseRepo
 
-from app.services.blob_object_store import BlobObjectStore
-from app.services.redis_refs import RedisRefsContainer
+from app.clients.git.blob_object_store import BlobObjectStore
+from app.clients.git.redis_refs import RedisRefsContainer
 
 if TYPE_CHECKING:
     from dulwich.index import Index
@@ -67,25 +67,6 @@ class BlobRepository(BaseRepo):
         self._config = ConfigFile()
         self._description: bytes | None = None
         self.filter_context = None
-        self._reflog: list[Any] = []
-
-    @property
-    def blob_object_store(self) -> BlobObjectStore:
-        """Get the BlobStorage object store.
-
-        Returns:
-            The BlobObjectStore instance.
-        """
-        return self._object_store
-
-    @property
-    def redis_refs(self) -> RedisRefsContainer:
-        """Get the Redis refs container.
-
-        Returns:
-            The RedisRefsContainer instance.
-        """
-        return self._refs
 
     def load_from_storage(
         self,
@@ -129,8 +110,8 @@ class BlobRepository(BaseRepo):
         return {
             "pack_uploads": self._object_store.get_pending_uploads(),
             "pack_deletes": self._object_store.get_pending_deletes(),
-            "ref_puts": self._refs.get_pending_puts(),
-            "ref_deletes": self._refs.get_pending_deletes(),
+            "ref_puts": {bytes(ref): value for ref, value in self._refs.get_pending_puts().items()},
+            "ref_deletes": {bytes(ref) for ref in self._refs.get_pending_deletes()},
         }
 
     def clear_pending_changes(self) -> None:
@@ -141,6 +122,7 @@ class BlobRepository(BaseRepo):
         self._object_store.clear_pending()
         self._refs.clear_pending()
 
+    @override
     def set_description(self, description: bytes) -> None:
         """Set the description for this repository.
 
@@ -149,6 +131,7 @@ class BlobRepository(BaseRepo):
         """
         self._description = description
 
+    @override
     def get_description(self) -> bytes | None:
         """Get the description of this repository.
 
@@ -157,6 +140,7 @@ class BlobRepository(BaseRepo):
         """
         return self._description
 
+    @override
     def _determine_file_mode(self) -> bool:
         """Probe the file-system to determine whether permissions can be trusted.
 
@@ -165,6 +149,7 @@ class BlobRepository(BaseRepo):
         """
         return sys.platform != "win32"
 
+    @override
     def _determine_symlinks(self) -> bool:
         """Probe the file-system to determine whether symlinks can be created.
 
@@ -173,6 +158,7 @@ class BlobRepository(BaseRepo):
         """
         return sys.platform != "win32"
 
+    @override
     def _put_named_file(self, path: str, contents: bytes) -> None:
         """Write a file to the control dir with the given name and contents.
 
@@ -182,6 +168,7 @@ class BlobRepository(BaseRepo):
         """
         self._named_files[path] = contents
 
+    @override
     def _del_named_file(self, path: str) -> None:
         """Delete a named file.
 
@@ -191,16 +178,17 @@ class BlobRepository(BaseRepo):
         with contextlib.suppress(KeyError):
             del self._named_files[path]
 
+    @override
     def get_named_file(
         self,
         path: str | bytes,
-        basedir: str | None = None,  # noqa: ARG002
+        _basedir: str | None = None,
     ) -> BytesIO | None:
         """Get a file from the control dir with a specific name.
 
         Args:
             path: The path to the file, relative to the control dir.
-            basedir: Optional base directory for the path (unused in BlobStorage impl).
+            _basedir: Optional base directory for the path (unused in BlobStorage impl).
 
         Returns:
             An open file object, or None if the file does not exist.
@@ -211,7 +199,8 @@ class BlobRepository(BaseRepo):
             return None
         return BytesIO(contents)
 
-    def open_index(self, config: Config | None = None) -> Index:  # noqa: ARG002
+    @override
+    def open_index(self, config: Config | None = None) -> Index:
         """Fail to open index for this repo, since it is bare.
 
         Args:
@@ -222,6 +211,7 @@ class BlobRepository(BaseRepo):
         """
         raise NoIndexPresent
 
+    @override
     def get_config(self) -> ConfigFile:
         """Retrieve the config object.
 
@@ -230,6 +220,7 @@ class BlobRepository(BaseRepo):
         """
         return self._config
 
+    @override
     def get_rebase_state_manager(self) -> RebaseStateManager:
         """Get the appropriate rebase state manager for this repository.
 
@@ -238,6 +229,7 @@ class BlobRepository(BaseRepo):
         """
         return MemoryRebaseStateManager(self)
 
+    @override
     def get_blob_normalizer(self, config: Config | None = None) -> FilterBlobNormalizer:
         """Return a BlobNormalizer object for check-in/checkout operations.
 
@@ -251,12 +243,10 @@ class BlobRepository(BaseRepo):
             config = self.get_config_stack()
         git_attributes = self.get_gitattributes()
 
-        # Lazily create FilterContext if needed
         if self.filter_context is None:
             filter_registry = FilterRegistry(config, self)
             self.filter_context = FilterContext(filter_registry)
         else:
-            # Refresh the context with current config to handle config changes
             self.filter_context.refresh_config(config)
 
         return FilterBlobNormalizer(config, git_attributes, filter_context=self.filter_context)

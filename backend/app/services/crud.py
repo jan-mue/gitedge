@@ -44,10 +44,10 @@ class CrudService:
         Returns:
             True if the name is taken by another user or an organization.
         """
-        existing = await self.user_store.get_by_name(name)
+        existing = await self.user_store.find_by_name(name)
         if existing is not None and existing.id != exclude_user_id:
             return True
-        return await self.organization_store.get_by_name(name) is not None
+        return await self.organization_store.find_by_name(name) is not None
 
     async def create_user(self, user_create: UserCreate) -> UserPublic:
         """Create a new user.
@@ -87,21 +87,6 @@ class CrudService:
         local_part = email.split("@", maxsplit=1)[0]
         slug = re.sub(r"[^a-zA-Z0-9]+", "-", local_part).strip("-").lower()
         return slug or uuid.uuid4().hex[:12]
-
-    async def get_user_by_id(self, user_id: uuid.UUID) -> UserPublic:
-        """Get a user by their ID.
-
-        Args:
-            user_id: The user's UUID.
-
-        Returns:
-            The user's public data.
-
-        Raises:
-            NotFoundError: If the user does not exist.
-        """
-        user = await self.user_store.get(user_id)
-        return UserPublic.model_validate(user)
 
     async def get_user_by_email(self, email: str) -> UserPublic | None:
         """Get a user by their email.

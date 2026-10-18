@@ -137,6 +137,48 @@ per_rule_ignores.DEP002 = [
 ]
 known_first_party = [ "app" ]
 
+[tool.vulture]
+paths = [ "app" ]
+exclude = [ "app/schemas/" ]
+ignore_names = [
+    # Group: used dynamically by dulwich
+    "add_thin_pack",
+    "bare",
+    "commit_timezone",
+    # Group: serialized to JSON payloads
+    "conflicting_files",
+    "diff_line_count",
+    "log",
+    "mergeable",
+    "no_newline",
+    "provisioning_ms",
+    "reason",
+    "series",
+    # Group: LogLevel enum values
+    "CRITICAL",
+    "DEBUG",
+    "ERROR",
+    "NOTSET",
+    # Group: reserved Pydantic/SQLAlchemy members
+    "metadata",
+    "model_config",
+    # Group: RepositoryChanges TypedDict keys
+    "pack_deletes",
+    "pack_uploads",
+    "ref_deletes",
+    "ref_puts",
+]
+ignore_decorators = [
+    "@app.*",
+    "@comment_router.*",
+    "@computed_field",
+    "@field_validator",
+    "@model_validator",
+    "@override",
+    "@router.*",
+    "@user_router.*",
+]
+
 [tool.pyproject-fmt]
 column_width = 120
 indent = 4

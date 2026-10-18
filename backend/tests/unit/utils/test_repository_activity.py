@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime, timedelta
 
 from app.schemas.repository_activity import GitActivityCommit, GitActivityHistory
-from app.services.repository_activity import aggregate_contributors, aggregate_recent_commits
+from app.utils.repository_activity import aggregate_contributors, aggregate_recent_commits
 
 
 def test_contributors_group_email_fill_empty_weeks_and_exclude_merges() -> None:

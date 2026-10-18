@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 import botocore.exceptions  # type: ignore[import-untyped]
 from aiobotocore.session import get_session  # type: ignore[import-untyped]
@@ -85,6 +85,7 @@ class VercelBlobClient(BlobStorageClient):
         self._client = AsyncBlobClient(token=token) if token else AsyncBlobClient()
         self._access = access
 
+    @override
     async def put(self, key: str, data: bytes) -> None:
         """Store binary data in Vercel Blob Storage."""
         await self._client.put(
@@ -93,9 +94,11 @@ class VercelBlobClient(BlobStorageClient):
             access=self._access,
             content_type="application/octet-stream",
             add_random_suffix=False,
+            cache_control_max_age=31536000,
             overwrite=True,
         )
 
+    @override
     async def get(self, key: str, *, use_cache: bool = True) -> bytes | None:
         """Retrieve binary data from Vercel Blob Storage."""
         try:
@@ -107,10 +110,12 @@ class VercelBlobClient(BlobStorageClient):
             return None
         return result.content  # type: ignore[no-any-return]
 
+    @override
     async def get_current(self, key: str) -> bytes | None:
         """Bypass the CDN after mutable workflow state or caches are overwritten."""
         return await self.get(key, use_cache=False)
 
+    @override
     async def delete(self, key: str) -> None:
         """Delete data from Vercel Blob Storage."""
         try:
@@ -118,10 +123,19 @@ class VercelBlobClient(BlobStorageClient):
         except BlobNotFoundError:
             logger.debug("Blob not found while deleting: %s", key)
 
+    @override
     async def list_keys(self, prefix: str) -> list[str]:
         """List all keys with the given prefix in Vercel Blob Storage."""
-        listing = await self._client.list_objects(prefix=prefix)
-        return [blob.pathname for blob in listing.blobs]
+        keys: list[str] = []
+        cursor = None
+        while True:
+            listing = await self._client.list_objects(prefix=prefix, cursor=cursor, limit=1000)
+            keys.extend(blob.pathname for blob in listing.blobs)
+            if not listing.has_more:
+                return keys
+            if not listing.cursor:
+                raise ValueError("Blob listing has more results but no pagination cursor")
+            cursor = listing.cursor
 
 
 class S3Client(BlobStorageClient):
@@ -173,6 +187,7 @@ class S3Client(BlobStorageClient):
                     raise
             self._bucket_created = True
 
+    @override
     async def put(self, key: str, data: bytes) -> None:
         """Store binary data in S3."""
         await self._ensure_bucket()
@@ -184,6 +199,7 @@ class S3Client(BlobStorageClient):
                 ContentType="application/octet-stream",
             )
 
+    @override
     async def get(self, key: str) -> bytes | None:
         """Retrieve binary data from S3."""
         await self._ensure_bucket()
@@ -198,12 +214,14 @@ class S3Client(BlobStorageClient):
                 return None
             raise
 
+    @override
     async def delete(self, key: str) -> None:
         """Delete data from S3."""
         await self._ensure_bucket()
         async with self._create_client() as client:
             await client.delete_object(Bucket=self._bucket, Key=key)
 
+    @override
     async def list_keys(self, prefix: str) -> list[str]:
         """List all keys with the given prefix in S3."""
         await self._ensure_bucket()

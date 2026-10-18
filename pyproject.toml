@@ -4,3 +4,6 @@ workspace.members = [ "backend" ]
 
 [tool.codespell]
 skip = "uv.lock,bun.lock"
+
+[tool.ty]
+rules.missing-override-decorator = "error"

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import tempfile
 from io import BytesIO
-from typing import TYPE_CHECKING, Any, BinaryIO
+from typing import TYPE_CHECKING, Any, BinaryIO, override
 
 from dulwich.object_format import DEFAULT_OBJECT_FORMAT, ObjectFormat
 from dulwich.object_store import BucketBasedObjectStore, _bound_read_callables
@@ -48,43 +48,14 @@ class BlobPackData(PackData):
         if object_format is None:
             object_format = DEFAULT_OBJECT_FORMAT
 
-        self._data_bytes = data
         self._file = BytesIO(data)
 
         super().__init__(filename="", file=self._file, object_format=object_format)
 
+    @override
     def close(self) -> None:
         """Close the pack data."""
         self._file.close()
-
-
-class BlobPack(Pack):
-    """A Git pack object backed by BlobStorage storage.
-
-    This pack implementation uses pre-fetched data from BlobStorage rather than
-    reading from local files.
-    """
-
-    def __init__(self, basename: str, pack_data: bytes, index_data: bytes, object_format: ObjectFormat) -> None:
-        """Initialize BlobPack with pre-fetched pack and index data.
-
-        Args:
-            basename: Base name for the pack (without extension).
-            pack_data: The raw pack file data.
-            index_data: The raw index file data.
-            object_format: Object format for this pack.
-        """
-        super().__init__(basename, object_format=object_format)
-
-        self._pack_data_bytes = pack_data
-        self._index_data_bytes = index_data
-
-        idx_file = BytesIO(index_data)
-        self._idx = load_pack_index_file(basename + ".idx", idx_file, object_format)
-        self._idx_load = None
-
-        self._data_load = lambda: BlobPackData(pack_data, object_format)
-        self._data = None
 
 
 class BlobObjectStore(BucketBasedObjectStore):
@@ -116,6 +87,7 @@ class BlobObjectStore(BucketBasedObjectStore):
         self._pending_uploads: dict[str, PackContents] = {}
         self._pending_deletes: set[str] = set()
 
+    @override
     def _iter_pack_names(self) -> Iterator[str]:
         """Iterate over pack file names.
 
@@ -124,6 +96,7 @@ class BlobObjectStore(BucketBasedObjectStore):
         """
         return iter(self._loaded_packs.keys())
 
+    @override
     def _get_pack(self, name: str) -> Pack:
         """Get a Pack object by name.
 
@@ -140,8 +113,10 @@ class BlobObjectStore(BucketBasedObjectStore):
             raise KeyError(f"Pack {name} not found")
 
         contents = self._loaded_packs[name]
-        return BlobPack(name, contents.pack, contents.index, self.object_format)
+        index = load_pack_index_file(name + ".idx", BytesIO(contents.index), self.object_format)
+        return Pack.from_objects(BlobPackData(contents.pack, self.object_format), index)
 
+    @override
     def _upload_pack(self, basename: str, pack_file: BinaryIO, index_file: BinaryIO) -> None:
         """Queue a pack for upload to BlobStorage.
 
@@ -159,9 +134,9 @@ class BlobObjectStore(BucketBasedObjectStore):
         contents = PackContents(pack=pack_data, index=index_data)
         self._pending_uploads[basename] = contents
 
-        # Also add to loaded packs so it's immediately available
         self._loaded_packs[basename] = contents
 
+    @override
     def _remove_pack_by_name(self, name: str) -> None:
         """Queue a pack for deletion from BlobStorage.
 
@@ -208,13 +183,13 @@ class BlobObjectStore(BucketBasedObjectStore):
         self._pending_uploads.clear()
         self._pending_deletes.clear()
 
+    @override
     def add_pack(self) -> tuple[BinaryIO, Callable[[], Any], Callable[[], None]]:
         """Add a new pack to this object store.
 
         Returns:
             Tuple of (file_object, commit_function, abort_function).
         """
-        # Use the parent implementation which calls _upload_pack
         return super().add_pack()
 
     def add_thin_pack(

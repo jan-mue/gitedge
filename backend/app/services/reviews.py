@@ -21,11 +21,12 @@ from app.schemas.reviews import (
     ReviewSubmit,
     ReviewWorkspacePublic,
 )
-from app.services.diffs import comment_context
-from app.services.markdown import render_markdown
+from app.utils.diffs import comment_context
+from app.utils.markdown import render_markdown
 
 if TYPE_CHECKING:
     import uuid
+    from typing import Literal
 
     from app.clients.pull_requests import PullRequestStore
     from app.clients.repositories import RepositoryStore
@@ -35,6 +36,9 @@ if TYPE_CHECKING:
     from app.entities.users import User
     from app.schemas.repositories import CommitFileChange, CompareResult, DiffHunk
     from app.services.repositories import RepositoryService
+
+
+_DIFF_SIDES: dict[DiffSide, Literal["old", "new"]] = {DiffSide.NEW: "new", DiffSide.OLD: "old"}
 
 
 class ReviewService:
@@ -138,7 +142,7 @@ class ReviewService:
         return ReviewCommentPublic(
             id=link.comment.id,
             path=link.path or "",
-            side="old" if link.side == DiffSide.OLD else "new",
+            side=_DIFF_SIDES.get(link.side, "new"),
             line=link.line or 1,
             body=link.comment.body,
             body_html=render_markdown(link.comment.body),
@@ -278,7 +282,11 @@ class ReviewService:
         comparison = await self._comparison(owner, repo, pull)
         self._validate_revision(body, comparison)
         files = await self._validate_comments(owner, repo, body.comments, comparison)
-        if body.state != ReviewState.APPROVED and not body.body.strip() and not body.comments:
+        if (
+            body.state in (ReviewState.COMMENT, ReviewState.CHANGES_REQUESTED)
+            and not body.body.strip()
+            and not body.comments
+        ):
             raise HTTPException(status_code=422, detail="Add an overall comment or a line comment before submitting")
         review = PullRequestReview(
             pull_request_id=pull.id,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, cast, override
 
 from sqlalchemy import Table, delete, func, or_, select, update
 from sqlalchemy.orm import selectinload
@@ -87,6 +87,7 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
             options.append(selectinload(Repository.releases).selectinload(Release.author))
         return tuple(options)
 
+    @override
     async def delete(self, obj: Repository) -> None:
         """Delete dependent records in one transaction and detach surviving forks."""
         try:
@@ -111,6 +112,7 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
             await self.db.rollback()
             raise
 
+    @override
     async def find(self, primary_key: uuid.UUID) -> Repository | None:
         """Find a repository by primary key with its owner loaded.
 
@@ -121,11 +123,13 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
             select(Repository).options(*self._owner_options()).where(Repository.id == primary_key)
         )
 
+    @override
     async def get_all(self, offset: int = 0, limit: int = 100) -> list[Repository]:
         """Get all repositories with their owners loaded."""
         result = await self.db.scalars(select(Repository).options(*self._owner_options()).offset(offset).limit(limit))
         return list(result.all())
 
+    @override
     async def find_by_owner_and_name(
         self, owner: str, name: str, *, include_releases: bool = False
     ) -> Repository | None:
@@ -138,6 +142,7 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         )
         return await self.db.scalar(stmt)
 
+    @override
     async def get_by_owner_and_name(self, owner: str, name: str, *, include_releases: bool = False) -> Repository:
         """Get a repository by its owner name and name, raising when absent."""
         repository = await self.find_by_owner_and_name(owner, name, include_releases=include_releases)
@@ -145,6 +150,7 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
             raise RepositoryNotFoundError
         return repository
 
+    @override
     async def resolve_owner(self, owner: str) -> tuple[uuid.UUID, PrincipalType]:
         """Resolve an owner name to its principal id and type, raising when absent."""
         principal = await self.db.scalar(select(Principal).where(Principal.lower_name == owner.lower()))
@@ -152,6 +158,7 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
             raise OwnerNotFoundError
         return principal.id, principal.principal_type
 
+    @override
     async def get_by_owner(self, owner_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
         """Get all repositories owned by a principal."""
         result = await self.db.scalars(
@@ -163,6 +170,7 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         )
         return list(result.all())
 
+    @override
     async def list_by_fork_of(self, fork_of_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
         """Get all repositories forked from a given repository."""
         result = await self.db.scalars(
@@ -175,6 +183,7 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         )
         return list(result.all())
 
+    @override
     async def count_by_fork_of(self, fork_of_id: uuid.UUID) -> int:
         """Count repositories forked from a given repository."""
         result = await self.db.execute(
@@ -182,6 +191,7 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         )
         return result.scalar_one()
 
+    @override
     async def count_forks_by_repos(self, repo_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
         """Count forks for multiple repositories, keyed by repository id."""
         if not repo_ids:
