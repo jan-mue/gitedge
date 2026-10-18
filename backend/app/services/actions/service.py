@@ -10,10 +10,9 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import jwt
-from croniter import CroniterBadCronError, croniter
 from fastapi import HTTPException
 
-from app.clients.sandboxes.base import SandboxError
+from app.clients.sandboxes import SandboxError
 from app.config import settings
 from app.entities.actions import WorkflowRun
 from app.entities.principals import PrincipalType
@@ -35,19 +34,18 @@ if TYPE_CHECKING:
     from app.clients.actions import ActionsStore
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.repositories import RepositoryStore
-    from app.clients.sandboxes.base import SandboxClient
+    from app.clients.sandboxes import AbstractSandboxClient
     from app.entities.repositories import Repository as RepositoryEntity
     from app.entities.users import User
     from app.services.repositories import RepositoryService
 
 logger = logging.getLogger(__name__)
-CRON_FIELD_COUNT = 5
 
 TERMINAL = {ActionStatus.SUCCESS, ActionStatus.FAILURE, ActionStatus.SKIPPED, ActionStatus.CANCELLED}
 
 
 class ActionsService:
-    """Reconcile persisted runs during short API or cron invocations."""
+    """Advance persisted runs from workflow events and sandbox completion callbacks."""
 
     def __init__(
         self,
@@ -55,7 +53,7 @@ class ActionsService:
         repositories: RepositoryService,
         repository_store: RepositoryStore,
         blobs: BlobStorageClient,
-        providers: dict[str, SandboxClient],
+        providers: dict[str, AbstractSandboxClient],
         *,
         provider: str,
         max_timeout: int,
@@ -198,7 +196,7 @@ class ActionsService:
         if workflow and not run_ids:
             raise HTTPException(status_code=422, detail="Workflow not found or event is not enabled")
         for run_id in run_ids:
-            await self.reconcile(repository.id, run_id)
+            await self.advance_run(repository.id, run_id)
         return [self.public(run) for run in await self.store.list_runs(repository.id) if run.id in run_ids]
 
     @staticmethod
@@ -220,12 +218,12 @@ class ActionsService:
         )
 
     async def list_runs(self, owner: str, name: str, user: User | None) -> list[ActionRun]:
-        """Authorize private history, then reconcile active jobs and return recent runs."""
+        """Authorize private history, then advance_run active jobs and return recent runs."""
         repository = await self._repository(owner, name, user)
         runs = await self.store.list_runs(repository.id)
         for run in runs:
             if run.status not in TERMINAL:
-                await self.reconcile(repository.id, run.id)
+                await self.advance_run(repository.id, run.id)
         return [self.public(run) for run in await self.store.list_runs(repository.id)]
 
     async def cancel(self, owner: str, name: str, run_id: uuid.UUID, user: User) -> None:
@@ -249,13 +247,7 @@ class ActionsService:
             run.completed_at = datetime.now(UTC)
             run.jobs = [job.model_dump(mode="json") for job in jobs]
 
-    async def reconcile_all(self) -> None:
-        """Advance active runs even when nobody has the Actions UI open."""
-        await self.scheduled_workflows()
-        for repo_id, run_id in await self.store.active_runs():
-            await self.reconcile(repo_id, run_id)
-
-    async def reconcile(self, repo_id: uuid.UUID, run_id: uuid.UUID) -> bool:  # noqa: PLR0912
+    async def advance_run(self, repo_id: uuid.UUID, run_id: uuid.UUID) -> bool:  # noqa: PLR0912
         """Atomically collect finished jobs, clean resources, and schedule ready variants."""
         async with self.store.locked(repo_id, run_id) as run:
             if run is None:
@@ -293,20 +285,24 @@ class ActionsService:
                         await provider.delete(job.sandbox)
                         job.sandbox = None
                 except SandboxError as exc:
-                    logger.exception("Sandbox reconciliation failed for job %s", job.id)
+                    logger.exception("Sandbox state collection failed for job %s", job.id)
                     job.status = ActionStatus.FAILURE
                     job.completed_at = datetime.now(UTC)
                     job.error = redact(str(exc), secret_values)
                     # Keep the handle so cleanup is retried on the next invocation.
-            for job in jobs:
-                if (
-                    job.status != ActionStatus.QUEUED
-                    or sum(other.status == ActionStatus.RUNNING for other in jobs) >= self.max_parallel
-                ):
-                    continue
-                parents = [other for other in jobs if other.key in job.needs]
-                if any(parent.status not in TERMINAL for parent in parents):
-                    continue
+            queued = [job for job in jobs if job.status == ActionStatus.QUEUED]
+            while queued and sum(other.status == ActionStatus.RUNNING for other in jobs) < self.max_parallel:
+                job = next(
+                    (
+                        candidate
+                        for candidate in queued
+                        if all(parent.status in TERMINAL for parent in jobs if parent.key in candidate.needs)
+                    ),
+                    None,
+                )
+                if job is None:
+                    break
+                queued.remove(job)
                 job.started_at = datetime.now(UTC)
                 job.sandbox = f"gitedge-job-{job.id}"
                 job.status = ActionStatus.RUNNING
@@ -320,6 +316,11 @@ class ActionsService:
                     job.status = ActionStatus.FAILURE
                     job.completed_at = datetime.now(UTC)
                     job.error = redact(str(exc), secret_values)
+                    try:
+                        await provider.delete(job.sandbox)
+                        job.sandbox = None
+                    except SandboxError:
+                        logger.exception("Sandbox cleanup failed after launch for job %s", job.id)
             run.jobs = [job.model_dump(mode="json") for job in jobs]
             if all(job.status in TERMINAL and job.sandbox is None for job in jobs):
                 run.status = (
@@ -357,7 +358,7 @@ class ActionsService:
             "GITHUB_REPOSITORY": repository,
             "GITHUB_REPOSITORY_OWNER": repository.split("/")[0],
             "GITHUB_REF": run.ref,
-            "SHA_REF": run.sha,
+            "GITHUB_SHA": run.sha,
         }
         read_token = jwt.encode(
             {
@@ -403,13 +404,11 @@ class ActionsService:
 
     async def on_push(self, owner: str, name: str, before: dict[str, str], after: dict[str, str], user: User) -> None:
         """Accept CI events only from an authenticated repository owner or administrator."""
-        repository = await self._repository(owner, name, user, write=True)
+        await self._repository(owner, name, user, write=True)
         for ref, sha in after.items():
             old = before.get(ref)
             if old == sha:
                 continue
-            if ref == f"refs/heads/{repository.default_branch}":
-                await self.blobs.put(f"actions/{repository.id}/trusted-head", sha.encode())
             if old:
                 comparison = await self.repositories.compare(owner, name, old, sha, include_diff=False)
                 paths = [file.path for file in comparison.files]
@@ -466,7 +465,7 @@ class ActionsService:
     async def complete(self, token: str) -> None:
         """Advance dependent jobs immediately after a sandbox writes its exit marker."""
         repo_id, run_id = self._token_ids(token, "actions:complete")
-        if not await self.reconcile(repo_id, run_id):
+        if not await self.advance_run(repo_id, run_id):
             raise HTTPException(status_code=503, detail="Workflow is busy; retry completion callback")
 
     async def restore_state(self, token: str) -> bytes:
@@ -484,51 +483,6 @@ class ActionsService:
         with tarfile.open(fileobj=empty, mode="w:gz"):
             pass
         return empty.getvalue()
-
-    async def scheduled_workflows(self) -> None:
-        """Deliver matching UTC cron events once per workflow and minute."""
-        now = datetime.now(UTC).replace(second=0, microsecond=0)
-        offset = 0
-        page_size = 100
-        while True:
-            repositories = await self.repository_store.get_all(offset=offset, limit=page_size)
-            for repository in repositories:
-                owner, name = repository.owner.name, repository.name
-                index = await self.repositories.get_file_index(owner, name, "HEAD")
-                if not index.paths:
-                    continue
-                sha, ref = await self.repositories.action_revision(owner, name, "HEAD")
-                trusted = await self.blobs.get_current(f"actions/{repository.id}/trusted-head")
-                if trusted != sha.encode():
-                    continue
-                index = await self.repositories.get_file_index(owner, name, sha)
-                for path in index.paths:
-                    if not path.startswith(WORKFLOW_PREFIX) or not path.endswith((".yml", ".yaml")):
-                        continue
-                    raw = (await self.repositories.get_raw(owner, name, sha, path)).decode()
-                    try:
-                        definition = parse_workflow(raw)
-                        triggers = definition.get("on", {})
-                        schedules = triggers.get("schedule", []) if isinstance(triggers, dict) else []
-                        for entry in schedules:
-                            cron = entry["cron"]
-                            if len(cron.split()) != CRON_FIELD_COUNT or not croniter.match(cron, now):
-                                continue
-                            await self.trigger(
-                                owner,
-                                name,
-                                sha,
-                                "schedule",
-                                {"schedule": cron, "ref": ref},
-                                actor="gitedge-actions",
-                                workflow=path,
-                                event_key=f"schedule:{cron}:{now.isoformat()}",
-                            )
-                    except (WorkflowError, CroniterBadCronError, KeyError, TypeError) as exc:
-                        logger.warning("Invalid scheduled workflow %s: %s", path, exc)
-            if len(repositories) < page_size:
-                break
-            offset += page_size
 
     async def cancel_repository(self, owner: str, name: str, user: User) -> uuid.UUID:
         """Stop active sandboxes before their repository rows can be deleted."""

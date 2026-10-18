@@ -16,7 +16,7 @@ def redact(value: str, secrets: dict[str, str]) -> str:
 
 
 def update_logs(job: ActionJob, data: bytes, secrets: dict[str, str]) -> None:
-    """Group native act JSON records by step while preserving plain text safely."""
+    """Group executor JSON records by step while preserving plain text safely."""
     lines: list[str] = []
     for step in job.steps:
         step.log = ""

@@ -39,8 +39,7 @@ from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClie
 from app.clients.releases import ReleaseStore, SQLReleaseStore
 from app.clients.repositories import RepositoryStore, SQLRepositoryStore
 from app.clients.reviews import ReviewStore, SQLReviewStore
-from app.clients.sandboxes.docker import DockerSandboxClient
-from app.clients.sandboxes.vercel import VercelSandboxClient
+from app.clients.sandboxes import DockerSandboxClient, VercelSandboxClient
 from app.clients.stars import SQLStarStore, StarStore
 from app.clients.users import SQLUserStore, UserStore
 from app.clients.watchers import SQLWatcherStore, WatcherStore
@@ -68,7 +67,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import async_sessionmaker
 
-    from app.clients.sandboxes.base import SandboxClient
+    from app.clients.sandboxes import AbstractSandboxClient
 
 logger = logging.getLogger(__name__)
 
@@ -735,7 +734,7 @@ def get_actions_service(
     blobs: BlobStorageClientDep,
 ) -> ActionsService:
     """Configure injectable sandbox providers without starting a runner daemon."""
-    providers: dict[str, SandboxClient] = {
+    providers: dict[str, AbstractSandboxClient] = {
         "docker": DockerSandboxClient(
             settings.ACTIONS_IMAGE, ca_bundle=settings.ACTIONS_DOCKER_CA_BUNDLE, environment=settings.ACTIONS_DOCKER_ENV
         ),

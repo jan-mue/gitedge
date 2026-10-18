@@ -9,11 +9,5 @@
     "deploymentEnabled": {
       "renovate/*": false
     }
-  },
-  "crons": [
-    {
-      "path": "/api/v1/actions/reconcile",
-      "schedule": "* * * * *"
-    }
-  ]
+  }
 }
