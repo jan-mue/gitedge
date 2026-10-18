@@ -152,6 +152,27 @@ for the tiny job was 45–46 ms (previous runner: 50–51 ms). These samples exc
 VM provisioning and show similar startup with less finalization overhead.
 [Raw rewrite measurements](benchmarks/actions-rewrite-bootstrap-2026-10-18.json).
 
+The rewritten runner also passed all three workflows and all five PR jobs in
+[the current preview PR](https://gitedge-frontend-git-feat-gitedge-actions-jan-mue-projects.vercel.app/actions-rewrite-1792344886754/gitedge-actions/pulls/1),
+using main `742d82a` and feature `b532559`. Its PR checks API returned all three
+successful workflows for the exact head commit. A second toolchain dispatch
+passed in a new sandbox and restored its Vercel Runtime Cache entry.
+
+| Rewritten job | Provider provisioning (ms) | Dispatch to process spawn (ms) |
+| --- | ---: | ---: |
+| Toolchains | 3682.23 | 3715.78 |
+| CodeQL | 3071.86 | 3152.50 |
+| Bun runner (alpha) | 2965.88 | 3079.56 |
+| Bun runner (beta) | 3268.73 | 3314.15 |
+| Dependency outputs | 2727.73 | 2769.97 |
+| Toolchains, cache hit | 1192.86 | 1218.33 |
+
+Across these six fresh Vercel jobs, startup was **1218.33–3715.78 ms**, median
+**3116.03 ms**. The provider call dominates this path; the requested 100 ms cold
+startup remains unmet. The deployed prepared snapshot is
+`snap_cXZlEbSpcCXa7DLQLxO63kE3RLzI` (seven-day expiry).
+[Raw preview checks and timings](benchmarks/actions-rewrite-vercel-2026-10-18.json).
+
 Reproduce the process benchmark inside a disposable prepared sandbox:
 
 ```sh
