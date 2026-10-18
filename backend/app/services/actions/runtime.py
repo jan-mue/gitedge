@@ -61,7 +61,10 @@ def finish_job(job: ActionJob, files: dict[str, bytes], secrets: dict[str, str])
             raise ValueError("Nonterminal job result")
         job.status = status
         job.error = redact(str(result["error"]), secrets) if result.get("error") else None
-        if files["exit-code"].strip() != b"0" and status == ActionStatus.SUCCESS:
+        if files["exit-code"].strip() == b"124":
+            job.status = ActionStatus.FAILURE
+            job.error = "Job exceeded timeout-minutes"
+        elif files["exit-code"].strip() != b"0" and status != ActionStatus.FAILURE:
             job.status = ActionStatus.FAILURE
             job.error = "Job bootstrap exited unsuccessfully"
         job.outputs = {str(key): redact(str(value), secrets) for key, value in (result.get("outputs") or {}).items()}

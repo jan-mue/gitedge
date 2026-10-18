@@ -36,3 +36,10 @@ def test_executor_result_without_bootstrap_completion_fails() -> None:
     finish_job(job, {"result.json": b'{"status":"success"}'}, {})
     assert job.status == ActionStatus.FAILURE
     assert job.error == "Sandbox exited without a completion marker"
+
+
+def test_timeout_is_failure_even_when_the_executor_reports_signal_cancellation() -> None:
+    job = ActionJob(id="variant", key="test", name="test")
+    finish_job(job, {"result.json": b'{"status":"cancelled"}', "exit-code": b"124"}, {})
+    assert job.status == ActionStatus.FAILURE
+    assert job.error == "Job exceeded timeout-minutes"

@@ -88,7 +88,9 @@ masked logs, outputs, and lifecycle state in PostgreSQL. Short API invocations
 advance state under a row lock with `SKIP LOCKED`. Short-lived signed completion
 callbacks advance dependent jobs without waiting for UI polling. Reading run
 history refreshes live logs and can retry collection or cleanup. Stable sandbox
-names make repeated event handling idempotent. Provider timeouts bound execution;
+names make repeated event handling idempotent. A job-local timeout leaves the
+launcher alive to archive state and send completion, including on failure. A
+30-second provider cleanup grace bounds finalization. Provider timeouts bound execution;
 cleanup failures retain handles for retry. There is no background recovery sweep.
 Cache/artifact state is stored in the
 configured blob backend, with individual job archives retained under each run.
