@@ -127,6 +127,7 @@ export async function execute(
   const environment = { ...process.env }
   // Never expose the launch descriptor or controller callback capabilities to actions.
   delete environment.GITEDGE_JOB
+  delete environment.GITEDGE_JOB_ENCODING
   delete environment.GITEDGE_RESTORE_URL
   const evaluateMap = (values, ctx, status) =>
     Object.fromEntries(
