@@ -34,25 +34,24 @@ containers to their ephemeral backend using `host.docker.internal`.
 
 The base image prepares the action references in `actions-runtime/actions.txt`,
 Python 3.14.0, Node 24, uv 0.13.0, and Bun 1.4.3. Change the preparation recipe
-for other tool versions. The inventory unit test ensures that every action in
-this repository's GitHub workflows also has a prepared reference and a real
+for other tool versions. Pin deployed Docker images by digest so action code and
+tools remain consistent across every job in a run. The inventory unit test ensures
+that every action in this repository's GitHub workflows also has a prepared reference and a real
 integration example.
 
 **The requested sub-100 ms cold provisioning target is not met.**
 `ActionJob.provisioning_ms` measures the provider call, including creation and
 starting the command, separately from source checkout. Time to the first step
-also includes state restoration after provisioning. The managed test host's
-Docker `vfs` driver measured 23–31 seconds with the initial prepared image and
-7.3 seconds for the browser workflow with the lean image, because it copies
-complete filesystems. These measurements do not represent a
-Vercel snapshot or an overlay-backed production Docker host. No warm-pool lease
-is reported as cold provisioning, and the implementation does not claim a
-100 ms guarantee that its underlying provider has not demonstrated.
-The final browser run measured 28.5 seconds. A separate 20-container experiment
-using a tiny static executable also missed 100 ms in every sample: minimum
+also includes state restoration after provisioning. The managed test host uses
+Docker's `vfs` driver, which copies complete filesystems and takes seconds to start the prepared image. A separate experiment
+with 20 tiny fresh containers also missed 100 ms in every sample: minimum
 101.82 ms, median 112.78 ms, maximum 297.61 ms, including creation and start.
-Validate the startup requirement on a suitable Docker host or a live Vercel
-snapshot before promoting this implementation beyond draft status.
+On a GitHub-hosted Docker machine, one fresh prepared-image provisioning call
+measured 90.52 ms. That measurement excludes job bootstrap and restoration before
+the first step, so it does not establish the full startup target.
+No warm-pool lease is reported as fresh provisioning. Validate time to the first
+step on the target Docker host and a live Vercel snapshot before promoting this
+implementation beyond draft status.
 
 ## Configuration
 
