@@ -403,11 +403,13 @@ class ActionsService:
 
     async def on_push(self, owner: str, name: str, before: dict[str, str], after: dict[str, str], user: User) -> None:
         """Accept CI events only from an authenticated repository owner or administrator."""
-        await self._repository(owner, name, user, write=True)
+        repository = await self._repository(owner, name, user, write=True)
         for ref, sha in after.items():
             old = before.get(ref)
             if old == sha:
                 continue
+            if ref == f"refs/heads/{repository.default_branch}":
+                await self.blobs.put(f"actions/{repository.id}/trusted-head", sha.encode())
             if old:
                 comparison = await self.repositories.compare(owner, name, old, sha, include_diff=False)
                 paths = [file.path for file in comparison.files]
@@ -493,10 +495,17 @@ class ActionsService:
             for repository in repositories:
                 owner, name = repository.owner.name, repository.name
                 index = await self.repositories.get_file_index(owner, name, "HEAD")
+                if not index.paths:
+                    continue
+                sha, ref = await self.repositories.action_revision(owner, name, "HEAD")
+                trusted = await self.blobs.get_current(f"actions/{repository.id}/trusted-head")
+                if trusted != sha.encode():
+                    continue
+                index = await self.repositories.get_file_index(owner, name, sha)
                 for path in index.paths:
                     if not path.startswith(WORKFLOW_PREFIX) or not path.endswith((".yml", ".yaml")):
                         continue
-                    raw = (await self.repositories.get_raw(owner, name, "HEAD", path)).decode()
+                    raw = (await self.repositories.get_raw(owner, name, sha, path)).decode()
                     try:
                         definition = parse_workflow(raw)
                         triggers = definition.get("on", {})
@@ -508,9 +517,9 @@ class ActionsService:
                             await self.trigger(
                                 owner,
                                 name,
-                                "HEAD",
+                                sha,
                                 "schedule",
-                                {"schedule": cron},
+                                {"schedule": cron, "ref": ref},
                                 actor="gitedge-actions",
                                 workflow=path,
                                 event_key=f"schedule:{cron}:{now.isoformat()}",

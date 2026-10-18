@@ -79,6 +79,9 @@ after Git refs are persisted. For Git clients, pass the normal GitEdge bearer
 token through `http.extraHeader`. Anonymous Git traffic does not authorize
 workflow execution. Owner-authored pull requests deliver an `opened` event. UTC cron schedules are
 delivered by the scheduled endpoint, with one run per matching minute.
+Schedules require a default-branch revision recorded by an authenticated owner
+or administrator push. Anonymous ref changes do not authorize scheduled CI;
+the scheduler pins the trusted commit before reading or executing its workflows.
 Manual dispatch requires `on: workflow_dispatch` and repository-owner or
 administrator authorization. Private run history requires the same access.
 
