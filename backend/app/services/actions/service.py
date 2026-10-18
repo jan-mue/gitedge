@@ -317,19 +317,8 @@ class ActionsService:
                     job.completed_at = datetime.now(UTC)
                     job.error = redact(str(exc), secret_values)
                     # Keep the handle so cleanup is retried on the next invocation.
-            queued = [job for job in jobs if job.status == ActionStatus.QUEUED]
-            while queued and sum(other.status == ActionStatus.RUNNING for other in jobs) < self.max_parallel:
-                job = next(
-                    (
-                        candidate
-                        for candidate in queued
-                        if all(parent.status in TERMINAL for parent in jobs if parent.key in candidate.needs)
-                    ),
-                    None,
-                )
-                if job is None:
-                    break
-                queued.remove(job)
+
+            async def start_job(job: ActionJob) -> None:
                 job.started_at = datetime.now(UTC)
                 job.sandbox = f"gitedge-job-{job.id}"
                 job.status = ActionStatus.RUNNING
@@ -348,6 +337,20 @@ class ActionsService:
                         job.sandbox = None
                     except SandboxError:
                         logger.exception("Sandbox cleanup failed after launch for job %s", job.id)
+
+            while True:
+                available = self.max_parallel - sum(job.status == ActionStatus.RUNNING for job in jobs)
+                ready = [
+                    job
+                    for job in jobs
+                    if job.status == ActionStatus.QUEUED
+                    and all(parent.status in TERMINAL for parent in jobs if parent.key in job.needs)
+                ][:available]
+                if available <= 0 or not ready:
+                    break
+                # Provision independent jobs concurrently, while retaining the run's
+                # database lock and the configured limit. Failures can unblock dependents.
+                await asyncio.gather(*(start_job(job) for job in ready))
             run.jobs = [job.model_dump(mode="json") for job in jobs]
             if all(job.status in TERMINAL and job.sandbox is None for job in jobs):
                 run.status = (

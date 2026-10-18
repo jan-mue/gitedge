@@ -5,7 +5,6 @@ import { appendFileSync } from "node:fs"
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { setTimeout as delay } from "node:timers/promises"
-import { fileURLToPath } from "node:url"
 import { inflateSync } from "node:zlib"
 import { execute } from "./runner.ts"
 import type { JobInput, JobResult, LogEntry } from "./types.ts"
@@ -45,9 +44,10 @@ export async function launch(
   await mkdir(join(state, "artifacts"), { recursive: true })
   const log = (entry: LogEntry) =>
     appendFileSync(join(root, "log.jsonl"), `${JSON.stringify(entry)}\n`, { mode: 0o600 })
-  try {
+  const restoreState = async () => {
     if (restoreUrl) {
-      const response = await fetch(restoreUrl, { signal: jobSignal })
+      const restoreSignal = AbortSignal.any([jobSignal, AbortSignal.timeout(15000)])
+      const response = await fetch(restoreUrl, { signal: restoreSignal })
       if (!response.ok) throw new Error(`State restore failed: HTTP ${response.status}`)
       const chunks: Uint8Array[] = []
       if (!response.body) throw new Error("Missing state response body")
@@ -59,9 +59,11 @@ export async function launch(
       }
       const path = join(root, "restore.tar.gz")
       await writeFile(path, Buffer.concat(chunks), { mode: 0o600 })
-      await archive(["--no-same-owner", "-xzf", path, "-C", state], jobSignal)
+      await archive(["--no-same-owner", "-xzf", path, "-C", state], restoreSignal)
     }
-    result = await execute(input, { root, actionRoot, signal: jobSignal, log })
+  }
+  try {
+    result = await execute(input, { root, actionRoot, signal: jobSignal, log, restoreState })
     code = ["success", "skipped"].includes(result.status) ? 0 : 1
   } catch (cause) {
     const error = cause as Error
@@ -106,8 +108,9 @@ export async function launch(
   return { code, result }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+async function main() {
   process.umask(0o077)
+  const root = process.env.GITEDGE_JOB_ROOT || "/gitedge"
   const encoded = process.env.GITEDGE_JOB
   const descriptor = encoded
     ? process.env.GITEDGE_JOB_ENCODING === "deflate"
@@ -120,9 +123,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   delete process.env.GITEDGE_JOB
   delete process.env.GITEDGE_JOB_ENCODING
   delete process.env.GITEDGE_RESTORE_URL
+  delete process.env.GITEDGE_JOB_ROOT
   const controller = new AbortController()
   process.once("SIGTERM", () => controller.abort())
   process.once("SIGINT", () => controller.abort())
-  const { code } = await launch(input, { restoreUrl, signal: controller.signal })
+  const { code } = await launch(input, { root, restoreUrl, signal: controller.signal })
   process.exitCode = code
 }
+
+if (import.meta.main) void main()

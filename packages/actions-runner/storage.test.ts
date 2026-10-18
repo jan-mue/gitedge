@@ -1,9 +1,44 @@
 import assert from "node:assert/strict"
-import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "vitest"
 import { startStorage } from "./storage.ts"
+
+test("concurrent cache requests share one lazy restore and unauthorized requests cannot trigger it", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gitedge-lazy-state-"))
+  let restores = 0
+  const storage = await startStorage(root, "123", "build", async () => {
+    restores++
+    await mkdir(join(root, "cache"), { recursive: true })
+    await writeFile(
+      join(root, "cache", "index.json"),
+      JSON.stringify([{ key: "restored", version: "v1", id: "entry", created: Date.now() }]),
+    )
+    await writeFile(join(root, "cache", "entry"), "portable cache")
+  })
+  const url = `${storage.environment.ACTIONS_CACHE_URL}_apis/artifactcache/cache?keys=restored&version=v1`
+  try {
+    assert.equal(restores, 0)
+    assert.equal((await fetch(url)).status, 403)
+    assert.equal(restores, 0)
+    const responses = await Promise.all(
+      Array.from({ length: 4 }, () =>
+        fetch(url, { headers: { authorization: `Bearer ${storage.environment.ACTIONS_RUNTIME_TOKEN}` } }),
+      ),
+    )
+    assert.equal(restores, 1)
+    for (const response of responses) {
+      assert.equal(response.status, 200)
+      const cache = await response.json()
+      assert.equal(cache.cacheKey, "restored")
+      assert.equal(await (await fetch(cache.archiveLocation)).text(), "portable cache")
+    }
+  } finally {
+    await storage.close()
+    await rm(root, { recursive: true, force: true })
+  }
+})
 
 test("cache protocol restores finalized entries across job servers and authenticates transfers", async () => {
   const root = await mkdtemp(join(tmpdir(), "gitedge-storage-"))

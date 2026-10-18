@@ -67,3 +67,26 @@ test("a job deadline kills its process and still exports a failed result", async
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test("shell-only jobs start and finish without requesting remote cache/artifact state", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gitedge-no-restore-"))
+  let requests = 0
+  const server = createServer((_request, response) => {
+    requests++
+    response.writeHead(503).end()
+  })
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
+  const address = server.address()
+  assert.ok(address && typeof address !== "string")
+  try {
+    const { code } = await launch(
+      { workflow: "jobs:\n  test:\n    steps:\n      - run: echo ready\n", job: "test", env: { GITHUB_RUN_ID: "1" } },
+      { root, restoreUrl: `http://127.0.0.1:${address.port}` },
+    )
+    assert.equal(code, 0)
+    assert.equal(requests, 0)
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+    await rm(root, { recursive: true, force: true })
+  }
+})

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import io
 import json
@@ -11,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from aiodocker.exceptions import DockerError
-from vercel.sandbox import SandboxStatus
+from vercel.sandbox import SandboxApiError, SandboxPathNotFoundError, SandboxStatus
 
 from app.clients.sandboxes import DockerSandboxClient, SandboxError, VercelSandboxClient
 
@@ -64,6 +65,55 @@ async def test_inspecting_expired_vercel_sandbox_never_resumes_it(mocker: Mocker
     assert result.running is False
     box.query_processes.assert_not_called()
     box.fs.read_bytes.assert_not_called()
+
+
+async def test_completed_vercel_job_reads_results_concurrently_without_process_polling(mocker: MockerFixture) -> None:
+    box = mocker.MagicMock(status=SandboxStatus.RUNNING)
+    readers = 0
+    all_reading = asyncio.Event()
+
+    async def read(path: str) -> bytes:
+        nonlocal readers
+        if path == "/gitedge/exit-code":
+            return b"0"
+        readers += 1
+        if readers == 4:
+            all_reading.set()
+        await asyncio.wait_for(all_reading.wait(), timeout=1)
+        return b"result"
+
+    box.fs.read_bytes = mocker.AsyncMock(side_effect=read)
+    mocker.patch("app.clients.sandboxes.get_sandbox", new=mocker.AsyncMock(return_value=box))
+    snapshot = await VercelSandboxClient("prepared").inspect("job")
+    assert not snapshot.running
+    assert snapshot.files["exit-code"] == b"0"
+    assert len(snapshot.files) == 5
+    box.query_processes.assert_not_called()
+
+
+@pytest.mark.parametrize("running", [True, False])
+async def test_vercel_live_reads_avoid_archives_and_recheck_marker_after_a_process_finishes(
+    mocker: MockerFixture, running: bool
+) -> None:
+    box = mocker.MagicMock(status=SandboxStatus.RUNNING)
+    box.query_processes = mocker.AsyncMock(return_value=[mocker.Mock(returncode=None if running else 0)])
+    paths: list[str] = []
+
+    async def read(path: str) -> bytes:
+        paths.append(path)
+        if paths == ["/gitedge/exit-code"]:
+            raise SandboxPathNotFoundError(path, operation="read", cwd=None, cause=mocker.Mock(spec=SandboxApiError))
+        return b"0" if path == "/gitedge/exit-code" else b"result"
+
+    box.fs.read_bytes = mocker.AsyncMock(side_effect=read)
+    mocker.patch("app.clients.sandboxes.get_sandbox", new=mocker.AsyncMock(return_value=box))
+    snapshot = await VercelSandboxClient("prepared").inspect("job")
+    assert snapshot.running == running
+    if running:
+        assert paths == ["/gitedge/exit-code", "/gitedge/log.jsonl"]
+    else:
+        assert paths.count("/gitedge/exit-code") == 2
+        assert snapshot.files["exit-code"] == b"0"
 
 
 async def test_docker_reads_complete_result_when_job_finishes_during_inspection(mocker: MockerFixture) -> None:
