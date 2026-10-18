@@ -274,13 +274,6 @@ class ActionsService:
                                 cache = snapshot.files.get("cache.tar.gz")
                                 if job.status == ActionStatus.SUCCESS and cache:
                                     await self.blobs.put(f"actions/{repo_id}/cache.tar.gz", cache)
-                        elif (
-                            job.started_at
-                            and (datetime.now(UTC) - job.started_at).total_seconds() > job.timeout_seconds
-                        ):
-                            job.status = ActionStatus.FAILURE
-                            job.completed_at = datetime.now(UTC)
-                            job.error = "Job exceeded timeout-minutes"
                     if job.status in TERMINAL:
                         await provider.delete(job.sandbox)
                         job.sandbox = None
@@ -380,6 +373,7 @@ class ActionsService:
         config = {
             "workflow": run.definition,
             "job": job.key,
+            "timeout_seconds": job.timeout_seconds,
             "matrix": job.matrix,
             "needs": needs,
             "event_name": run.event_name,

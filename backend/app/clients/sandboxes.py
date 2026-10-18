@@ -57,6 +57,7 @@ class AbstractSandboxClient(ABC):
 
 
 MAX_FILE_BYTES = 32 * 1024 * 1024
+CLEANUP_GRACE_SECONDS = 30
 # Read the marker first: if it exists, subsequent result/state reads are complete.
 READ_FILES = ("exit-code", "result.json", "log.jsonl", "state.tar.gz", "cache.tar.gz")
 
@@ -111,7 +112,13 @@ class DockerSandboxClient(AbstractSandboxClient):
                 try:
                     container = client.api.create_container(
                         self.image,
-                        ["timeout", "--signal=TERM", "--kill-after=10", str(lifetime), "/usr/local/bin/gitedge-launch"],
+                        [
+                            "timeout",
+                            "--signal=TERM",
+                            "--kill-after=10",
+                            str(lifetime + CLEANUP_GRACE_SECONDS),
+                            "/usr/local/bin/gitedge-launch",
+                        ],
                         name=name,
                         environment=env,
                         host_config=host_config,
@@ -201,11 +208,13 @@ class VercelSandboxClient(AbstractSandboxClient):
                 image=None,
                 source=SnapshotSource(snapshot_id=self.snapshot_id),
                 persistent=False,
-                execution_time_limit=lifetime,
+                execution_time_limit=lifetime + CLEANUP_GRACE_SECONDS,
                 resources=SandboxResources(vcpus=2),
                 env={"GITEDGE_JOB": files["input.json"].decode(), "GITEDGE_RESTORE_URL": config.get("restore_url", "")},
             )
-            await box.create_process("/usr/local/bin/gitedge-launch", kill_after=lifetime, sudo=True)
+            await box.create_process(
+                "/usr/local/bin/gitedge-launch", kill_after=lifetime + CLEANUP_GRACE_SECONDS, sudo=True
+            )
         except SandboxApiError as exc:
             if exc.status_code != HTTPStatus.CONFLICT:
                 raise SandboxError(f"Vercel sandbox start failed: {exc}") from exc
@@ -213,7 +222,9 @@ class VercelSandboxClient(AbstractSandboxClient):
             if box.status != SandboxStatus.RUNNING:
                 raise SandboxError("Job sandbox already stopped") from exc
             if not await box.query_processes():
-                await box.create_process("/usr/local/bin/gitedge-launch", kill_after=lifetime, sudo=True)
+                await box.create_process(
+                    "/usr/local/bin/gitedge-launch", kill_after=lifetime + CLEANUP_GRACE_SECONDS, sudo=True
+                )
         except VercelSandboxError as exc:
             raise SandboxError(f"Vercel sandbox start failed: {exc}") from exc
 

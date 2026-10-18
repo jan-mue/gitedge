@@ -153,6 +153,7 @@ ignore_names = [
     "provisioning_ms",
     "reason",
     "series",
+    "started_at",
     # Group: LogLevel enum values
     "CRITICAL",
     "DEBUG",

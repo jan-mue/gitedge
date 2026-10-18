@@ -174,3 +174,27 @@ def test_cancellation_destroys_running_jobs_and_skips_queued_jobs(actions_repo: 
     run = wait_for_run(client, path, run_id)
     assert run["status"] == "cancelled"
     assert all(job["status"] == "cancelled" and job["sandbox"] is None for job in run["jobs"])
+
+
+def test_timeout_completes_without_actions_api_polling(
+    actions_repo: tuple[httpx.Client, Path, str], infrastructure: dict[str, str]
+) -> None:
+    client, _, path = actions_repo
+    wait_for_run(client, path)
+    response = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/timeout.yaml"})
+    response.raise_for_status()
+    run_id = response.json()["id"]
+    db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
+    deadline = time.monotonic() + 60
+    with psycopg.connect(db_url, autocommit=True) as connection:
+        while time.monotonic() < deadline:
+            row = connection.execute("SELECT status FROM workflow_run WHERE id = %s", (run_id,)).fetchone()
+            if row and row[0] == "failure":
+                break
+            time.sleep(0.25)
+        else:
+            pytest.fail("Timed-out sandbox did not notify the controller without API polling")
+    run = wait_for_run(client, path, run_id)
+    assert run["status"] == "failure", json.dumps(run, indent=2)
+    assert run["jobs"][0]["error"] == "Job exceeded timeout-minutes"
+    assert run["jobs"][0]["sandbox"] is None
