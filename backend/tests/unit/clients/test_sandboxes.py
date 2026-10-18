@@ -6,33 +6,38 @@ import json
 import secrets
 import tarfile
 import zlib
+from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 import pytest
-from docker.errors import NotFound
+from aiodocker.exceptions import DockerError
 from vercel.sandbox import SandboxStatus
 
 from app.clients.sandboxes import DockerSandboxClient, SandboxError, VercelSandboxClient
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from pytest_mock import MockerFixture
 
 
 async def test_docker_provisioning_does_not_pull_images_or_upload_source(mocker: MockerFixture) -> None:
     sdk = mocker.MagicMock()
-    sdk.__enter__.return_value = sdk
-    sdk.api.create_container.return_value = {"Id": "job-container"}
-    mocker.patch("app.clients.sandboxes.docker.from_env", return_value=sdk)
-    provider = DockerSandboxClient("prepared@sha256:abc")
-    await provider.start("job", {"input.json": json.dumps({"job": "test"}).encode()}, 60)
+    sdk.__aenter__.return_value = sdk
+    container = mocker.Mock()
+    container.start = mocker.AsyncMock()
+    sdk.containers.create = mocker.AsyncMock(return_value=container)
+    mocker.patch("app.clients.sandboxes.Docker", return_value=sdk)
+    await DockerSandboxClient("prepared@sha256:abc").start("job", {"input.json": b'{"job":"test"}'}, 60)
     sdk.images.pull.assert_not_called()
-    sdk.api.put_archive.assert_not_called()
-    sdk.api.start.assert_called_once_with("job-container")
-    assert sdk.api.create_container.call_args.args[0] == "prepared@sha256:abc"
-    assert "source" not in sdk.api.create_container.call_args.kwargs["environment"]
-    config = sdk.api.create_host_config.call_args.kwargs
-    assert config["cap_drop"] == ["ALL"]
-    assert not config["binds"]
+    container.start.assert_awaited_once()
+    config = sdk.containers.create.call_args.kwargs["config"]
+    assert config["Image"] == "prepared@sha256:abc"
+    assert config["HostConfig"]["CapDrop"] == ["ALL"]
+    assert not config["HostConfig"]["Binds"]
+    assert not config["Volumes"]
+    assert not any(value.startswith("source=") for value in config["Env"])
+    sdk.__aexit__.assert_awaited_once()
 
 
 async def test_vercel_uses_prepared_snapshot_and_never_receives_source(mocker: MockerFixture) -> None:
@@ -63,30 +68,37 @@ async def test_inspecting_expired_vercel_sandbox_never_resumes_it(mocker: Mocker
 
 async def test_docker_reads_complete_result_when_job_finishes_during_inspection(mocker: MockerFixture) -> None:
     sdk = mocker.MagicMock()
-    container = sdk.containers.get.return_value
-    container.status = "running"
+    sdk.__aenter__.return_value = sdk
+    container = mocker.Mock(id="job")
+    container.show = mocker.AsyncMock(return_value={"State": {"Status": "running"}})
+    sdk.containers.get = mocker.AsyncMock(return_value=container)
     expected = {"log.jsonl": b"hello\n", "result.json": b'{"status":"success"}', "exit-code": b"0"}
     finished = False
 
-    def archive(path: str) -> tuple[list[bytes], dict[str, int]]:
+    @asynccontextmanager
+    async def archive(_path: str, *, method: str, params: dict[str, str]) -> AsyncGenerator[object]:
         nonlocal finished
-        name = path.rsplit("/", 1)[-1]
+        assert method == "GET"
+        name = params["path"].rsplit("/", 1)[-1]
         if name == "exit-code":
             finished = True
-        if name == "result.json" and not finished:
-            raise NotFound("Job has not finished yet")
-        if name not in expected:
-            raise NotFound("No such file")
-        data = expected[name]
+        if name not in expected or (name == "result.json" and not finished):
+            raise DockerError(404, "No such file")
         output = io.BytesIO()
         with tarfile.open(fileobj=output, mode="w") as tar:
             entry = tarfile.TarInfo(name)
-            entry.size = len(data)
-            tar.addfile(entry, io.BytesIO(data))
-        return [output.getvalue()], {"size": len(data)}
+            entry.size = len(expected[name])
+            tar.addfile(entry, io.BytesIO(expected[name]))
 
-    container.get_archive.side_effect = archive
-    mocker.patch("app.clients.sandboxes.docker.from_env", return_value=sdk)
+        async def chunks() -> AsyncGenerator[bytes]:
+            yield output.getvalue()
+
+        response = mocker.Mock()
+        response.content.iter_chunked.return_value = chunks()
+        yield response
+
+    mocker.patch.object(sdk, "_query", side_effect=archive)
+    mocker.patch("app.clients.sandboxes.Docker", return_value=sdk)
     snapshot = await DockerSandboxClient("prepared").inspect("job")
     assert snapshot.running
     assert snapshot.files == expected
@@ -109,3 +121,12 @@ async def test_vercel_uploads_only_the_descriptor_when_it_exceeds_the_environmen
     assert "GITEDGE_JOB" not in create.call_args.kwargs["env"]
     box.fs.write_bytes.assert_awaited_once_with("/gitedge/job.json", descriptor)
     box.create_process.assert_awaited_once()
+
+
+async def test_docker_missing_container_cleanup_is_idempotent(mocker: MockerFixture) -> None:
+    sdk = mocker.MagicMock()
+    sdk.__aenter__.return_value = sdk
+    sdk.containers.get = mocker.AsyncMock(side_effect=DockerError(404, "No such container"))
+    mocker.patch("app.clients.sandboxes.Docker", return_value=sdk)
+    await DockerSandboxClient("prepared").delete("absent")
+    sdk.__aexit__.assert_awaited_once()

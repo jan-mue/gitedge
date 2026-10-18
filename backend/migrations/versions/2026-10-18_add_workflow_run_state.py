@@ -1,8 +1,8 @@
-"""add workflow run state
+"""Add workflow run state
 
-Revision ID: ab72b7495533
-Revises: 751a5a8245bc
-Create Date: 2026-10-17 18:32:05.076706
+Revision ID: 084d6e4246d8
+Revises: c1e7092e3487
+Create Date: 2026-10-18 11:53:04.014749
 
 """
 
@@ -13,8 +13,8 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "ab72b7495533"
-down_revision: str | None = "751a5a8245bc"
+revision: str = "084d6e4246d8"
+down_revision: str | Sequence[str] | None = "c1e7092e3487"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

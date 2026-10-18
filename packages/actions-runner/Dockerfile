@@ -12,7 +12,7 @@ COPY --from=runner-build /usr/local/bin/bun /usr/local/bin/bun
 COPY --from=runner-build --chmod=755 /build/packages/actions-runner/dist/gitedge-launch /usr/local/bin/gitedge-launch
 COPY --from=runner-build /build/packages/actions-runner/dist/prepare.mjs /build/prepare.mjs
 COPY packages/actions-runner/actions.txt /build/
-COPY packages/actions-runner/artifact-compat.cjs /opt/gitedge/artifact-compat.cjs
+COPY --from=runner-build /build/packages/actions-runner/dist/artifact-compat.cjs /opt/gitedge/artifact-compat.cjs
 RUN --mount=type=secret,id=proxy_ca,target=/run/proxy-ca.pem \
     if [ -f /run/proxy-ca.pem ]; then export SSL_CERT_FILE=/run/proxy-ca.pem GIT_SSL_CAINFO=/run/proxy-ca.pem CURL_CA_BUNDLE=/run/proxy-ca.pem UV_NATIVE_TLS=true NODE_EXTRA_CA_CERTS=/run/proxy-ca.pem; cp /run/proxy-ca.pem /usr/local/share/ca-certificates/session-proxy.crt; fi; \
     apt-get update && apt-get install -y --no-install-recommends \

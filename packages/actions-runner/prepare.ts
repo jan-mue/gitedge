@@ -3,14 +3,14 @@ import { chmod, mkdir, readFile, realpath, rm, symlink, writeFile } from "node:f
 import { dirname, join } from "node:path"
 import { parse } from "yaml"
 
-async function run(command, ...args) {
+async function run(command: string, ...args: string[]) {
   const child = Bun.spawn([command, ...args], { stdout: "pipe", stderr: "inherit" })
   const [code, output] = await Promise.all([child.exited, new Response(child.stdout).text()])
   if (code !== 0) throw new Error(`${command} failed with exit code ${code}`)
   return output.trim()
 }
 
-async function download(url, path) {
+async function download(url: string, path: string) {
   const response = await fetch(url)
   if (!response.ok) throw new Error(`Download failed: ${response.status} ${url}`)
   await Bun.write(path, response)
@@ -22,9 +22,9 @@ async function prepareActions() {
   await mkdir(cache, { recursive: true })
   const queue = (await readFile(new URL("./actions.txt", import.meta.url), "utf8")).trim().split(/\r?\n/)
   const seen = new Set()
-  const manifest = {}
+  const manifest: Record<string, string> = {}
   while (queue.length) {
-    const action = queue.pop()
+    const action = queue.pop()!
     if (seen.has(action)) continue
     seen.add(action)
     if (!/^[\w.-]+\/[\w.-]+(?:\/[\w./-]+)?@[^\s]+$/.test(action)) throw new Error(`Invalid action: ${action}`)
@@ -88,7 +88,7 @@ async function prepareTools() {
   const node = join(tools, "node", nodeVersion)
   await mkdir(node, { recursive: true })
   await rm(join(node, "x64"), { force: true })
-  await symlink(dirname(dirname(await realpath(Bun.which("node")))), join(node, "x64"))
+  await symlink(dirname(dirname(await realpath(Bun.which("node") || "node"))), join(node, "x64"))
   await writeFile(join(node, "x64.complete"), "")
   const uv = join(tools, "uv/0.13.0/x86_64")
   await mkdir(uv, { recursive: true })

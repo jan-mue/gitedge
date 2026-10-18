@@ -3,12 +3,26 @@ import { spawn } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import { access, mkdir, readFile, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
+import type { Readable } from "node:stream"
 import { parse } from "yaml"
-import { condition, interpolate } from "./expressions.mjs"
-import { startStorage } from "./storage.mjs"
+import { condition, interpolate } from "./expressions.ts"
+import { startStorage } from "./storage.ts"
+import type {
+  ActionMetadata,
+  ExpressionContext,
+  ExpressionMap,
+  JobInput,
+  JobResult,
+  JobStatus,
+  LogEntry,
+  RunnerContext,
+  StepResult,
+  Workflow,
+  WorkflowStep,
+} from "./types.ts"
 
-export function commands(text) {
-  const result = {}
+export function commands(text: string): Record<string, string> {
+  const result: Record<string, string> = {}
   const lines = text.replace(/\r\n/g, "\n").split("\n")
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -27,20 +41,21 @@ export function commands(text) {
   }
   return result
 }
-const string = (value) => (value == null ? "" : typeof value === "object" ? JSON.stringify(value) : String(value))
-const decodeCommand = (value) =>
+const string = (value: unknown): string =>
+  value == null ? "" : typeof value === "object" ? JSON.stringify(value) : String(value)
+const decodeCommand = (value: string) =>
   value.replace(/%0D/gi, "\r").replace(/%0A/gi, "\n").replace(/%3A/gi, ":").replace(/%2C/gi, ",").replace(/%25/gi, "%")
 
 export async function execute(
-  input,
+  input: JobInput,
   {
     root = "/gitedge",
     actionRoot = "/opt/gitedge/actions",
     signal = new AbortController().signal,
     log = (entry) => process.stdout.write(`${JSON.stringify(entry)}\n`),
-  } = {},
-) {
-  const workflow = parse(input.workflow)
+  }: { root?: string; actionRoot?: string; signal?: AbortSignal; log?: (entry: LogEntry) => void } = {},
+): Promise<JobResult> {
+  const workflow = parse(input.workflow) as Workflow
   const job = workflow.jobs[input.job]
   if (!job) throw new Error(`Unknown job: ${input.job}`)
   const workspace = join(root, "source")
@@ -55,8 +70,8 @@ export async function execute(
     ...storage.environment,
     GITHUB_WORKSPACE: workspace,
     GITHUB_EVENT_PATH: eventPath,
-    GITHUB_EVENT_NAME: input.event_name,
-    GITHUB_ACTOR: input.actor,
+    GITHUB_EVENT_NAME: input.event_name || "",
+    GITHUB_ACTOR: input.actor || "",
     GITHUB_JOB: input.job,
     GITHUB_ACTIONS: "true",
     CI: "true",
@@ -96,7 +111,7 @@ export async function execute(
     action_repository: "",
     action_ref: "",
   }
-  const context = {
+  const context: RunnerContext = {
     github,
     runner: {
       os: "Linux",
@@ -116,40 +131,58 @@ export async function execute(
     strategy: {},
   }
   const masks = new Set(Object.values(input.secrets || {}).filter(Boolean))
-  const redact = (value) => {
+  const redact = (value: unknown) => {
     let message = String(value)
     for (const mask of [...masks].sort((a, b) => b.length - a.length)) message = message.split(mask).join("***")
     return message
   }
-  const emit = (message, id, result) =>
+  const emit = (message: string, id?: string | null, result?: JobStatus) =>
     log({ msg: redact(message), stepID: id ? [id] : [], ...(result ? { stepResult: result } : {}) })
-  const exportedEnvironment = {}
+  const exportedEnvironment: Record<string, string> = {}
   const environment = { ...process.env }
   // Never expose the launch descriptor or controller callback capabilities to actions.
   delete environment.GITEDGE_JOB
   delete environment.GITEDGE_JOB_ENCODING
   delete environment.GITEDGE_RESTORE_URL
-  const evaluateMap = (values, ctx, status) =>
+  const evaluateMap = (values: ExpressionMap | undefined, ctx: ExpressionContext, status: JobStatus) =>
     Object.fromEntries(
       Object.entries(values || {}).map(([key, value]) => [key, string(interpolate(value, ctx, status))]),
     )
-  let status = Object.values(context.needs).some((need) => need.result !== "success") ? "failure" : "success"
-  const posts = []
-  let firstStepAt
-  let stopping = null
+  let status: JobStatus = Object.values(input.needs || {}).some((need) => need.result !== "success")
+    ? "failure"
+    : "success"
+  const posts: {
+    file: string
+    environment: NodeJS.ProcessEnv
+    context: ExpressionContext
+    condition: unknown
+    id: string
+    state: Record<string, string>
+  }[] = []
+  let firstStepAt: number | undefined
+  let stopping: JobStatus | null = null
   const abort = () => {
     stopping = "cancelled"
   }
   signal.addEventListener("abort", abort, { once: true })
   if (signal.aborted) abort()
-  const setEnvironment = (values) => {
+  const setEnvironment = (values: Record<string, string>) => {
     for (const [key, value] of Object.entries(values)) {
       if (/^(GITHUB_|RUNNER_|ACTIONS_)/i.test(key) || key === "NODE_OPTIONS") continue
       environment[key] = value
       exportedEnvironment[key] = value
     }
   }
-  async function processRun(command, args, env, cwd, id, outputs, state, processSignal = signal) {
+  async function processRun(
+    command: string,
+    args: string[],
+    env: NodeJS.ProcessEnv,
+    cwd: string,
+    id: string,
+    outputs: Record<string, string>,
+    state: Record<string, string>,
+    processSignal = signal,
+  ) {
     const directory = join(temporary, randomUUID())
     await mkdir(directory)
     const paths = {
@@ -166,17 +199,21 @@ export async function execute(
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],
     })
-    let timer
+    let timer: ReturnType<typeof setTimeout> | undefined
     const onStop = () => {
+      if (!child.pid) return
+      const pid = child.pid
       try {
-        process.kill(-child.pid, "SIGTERM")
-      } catch (error) {
+        process.kill(-pid, "SIGTERM")
+      } catch (cause) {
+        const error = cause as NodeJS.ErrnoException
         if (error.code !== "ESRCH") throw error
       }
       timer = setTimeout(() => {
         try {
-          process.kill(-child.pid, "SIGKILL")
-        } catch (error) {
+          process.kill(-pid, "SIGKILL")
+        } catch (cause) {
+          const error = cause as NodeJS.ErrnoException
           if (error.code !== "ESRCH") throw error
         }
       }, 5000)
@@ -184,13 +221,13 @@ export async function execute(
     }
     processSignal.addEventListener("abort", onStop, { once: true })
     if (processSignal.aborted) onStop()
-    const consume = async (stream) => {
+    const consume = async (stream: Readable) => {
       let pending = ""
-      let stopToken = null
+      let stopToken: string | null = null
       for await (const chunk of stream) {
         pending += chunk.toString()
         const lines = pending.split(/\r?\n/)
-        pending = lines.pop()
+        pending = lines.pop() || ""
         for (const line of lines) {
           if (stopToken) {
             if (line === `::${stopToken}::`) stopToken = null
@@ -224,8 +261,8 @@ export async function execute(
       }
       if (pending) emit(pending, id)
     }
-    let failure
-    const exit = new Promise((resolve, reject) => {
+    let failure: Error | undefined
+    const exit = new Promise<number>((resolve, reject) => {
       child.on("error", reject)
       child.on("close", (code) => resolve(code ?? 1))
     })
@@ -246,7 +283,7 @@ export async function execute(
     }
     if (failure) throw failure
   }
-  async function actionDirectory(uses) {
+  async function actionDirectory(uses: string) {
     if (uses.startsWith("./")) {
       const path = resolve(workspace, uses)
       if (!path.startsWith(`${resolve(workspace)}/`)) throw new Error("Local action escapes workspace")
@@ -254,26 +291,33 @@ export async function execute(
     }
     const match = uses.match(/^([\w.-]+\/[\w.-]+)(\/[\w./-]+)?@([^\s]+)$/)
     if (!match || match[2]?.split("/").includes("..")) throw new Error(`Unsupported action: ${uses}`)
-    const manifest = JSON.parse(await readFile(join(actionRoot, "manifest.json"), "utf8"))
+    const manifest = JSON.parse(await readFile(join(actionRoot, "manifest.json"), "utf8")) as Record<string, string>
     const tree = manifest[`${match[1]}@${match[3]}`]
     if (!tree) throw new Error(`Action ${uses} is not prepared in this image; rebuild the image before dispatch`)
     const repositoryRoot = join(actionRoot, tree)
     return { directory: join(repositoryRoot, match[2] || ""), repositoryRoot }
   }
-  async function runAction(step, ctx, env, id, outputs) {
+  async function runAction(
+    step: WorkflowStep,
+    ctx: RunnerContext,
+    env: NodeJS.ProcessEnv,
+    id: string,
+    outputs: Record<string, string>,
+  ) {
     const uses = string(interpolate(step.uses, ctx, status))
     const { directory, repositoryRoot } = await actionDirectory(uses)
-    let metadata
+    let metadata: ActionMetadata | undefined
     for (const filename of ["action.yml", "action.yaml"]) {
       try {
         metadata = parse(await readFile(join(directory, filename), "utf8"))
         break
-      } catch (error) {
+      } catch (cause) {
+        const error = cause as NodeJS.ErrnoException
         if (error.code !== "ENOENT") throw error
       }
     }
     if (!metadata) throw new Error(`Missing action metadata: ${uses}`)
-    const actionContext = {
+    const actionContext: RunnerContext = {
       ...ctx,
       github: {
         ...ctx.github,
@@ -290,18 +334,18 @@ export async function execute(
     )
     Object.assign(inputs, evaluateMap(step.with, ctx, status))
     actionContext.inputs = inputs
-    const actionEnvironment = {
+    const actionEnvironment: NodeJS.ProcessEnv = {
       ...env,
       GITHUB_ACTION_PATH: directory,
-      GITHUB_ACTION_REPOSITORY: actionContext.github.action_repository,
-      GITHUB_ACTION_REF: actionContext.github.action_ref,
+      GITHUB_ACTION_REPOSITORY: string(actionContext.github.action_repository),
+      GITHUB_ACTION_REF: string(actionContext.github.action_ref),
     }
     for (const [name, value] of Object.entries(inputs))
       actionEnvironment[`INPUT_${name.replace(/ /g, "_").toUpperCase()}`] = value
     const runs = metadata.runs || {}
     if (runs.using === "composite") {
-      const nested = { ...actionContext, steps: {} }
-      let nestedStatus = "success"
+      const nested: RunnerContext = { ...actionContext, steps: {} }
+      let nestedStatus: JobStatus = "success"
       for (const [index, child] of (runs.steps || []).entries()) {
         const result = await runStep(child, nested, id, `${index}`, nestedStatus, actionEnvironment)
         if (result.conclusion === "failure") nestedStatus = "failure"
@@ -311,9 +355,10 @@ export async function execute(
       if (nestedStatus === "failure") throw new Error(`Composite action failed: ${uses}`)
       return
     }
-    if (!/^node(?:12|16|20|24)$/.test(runs.using)) throw new Error(`Unsupported action runtime: ${runs.using}`)
-    const state = {}
-    const file = (path) => {
+    if (!runs.using || !/^node(?:12|16|20|24)$/.test(runs.using) || !runs.main)
+      throw new Error(`Unsupported action runtime: ${runs.using}`)
+    const state: Record<string, string> = {}
+    const file = (path: string) => {
       const absolute = resolve(directory, path)
       if (!absolute.startsWith(`${resolve(repositoryRoot)}/`))
         throw new Error("Action entrypoint escapes its repository")
@@ -352,7 +397,14 @@ export async function execute(
       state,
     )
   }
-  async function runStep(step, ctx, rootId, generatedId, currentStatus, baseEnvironment = environment) {
+  async function runStep(
+    step: WorkflowStep,
+    ctx: RunnerContext,
+    rootId: string | null,
+    generatedId: string,
+    currentStatus: JobStatus,
+    baseEnvironment: NodeJS.ProcessEnv = environment,
+  ): Promise<StepResult> {
     const id = step.id || generatedId
     const displayId = rootId || id
     ctx.env = {
@@ -362,7 +414,7 @@ export async function execute(
       ...exportedEnvironment,
       ...protectedEnvironment,
     }
-    const result = { outcome: "skipped", conclusion: "skipped", outputs: {} }
+    const result: StepResult = { outcome: "skipped", conclusion: "skipped", outputs: {} }
     ctx.steps[id] = result
     if (!condition(step.if, ctx, currentStatus) || stopping) {
       emit(`Skipped ${step.name || step.uses || id}`, displayId, "skipped")
@@ -387,7 +439,8 @@ export async function execute(
         const extension = shell === "bash" || shell === "sh" ? "sh" : shell === "python" ? "py" : "mjs"
         const script = join(temporary, `${randomUUID()}.${extension}`)
         await writeFile(script, string(interpolate(step.run, ctx, currentStatus)))
-        let command, args
+        let command: string
+        let args: string[]
         if (shell === "bash") {
           command = "bash"
           args = ["--noprofile", "--norc", "-e", "-o", "pipefail", script]
@@ -399,7 +452,7 @@ export async function execute(
           args = [script]
         } else if (shell.includes("{0}")) {
           const parts = shell.split(/\s+/)
-          command = parts.shift()
+          command = parts.shift() || ""
           args = parts.map((part) => part.replace("{0}", script))
         } else throw new Error(`Unsupported shell: ${shell}`)
         const cwd = resolve(
@@ -415,7 +468,8 @@ export async function execute(
       } else throw new Error("Step needs run or uses")
       result.outcome = "success"
       result.conclusion = "success"
-    } catch (error) {
+    } catch (cause) {
+      const error = cause as NodeJS.ErrnoException
       result.outcome = stopping ? "cancelled" : "failure"
       result.conclusion =
         interpolate(step["continue-on-error"] ?? false, ctx, currentStatus) === true ? "success" : result.outcome
@@ -424,7 +478,7 @@ export async function execute(
     emit(`${step.name || step.uses || id}: ${result.conclusion}`, displayId, result.conclusion)
     return result
   }
-  let result = { status: "failure", outputs: {}, steps: context.steps }
+  let result: JobResult = { status: "failure", outputs: {}, steps: context.steps }
   try {
     context.env = { ...environment, ...protectedEnvironment }
     if (!condition(job.if, context, status)) return { ...result, status: "skipped" }
@@ -452,7 +506,8 @@ export async function execute(
           {},
           post.state,
         )
-      } catch (error) {
+      } catch (cause) {
+        const error = cause as NodeJS.ErrnoException
         status = "failure"
         emit(error.message, post.id, "failure")
       }

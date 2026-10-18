@@ -1,20 +1,18 @@
 """Provider-independent sandbox clients for one isolated, short-lived job each."""
 
-import asyncio
 import base64
 import io
 import json
 import tarfile
 import zlib
 from abc import ABC, abstractmethod
-from contextlib import closing
 from dataclasses import dataclass, field
 from http import HTTPStatus
 from pathlib import Path
 from typing import override
 
-import docker
-from docker.errors import APIError, DockerException, NotFound
+from aiodocker import Docker
+from aiodocker.exceptions import DockerError
 from vercel.sandbox import (
     SandboxApiError,
     SandboxPathNotFoundError,
@@ -71,123 +69,117 @@ class DockerSandboxClient(AbstractSandboxClient):
     def __init__(self, image: str, *, ca_bundle: str | None = None, environment: dict[str, str] | None = None) -> None:
         """Configure the managed local Docker daemon and optional explicit network trust."""
         self.image = image
-        self.ca_bundle = ca_bundle
+        self.ca_bundle = str(Path(ca_bundle).resolve()) if ca_bundle else None
         self.environment = environment or {}
 
     @override
     async def start(self, name: str, files: dict[str, bytes], lifetime: int) -> None:
-        """Create and start from an already-local image; transfer no repository source."""
-        await asyncio.to_thread(self._start, name, files, lifetime)
-
-    def _start(self, name: str, files: dict[str, bytes], lifetime: int) -> None:
-        try:
-            with closing(docker.from_env(version="1.45")) as client:
-                env = dict(self.environment)
-                env["GITEDGE_JOB"] = files["input.json"].decode()
-                env["GITEDGE_RESTORE_URL"] = json.loads(files["input.json"]).get("restore_url", "")
-                env["NO_PROXY"] = env.get("NO_PROXY", "localhost,127.0.0.1") + ",host.docker.internal"
-                env["no_proxy"] = env["NO_PROXY"]
-                volumes = {}
-                if self.ca_bundle:
-                    volumes[str(Path(self.ca_bundle).resolve())] = {"bind": "/run/gitedge-ca.pem", "mode": "ro"}
-                    env.update(
-                        dict.fromkeys(
-                            (
-                                "NODE_EXTRA_CA_CERTS",
-                                "SSL_CERT_FILE",
-                                "REQUESTS_CA_BUNDLE",
-                                "PIP_CERT",
-                                "CURL_CA_BUNDLE",
-                                "GIT_SSL_CAINFO",
-                            ),
-                            "/run/gitedge-ca.pem",
-                        )
-                    )
-                host_config = client.api.create_host_config(
-                    binds=volumes,
-                    mem_limit="2g",
-                    nano_cpus=2_000_000_000,
-                    pids_limit=512,
-                    cap_drop=["ALL"],
-                    security_opt=["no-new-privileges:true"],
-                    extra_hosts={"host.docker.internal": "host-gateway"},
+        """Create and start a prepared container through the native async Docker client."""
+        env = dict(self.environment)
+        env["GITEDGE_JOB"] = files["input.json"].decode()
+        env["GITEDGE_RESTORE_URL"] = json.loads(files["input.json"]).get("restore_url", "")
+        env["NO_PROXY"] = env.get("NO_PROXY", "localhost,127.0.0.1") + ",host.docker.internal"
+        env["no_proxy"] = env["NO_PROXY"]
+        binds = []
+        if self.ca_bundle:
+            binds.append(f"{self.ca_bundle}:/run/gitedge-ca.pem:ro")
+            env.update(
+                dict.fromkeys(
+                    (
+                        "NODE_EXTRA_CA_CERTS",
+                        "SSL_CERT_FILE",
+                        "REQUESTS_CA_BUNDLE",
+                        "PIP_CERT",
+                        "CURL_CA_BUNDLE",
+                        "GIT_SSL_CAINFO",
+                    ),
+                    "/run/gitedge-ca.pem",
                 )
+            )
+        config = {
+            "Image": self.image,
+            "Cmd": [
+                "timeout",
+                "--signal=TERM",
+                "--kill-after=10",
+                str(lifetime + CLEANUP_GRACE_SECONDS),
+                "/usr/local/bin/gitedge-launch",
+            ],
+            "Env": [f"{key}={value}" for key, value in env.items()],
+            "HostConfig": {
+                "Binds": binds,
+                "Memory": 2 * 1024**3,
+                "NanoCpus": 2_000_000_000,
+                "PidsLimit": 512,
+                "CapDrop": ["ALL"],
+                "SecurityOpt": ["no-new-privileges:true"],
+                "ExtraHosts": ["host.docker.internal:host-gateway"],
+            },
+            "Volumes": {"/run/gitedge-ca.pem": {}} if self.ca_bundle else {},
+            "Labels": {"gitedge.actions": "true"},
+        }
+        try:
+            async with Docker(api_version="v1.45") as client:
                 try:
-                    container = client.api.create_container(
-                        self.image,
-                        [
-                            "timeout",
-                            "--signal=TERM",
-                            "--kill-after=10",
-                            str(lifetime + CLEANUP_GRACE_SECONDS),
-                            "/usr/local/bin/gitedge-launch",
-                        ],
-                        name=name,
-                        environment=env,
-                        host_config=host_config,
-                        volumes=["/run/gitedge-ca.pem"] if self.ca_bundle else [],
-                        labels={"gitedge.actions": "true"},
-                    )
-                    container_id = container["Id"]
-                except APIError as exc:
-                    if exc.status_code != HTTPStatus.CONFLICT:
+                    container = await client.containers.create(config=config, name=name)
+                except DockerError as exc:
+                    if exc.status != HTTPStatus.CONFLICT:
                         raise
-                    existing = client.api.inspect_container(name)
-                    if existing["State"]["Status"] != "created":
+                    container = await client.containers.get(name)
+                    if (await container.show())["State"]["Status"] != "created":
                         return
-                    container_id = existing["Id"]
-                client.api.start(container_id)
-        except DockerException as exc:
+                await container.start()
+        except DockerError as exc:
             raise SandboxError(f"Docker sandbox start failed: {exc}") from exc
 
     @override
     async def inspect(self, name: str) -> SandboxSnapshot:
-        """Collect bounded files; an exited container stays inspectable until cleanup."""
-        return await asyncio.to_thread(self._inspect, name)
-
-    @staticmethod
-    def _inspect(name: str) -> SandboxSnapshot:
+        """Stream bounded job files instead of buffering an unbounded SDK archive."""
         try:
-            with closing(docker.from_env()) as client:
-                container = client.containers.get(name)
-                result = SandboxSnapshot(running=container.status in {"running", "created"})
+            async with Docker(api_version="v1.45") as client:
+                container = await client.containers.get(name)
+                state = await container.show()
+                result = SandboxSnapshot(running=state["State"]["Status"] in {"running", "created"})
                 for path in READ_FILES:
                     try:
-                        stream, metadata = container.get_archive(f"/gitedge/{path}")
-                    except NotFound:
-                        continue
-                    if metadata["size"] > MAX_FILE_BYTES:
-                        raise SandboxError(f"Sandbox file exceeds {MAX_FILE_BYTES} bytes: {path}")
-                    raw = io.BytesIO()
-                    for chunk in stream:
-                        raw.write(chunk)
-                        if raw.tell() > MAX_FILE_BYTES + 16384:
-                            raise SandboxError("Sandbox response exceeds the transfer limit")
-                    raw.seek(0)
-                    with tarfile.open(fileobj=raw) as archive:
-                        member = archive.next()
-                        if member is not None and member.isfile():
-                            handle = archive.extractfile(member)
-                            if handle is not None:
-                                result.files[path] = handle.read(MAX_FILE_BYTES)
+                        # get_archive buffers its complete response; use aiodocker's
+                        # streaming transport so workflow-created files remain bounded.
+                        async with client._query(  # noqa: SLF001 — public get_archive buffers the entire response
+                            f"containers/{container.id}/archive", method="GET", params={"path": f"/gitedge/{path}"}
+                        ) as response:
+                            raw = io.BytesIO()
+                            async for chunk in response.content.iter_chunked(65536):
+                                raw.write(chunk)
+                                if raw.tell() > MAX_FILE_BYTES + 16384:
+                                    raise SandboxError("Sandbox response exceeds the transfer limit")
+                        raw.seek(0)
+                        with tarfile.open(fileobj=raw) as archive:
+                            member = archive.next()
+                            if member is not None and member.isfile():
+                                if member.size > MAX_FILE_BYTES:
+                                    raise SandboxError(f"Sandbox file exceeds the transfer limit: {path}")
+                                handle = archive.extractfile(member)
+                                if handle is not None:
+                                    result.files[path] = handle.read(MAX_FILE_BYTES)
+                    except DockerError as exc:
+                        if exc.status != HTTPStatus.NOT_FOUND:
+                            raise
                 return result
-        except DockerException as exc:
+        except DockerError as exc:
             raise SandboxError(f"Docker sandbox inspection failed: {exc}") from exc
 
     @override
     async def delete(self, name: str) -> None:
-        """Remove a container even after a failed or cancelled job."""
-        await asyncio.to_thread(self._delete, name)
-
-    @staticmethod
-    def _delete(name: str) -> None:
+        """Remove the container and its anonymous volumes with aiodocker."""
         try:
-            with closing(docker.from_env()) as client:
+            async with Docker(api_version="v1.45") as client:
                 try:
-                    client.containers.get(name).remove(force=True, v=True)
-                except NotFound:
-                    return
-        except DockerException as exc:
+                    container = await client.containers.get(name)
+                    await container.delete(force=True, v=True)
+                except DockerError as exc:
+                    if exc.status != HTTPStatus.NOT_FOUND:
+                        raise
+        except DockerError as exc:
             raise SandboxError(f"Docker sandbox cleanup failed: {exc}") from exc
 
 

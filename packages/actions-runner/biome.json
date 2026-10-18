@@ -6,7 +6,7 @@
   },
   "overrides": [
     {
-      "includes": ["**/*.test.mjs"],
+      "includes": ["**/*.test.ts"],
       "linter": {
         "rules": {
           "suspicious": {

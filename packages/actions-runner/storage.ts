@@ -2,11 +2,23 @@
 
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto"
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises"
-import { createServer } from "node:http"
+import { createServer, type IncomingMessage } from "node:http"
 import { join } from "node:path"
 
+interface CacheEntry {
+  key: string
+  version: string
+  id: string
+  created: number
+}
+interface CacheReservation {
+  key: string
+  version: string
+  id: string
+  chunks: Map<number, Buffer>
+}
 const LIMIT = 32 * 1024 * 1024
-async function body(request) {
+async function body(request: IncomingMessage) {
   const parts = []
   let size = 0
   for await (const part of request) {
@@ -16,7 +28,7 @@ async function body(request) {
   }
   return Buffer.concat(parts)
 }
-export async function startStorage(root, runId, jobId) {
+export async function startStorage(root: string, runId: string, jobId: string) {
   const secret = randomBytes(32).toString("base64url")
   const header = Buffer.from('{"alg":"HS256","typ":"JWT"}').toString("base64url")
   const payload = Buffer.from(
@@ -31,27 +43,28 @@ export async function startStorage(root, runId, jobId) {
   await mkdir(join(root, "cache"), { recursive: true })
   await mkdir(join(root, "artifacts", runId), { recursive: true })
   const indexPath = join(root, "cache", "index.json")
-  let caches = []
+  let caches: CacheEntry[] = []
   try {
     caches = JSON.parse(await readFile(indexPath, "utf8"))
-  } catch (error) {
+  } catch (cause) {
+    const error = cause as NodeJS.ErrnoException
     if (error.code !== "ENOENT") throw error
   }
-  const reservations = new Map()
-  const pending = new Map()
-  const files = new Map()
-  let base
-  function url(path, mode) {
+  const reservations = new Map<string, CacheReservation>()
+  const pending = new Map<string, Map<string, Buffer>>()
+  const files = new Map<string, string>()
+  let base = ""
+  function url(path: string, mode: "read" | "write") {
     const id = createHash("sha256").update(path).digest("hex")
     files.set(id, path)
     return `${base}blob/${id}?${new URLSearchParams({ sig: secret, mode })}`
   }
   const server = createServer(async (request, response) => {
     try {
-      const target = new URL(request.url, base)
+      const target = new URL(request.url || "/", base)
       response.setHeader("x-ms-request-id", randomBytes(8).toString("hex"))
       response.setHeader("x-ms-version", "2023-11-03")
-      const send = (value, status = 200) => {
+      const send = (value: unknown, status = 200) => {
         response.writeHead(status, { "Content-Type": "application/json" })
         response.end(JSON.stringify(value))
       }
@@ -60,14 +73,14 @@ export async function startStorage(root, runId, jobId) {
         const expected = Buffer.from(secret)
         if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected))
           return send({ error: "Unauthorized" }, 403)
-        const path = files.get(target.pathname.split("/").pop())
+        const path = files.get(target.pathname.split("/").pop() || "")
         if (!path) return send({}, 404)
         if (request.method === "PUT" && target.searchParams.get("mode") === "write") {
           const raw = await body(request)
           const comp = target.searchParams.get("comp")?.toLowerCase()
           const entry = pending.get(path) || new Map()
           pending.set(path, entry)
-          if (comp === "block") entry.set(target.searchParams.get("blockid"), raw)
+          if (comp === "block") entry.set(target.searchParams.get("blockid") || "", raw)
           else if (comp === "blocklist") {
             const ids = [...raw.toString().matchAll(/<(?:Latest|Committed|Uncommitted)>(.*?)<\//g)].map(
               (match) => match[1],
@@ -128,7 +141,7 @@ export async function startStorage(root, runId, jobId) {
           reservations.set(String(cacheId), { key, version, id, chunks: new Map() })
           return send({ cacheId }, 201)
         }
-        const entry = reservations.get(target.pathname.split("/").pop())
+        const entry = reservations.get(target.pathname.split("/").pop() || "")
         if (!entry) return send({ message: "Cache reservation not found" }, 404)
         if (request.method === "PATCH") {
           const range = request.headers["content-range"]?.match(/^bytes (\d+)-(\d+)\/(?:\*|\d+)$/)
@@ -155,8 +168,15 @@ export async function startStorage(root, runId, jobId) {
         }
         return send({}, 405)
       }
-      const input = JSON.parse((await body(request)).toString() || "{}")
-      const get = (camel) => input[camel] ?? input[camel.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)]
+      const input = JSON.parse((await body(request)).toString() || "{}") as Record<string, unknown>
+      function get(camel: "restoreKeys"): string[]
+      function get(camel: string): string
+      function get(camel: string): string | string[] {
+        const value = input[camel] ?? input[camel.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)]
+        if (camel === "restoreKeys")
+          return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
+        return value == null ? "" : String(value)
+      }
       const method = target.pathname.split("/").pop()
       if (target.pathname.includes("CacheService/")) {
         const key = get("key")
@@ -195,8 +215,9 @@ export async function startStorage(root, runId, jobId) {
         const name = get("name")
         if (name && (name.includes("/") || name.includes("\\") || name === "." || name === ".."))
           throw new Error("Unsafe artifact name")
-        const directory = name ? join(root, "artifacts", runId, name) : null
-        const path = directory ? join(directory, `${name}.zip`) : null
+        if (!name && method !== "ListArtifacts") throw new Error("Missing artifact name")
+        const directory = join(root, "artifacts", runId, name)
+        const path = join(directory, `${name}.zip`)
         const id = name ? String(createHash("sha256").update(`${runId}:${name}`).digest().readUInt32BE()) : null
         if (method === "CreateArtifact") {
           await mkdir(directory, { recursive: true })
@@ -233,7 +254,8 @@ export async function startStorage(root, runId, jobId) {
                 (!get("idFilter") || metadata.databaseId === get("idFilter"))
               )
                 artifacts.push(metadata)
-            } catch (error) {
+            } catch (cause) {
+              const error = cause as NodeJS.ErrnoException
               if (error.code !== "ENOENT") throw error
             }
           }
@@ -241,13 +263,16 @@ export async function startStorage(root, runId, jobId) {
         }
       }
       send({ error: "Unsupported storage operation" }, 404)
-    } catch (error) {
+    } catch (cause) {
+      const error = cause as NodeJS.ErrnoException
       response.writeHead(400, { "Content-Type": "application/json" })
       response.end(JSON.stringify({ error: error.message }))
     }
   })
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve))
-  base = `http://127.0.0.1:${server.address().port}/`
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()))
+  const address = server.address()
+  if (!address || typeof address === "string") throw new Error("Storage server has no TCP address")
+  base = `http://127.0.0.1:${address.port}/`
   return {
     environment: {
       ACTIONS_RUNTIME_TOKEN: token,
@@ -257,8 +282,8 @@ export async function startStorage(root, runId, jobId) {
       ACTIONS_CACHE_SERVICE_V2: "true",
     },
     close: () =>
-      new Promise((resolve) => {
-        server.close(resolve)
+      new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()))
         server.closeAllConnections()
       }),
   }
