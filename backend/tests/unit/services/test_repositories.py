@@ -5,6 +5,7 @@ import stat
 import tempfile
 import uuid
 from datetime import UTC, datetime
+from hashlib import sha256
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -21,7 +22,6 @@ from app.exceptions import RepositoryNotFoundError
 from app.schemas.repositories import FileContent, RepositoryUpdate, TreeListing
 from app.services.git.repository import BlobRepository
 from app.services.repositories import RepositoryService, ensure_repository
-from app.types import PackContents
 from app.utils.cache_headers import (
     CACHE_CONTROL_IMMUTABLE,
     CACHE_CONTROL_PRIVATE,
@@ -37,7 +37,7 @@ from tests.unit.utils.fakes import (
     FakeStarStore,
     FakeUserStore,
 )
-from tests.unit.utils.git import build_repository_service
+from tests.unit.utils.git import PackContents, build_repository_service
 
 if TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -55,7 +55,7 @@ def _pack(objects: list[ShaFile]) -> dict[str, PackContents]:
         basename = os.path.join(tmp, "pack")
         write_pack(basename, objects, DEFAULT_OBJECT_FORMAT)
         return {
-            "pack": PackContents(
+            sha256(Path(basename + ".pack").read_bytes()).hexdigest(): PackContents(
                 pack=Path(basename + ".pack").read_bytes(),
                 index=Path(basename + ".idx").read_bytes(),
             )
@@ -85,8 +85,12 @@ def _load_repository(
     objects: list[ShaFile],
     commit_id: ObjectID,
 ) -> BlobRepository:
-    repo = BlobRepository()
-    repo.load_from_storage(_pack(objects), {})
+    packs = _pack(objects)
+    for name, contents in packs.items():
+        git.storage.blob.put(f"{key}/packs/{name}.pack", contents.pack)
+        git.storage.blob.put(f"{key}/packs/{name}.idx", contents.index)
+    repo = BlobRepository(git.storage.blob, f"{key}/packs/", set(packs))
+    repo.object_store.pending_additions.update(packs)
     repo.refs.set_symbolic_ref(Ref(b"HEAD"), Ref(b"refs/heads/main"))
     git.repositories[key] = repo
     # Mark the branch as a pending change so save_changes persists it.
@@ -656,8 +660,8 @@ async def test_settings_rename_preserves_git_and_updates_head(service: Repositor
     assert isinstance(user, User)
     repo = service.git.repositories["owner/repo.git"]
     for basename, pack in _pack([repo.object_store[oid] for oid in repo.object_store]).items():
-        await service.git.storage.blob.put(f"owner/repo.git/packs/{basename}.pack", pack.pack)
-        await service.git.storage.blob.put(f"owner/repo.git/packs/{basename}.idx", pack.index)
+        service.git.storage.blob.put(f"owner/repo.git/packs/{basename}.pack", pack.pack)
+        service.git.storage.blob.put(f"owner/repo.git/packs/{basename}.idx", pack.index)
     repo.refs.set_if_equals(Ref(b"refs/heads/develop"), None, sha)
     await service.git.save_changes(OWNER, REPO)
     updated = await service.update_repository(
@@ -668,7 +672,7 @@ async def test_settings_rename_preserves_git_and_updates_head(service: Repositor
     assert updated.default_branch == "develop"
     assert "owner/repo.git" not in service.git.repositories
     assert not await service.git.storage.redis.scan_keys("owner/repo.git/refs/*")
-    assert not await service.git.storage.blob.list_keys("owner/repo.git/")
+    assert not service.git.storage.blob.list_keys("owner/repo.git/")
     assert (await service.get_info(OWNER, "renamed", "HEAD")).default_branch == "develop"
     assert await service.git.get_raw(OWNER, "renamed", "HEAD", "README.md") == b"# Title\n\nHello world\n"
     with pytest.raises(RepositoryNotFoundError):
@@ -716,7 +720,7 @@ async def test_delete_evicts_storage_and_cache_without_deleting_neighbor(service
     await service.delete_repository(OWNER, REPO, user)
     assert "owner/repo.git" not in service.git.repositories
     assert not await service.git.storage.redis.scan_keys("owner/repo.git/refs/*")
-    assert not await service.git.storage.blob.list_keys("owner/repo.git/")
+    assert not service.git.storage.blob.list_keys("owner/repo.git/")
     assert await service.repository_store.find_by_owner_and_name(OWNER, REPO) is None
     assert await service.repository_store.find_by_owner_and_name(OWNER, "repo-other") is not None
     with pytest.raises(HTTPException):

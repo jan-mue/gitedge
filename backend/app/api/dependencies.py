@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Annotated
 
 import jwt
 from fastapi import Depends, HTTPException, Request, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
@@ -307,14 +308,18 @@ def get_star_store(session: SessionDep) -> StarStore:
 StarStoreDep = Annotated[StarStore, Depends(get_star_store)]
 
 
-def get_git_service(
+async def get_git_service(
     blob_client: BlobStorageClientDep,
     redis_client: RedisClientDep,
     cache_client: CacheClientDep,
     repository_store: RepositoryStoreDep,
-) -> GitService:
-    """Create a request-scoped Git service."""
-    return GitService(GitStore(blob_client, redis_client), cache_client, repository_store)
+) -> AsyncGenerator[GitService]:
+    """Create a request-scoped Git service and close its pack readers."""
+    service = GitService(GitStore(blob_client, redis_client), cache_client, repository_store)
+    try:
+        yield service
+    finally:
+        await run_in_threadpool(service.close)
 
 
 GitServiceDep = Annotated[GitService, Depends(get_git_service)]

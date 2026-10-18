@@ -1,6 +1,7 @@
 """Real Git graphs backed by in-memory storage."""
 
 import json
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from dulwich.objects import Blob, Commit, ObjectID, Tree
@@ -20,6 +21,14 @@ if TYPE_CHECKING:
     from tests.unit.utils.fakes import FakeStores
 
 
+@dataclass(frozen=True)
+class PackContents:
+    """Pack/index bytes for test fixtures."""
+
+    pack: bytes
+    index: bytes
+
+
 def seed_merge_repository(
     stores: FakeStores,
     owner: str,
@@ -30,7 +39,8 @@ def seed_merge_repository(
     revert_first: bool = False,
 ) -> tuple[str, str, str]:
     """Persist a diverged base and two PR commits without external services."""
-    repo = BlobRepository.create()
+    key = f"{owner}/{name}.git"
+    repo = BlobRepository.create(stores.blob, f"{key}/packs/")
 
     def commit(files: dict[str, bytes], parents: list[ObjectID], message: bytes) -> Commit:
         tree = Tree()
@@ -66,12 +76,9 @@ def seed_merge_repository(
     repo.refs[Ref(f"refs/heads/{head_branch}".encode())] = head.id
     key = f"{owner}/{name}.git"
     changes = repo.get_pending_changes()
-    for basename, contents in changes["pack_uploads"].items():
-        stores.blob.objects[f"{key}/packs/{basename}.pack"] = contents.pack
-        stores.blob.objects[f"{key}/packs/{basename}.idx"] = contents.index
     for ref, value in changes["ref_puts"].items():
         stores.redis.values[f"{key}/refs/{ref.decode()}"] = value
-    stores.redis.values[f"{key}/pack-catalog:v1"] = json.dumps(sorted(changes["pack_uploads"])).encode()
+    stores.redis.values[f"{key}/pack-catalog:v1"] = json.dumps(sorted(changes["pack_additions"])).encode()
     repo.object_store.close()
     return base.id.decode(), first.id.decode(), head.id.decode()
 

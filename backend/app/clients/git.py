@@ -11,7 +11,9 @@ import asyncio
 import json
 from typing import TYPE_CHECKING
 
-from app.types import MergeResult, PackContents
+from fastapi.concurrency import run_in_threadpool
+
+from app.types import MergeResult
 
 if TYPE_CHECKING:
     import uuid
@@ -46,7 +48,7 @@ class GitStore:
             if current is not None:
                 return set(json.loads(current))
             prefix = f"{path}/{PACK_PREFIX}"
-            keys = set(await self.blob.list_keys(prefix))
+            keys = set(await run_in_threadpool(self.blob.list_keys, prefix))
             packs = {
                 name.removeprefix(prefix).removesuffix(".pack")
                 for name in keys
@@ -66,8 +68,8 @@ class GitStore:
             if await self.redis.compare_and_set({key: current.decode()}, {key: json.dumps(sorted(names))}):
                 return
 
-    async def load(self, repo_path: str) -> tuple[dict[str, PackContents], dict[str, bytes]]:
-        """Read live refs before the catalog, then download complete packs in bounded batches."""
+    async def load(self, repo_path: str) -> tuple[set[str], dict[str, bytes]]:
+        """Read live refs before the pack catalog without downloading objects."""
         path = normalize_path(repo_path)
         refs: dict[str, bytes] = {}
         prefix = f"{path}/{REF_PREFIX}"
@@ -76,37 +78,18 @@ class GitStore:
             batch = keys[start : start + 16]
             values = await asyncio.gather(*(self.redis.get(key) for key in batch))
             refs.update({key.removeprefix(prefix): value for key, value in zip(batch, values, strict=True) if value})
-        names = sorted(await self._catalog(path))
-        packs: dict[str, PackContents] = {}
-
-        async def load_pack(name: str) -> None:
-            pack, index = await asyncio.gather(
-                self.blob.get(f"{path}/{PACK_PREFIX}{name}.pack"),
-                self.blob.get(f"{path}/{PACK_PREFIX}{name}.idx"),
-            )
-            if pack is None or index is None:
-                raise FileNotFoundError(f"Incomplete Git pack: {path}/{name}")
-            packs[name] = PackContents(pack=pack, index=index)
-
-        for start in range(0, len(names), 4):
-            await asyncio.gather(*(load_pack(name) for name in names[start : start + 4]))
-        return packs, refs
+        return await self._catalog(path), refs
 
     async def save(self, repo_path: str, changes: RepositoryChanges) -> None:
-        """Upload new packs once, publish their catalog entries, and only then write refs."""
+        """Publish already uploaded pack pairs in the catalog before writing refs."""
         path = normalize_path(repo_path)
-        uploads = changes.get("pack_uploads", {})
+        additions = changes.get("pack_additions", set())
         deletions = changes.get("pack_deletes", set())
-        if uploads or deletions:
-            existing = await self._catalog(path)
-            for name, contents in uploads.items():
-                if name not in existing:
-                    await self.blob.put(f"{path}/{PACK_PREFIX}{name}.pack", contents.pack)
-                    await self.blob.put(f"{path}/{PACK_PREFIX}{name}.idx", contents.index)
-            await self._update_catalog(path, set(uploads), deletions)
+        if additions or deletions:
+            await self._update_catalog(path, additions, deletions)
             for name in deletions:
-                await self.blob.delete(f"{path}/{PACK_PREFIX}{name}.pack")
-                await self.blob.delete(f"{path}/{PACK_PREFIX}{name}.idx")
+                await run_in_threadpool(self.blob.delete, f"{path}/{PACK_PREFIX}{name}.pack")
+                await run_in_threadpool(self.blob.delete, f"{path}/{PACK_PREFIX}{name}.idx")
         prefix = f"{path}/{REF_PREFIX}"
         for name, value in changes.get("ref_puts", {}).items():
             await self.redis.set(f"{prefix}{name.decode()}", value)
@@ -119,12 +102,14 @@ class GitStore:
         # Initialize before uploads so concurrent catalog updates cannot be overwritten.
         existing = await self._catalog(destination)
         names = await self._catalog(source)
-        for name in sorted(names - existing):
-            for suffix in ("pack", "idx"):
-                data = await self.blob.get(f"{source}/{PACK_PREFIX}{name}.{suffix}")
-                if data is None:
-                    raise FileNotFoundError(f"Incomplete Git pack: {source}/{name}")
-                await self.blob.put(f"{destination}/{PACK_PREFIX}{name}.{suffix}", data)
+
+        def copy_packs() -> None:
+            for name in sorted(names - existing):
+                for suffix in ("pack", "idx"):
+                    with self.blob.open(f"{source}/{PACK_PREFIX}{name}.{suffix}") as stream:
+                        self.blob.put(f"{destination}/{PACK_PREFIX}{name}.{suffix}", stream)
+
+        await run_in_threadpool(copy_packs)
         await self._update_catalog(destination, names, set())
         for key in await self.redis.scan_keys(f"{source}/*"):
             if key == f"{source}/{CATALOG}":
@@ -137,8 +122,8 @@ class GitStore:
         """Delete all blobs, including incomplete uploads, and all repository metadata."""
         path = normalize_path(repo_path)
         # Deletion deliberately lists: a failed upload may not be in the catalog.
-        for key in await self.blob.list_keys(f"{path}/"):
-            await self.blob.delete(key)
+        for key in await run_in_threadpool(self.blob.list_keys, f"{path}/"):
+            await run_in_threadpool(self.blob.delete, key)
         for key in await self.redis.scan_keys(f"{path}/*"):
             await self.redis.delete(key)
 

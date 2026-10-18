@@ -191,8 +191,8 @@ async def _delete_blob_objects(infrastructure: dict[str, str]) -> None:
         bucket=infrastructure["S3_BUCKET"],
         secure=infrastructure["S3_SECURE"] == "True",
     )
-    for key in await client.list_keys(""):
-        await client.delete(key)
+    for key in client.list_keys(""):
+        client.delete(key)
 
 
 def _run_async(coroutine: Coroutine[Any, Any, None]) -> None:

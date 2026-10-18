@@ -1,125 +1,99 @@
-"""Abstract blob storage client with Vercel Blob and MinIO implementations."""
+"""Synchronous object storage for Git commands running in worker threads."""
 
 from __future__ import annotations
 
 import logging
+import tempfile
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, override
+from contextlib import contextmanager
+from pathlib import Path
+from threading import Lock
+from typing import TYPE_CHECKING, BinaryIO, override
 
-import botocore.exceptions  # type: ignore[import-untyped]
-from aiobotocore.session import get_session  # type: ignore[import-untyped]
-from vercel.blob import Access, AsyncBlobClient, BlobNotFoundError
+import boto3  # type: ignore[import-untyped]
+from botocore.exceptions import ClientError  # type: ignore[import-untyped]
+from vercel.blob import Access, BlobClient, BlobNotFoundError
 
 if TYPE_CHECKING:
-    from aiobotocore.session import ClientCreatorContext
+    from collections.abc import Generator
+    from os import PathLike
 
 logger = logging.getLogger(__name__)
 
 
 class BlobStorageClient(ABC):
-    """Abstract base class for blob storage operations.
-
-    Provides a unified interface for storing and retrieving binary data
-    (Git pack files, index files, etc.) from different blob storage backends.
-    """
+    """Streaming object storage for synchronous Git operations."""
 
     @abstractmethod
-    async def put(self, key: str, data: bytes) -> None:
-        """Store binary data at the given key.
-
-        Args:
-            key: Storage key/path for the data.
-            data: Binary data to store.
-        """
+    def put(self, key: str, data: bytes | BinaryIO) -> None:
+        """Upload bytes or a readable file at its current position."""
 
     @abstractmethod
-    async def get(self, key: str) -> bytes | None:
-        """Retrieve binary data for the given key.
-
-        Args:
-            key: Storage key/path to retrieve.
-
-        Returns:
-            The binary data, or None if not found.
-        """
+    def delete(self, key: str) -> None:
+        """Delete an object."""
 
     @abstractmethod
-    async def delete(self, key: str) -> None:
-        """Delete data at the given key.
-
-        Args:
-            key: Storage key/path to delete.
-        """
+    def list_keys(self, prefix: str) -> list[str]:
+        """List every object key under a prefix."""
 
     @abstractmethod
-    async def list_keys(self, prefix: str) -> list[str]:
-        """List all keys with the given prefix.
+    def download(self, key: str, path: str | PathLike[str]) -> None:
+        """Stream an object to disk, raising FileNotFoundError for missing keys."""
 
-        Args:
-            prefix: Key prefix to filter by.
-
-        Returns:
-            List of matching keys.
-        """
+    @contextmanager
+    def open(self, key: str) -> Generator[BinaryIO]:
+        """Open a temporary download for the lifetime of its reader."""
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "object"
+            self.download(key, path)
+            with path.open("rb") as stream:
+                yield stream
 
 
 class VercelBlobClient(BlobStorageClient):
-    """Blob storage client using Vercel Blob Storage.
-
-    Uses the vercel.blob.AsyncBlobClient SDK for async operations.
-    The VERCEL_BLOB_TOKEN environment variable must be set.
-    """
+    """Vercel's synchronous Blob SDK, preserving private access and immutable caching."""
 
     def __init__(self, token: str | None = None, access: Access = "private") -> None:
-        """Initialize the Vercel Blob client.
-
-        Args:
-            token: Optional explicit token. If None, reads from VERCEL_BLOB_TOKEN env var.
-            access: Access mode of the Blob store. Must match the store's configuration,
-                otherwise Vercel rejects the request.
-        """
-        self._client = AsyncBlobClient(token=token) if token else AsyncBlobClient()
+        """Bind the configured Blob store."""
+        self._client = BlobClient(token=token) if token else BlobClient()
         self._access = access
 
     @override
-    async def put(self, key: str, data: bytes) -> None:
-        """Store binary data in Vercel Blob Storage."""
-        await self._client.put(
+    def put(self, key: str, data: bytes | BinaryIO) -> None:
+        """Upload an immutable Git pack or index."""
+        self._client.put(
             key,
             data,
             access=self._access,
             content_type="application/octet-stream",
             add_random_suffix=False,
+            overwrite=True,
             cache_control_max_age=31536000,
         )
 
     @override
-    async def get(self, key: str) -> bytes | None:
-        """Retrieve binary data from Vercel Blob Storage."""
+    def download(self, key: str, path: str | PathLike[str]) -> None:
+        """Stream a download to disk rather than materializing its entire body."""
         try:
-            result = await self._client.get(key, access=self._access, use_cache=True)
-        except BlobNotFoundError:
-            logger.debug("Blob not found: %s", key)
-            return None
-        if result is None:
-            return None
-        return result.content  # type: ignore[no-any-return]
+            self._client.download_file(key, path, access=self._access)
+        except BlobNotFoundError as error:
+            raise FileNotFoundError(key) from error
 
     @override
-    async def delete(self, key: str) -> None:
-        """Delete data from Vercel Blob Storage."""
+    def delete(self, key: str) -> None:
+        """Delete an object."""
         try:
-            await self._client.delete([key])
+            self._client.delete([key])
         except BlobNotFoundError:
             logger.debug("Blob not found while deleting: %s", key)
 
     @override
-    async def list_keys(self, prefix: str) -> list[str]:
-        """List all keys with the given prefix in Vercel Blob Storage."""
+    def list_keys(self, prefix: str) -> list[str]:
+        """Read every listing page."""
         keys: list[str] = []
         cursor = None
         while True:
-            listing = await self._client.list_objects(prefix=prefix, cursor=cursor, limit=1000)
+            listing = self._client.list_objects(prefix=prefix, cursor=cursor, limit=1000)
             keys.extend(blob.pathname for blob in listing.blobs)
             if not listing.has_more:
                 return keys
@@ -129,95 +103,58 @@ class VercelBlobClient(BlobStorageClient):
 
 
 class S3Client(BlobStorageClient):
-    """Blob storage client using S3 (e.g. MinIO) via aiobotocore.
-
-    Used for integration testing as a local replacement for Vercel Blob Storage.
-    """
+    """Synchronous boto3 adapter for S3-compatible object storage."""
 
     def __init__(self, endpoint: str, access_key: str, secret_key: str, bucket: str, secure: bool = False) -> None:
-        """Initialize the S3 client.
-
-        Args:
-            endpoint: S3 server endpoint (host:port).
-            access_key: S3 access key.
-            secret_key: S3 secret key.
-            bucket: Bucket name to use.
-            secure: Whether to use HTTPS.
-        """
-        self._session = get_session()
-        protocol = "https" if secure else "http"
-        self._endpoint_url = f"{protocol}://{endpoint}"
-        self._access_key = access_key
-        self._secret_key = secret_key
+        """Create a thread-safe client shared by worker-thread Git operations."""
+        self._client = boto3.client(
+            "s3",
+            endpoint_url=f"{'https' if secure else 'http'}://{endpoint}",
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+        )
         self._bucket = bucket
         self._bucket_created = False
+        self._bucket_lock = Lock()
 
-    def _create_client(self) -> ClientCreatorContext:
-        """Create a new aiobotocore S3 client."""
-        return self._session.create_client(
-            "s3",
-            endpoint_url=self._endpoint_url,
-            aws_access_key_id=self._access_key,
-            aws_secret_access_key=self._secret_key,
-        )
-
-    async def _ensure_bucket(self) -> None:
-        """Ensure the target bucket exists, creating it if necessary."""
-        if self._bucket_created:
-            return
-
-        async with self._create_client() as client:
+    def _ensure_bucket(self) -> None:
+        with self._bucket_lock:
+            if self._bucket_created:
+                return
             try:
-                await client.head_bucket(Bucket=self._bucket)
-            except botocore.exceptions.ClientError as e:
-                error_code = str(e.response.get("Error", {}).get("Code", ""))
-                if error_code == "404":
-                    await client.create_bucket(Bucket=self._bucket)
-                else:
+                self._client.head_bucket(Bucket=self._bucket)
+            except ClientError as error:
+                if str(error.response.get("Error", {}).get("Code", "")) != "404":
                     raise
+                self._client.create_bucket(Bucket=self._bucket)
             self._bucket_created = True
 
     @override
-    async def put(self, key: str, data: bytes) -> None:
-        """Store binary data in S3."""
-        await self._ensure_bucket()
-        async with self._create_client() as client:
-            await client.put_object(
-                Bucket=self._bucket,
-                Key=key,
-                Body=data,
-                ContentType="application/octet-stream",
-            )
+    def put(self, key: str, data: bytes | BinaryIO) -> None:
+        """Stream an upload through boto3."""
+        self._ensure_bucket()
+        self._client.put_object(Bucket=self._bucket, Key=key, Body=data, ContentType="application/octet-stream")
 
     @override
-    async def get(self, key: str) -> bytes | None:
-        """Retrieve binary data from S3."""
-        await self._ensure_bucket()
+    def download(self, key: str, path: str | PathLike[str]) -> None:
+        """Stream to a local file for Dulwich's memory-mapped readers."""
+        self._ensure_bucket()
         try:
-            async with self._create_client() as client:
-                response = await client.get_object(Bucket=self._bucket, Key=key)
-                async with response["Body"] as stream:
-                    return await stream.read()  # type: ignore[no-any-return]
-        except botocore.exceptions.ClientError as e:
-            if e.response.get("Error", {}).get("Code") == "NoSuchKey":
-                logger.debug("Object not found in S3: %s", key)
-                return None
+            self._client.download_file(self._bucket, key, str(path))
+        except ClientError as error:
+            if str(error.response.get("Error", {}).get("Code")) in {"404", "NoSuchKey"}:
+                raise FileNotFoundError(key) from error
             raise
 
     @override
-    async def delete(self, key: str) -> None:
-        """Delete data from S3."""
-        await self._ensure_bucket()
-        async with self._create_client() as client:
-            await client.delete_object(Bucket=self._bucket, Key=key)
+    def delete(self, key: str) -> None:
+        """Delete an object."""
+        self._ensure_bucket()
+        self._client.delete_object(Bucket=self._bucket, Key=key)
 
     @override
-    async def list_keys(self, prefix: str) -> list[str]:
-        """List all keys with the given prefix in S3."""
-        await self._ensure_bucket()
-        keys = []
-        async with self._create_client() as client:
-            paginator = client.get_paginator("list_objects_v2")
-            async for page in paginator.paginate(Bucket=self._bucket, Prefix=prefix):
-                keys.extend([obj["Key"] for obj in page.get("Contents", []) if "Key" in obj])
-        return keys
+    def list_keys(self, prefix: str) -> list[str]:
+        """List all matching keys across S3 pages."""
+        self._ensure_bucket()
+        pages = self._client.get_paginator("list_objects_v2").paginate(Bucket=self._bucket, Prefix=prefix)
+        return [obj["Key"] for page in pages for obj in page.get("Contents", [])]

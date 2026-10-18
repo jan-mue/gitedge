@@ -9,6 +9,7 @@ from dulwich.pack import PackData
 from dulwich.refs import Ref
 
 from app.services.git.repository import BlobRepository
+from tests.unit.utils.fakes import FakeBlobStorageClient
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,8 +21,8 @@ MAIN = Ref(b"refs/heads/main")
 
 
 def test_loaded_symbolic_refs_are_clean_and_only_real_changes_are_staged() -> None:
-    repo = BlobRepository()
-    repo.load_from_storage({}, {"HEAD": b"ref: refs/heads/main", "refs/heads/main": OLD})
+    repo = BlobRepository(FakeBlobStorageClient(), "repo/packs/", set())
+    repo.load_from_storage({"HEAD": b"ref: refs/heads/main", "refs/heads/main": OLD})
     assert not any(repo.get_pending_changes().values())
     assert repo.refs[Ref(b"HEAD")] == OLD
     assert not repo.refs.set_if_equals(MAIN, NEW, NEW)
@@ -37,7 +38,8 @@ def test_loaded_symbolic_refs_are_clean_and_only_real_changes_are_staged() -> No
 
 
 def test_new_symbolic_head_is_saved_once() -> None:
-    repo = BlobRepository.create()
+    blob = FakeBlobStorageClient()
+    repo = BlobRepository.create(blob, "repo/packs/")
     assert repo.get_pending_changes()["ref_puts"] == {b"HEAD": b"ref: refs/heads/main"}
     repo.clear_pending_changes()
     repo.refs.set_symbolic_ref(Ref(b"HEAD"), MAIN)
@@ -60,7 +62,8 @@ def test_real_git_thin_pack_is_completed_and_survives_reload(tmp_path: Path) -> 
         return git("rev-parse", "HEAD").strip()
 
     base = commit("Base")
-    repo = BlobRepository.create()
+    blob = FakeBlobStorageClient()
+    repo = BlobRepository.create(blob, "repo/packs/")
     packed = git("pack-objects", "--stdout", "--revs", data=base + b"\n")
     repo.object_store.add_thin_pack(BytesIO(packed).read, None)
     repo.clear_pending_changes()
@@ -72,10 +75,10 @@ def test_real_git_thin_pack_is_completed_and_survives_reload(tmp_path: Path) -> 
     repo.object_store.add_thin_pack(BytesIO(thin).read, None)
     target_blob = ObjectID(git("rev-parse", "HEAD:data.txt").strip())
     assert repo.object_store[target_blob].as_raw_string() == path.read_bytes()
-    assert len(repo.get_pending_changes()["pack_uploads"]) == 1
-    snapshot = dict(repo.object_store.packs_data)
+    assert len(repo.get_pending_changes()["pack_additions"]) == 1
+    snapshot = set(repo.object_store.names)
     repo.close()
-    reloaded = BlobRepository()
-    reloaded.load_from_storage(snapshot, {"refs/heads/main": head})
+    reloaded = BlobRepository(blob, "repo/packs/", snapshot)
+    reloaded.load_from_storage({"refs/heads/main": head})
     assert reloaded.object_store[target_blob].as_raw_string() == path.read_bytes()
     reloaded.close()

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from dulwich.objects import Blob, Commit, ObjectID, Tree
+from fastapi.concurrency import run_in_threadpool
 
 from app.clients.git import GitStore
 from app.config import settings
@@ -57,8 +58,8 @@ async def test_merge_graph_messages_and_retained_views(
     assert data["merged_commit_id"] != head
     packs, refs = await GitStore(fake_stores.blob, fake_stores.redis).load(f"{OWNER}/repo.git")
     assert "refs/heads/feature" not in refs
-    repo = BlobRepository()
-    repo.load_from_storage(packs, refs)
+    repo = BlobRepository(fake_stores.blob, f"{OWNER}/repo.git" + "/packs/", packs)
+    repo.load_from_storage(refs)
     result = repo.object_store[ObjectID(refs["refs/heads/main"])]
     assert isinstance(result, Commit)
     assert result.id.decode() == data["merged_commit_id"]
@@ -203,7 +204,8 @@ async def test_rebase_checks_each_commit_even_when_the_combined_diff_merges_clea
     )
     repo = await git.git.load_repository(OWNER, "repo", fresh=True)
     before = repo.get_pending_changes()
-    calculate_merge(
+    await run_in_threadpool(
+        calculate_merge,
         repo,
         ObjectID(base.encode()),
         ObjectID(head.encode()),
@@ -287,7 +289,8 @@ async def test_retry_recovers_after_git_publication(
         GitService(GitStore(fake_stores.blob, fake_stores.redis), fake_stores.cache, fake_stores.repository)
     )
     repo = await git.git.load_repository(OWNER, "repo", fresh=True)
-    result = calculate_merge(
+    result = await run_in_threadpool(
+        calculate_merge,
         repo,
         ObjectID(base.encode()),
         ObjectID(head.encode()),

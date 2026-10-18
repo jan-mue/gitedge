@@ -104,7 +104,8 @@ class GitMergeService:
             key, {base: result.base, head: result.head, checkpoint: None}, updates
         )
         if published:
-            self.git.repositories.pop(key, None)
+            if loaded := self.git.repositories.pop(key, None):
+                loaded.close()
             await self.cache.invalidate(f"repo:{owner}/{name}")
         return published
 

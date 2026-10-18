@@ -9,8 +9,9 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "aiobotocore==3.9.2",
     "alembic==1.20.0",
+    "anyio==4.15.1",
+    "boto3==1.43.106",
     "botocore==1.43.106",
     "dulwich==1.2.17",
     "emails==1.1.3",
@@ -158,8 +159,8 @@ ignore_names = [
     "metadata",
     "model_config",
     # Group: RepositoryChanges TypedDict keys
+    "pack_additions",
     "pack_deletes",
-    "pack_uploads",
     "ref_deletes",
     "ref_puts",
 ]

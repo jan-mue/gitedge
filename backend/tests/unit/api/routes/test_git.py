@@ -145,8 +145,8 @@ async def test_receive_pack_persists_objects_and_refs(
 
     packs, refs = await GitStore(fake_stores.blob, fake_stores.redis).load(repo_path)
     assert refs["refs/heads/main"] == commit.id
-    repo = BlobRepository()
-    repo.load_from_storage(packs, refs)
+    repo = BlobRepository(fake_stores.blob, repo_path + "/packs/", packs)
+    repo.load_from_storage(refs)
     assert repo[commit.id] == commit
     assert repo[tree.id] == tree
     assert repo[blob.id] == blob

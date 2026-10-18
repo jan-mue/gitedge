@@ -7,6 +7,7 @@ import pytest
 from dulwich.objects import Blob, Commit, Tree
 from dulwich.refs import Ref
 from fastapi import HTTPException
+from fastapi.concurrency import run_in_threadpool
 
 from app.entities.repositories import Repository
 from app.entities.users import User
@@ -111,7 +112,7 @@ async def test_fork_copies_persisted_objects_and_refs() -> None:
     commit.author_time = commit.commit_time = 1_700_000_000
     commit.author_timezone = commit.commit_timezone = 0
     commit.message = b"Initial commit"
-    repo.object_store.add_objects([(blob, None), (tree, None), (commit, None)])
+    await run_in_threadpool(repo.object_store.add_objects, [(blob, None), (tree, None), (commit, None)])
     repo.refs.set_if_equals(Ref(b"refs/heads/main"), None, commit.id)
     await repository_service.git.save_changes("owner", "repo")
     await fork_service.fork("owner", "repo", ForkCreate(), alice)

@@ -8,7 +8,8 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
-from typing import TYPE_CHECKING, override
+from pathlib import Path
+from typing import TYPE_CHECKING, BinaryIO, override
 
 from sqlalchemy.schema import ColumnDefault
 
@@ -54,6 +55,7 @@ from app.utils.security import get_password_hash
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from os import PathLike
     from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -73,22 +75,24 @@ class FakeBlobStorageClient(BlobStorageClient):
         self.objects: dict[str, bytes] = {}
 
     @override
-    async def put(self, key: str, data: bytes) -> None:
+    def put(self, key: str, data: bytes | BinaryIO) -> None:
         """Store binary data at the given key."""
-        self.objects[key] = data
+        self.objects[key] = data if isinstance(data, bytes) else data.read()
 
     @override
-    async def get(self, key: str) -> bytes | None:
-        """Retrieve binary data for the given key."""
-        return self.objects.get(key)
+    def download(self, key: str, path: str | PathLike[str]) -> None:
+        """Write a fake provider download to disk."""
+        if key not in self.objects:
+            raise FileNotFoundError(key)
+        Path(path).write_bytes(self.objects[key])
 
     @override
-    async def delete(self, key: str) -> None:
+    def delete(self, key: str) -> None:
         """Delete data at the given key."""
         self.objects.pop(key, None)
 
     @override
-    async def list_keys(self, prefix: str) -> list[str]:
+    def list_keys(self, prefix: str) -> list[str]:
         """List all keys with the given prefix."""
         return [key for key in self.objects if key.startswith(prefix)]
 
