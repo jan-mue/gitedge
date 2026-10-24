@@ -8,8 +8,9 @@ from typing import TYPE_CHECKING
 import jwt
 
 from app.config import settings
+from app.exceptions import WorkflowError
 from app.schemas.workflow_events import workflow_event_adapter
-from app.schemas.workflows import JobDependency, JobInput
+from app.schemas.workflows import CompiledWorkflow, JobDependency, JobInput, WorkflowContext
 from app.utils import security
 
 if TYPE_CHECKING:
@@ -28,12 +29,18 @@ class JobInputBuilder:
         if event.repository is None:
             raise ValueError("Workflow event must identify its repository")
         repository = event.repository.full_name
+        if run.compiled is None:
+            raise WorkflowError("Workflow run predates manifest version 1; dispatch a new run")
+        compiled = CompiledWorkflow.model_validate(run.compiled)
+        specification = next((item for item in compiled.jobs if item.id == job.compiled_id), None)
+        if specification is None:
+            raise WorkflowError("Compiled job variant is missing from the persisted plan")
         server = settings.ACTIONS_SERVER_URL
         payload = JobInput(
-            workflow=run.definition,
-            job=job.key,
+            workflow=WorkflowContext(name=compiled.workflow_name, env=compiled.env, defaults=compiled.defaults),
+            job=specification,
+            inputs=compiled.inputs,
             timeout_seconds=job.timeout_seconds,
-            matrix=job.matrix,
             needs=self._dependencies(job, jobs),
             event_name=run.event_name,
             event=run.event,
@@ -53,7 +60,7 @@ class JobInputBuilder:
             complete_url=self._callback(run, job, "complete"),
             cache_url=self._callback(run, job, "cache"),
         )
-        return {"input.json": payload.model_dump_json().encode()}
+        return {"input.json": payload.model_dump_json(by_alias=True, exclude_none=True).encode()}
 
     @staticmethod
     def _dependencies(job: ActionJob, jobs: list[ActionJob]) -> dict[str, JobDependency]:

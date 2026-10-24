@@ -1,0 +1,30 @@
+name: Compiler contract
+on: [push, pull_request, workflow_dispatch]
+env:
+  SHARED: shared
+defaults:
+  run:
+    shell: bash
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    defaults:
+      run:
+        working-directory: .
+    outputs:
+      result: ${{ steps.command.outputs.value }}
+    steps:
+      - id: command
+        name: Export result
+        run: echo "value=${{ github.ref }}" >> "$GITHUB_OUTPUT"
+        shell: bash
+        working-directory: .
+        timeout-minutes: 1
+        env:
+          FLAG: ${{ github.event_name }}
+      - id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0

@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from app.clients.sandboxes import AbstractSandboxClient, SandboxError
 from app.entities.actions import WorkflowRun
 from app.services.actions.service import ActionsService
-from app.services.actions.workflows import plan_jobs
-from tests.unit.utils.actions import FakeActionsStore
+from app.services.actions.workflows import instantiate_jobs
+from tests.unit.utils.actions import FakeActionsStore, FakeWorkflowCompiler, compiled_fixture
 
 if TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -36,7 +36,8 @@ async def test_ready_jobs_provision_concurrently_without_exceeding_the_limit(
             id=uuid.uuid4(),
             repo_id=uuid.uuid4(),
             workflow=".gitedge/workflow/ci.yaml",
-            definition="jobs: {}",
+            definition="source retained for audit only",
+            compiled=compiled_fixture("parallel").model_dump(mode="json", by_alias=True, exclude_none=True),
             event={"repository": {"full_name": "owner/repo"}},
             event_name="push",
             event_key="push-1",
@@ -45,10 +46,7 @@ async def test_ready_jobs_provision_concurrently_without_exceeding_the_limit(
             sha="a" * 40,
             ref="refs/heads/main",
             status="queued",
-            jobs=[
-                job.model_dump(mode="json")
-                for job in plan_jobs({"jobs": {key: {"steps": [{"run": "echo ready"}]} for key in "abc"}}, 60)
-            ],
+            jobs=[job.model_dump(mode="json") for job in instantiate_jobs(compiled_fixture("parallel"), 60)],
         )
     )
     service = ActionsService(
@@ -57,6 +55,7 @@ async def test_ready_jobs_provision_concurrently_without_exceeding_the_limit(
         fake_stores.repository,
         fake_stores.blob,
         provider,
+        compiler=FakeWorkflowCompiler(),
         provider="docker",
         max_timeout=60,
         max_parallel=2,
@@ -72,18 +71,13 @@ async def test_provisioning_failures_finish_out_of_order_dependencies_without_pe
     provider = mocker.AsyncMock(spec=AbstractSandboxClient)
     provider.start.side_effect = SandboxError("Prepared image is unavailable")
     store = FakeActionsStore()
-    definition = {
-        "jobs": {
-            "dependent": {"needs": "parent", "steps": [{"run": "echo dependent"}]},
-            "parent": {"steps": [{"run": "echo parent"}]},
-        }
-    }
     run = await store.add_run(
         WorkflowRun(
             id=uuid.uuid4(),
             repo_id=uuid.uuid4(),
             workflow=".gitedge/workflow/ci.yaml",
-            definition="jobs: {}",
+            definition="source retained for audit only",
+            compiled=compiled_fixture("dependencies").model_dump(mode="json", by_alias=True, exclude_none=True),
             event={"repository": {"full_name": "owner/repo"}},
             event_name="push",
             event_key="push-1",
@@ -92,7 +86,7 @@ async def test_provisioning_failures_finish_out_of_order_dependencies_without_pe
             sha="a" * 40,
             ref="refs/heads/main",
             status="queued",
-            jobs=[job.model_dump(mode="json") for job in plan_jobs(definition, 60)],
+            jobs=[job.model_dump(mode="json") for job in instantiate_jobs(compiled_fixture("dependencies"), 60)],
         )
     )
     service = ActionsService(
@@ -101,6 +95,7 @@ async def test_provisioning_failures_finish_out_of_order_dependencies_without_pe
         fake_stores.repository,
         fake_stores.blob,
         provider,
+        compiler=FakeWorkflowCompiler(),
         provider="docker",
         max_timeout=60,
         max_parallel=1,
@@ -153,6 +148,7 @@ async def test_pr_checks_follow_the_head_and_ignore_other_prs_and_old_deliveries
         repository_store,
         fake_stores.blob,
         mocker.AsyncMock(spec=AbstractSandboxClient),
+        compiler=FakeWorkflowCompiler(),
         provider="docker",
         max_timeout=60,
         max_parallel=1,
@@ -181,6 +177,7 @@ async def test_push_to_an_open_pr_triggers_synchronize(mocker: MockerFixture, fa
         repository_store,
         fake_stores.blob,
         mocker.AsyncMock(spec=AbstractSandboxClient),
+        compiler=FakeWorkflowCompiler(),
         provider="docker",
         max_timeout=60,
         max_parallel=1,

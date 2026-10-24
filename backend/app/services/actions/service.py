@@ -28,14 +28,9 @@ from app.schemas.workflow_events import (
     WorkflowEvent,
     workflow_event_adapter,
 )
+from app.schemas.workflows import CompileEvent, CompileRequest
 from app.services.actions.scheduler import TERMINAL, RunScheduler
-from app.services.actions.workflows import (
-    matches_event,
-    parse_workflow,
-    plan_jobs,
-    workflow_info,
-    workflow_paths,
-)
+from app.services.actions.workflows import instantiate_jobs, workflow_paths
 from app.utils import security
 
 if TYPE_CHECKING:
@@ -44,6 +39,7 @@ if TYPE_CHECKING:
     from app.clients.pull_requests import PullRequestStore
     from app.clients.repositories import RepositoryStore
     from app.clients.sandboxes import AbstractSandboxClient
+    from app.clients.workflow_compiler import WorkflowCompiler
     from app.entities.repositories import Repository as RepositoryEntity
     from app.entities.users import User
     from app.schemas.actions_cache import CacheEntry, CacheIdentity
@@ -64,6 +60,7 @@ class ActionsService:
         blobs: BlobStorageClient,
         sandbox: AbstractSandboxClient,
         *,
+        compiler: WorkflowCompiler,
         provider: str,
         max_timeout: int,
         max_parallel: int,
@@ -72,6 +69,7 @@ class ActionsService:
         cache: ActionsCacheService | None = None,
     ) -> None:
         """Inject data access and sandbox clients; keep provider policy out of workflows."""
+        self.compiler = compiler
         self.store = store
         self.repositories = repositories
         self.repository_store = repository_store
@@ -103,7 +101,10 @@ class ActionsService:
         result = []
         for path in workflow_paths(index.paths):
             raw = await self.repositories.get_raw(owner, name, sha, path)
-            result.append(workflow_info(path, parse_workflow(raw.decode())))
+            compiled = await self.compiler.compile(
+                CompileRequest(filename=path, source=raw.decode(), event=CompileEvent(name="push", ref=ref))
+            )
+            result.append(WorkflowInfo(path=path, name=compiled.workflow_name, dispatch=compiled.dispatch))
         return result
 
     async def dispatch(
@@ -159,16 +160,28 @@ class ActionsService:
         run_ids = []
         for path in workflow_paths(index.paths, workflow):
             raw = (await self.repositories.get_raw(owner, name, sha, path)).decode()
-            info = None
+            compiled = None
             error = None
             jobs: list[ActionJob] = []
             try:
-                definition = parse_workflow(raw)
-                if not matches_event(definition, event):
+                if not isinstance(event, PushEvent | PullRequestEvent | DispatchEvent):
+                    raise WorkflowError(f"Unsupported workflow event: {event.event_name}")
+                context = CompileEvent(
+                    name=event.event_name,
+                    ref=event.ref,
+                    changed_paths=event.changed_paths,
+                    repository=f"{owner}/{name}",
+                )
+                if isinstance(event, PullRequestEvent):
+                    context.action = event.action
+                    context.base_ref = event.pull_request.base.ref
+                if isinstance(event, DispatchEvent):
+                    context.inputs = dict(event.inputs)
+                compiled = await self.compiler.compile(CompileRequest(filename=path, source=raw, event=context))
+                if not compiled.matched:
                     continue
-                info = workflow_info(path, definition)
-                jobs = plan_jobs(definition, self.max_timeout)
-            except (WorkflowError, ValueError, TypeError, KeyError) as exc:
+                jobs = instantiate_jobs(compiled, self.max_timeout)
+            except WorkflowError as exc:
                 logger.warning("Invalid workflow %s in %s/%s: %s", path, owner, name, exc)
                 error = str(exc)
             run = WorkflowRun(
@@ -176,7 +189,8 @@ class ActionsService:
                 repo_id=repository.id,
                 workflow=path,
                 definition=raw,
-                name=info.name if info else path,
+                name=compiled.workflow_name if compiled else path,
+                compiled=compiled.model_dump(mode="json", by_alias=True, exclude_none=True) if compiled else None,
                 sha=sha,
                 ref=event.ref,
                 actor=actor,

@@ -72,3 +72,7 @@ class EmailDeliveryError(Exception):
 
 class WorkflowError(ValueError):
     """A workflow is invalid or requests unsupported capabilities."""
+
+
+class CompilerUnavailableError(RuntimeError):
+    """The workflow compiler is unconfigured, unavailable, or incompatible."""

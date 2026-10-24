@@ -130,6 +130,8 @@ class Settings(BaseSettings):
 
     # Actions jobs use a fixed operator image; workflows cannot select host privileges.
     ACTIONS_PROVIDER: Literal["docker", "vercel"] = "docker"
+    ACTIONS_COMPILER_URL: str | None = None
+    ACTIONS_COMPILER_TOKEN: str | None = None
     ACTIONS_IMAGE: str = "gitedge-actions:local"
     ACTIONS_MAX_TIMEOUT: int = 1200
     ACTIONS_MAX_PARALLEL: int = 2

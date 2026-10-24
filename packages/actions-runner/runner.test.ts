@@ -3,17 +3,18 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "vitest"
-import { type JobInput, jobSchema, type LogEntry } from "./src/domain/job.ts"
+import { jobSchema, type LogEntry } from "./src/domain/job.ts"
 import { ExpressionEngine } from "./src/expressions/evaluator.ts"
 import { parseFileCommands as commands } from "./src/runtime/commands.ts"
 import { Workspace } from "./src/runtime/files.ts"
 import { WorkflowRunner } from "./src/workflow-runner.ts"
+import { manifestFixture, type WorkflowFixture } from "./test-helpers.ts"
 
 async function execute(
-  input: JobInput,
+  input: WorkflowFixture,
   options: { root: string; actionRoot?: string; log: (entry: LogEntry) => void },
 ) {
-  return new WorkflowRunner(jobSchema.parse(input), {
+  return new WorkflowRunner(jobSchema.parse(await manifestFixture(input)), {
     root: options.root,
     actions: options.actionRoot,
     signal: new AbortController().signal,
@@ -56,7 +57,7 @@ test("shell, composite and JavaScript actions share outputs, environment, pre/po
     )
     await writeFile(
       join(directory, "main.cjs"),
-      `const fs=require('fs');fs.appendFileSync(process.env.GITHUB_OUTPUT,'value=javascript\\n');fs.appendFileSync(process.env.GITHUB_STATE,'cleanup=present\\n');console.log('secret-value')`,
+      `const fs=require('fs');fs.appendFileSync(process.env.GITHUB_OUTPUT,'value=javascript\\n');fs.appendFileSync(process.env.GITHUB_STATE,'cleanup=present\\n');if(process.versions.bun)throw new Error('JavaScript action ran under Bun');console.log('secret-value')`,
     )
     await writeFile(
       join(directory, "post.cjs"),
@@ -90,6 +91,7 @@ runs:
         workflow: `on: workflow_dispatch
 jobs:
   test:
+    runs-on: ubuntu-latest
     outputs:
       result: \${{ steps.action.outputs.value }}
     steps:
@@ -113,7 +115,7 @@ jobs:
       },
       { root, log: (entry) => entries.push(entry) },
     )
-    assert.equal(result.status, "success")
+    assert.equal(result.status, "success", JSON.stringify(entries))
     assert.equal(result.outputs.result, "javascript")
     assert.equal(result.steps.failure.outcome, "failure")
     assert.equal(result.steps.failure.conclusion, "success")
@@ -128,7 +130,8 @@ test("failed dependencies skip jobs unless an explicit status function allows th
   try {
     const result = await execute(
       {
-        workflow: "jobs:\n  test:\n    steps:\n      - run: exit 99\n",
+        workflow:
+          "on: workflow_dispatch\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: exit 99\n",
         job: "test",
         env: { GITHUB_RUN_ID: "1" },
         needs: { build: { result: "failure" } },
@@ -161,7 +164,8 @@ test("repository subdirectory actions share JavaScript entrypoints and cleanup h
     const entries: LogEntry[] = []
     const result = await execute(
       {
-        workflow: "jobs:\n  test:\n    steps:\n      - id: nested\n        uses: owner/repo/init@sha\n",
+        workflow:
+          "on: workflow_dispatch\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - id: nested\n        uses: owner/repo/init@sha\n",
         job: "test",
         env: { GITHUB_RUN_ID: "1" },
       },
@@ -180,11 +184,13 @@ test("custom Bun shells execute JavaScript without treating it as a shell script
   try {
     const result = await execute(
       {
-        workflow: `defaults:
+        workflow: `on: workflow_dispatch
+defaults:
   run:
     shell: bun {0}
 jobs:
   test:
+    runs-on: ubuntu-latest
     steps:
       - run: |
           import { appendFileSync } from "node:fs"
