@@ -1,17 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { usersDeleteUserMeMutation, usersReadUserMeQueryKey } from "@/client/@tanstack/react-query.gen"
+import { DialogActionFooter } from "@/components/Common/DialogActionFooter"
 import {
   Button,
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  LoadingButton,
 } from "@/components/design-system"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
@@ -56,16 +54,7 @@ const DeleteConfirmation = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter appearance="spaced">
-            <DialogClose asChild>
-              <Button variant="repository" disabled={mutation.isPending}>
-                Cancel
-              </Button>
-            </DialogClose>
-            <LoadingButton variant="destructive" type="submit" loading={mutation.isPending}>
-              Delete
-            </LoadingButton>
-          </DialogFooter>
+          <DialogActionFooter pending={mutation.isPending} destructive />
         </form>
       </DialogContent>
     </Dialog>

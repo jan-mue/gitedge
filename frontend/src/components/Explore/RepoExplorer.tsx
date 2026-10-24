@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query"
 import { GitBranch, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
-import { Input, Link as RouterLink } from "@/components/design-system"
+import { Input } from "@/components/design-system"
+import { RepositorySummary } from "@/components/Repositories/RepositorySummary"
 import StarButton from "@/components/Repository/StarButton"
 
 const RepoExplorer = () => {
@@ -50,12 +51,7 @@ const RepoExplorer = () => {
               data-testid={`explore-repo-${repo.name}`}
             >
               <GitBranch className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <RouterLink to="/$owner/$repo" params={{ owner: repo.owner, repo: repo.name }} appearance="repository">
-                  {repo.owner}/{repo.name}
-                </RouterLink>
-                {repo.description && <p className="text-xs text-muted-foreground mt-1">{repo.description}</p>}
-              </div>
+              <RepositorySummary repo={repo} />
               <StarButton owner={repo.owner} repo={repo.name} />
             </div>
           ))}

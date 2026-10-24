@@ -1,0 +1,535 @@
+{
+  "$schema": "./node_modules/fallow/schema.json",
+  "entry": [
+    "frontend/src/**/*.test.{js,ts,jsx,tsx}",
+    "frontend/src/test/**/*.{js,ts,jsx,tsx}",
+    "frontend/src/components/ui/**/*.{js,jsx,ts,tsx}",
+    "frontend/src/components/design-system/**/*.{ts,tsx}",
+    "frontend/src/components/**/*.mdx",
+    "frontend/src/components/**/*.stories.tsx",
+    "frontend/src/components/Storybook/**/*.{ts,tsx}",
+    "frontend/.storybook/**/*.{ts,tsx}",
+    "frontend/storybook-tests/**/*.ts",
+    "frontend/openapi-ts.config.ts",
+    "frontend/src/components/Repository/diff-fixtures.ts",
+    "frontend/src/components/Repository/tracker-story-fixtures.ts",
+    "packages/react-email/emails/**/*.tsx"
+  ],
+  "ignorePatterns": [
+    "frontend/src/client/**",
+    "frontend/src/routeTree.gen.ts"
+  ],
+  "ignoreDependencies": [
+    "@react-email/ui"
+  ],
+  "rules": {
+    "unused-enum-members": "off",
+    "unused-dev-dependencies": "error",
+    "unused-optional-dependencies": "error",
+    "unused-class-members": "warn",
+    "dev-dependencies-in-production": "warn"
+  },
+  "health": {
+    "ignore": [
+      "frontend/src/components/ui/**"
+    ],
+    "thresholdOverrides": [
+      {
+        "files": [
+          "frontend/src/components/Repository/PullRequestFiles.tsx"
+        ],
+        "functions": [
+          "PullRequestFiles"
+        ],
+        "maxCyclomatic": 43,
+        "maxCognitive": 40,
+        "reason": "Existing complexity ceiling; lower when PullRequestFiles is refactored.",
+        "maxCrap": 50
+      },
+      {
+        "files": [
+          "frontend/src/components/Dashboard/ActivityCard.tsx"
+        ],
+        "functions": [
+          "ActivityCard"
+        ],
+        "maxCyclomatic": 42,
+        "maxCognitive": 40,
+        "reason": "Existing complexity ceiling; lower when ActivityCard is refactored.",
+        "maxCrap": 424
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/SourceView.tsx"
+        ],
+        "functions": [
+          "SourceView"
+        ],
+        "maxCyclomatic": 35,
+        "maxCognitive": 41,
+        "reason": "Existing complexity ceiling; lower when SourceView is refactored.",
+        "maxCrap": 300
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/PullRequestMergeButton.tsx"
+        ],
+        "functions": [
+          "PullRequestMergeButton"
+        ],
+        "maxCyclomatic": 34,
+        "maxCognitive": 39,
+        "reason": "Existing complexity ceiling; lower when PullRequestMergeButton is refactored.",
+        "maxCrap": 38
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/PullRequestDetail.tsx"
+        ],
+        "functions": [
+          "PullRequestDetailView"
+        ],
+        "maxCyclomatic": 30,
+        "maxCognitive": 42,
+        "reason": "Existing complexity ceiling; lower when PullRequestDetailView is refactored.",
+        "maxCrap": 225
+      },
+      {
+        "files": [
+          "frontend/src/components/Dashboard/Feed.tsx"
+        ],
+        "functions": [
+          "Feed"
+        ],
+        "maxCyclomatic": 28,
+        "maxCognitive": 30,
+        "reason": "Existing complexity ceiling; lower when Feed is refactored.",
+        "maxCrap": 198
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/RepoStats.tsx"
+        ],
+        "functions": [
+          "RepoStats"
+        ],
+        "maxCyclomatic": 27,
+        "maxCognitive": 31,
+        "reason": "Existing complexity ceiling; lower when RepoStats is refactored.",
+        "maxCrap": 185
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/DiffFile.tsx"
+        ],
+        "functions": [
+          "DiffFile"
+        ],
+        "maxCyclomatic": 26,
+        "maxCognitive": 35,
+        "reason": "Existing complexity ceiling; lower when DiffFile is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Profile/UserProfile.tsx"
+        ],
+        "functions": [
+          "UserProfile"
+        ],
+        "maxCognitive": 16,
+        "maxCrap": 421,
+        "reason": "Existing complexity ceiling; lower when UserProfile is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/BranchSelector.tsx"
+        ],
+        "functions": [
+          "BranchSelector"
+        ],
+        "maxCognitive": 32,
+        "maxCrap": 89,
+        "reason": "Existing complexity ceiling; lower when BranchSelector is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/ActivityChart.tsx"
+        ],
+        "functions": [
+          "ActivityChart"
+        ],
+        "maxCognitive": 23,
+        "maxCrap": 72,
+        "reason": "Existing complexity ceiling; lower when ActivityChart is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/CommentsSection.tsx"
+        ],
+        "functions": [
+          "CommentsSection"
+        ],
+        "maxCognitive": 27,
+        "maxCrap": 72,
+        "reason": "Existing complexity ceiling; lower when CommentsSection is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/design-system/button.tsx"
+        ],
+        "functions": [
+          "Button"
+        ],
+        "maxCognitive": 21,
+        "reason": "Existing complexity ceiling; lower when Button is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/GlobalNav.tsx"
+        ],
+        "functions": [
+          "GlobalNav"
+        ],
+        "maxCognitive": 22,
+        "maxCrap": 241,
+        "reason": "Existing complexity ceiling; lower when GlobalNav is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/BranchesList.tsx"
+        ],
+        "functions": [
+          "BranchesList"
+        ],
+        "maxCrap": 241,
+        "reason": "Existing coverage-based risk ceiling; lower when BranchesList is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/CommitsList.tsx"
+        ],
+        "functions": [
+          "CommitsList"
+        ],
+        "maxCognitive": 18,
+        "maxCrap": 64,
+        "reason": "Existing complexity ceiling; lower when CommitsList is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/IssueDetail.tsx"
+        ],
+        "functions": [
+          "IssueDetail"
+        ],
+        "maxCognitive": 25,
+        "maxCrap": 64,
+        "reason": "Existing complexity ceiling; lower when IssueDetail is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/PullRequestsList.tsx"
+        ],
+        "functions": [
+          "PullRequestsList"
+        ],
+        "maxCrap": 64,
+        "reason": "Existing coverage-based risk ceiling; lower when PullRequestsList is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/IssuesList.tsx"
+        ],
+        "functions": [
+          "IssuesList"
+        ],
+        "maxCrap": 57,
+        "reason": "Existing coverage-based risk ceiling; lower when IssuesList is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/ReleasesList.tsx"
+        ],
+        "functions": [
+          "ReleasesList"
+        ],
+        "maxCognitive": 19,
+        "maxCrap": 183,
+        "reason": "Existing complexity ceiling; lower when ReleasesList is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/ReviewDiffComment.tsx"
+        ],
+        "functions": [
+          "ReviewDiffComment"
+        ],
+        "maxCognitive": 22,
+        "reason": "Existing complexity ceiling; lower when ReviewDiffComment is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/design-system/conversation.tsx"
+        ],
+        "functions": [
+          "ConversationCard"
+        ],
+        "maxCognitive": 17,
+        "reason": "Existing complexity ceiling; lower when ConversationCard is refactored."
+      },
+      {
+        "files": [
+          "frontend/storybook-tests/catalog.spec.ts"
+        ],
+        "maxCrap": 44,
+        "reason": "Existing checkCatalogStory coverage-based risk during analyzer migration.",
+        "functions": [
+          "checkCatalogStory"
+        ]
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/BlameView.tsx"
+        ],
+        "functions": [
+          "BlameView"
+        ],
+        "maxCrap": 133,
+        "reason": "Existing coverage-based risk ceiling; lower when BlameView is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/BranchSelector.tsx"
+        ],
+        "functions": [
+          "focusOption"
+        ],
+        "maxCognitive": 16,
+        "maxCrap": 38,
+        "reason": "Existing complexity ceiling; lower when focusOption is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/DiffFile.tsx"
+        ],
+        "functions": [
+          "threads"
+        ],
+        "maxCrap": 38,
+        "reason": "Existing coverage-based risk ceiling; lower when threads is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/RepositorySettings.tsx"
+        ],
+        "functions": [
+          "RepositorySettings"
+        ],
+        "maxCognitive": 22,
+        "maxCrap": 133,
+        "reason": "Existing complexity ceiling; lower when RepositorySettings is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/StarButton.tsx"
+        ],
+        "functions": [
+          "StarButton"
+        ],
+        "maxCrap": 38,
+        "reason": "Existing coverage-based risk ceiling; lower when StarButton is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/CommitDetail.tsx"
+        ],
+        "functions": [
+          "CommitDetail"
+        ],
+        "maxCrap": 111,
+        "reason": "Existing coverage-based risk ceiling; lower when CommitDetail is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/NewPullRequestForm.tsx"
+        ],
+        "functions": [
+          "NewPullRequestForm"
+        ],
+        "maxCognitive": 16,
+        "maxCrap": 32,
+        "reason": "Existing complexity ceiling; lower when NewPullRequestForm is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/RepositoryActivity.tsx"
+        ],
+        "functions": [
+          "RepositoryActivity"
+        ],
+        "maxCrap": 32,
+        "reason": "Existing coverage-based risk ceiling; lower when RepositoryActivity is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/DiffFile.tsx"
+        ],
+        "functions": [
+          "rows"
+        ],
+        "maxCognitive": 19,
+        "reason": "Existing complexity ceiling; lower when rows is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/DiffViewer.tsx"
+        ],
+        "functions": [
+          "DiffViewer"
+        ],
+        "maxCognitive": 32,
+        "reason": "Existing complexity ceiling; lower when DiffViewer is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/RepositorySettings.tsx"
+        ],
+        "functions": [
+          "mergeFormValues"
+        ],
+        "maxCrap": 73,
+        "reason": "Existing coverage-based risk ceiling; lower when mergeFormValues is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/BranchSelector.stories.tsx"
+        ],
+        "functions": [
+          "RetryBranches"
+        ],
+        "maxCrap": 57,
+        "reason": "Existing coverage-based risk ceiling; lower when RetryBranches is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/CompareView.tsx"
+        ],
+        "functions": [
+          "CompareView"
+        ],
+        "maxCrap": 57,
+        "reason": "Existing coverage-based risk ceiling; lower when CompareView is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/ReleasesList.tsx"
+        ],
+        "functions": [
+          "ReleaseCard"
+        ],
+        "maxCrap": 57,
+        "reason": "Existing coverage-based risk ceiling; lower when ReleaseCard is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/design-system/markdown-composer.tsx"
+        ],
+        "functions": [
+          "MarkdownComposer"
+        ],
+        "maxCognitive": 16,
+        "reason": "Existing complexity ceiling; lower when MarkdownComposer is refactored."
+      },
+      {
+        "files": [
+          "frontend/vite.config.ts"
+        ],
+        "functions": [
+          "resolveApiUrl"
+        ],
+        "maxCrap": 57,
+        "reason": "Existing coverage-based risk ceiling; lower when resolveApiUrl is refactored."
+      },
+      {
+        "files": [
+          "frontend/.storybook/docs-container.tsx"
+        ],
+        "functions": [
+          "update"
+        ],
+        "maxCrap": 43,
+        "reason": "Existing coverage-based risk ceiling; lower when update is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/Forks.tsx"
+        ],
+        "functions": [
+          "Forks"
+        ],
+        "maxCrap": 31,
+        "reason": "Existing coverage-based risk ceiling; lower when Forks is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/RepositorySettings.tsx"
+        ],
+        "maxCrap": 31,
+        "reason": "Existing renderDefaultBranch coverage-based risk during analyzer migration.",
+        "functions": [
+          "renderDefaultBranch"
+        ]
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/Stargazers.tsx"
+        ],
+        "functions": [
+          "Stargazers"
+        ],
+        "maxCrap": 31,
+        "reason": "Existing coverage-based risk ceiling; lower when Stargazers is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/Repository/Watchers.tsx"
+        ],
+        "functions": [
+          "Watchers"
+        ],
+        "maxCrap": 31,
+        "reason": "Existing coverage-based risk ceiling; lower when Watchers is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/UserSettings/UserInformation.tsx"
+        ],
+        "functions": [
+          "UserInformation"
+        ],
+        "maxCrap": 31,
+        "reason": "Existing coverage-based risk ceiling; lower when UserInformation is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/components/UserSettings/UserInformation.tsx"
+        ],
+        "functions": [
+          "onSubmit"
+        ],
+        "maxCrap": 31,
+        "reason": "Existing coverage-based risk ceiling; lower when onSubmit is refactored."
+      },
+      {
+        "files": [
+          "frontend/src/test/setup.ts"
+        ],
+        "maxCrap": 31,
+        "reason": "Existing setupBrowserMocks coverage-based risk during analyzer migration.",
+        "functions": [
+          "setupBrowserMocks"
+        ]
+      }
+    ]
+  }
+}
