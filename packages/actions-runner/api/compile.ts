@@ -1,3 +1,3 @@
-import { handleCompile } from "../src/compiler/handler.ts"
+import { handleCompile } from "../src/compiler/handler"
 
 export default { fetch: handleCompile }
