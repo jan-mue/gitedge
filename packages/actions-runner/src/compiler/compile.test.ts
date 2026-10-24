@@ -35,6 +35,7 @@ describe("official parser compiler", () => {
     expect(output.jobs[0].config.defaults).toEqual({ run: { "working-directory": "." } })
   })
   test.each([
+    workflow("    steps:\n      - run: true\n").replace("runs-on: ubuntu-latest", "runs-on: [linux, ARM64]"),
     "on: [push\njobs: {}",
     "on: push\non: pull_request\njobs: {}",
     workflow("    steps:\n      - run: echo '${{ not_a_context.value }}'\n"),
