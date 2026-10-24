@@ -67,3 +67,18 @@ async def test_compiler_response_size_and_missing_configuration_are_bounded(mock
     mocker.patch("app.clients.workflow_compiler.httpx.AsyncClient", return_value=client)
     with pytest.raises(CompilerUnavailableError, match="4 MiB"):
         await HttpWorkflowCompiler("https://compiler.test/api/compile", "test-token").compile(REQUEST)
+
+
+@pytest.mark.parametrize("oversized_source", [True, False])
+async def test_compiler_bounds_outbound_source_and_request_before_http(
+    mocker: MockerFixture, oversized_source: bool
+) -> None:
+    client = mocker.patch("app.clients.workflow_compiler.httpx.AsyncClient")
+    request = REQUEST.model_copy(
+        update={"source": "é" * (1024 * 1024 // 2 + 1)}
+        if oversized_source
+        else {"event": REQUEST.event.model_copy(update={"changed_paths": ["file"] * 400000})}
+    )
+    with pytest.raises(WorkflowError, match="exceeds"):
+        await HttpWorkflowCompiler("https://compiler.test/api/compile", "test-token").compile(request)
+    client.assert_not_called()
