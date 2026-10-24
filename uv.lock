@@ -827,7 +827,7 @@ requires-dist = [
     { name = "tenacity", specifier = "==9.2.1" },
     { name = "upstash-redis", specifier = "==1.8.0" },
     { name = "uvicorn", specifier = "==0.54.0" },
-    { name = "vercel", specifier = "==0.11.6" },
+    { name = "vercel", specifier = "==0.12.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -2037,13 +2037,14 @@ wheels = [
 
 [[package]]
 name = "vercel"
-version = "0.11.6"
+version = "0.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "httpx2" },
     { name = "pydantic" },
     { name = "python-dotenv" },
+    { name = "vercel-blob" },
     { name = "vercel-cache" },
     { name = "vercel-headers" },
     { name = "vercel-internal-core" },
@@ -2054,9 +2055,25 @@ dependencies = [
     { name = "vercel-workflow" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/36/0dd7a2774a07510aeecd6dcada8e8f33a529f2f8ed56f357df6d9980eede/vercel-0.11.6.tar.gz", hash = "sha256:af96132f898e0bc8421e5ae16a0d16fd973aaebaf3f0852d3ffef076af7a22ed", size = 87825, upload-time = "2026-10-07T22:39:53.754Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/e6/525f16286631d0c6a28916173c69224031859773565e3fc3b7cd6abcfa70/vercel-0.12.0.tar.gz", hash = "sha256:88f21af66e0ddd39bf640994366a4a327dc581abd3824482abe64be38f5e5fa7", size = 52295, upload-time = "2026-10-15T16:38:04.51Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/da/ee/6ca522b9c04ecc160b5fcc163b16355122e67280cab1592a651525926d18/vercel-0.11.6-py3-none-any.whl", hash = "sha256:3dfad0bfc6a6ba380246acec7346ed89020247e16e4294d88f3d9a296d2d5f43", size = 62662, upload-time = "2026-10-07T22:39:52.685Z" },
+    { url = "https://files.pythonhosted.org/packages/76/66/59a90db7b29018e7fe82691dd186e097afdf9095c4e5d74af19484ebed8c/vercel-0.12.0-py3-none-any.whl", hash = "sha256:1075d70fb0da3a62469360f8ee08da93e8c6aef7bfb125e4df33cee27c182c8d", size = 33174, upload-time = "2026-10-15T16:38:03.347Z" },
+]
+
+[[package]]
+name = "vercel-blob"
+version = "0.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "httpx2" },
+    { name = "pydantic" },
+    { name = "vercel-internal-core" },
+    { name = "vercel-oidc" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/07/41/e54e2742da6bdea10cc1fce7b14cc11ca423751cee8f25574aaf9210fe62/vercel_blob-0.5.0.tar.gz", hash = "sha256:0e42ceba8f0aa51aeb67fa1c86dc3ba4a4a078326bd2272c09580a9756231acb", size = 31933, upload-time = "2026-10-15T16:37:59.62Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1f/2e/6f9495befa200eb6c4b29102fa5f1be3d1094d62d53d39b9b4586e1585c3/vercel_blob-0.5.0-py3-none-any.whl", hash = "sha256:12168f22d2497916574d67ac955d99a0c7ed6d4291b988a51416e15d07d282ed", size = 36162, upload-time = "2026-10-15T16:37:58.588Z" },
 ]
 
 [[package]]
