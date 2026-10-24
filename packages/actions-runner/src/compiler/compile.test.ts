@@ -42,6 +42,7 @@ describe("official parser compiler", () => {
     workflow("    needs: test\n    steps:\n      - run: true\n"),
     workflow("    steps:\n      - id: duplicate\n        run: true\n      - id: duplicate\n        run: false\n"),
     workflow("    steps:\n      - uses: docker://alpine:latest\n"),
+    workflow("    steps:\n      - uses: actions/checkout@v4\n        with: ${{ fromJSON('{}') }}\n"),
     workflow("    services:\n      db:\n        image: postgres\n    steps:\n      - run: true\n"),
     workflow("    concurrency: shared\n    steps:\n      - run: true\n"),
     workflow(

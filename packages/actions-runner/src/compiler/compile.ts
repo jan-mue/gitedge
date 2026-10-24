@@ -323,6 +323,15 @@ export async function compileWorkflow(input: CompileRequest): Promise<CompiledWo
         ],
         filename,
       )
+      if (
+        fields.with !== undefined &&
+        (fields.with === null || typeof fields.with !== "object" || Array.isArray(fields.with))
+      )
+        fail(
+          filename,
+          "Dynamic action input mappings are not supported; use expressions for individual inputs",
+          stepToken,
+        )
       const timeout = fields["timeout-minutes"]
       if (
         timeout !== undefined &&
