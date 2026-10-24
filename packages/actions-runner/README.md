@@ -54,8 +54,9 @@ Supported triggers are push, pull request, and manual dispatch. Static matrices
 support include/exclude, a maximum of 256 expanded jobs, and require
 `fail-fast: false` when there are multiple variants. Branch/path filters support
 `*`, `**`, `?`, and ordered negation. Advanced filter patterns, dynamic matrices,
-reusable workflows, containers/services, concurrency, permissions, and deployment
-environments fail explicitly. Job metadata expressions must be resolvable using
+reusable workflows, containers/services, concurrency, permissions, deployment
+environments, and whole-object `with` expressions fail explicitly. Individual
+action input expressions remain supported. Job metadata expressions must be resolvable using
 the supplied event, static matrix, strategy, and dispatch inputs. Other execution
 expressions are evaluated by the sandbox agent. Actions resolve from the prepared
 image or checked-out repository; JavaScript actions use real Node from that image.
