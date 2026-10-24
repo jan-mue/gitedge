@@ -1,5 +1,8 @@
 name: Run integration tests
 
+env:
+  ACTIONS_TEST_QSTASH_IMAGE: ${{ vars.ACTIONS_TEST_QSTASH_IMAGE }}
+
 on:
   pull_request:
   push:

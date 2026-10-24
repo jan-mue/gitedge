@@ -7,6 +7,7 @@ import io
 import json
 import tarfile
 import time
+import uuid
 import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -19,9 +20,12 @@ from aiodocker import Docker
 from app.clients.blob_storage import S3Client
 from tests.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD
 from tests.git import run_git
+from tests.qstash import QSTASH_TOKEN
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    from tests.qstash import ActionsNetwork
 
 
 @pytest.fixture
@@ -66,7 +70,11 @@ def wait_for_run(client: httpx.Client, path: str, run_id: str | None = None, sec
         response.raise_for_status()
         last = response.json()
         selected = next((run for run in last if run_id is None or run["id"] == run_id), None)
-        if selected and selected["status"] not in {"queued", "running"}:
+        if (
+            selected
+            and selected["status"] not in {"queued", "running"}
+            and all(job["sandbox"] is None for job in selected["jobs"])
+        ):
             return selected
         time.sleep(0.25)
     pytest.fail(f"Workflow did not finish: {json.dumps(last, indent=2)}")
@@ -128,7 +136,7 @@ def test_tooling_actions_cache_and_artifacts(
             bucket=infrastructure["S3_BUCKET"],
         )
         keys = await blobs.list_keys("actions/")
-        key = next(key for key in keys if key.endswith(f"/{run_id}/state.tar.gz"))
+        key = next(key for key in keys if f"/{run_id}/attempts/" in key and key.endswith("/state.tar.gz"))
         caches = [key for key in keys if "/cache/" in key]
         assert caches, "Workflow cache archives must be persisted in S3"
         for cache_key in caches:
@@ -176,11 +184,36 @@ def test_cancellation_destroys_running_jobs_and_skips_queued_jobs(actions_repo: 
     dispatch = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cancellation.yaml"})
     dispatch.raise_for_status()
     run_id = dispatch.json()["id"]
+    deadline = time.monotonic() + 180
+    while time.monotonic() < deadline:
+        response = client.get(f"{path}/runs")
+        response.raise_for_status()
+        running = next(run for run in response.json() if run["id"] == run_id)
+        if "Long job started" in running["jobs"][0]["log"]:
+            break
+        time.sleep(0.25)
+    else:
+        pytest.fail("Cancellation fixture never started in Docker through QStash")
+
+    async def completion_url() -> str:
+        async with Docker() as docker:
+            container = await docker.containers.get(running["jobs"][0]["sandbox"])
+            configuration = await container.show()
+            descriptor = next(
+                value.removeprefix("GITEDGE_JOB=")
+                for value in configuration["Config"]["Env"]
+                if value.startswith("GITEDGE_JOB=")
+            )
+            return json.loads(descriptor)["complete_url"]
+
+    stale_url = asyncio.run(completion_url())
     response = client.post(f"{path}/runs/{run_id}/cancel")
     response.raise_for_status()
     run = wait_for_run(client, path, run_id)
     assert run["status"] == "cancelled"
     assert all(job["status"] == "cancelled" and job["sandbox"] is None for job in run["jobs"])
+    stale_path = stale_url.split("/api/v1/", 1)[1]
+    assert client.post(f"/api/v1/{stale_path}").status_code == 403
 
 
 def test_timeout_completes_without_actions_api_polling(
@@ -236,3 +269,103 @@ def test_invalid_parser_input_never_creates_a_sandbox(actions_repo: tuple[httpx.
             return bool(await docker.containers.list(all=True, filters={"label": ["gitedge.actions=true"]}))
 
     assert not asyncio.run(remaining_jobs())
+
+
+def test_real_qstash_retries_a_failed_signed_callback(
+    actions_repo: tuple[httpx.Client, Path, str], actions_network: ActionsNetwork
+) -> None:
+    client, _, path = actions_repo
+    wait_for_run(client, path)
+    callbacks = actions_network.callbacks
+    assert callbacks is not None
+    suffix = "/actions/internal/dispatch"
+    offset = len(callbacks.observed(suffix))
+    callbacks.fail_next(suffix)
+    response = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cache-bystander.yaml"})
+    response.raise_for_status()
+    run = wait_for_run(client, path, response.json()["id"])
+    assert run["status"] == "success", json.dumps(run, indent=2)
+    records = callbacks.observed(suffix)[offset:]
+    assert any(record.status == 503 and record.signed for record in records)
+    assert any(record.status == 202 and record.signed for record in records)
+
+
+def test_committed_outbox_recovers_after_real_publish_failure(
+    actions_repo: tuple[httpx.Client, Path, str], actions_network: ActionsNetwork, infrastructure: dict[str, str]
+) -> None:
+    client, _, path = actions_repo
+    initial = wait_for_run(client, path)
+    publishing = actions_network.publishing
+    assert publishing is not None
+    suffix = "/actions/internal/dispatch"
+    offset = len(publishing.observed(suffix))
+    publishing.fail_next(suffix)
+    response = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cache-bystander.yaml"})
+    assert response.status_code == 503
+    response = client.get(f"{path}/runs")
+    response.raise_for_status()
+    run_id = next(run["id"] for run in response.json() if run["id"] != initial["id"])
+    run = wait_for_run(client, path, run_id)
+    assert run["status"] == "success", json.dumps(run, indent=2)
+    records = publishing.observed(suffix)[offset:]
+    assert any(record.status == 503 for record in records)
+    assert any(record.status == 200 for record in records)
+    db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
+    with psycopg.connect(db_url) as connection:
+        row = connection.execute(
+            "SELECT bool_and(published_at IS NOT NULL AND acknowledged_at IS NOT NULL) "
+            "FROM workflow_outbox WHERE run_id = %s AND kind = 'dispatch'",
+            (run_id,),
+        ).fetchone()
+    assert row == (True,)
+
+
+def test_real_duplicate_deliveries_do_not_create_another_attempt(
+    actions_repo: tuple[httpx.Client, Path, str], actions_network: ActionsNetwork, infrastructure: dict[str, str]
+) -> None:
+    client, _, path = actions_repo
+    run = wait_for_run(client, path)
+    callbacks = actions_network.callbacks
+    assert callbacks is not None
+    suffix = "/actions/internal/dispatch"
+    offset = len(callbacks.observed(suffix))
+    db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
+    with psycopg.connect(db_url, autocommit=True) as connection:
+        message = connection.execute(
+            "SELECT id FROM workflow_outbox WHERE run_id = %s AND kind = 'dispatch' LIMIT 1", (run["id"],)
+        ).fetchone()
+        assert message is not None
+        count = connection.execute("SELECT count(*) FROM workflow_attempt WHERE run_id = %s", (run["id"],)).fetchone()
+        destination = f"http://host.docker.internal:{callbacks.port}/api/v1/actions/internal/dispatch"
+        for _ in range(2):
+            published = httpx.post(
+                f"{infrastructure['QSTASH_URL']}/v2/publish/{destination}",
+                headers={"Authorization": f"Bearer {QSTASH_TOKEN}", "Upstash-Deduplication-Id": str(uuid.uuid4())},
+                json={"version": 1, "id": str(message[0])},
+                timeout=10,
+            )
+            published.raise_for_status()
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            records = callbacks.observed(suffix)[offset:]
+            if len(records) >= 2:
+                break
+            time.sleep(0.1)
+        else:
+            pytest.fail("Real QStash did not deliver both duplicate commands")
+        assert all(record.signed and record.status == 202 for record in records)
+        assert (
+            connection.execute("SELECT count(*) FROM workflow_attempt WHERE run_id = %s", (run["id"],)).fetchone()
+            == count
+        )
+
+
+def test_internal_callbacks_require_a_valid_qstash_signature(app_url: str) -> None:
+    for signature in ("", "forged-signature"):
+        response = httpx.post(
+            f"{app_url}/api/v1/actions/internal/dispatch",
+            json={"version": 1, "id": str(uuid.uuid4())},
+            headers={"Upstash-Signature": signature},
+            timeout=10,
+        )
+        assert response.status_code == 403

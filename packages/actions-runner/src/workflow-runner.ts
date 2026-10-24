@@ -34,7 +34,7 @@ export class WorkflowRunner {
     const storage = await StorageServer.start({
       root: workspace.state,
       run: input.env.GITHUB_RUN_ID || "local",
-      job: input.job.id,
+      job: input.attempt.id,
       cache: options.cache || new ControllerCacheClient(input.cache_url, options.signal),
       restoreArtifacts: options.restoreArtifacts,
     })

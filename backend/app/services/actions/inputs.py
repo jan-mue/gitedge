@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
-
-import jwt
 
 from app.config import settings
 from app.exceptions import WorkflowError
+from app.schemas.action_dispatch import AttemptIdentity
 from app.schemas.workflow_events import workflow_event_adapter
 from app.schemas.workflows import CompiledWorkflow, JobDependency, JobInput, WorkflowContext
-from app.utils import security
+from app.services.actions.capabilities import issue_capability
 
 if TYPE_CHECKING:
-    from app.entities.actions import WorkflowRun
+    from app.entities.actions import WorkflowAttempt, WorkflowRun
     from app.schemas.actions import ActionJob
 
 
@@ -22,7 +20,7 @@ class JobInputBuilder:
     """Translate persisted runs into the runner input contract."""
 
     def build(
-        self, run: WorkflowRun, job: ActionJob, jobs: list[ActionJob], secrets: dict[str, str]
+        self, run: WorkflowRun, job: ActionJob, jobs: list[ActionJob], secrets: dict[str, str], attempt: WorkflowAttempt
     ) -> dict[str, bytes]:
         """Include dependency results and short-lived repository/run capabilities."""
         event = workflow_event_adapter.validate_python({**run.event, "event_name": run.event_name})
@@ -37,6 +35,7 @@ class JobInputBuilder:
             raise WorkflowError("Compiled job variant is missing from the persisted plan")
         server = settings.ACTIONS_SERVER_URL
         payload = JobInput(
+            attempt=AttemptIdentity(id=attempt.id, job_id=job.id, generation=attempt.generation, fence=attempt.fence),
             workflow=WorkflowContext(name=compiled.workflow_name, env=compiled.env, defaults=compiled.defaults),
             job=specification,
             inputs=compiled.inputs,
@@ -55,10 +54,10 @@ class JobInputBuilder:
                 "GITHUB_SERVER_URL": server,
                 "GITHUB_API_URL": server + "/api/v1",
             },
-            secrets={**secrets, "GITHUB_TOKEN": self._token(run, job, "git:read")},
-            restore_url=self._callback(run, job, "state"),
-            complete_url=self._callback(run, job, "complete"),
-            cache_url=self._callback(run, job, "cache"),
+            secrets={**secrets, "GITHUB_TOKEN": issue_capability(run, job, attempt, "git:read")},
+            restore_url=self._callback(run, job, attempt, "state"),
+            complete_url=self._callback(run, job, attempt, "complete"),
+            cache_url=self._callback(run, job, attempt, "cache"),
         )
         return {"input.json": payload.model_dump_json(by_alias=True, exclude_none=True).encode()}
 
@@ -80,20 +79,7 @@ class JobInputBuilder:
             )
         return result
 
-    def _callback(self, run: WorkflowRun, job: ActionJob, purpose: str) -> str:
-        token = self._token(run, job, f"actions:{purpose}")
-        return f"{settings.ACTIONS_SERVER_URL}/api/v1/actions/{purpose}?token={token}"
-
     @staticmethod
-    def _token(run: WorkflowRun, job: ActionJob, scope: str) -> str:
-        return jwt.encode(
-            {
-                "sub": "actions",
-                "repo": str(run.repo_id),
-                "run": str(run.id),
-                "scope": scope,
-                "exp": datetime.now(UTC) + timedelta(seconds=job.timeout_seconds + 60),
-            },
-            settings.SECRET_KEY,
-            algorithm=security.ALGORITHM,
-        )
+    def _callback(run: WorkflowRun, job: ActionJob, attempt: WorkflowAttempt, purpose: str) -> str:
+        token = issue_capability(run, job, attempt, f"actions:{purpose}")
+        return f"{settings.ACTIONS_SERVER_URL}/api/v1/actions/{purpose}?token={token}"
