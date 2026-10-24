@@ -17,6 +17,7 @@ dependencies = [
     "emails==1.1.3",
     "fastapi==0.143.0",
     "fastapi-redis-sdk==0.8.1",
+    "httpx2==2.13.1",
     "jinja2==3.1.6",
     "markdown-it-py[linkify]==4.2.0",
     "mdit-py-plugins==0.6.1",
@@ -28,7 +29,6 @@ dependencies = [
     "pygments==2.21.0",
     "pyjwt==2.15.1",
     "python-multipart==0.0.32",
-    "pyyaml==6.0.3",
     "redis[hiredis]==8.1.0",
     "sentry-sdk==2.71.0",
     "sqlalchemy[asyncio]==2.1.4",
@@ -42,7 +42,6 @@ dependencies = [
 dev = [
     "coverage==7.16.2",
     "deptry==0.25.1",
-    "httpx2==2.13.1",
     "inline-snapshot[black]==0.36.0",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
@@ -146,6 +145,7 @@ ignore_names = [
     "commit_timezone",
     # Group: serialized to JSON payloads
     "conflicting_files",
+    "definition",
     "diff_line_count",
     "log",
     "mergeable",

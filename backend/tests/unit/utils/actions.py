@@ -6,11 +6,15 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from app.constants import BACKEND_DIR
+from app.schemas.workflows import CompiledWorkflow
+
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
     from uuid import UUID
 
     from app.entities.actions import WorkflowCacheEntry, WorkflowRun
+    from app.schemas.workflows import CompileRequest
 
 
 class FakeActionsStore:
@@ -84,3 +88,13 @@ class FakeActionsCacheStore:
         entry.updated_at = datetime.now(UTC)
         self.entries[key] = entry
         return entry
+
+
+def compiled_fixture(name: str = "basic") -> CompiledWorkflow:
+    path = BACKEND_DIR.parent / "packages/actions-runner/src/compiler/fixtures" / f"{name}.json"
+    return CompiledWorkflow.model_validate_json(path.read_text())
+
+
+class FakeWorkflowCompiler:
+    async def compile(self, request: CompileRequest) -> CompiledWorkflow:
+        return compiled_fixture().model_copy(update={"workflow_name": request.filename})

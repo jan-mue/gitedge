@@ -1,7 +1,7 @@
 import { ActionExecutor } from "./actions/executor.ts"
 import { ActionResolver } from "./actions/resolver.ts"
 import type { JobResult, JobSpec, JobStatus, LogSink } from "./domain/job.ts"
-import { type JsonObject, parseWorkflow } from "./domain/workflow.ts"
+import type { JsonObject } from "./domain/workflow.ts"
 import { ExpressionEngine } from "./expressions/evaluator.ts"
 import { ExecutionScope, JobEnvironment } from "./runtime/environment.ts"
 import { Workspace } from "./runtime/files.ts"
@@ -27,15 +27,14 @@ export class WorkflowRunner {
   ) {}
   async run(): Promise<JobResult> {
     const { input, options } = this
-    const workflow = parseWorkflow(input.workflow),
-      job = workflow.jobs[input.job]
-    if (!job) throw new Error(`Unknown job: ${input.job}`)
+    const workflow = input.workflow,
+      job = input.job.config
     const workspace = new Workspace(options.root)
     await workspace.prepare(input.event)
     const storage = await StorageServer.start({
       root: workspace.state,
       run: input.env.GITHUB_RUN_ID || "local",
-      job: input.job,
+      job: input.job.id,
       cache: options.cache || new ControllerCacheClient(input.cache_url, options.signal),
       restoreArtifacts: options.restoreArtifacts,
     })
@@ -54,13 +53,13 @@ export class WorkflowRunner {
           tool_cache: environment.protected.RUNNER_TOOL_CACHE,
           environment: "self-hosted",
         },
-        matrix: input.matrix,
+        matrix: input.job.matrix,
         needs: input.needs,
-        inputs: input.event.inputs || {},
+        inputs: input.inputs,
         secrets: input.secrets,
         vars: input.vars,
         job: { status: "success" },
-        strategy: {},
+        strategy: input.job.strategy,
       }
       const scope = new ExecutionScope(context)
       scope.environment = environment.snapshot()

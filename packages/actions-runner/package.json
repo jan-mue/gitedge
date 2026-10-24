@@ -8,10 +8,12 @@
     "lint": "biome check --write --unsafe .",
     "check": "biome check .",
     "prepare:sandbox": "bun prepare.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "compiler:dev": "bun src/compiler/dev-server.ts"
   },
   "dependencies": {
     "@actions/expressions": "0.3.61",
+    "@actions/workflow-parser": "0.3.61",
     "yaml": "2.9.1",
     "zod": "4.6.7"
   },

@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs"
 import { resolve } from "node:path"
 import type { JobStatus } from "../domain/job.ts"
 import { type ActionStep, type Environment, type JsonValue, stringify, type WorkflowStep } from "../domain/workflow.ts"
@@ -35,6 +36,7 @@ export interface ActionRequest {
 /** Resolves immutable prepared actions; each invocation owns its inputs and state. */
 export class ActionExecutor {
   private readonly posts: PostAction[] = []
+  private readonly node = nodeBinary()
   constructor(
     private readonly resolver: ActionResolver,
     private readonly expressions: ExpressionEngine,
@@ -147,10 +149,19 @@ export class ActionExecutor {
     }
     return result
   }
-  private get node(): string {
-    return Bun.env.GITEDGE_NODE_BINARY || "node"
-  }
 }
 function stateEnvironment(state: Environment): Environment {
   return Object.fromEntries(Object.entries(state).map(([key, value]) => [`STATE_${key}`, value]))
+}
+
+function nodeBinary(): string {
+  const configured = Bun.env.GITEDGE_NODE_BINARY
+  if (configured) return configured
+  const bun = realpathSync(process.execPath)
+  // --bun inserts a node shim in PATH; action entrypoints require the real Node runtime.
+  for (const directory of (Bun.env.PATH || "").split(":")) {
+    const candidate = Bun.which("node", { PATH: directory })
+    if (candidate && realpathSync(candidate) !== bun) return candidate
+  }
+  throw new Error("The prepared image must contain a Node runtime for JavaScript actions")
 }

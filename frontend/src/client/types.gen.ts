@@ -19,6 +19,10 @@ export type ActionJob = {
      */
     key: string;
     /**
+     * Compiled Id
+     */
+    compiled_id?: string | null;
+    /**
      * Name
      */
     name: string;

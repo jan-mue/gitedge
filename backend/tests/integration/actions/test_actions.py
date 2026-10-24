@@ -205,3 +205,34 @@ def test_timeout_completes_without_actions_api_polling(
     assert run["status"] == "failure", json.dumps(run, indent=2)
     assert run["jobs"][0]["error"] == "Job exceeded timeout-minutes"
     assert run["jobs"][0]["sandbox"] is None
+
+
+def test_invalid_parser_input_never_creates_a_sandbox(actions_repo: tuple[httpx.Client, Path, str]) -> None:
+    client, source, path = actions_repo
+    wait_for_run(client, path)
+    (source / ".gitedge/workflow/smoke.yaml").unlink()
+    (source / ".gitedge/workflow/invalid.yaml").write_text(
+        "on: push\njobs:\n  invalid:\n    steps:\n      - run: true\n"
+    )
+    run_git(source, ["add", "."])
+    run_git(source, ["commit", "-m", "Reject invalid workflow before provisioning"])
+    run_git(source, ["push", "origin", "main"])
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        runs = client.get(f"{path}/runs")
+        runs.raise_for_status()
+        invalid = next((run for run in runs.json() if run["workflow"] == ".gitedge/workflow/invalid.yaml"), None)
+        if invalid:
+            break
+        time.sleep(0.1)
+    else:
+        pytest.fail("The pushed invalid workflow was not recorded")
+    assert invalid["status"] == "failure"
+    assert invalid["jobs"] == []
+    assert "runs-on" in invalid["error"]
+
+    async def remaining_jobs() -> bool:
+        async with Docker() as docker:
+            return bool(await docker.containers.list(all=True, filters={"label": ["gitedge.actions=true"]}))
+
+    assert not asyncio.run(remaining_jobs())

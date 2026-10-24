@@ -1,42 +1,19 @@
 import { parse } from "yaml"
 import { z } from "zod"
+import type { CompiledJob, WorkflowContext } from "./compiled-workflow.ts"
+import { compiledStepSchema, jsonValueSchema } from "./compiled-workflow.ts"
 
-const expression = z.json()
-const expressions = z.record(z.string(), expression)
-const defaults = z.object({
-  run: z.object({ shell: z.string().optional(), "working-directory": z.string().optional() }).optional(),
-})
-const step = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  if: expression.optional(),
-  env: expressions.optional(),
-  "continue-on-error": expression.optional(),
-  "timeout-minutes": expression.optional(),
-})
+const expression = jsonValueSchema
 const stepSchema = z.union([
-  step
-    .extend({ run: z.string(), shell: z.string().optional(), "working-directory": z.string().optional() })
-    .transform((value) => ({ ...value, kind: "run" as const })),
-  step
-    .extend({ uses: z.string(), with: expressions.optional() })
-    .transform((value) => ({ ...value, kind: "action" as const })),
+  compiledStepSchema.options[0]
+    .omit({ kind: true })
+    .extend({ id: z.string().optional() })
+    .transform((step) => ({ ...step, kind: "run" as const })),
+  compiledStepSchema.options[1]
+    .omit({ kind: true })
+    .extend({ id: z.string().optional() })
+    .transform((step) => ({ ...step, kind: "action" as const })),
 ])
-const workflowSchema = z.object({
-  name: z.string().optional(),
-  env: expressions.optional(),
-  defaults: defaults.optional(),
-  jobs: z.record(
-    z.string(),
-    z.object({
-      if: expression.optional(),
-      env: expressions.optional(),
-      defaults: defaults.optional(),
-      outputs: expressions.optional(),
-      steps: z.array(stepSchema),
-    }),
-  ),
-})
 const actionBase = z.object({
   inputs: z.record(z.string(), z.object({ default: expression.optional() })).default({}),
   outputs: z.record(z.string(), z.object({ value: expression.optional() })).default({}),
@@ -58,14 +35,12 @@ export type JsonValue = z.infer<typeof expression>
 export type JsonObject = Record<string, JsonValue>
 export type Environment = Record<string, string>
 export type Expressions = Record<string, JsonValue>
-export type Workflow = z.infer<typeof workflowSchema>
+export type Workflow = WorkflowContext
+export type WorkflowJob = CompiledJob["config"]
 export type WorkflowStep = z.infer<typeof stepSchema>
 export type ShellStep = Extract<WorkflowStep, { kind: "run" }>
 export type ActionStep = Extract<WorkflowStep, { kind: "action" }>
 export type Action = z.infer<typeof actionSchema>
-export function parseWorkflow(source: string): Workflow {
-  return workflowSchema.parse(parse(source))
-}
 export function parseAction(source: string): Action {
   return actionSchema.parse(parse(source))
 }

@@ -1,7 +1,14 @@
 import { join } from "node:path"
 import type { ActionExecutor } from "../actions/executor.ts"
 import { errorMessage, type JobStatus, type StepResult } from "../domain/job.ts"
-import { type Environment, type ShellStep, stringify, type Workflow, type WorkflowStep } from "../domain/workflow.ts"
+import {
+  type Environment,
+  type ShellStep,
+  stringify,
+  type Workflow,
+  type WorkflowJob,
+  type WorkflowStep,
+} from "../domain/workflow.ts"
 import type { ExpressionEngine } from "../expressions/evaluator.ts"
 import type { ExecutionScope, JobEnvironment } from "./environment.ts"
 import { inside, type Workspace, writeFile } from "./files.ts"
@@ -11,7 +18,7 @@ import type { ProcessExecutor } from "./process.ts"
 export class StepExecutor {
   constructor(
     private readonly workflow: Workflow,
-    private readonly job: Workflow["jobs"][string],
+    private readonly job: WorkflowJob,
     private readonly expressions: ExpressionEngine,
     private readonly environment: JobEnvironment,
     private readonly process: ProcessExecutor,
@@ -68,6 +75,8 @@ export class StepExecutor {
       const minutes = Number(
         await this.expressions.interpolate(step["timeout-minutes"], scope.expressionContext(), status),
       )
+      if (step["timeout-minutes"] !== undefined && (!Number.isFinite(minutes) || minutes <= 0))
+        throw new Error("Step timeout-minutes must resolve to a positive finite number")
       const signal = minutes > 0 ? AbortSignal.any([this.signal, AbortSignal.timeout(minutes * 60000)]) : this.signal
       switch (step.kind) {
         case "run":

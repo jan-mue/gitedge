@@ -111,8 +111,12 @@ test("cache protocol restores finalized entries across job servers and authentic
 test("artifact protocol accepts optional metadata and persists ZIP content with escaped signed URLs", async () => {
   const root = await mkdtemp(join(tmpdir(), "gitedge-artifact-"))
   const cache = new MemoryCache()
-  const storage = await startStorage(root, "123", "build", cache)
+  const storage = await startStorage(root, "123", "build:0", cache)
   try {
+    const payload = storage.environment.ACTIONS_RUNTIME_TOKEN?.split(".")[1]
+    assert.ok(payload)
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString())
+    assert.deepEqual(claims.scp.split(":"), ["Actions.Results", "123", "build%3A0"])
     const call = async (method: string, data: Record<string, unknown>) =>
       (
         await fetch(

@@ -22,6 +22,7 @@ class WorkflowRun(Base):
     )
     workflow: Mapped[str] = mapped_column(String(512))
     definition: Mapped[str] = mapped_column(Text)
+    compiled: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     name: Mapped[str] = mapped_column(String(512))
     sha: Mapped[str] = mapped_column(String(40))
     ref: Mapped[str] = mapped_column(String(512))

@@ -4,7 +4,12 @@ import { createServer } from "node:http"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "vitest"
-import { launch } from "./src/job-lifecycle.ts"
+import { type LaunchOptions, launch as launchAgent } from "./src/job-lifecycle.ts"
+import { manifestFixture, type WorkflowFixture } from "./test-helpers.ts"
+
+async function launch(input: WorkflowFixture, options: LaunchOptions) {
+  return launchAgent(await manifestFixture(input), options)
+}
 
 test("Bun launcher exports state and publishes its completion marker before callback", async () => {
   const root = await mkdtemp(join(tmpdir(), "gitedge-launch-"))
@@ -28,7 +33,8 @@ test("Bun launcher exports state and publishes its completion marker before call
   try {
     const { code } = await launch(
       {
-        workflow: "jobs:\n  test:\n    steps:\n      - run: echo hello\n",
+        workflow:
+          "on: workflow_dispatch\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\n",
         job: "test",
         timeout_seconds: 10,
         env: { GITHUB_RUN_ID: "1" },
@@ -51,7 +57,8 @@ test("a job deadline kills its process and still exports a failed result", async
   try {
     const { code } = await launch(
       {
-        workflow: "jobs:\n  test:\n    steps:\n      - run: sleep 30\n",
+        workflow:
+          "on: workflow_dispatch\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sleep 30\n",
         job: "test",
         timeout_seconds: 0.05,
         env: { GITHUB_RUN_ID: "1" },
@@ -78,7 +85,12 @@ test("shell-only jobs start and finish without requesting remote cache/artifact 
   assert.ok(address && typeof address !== "string")
   try {
     const { code } = await launch(
-      { workflow: "jobs:\n  test:\n    steps:\n      - run: echo ready\n", job: "test", env: { GITHUB_RUN_ID: "1" } },
+      {
+        workflow:
+          "on: workflow_dispatch\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ready\n",
+        job: "test",
+        env: { GITHUB_RUN_ID: "1" },
+      },
       { root, restoreUrl: `http://127.0.0.1:${address.port}` },
     )
     assert.equal(code, 0)

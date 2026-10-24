@@ -29,7 +29,7 @@ export class StorageServer {
     const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url")
     const payload = Buffer.from(
       JSON.stringify({
-        scp: `Actions.Results:${options.run}:${options.job}`,
+        scp: `Actions.Results:${encodeURIComponent(options.run)}:${encodeURIComponent(options.job)}`,
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + 86400,
       }),

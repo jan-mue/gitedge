@@ -1,10 +1,13 @@
 import { z } from "zod"
+import { compiledJobSchema, expressionsSchema, workflowContextSchema } from "./compiled-workflow.ts"
 
 const statusSchema = z.enum(["success", "failure", "cancelled", "skipped"])
 const strings = z.record(z.string(), z.string())
 export const jobSchema = z.object({
-  workflow: z.string(),
-  job: z.string(),
+  version: z.literal(1),
+  workflow: workflowContextSchema,
+  job: compiledJobSchema,
+  inputs: expressionsSchema.default({}),
   timeout_seconds: z.number().positive().default(1200),
   restore_url: z.string().url().optional(),
   complete_url: z.string().url().optional(),
@@ -13,7 +16,6 @@ export const jobSchema = z.object({
   actor: z.string().default(""),
   event: z.record(z.string(), z.json()).default({}),
   env: strings.default({}),
-  matrix: z.record(z.string(), z.json()).default({}),
   needs: z.record(z.string(), z.object({ result: statusSchema, outputs: strings.default({}) })).default({}),
   secrets: strings.default({}),
   vars: strings.default({}),

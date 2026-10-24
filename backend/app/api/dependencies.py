@@ -43,6 +43,7 @@ from app.clients.sandboxes import AbstractSandboxClient, DockerSandboxClient, Ve
 from app.clients.stars import SQLStarStore, StarStore
 from app.clients.users import SQLUserStore, UserStore
 from app.clients.watchers import SQLWatcherStore, WatcherStore
+from app.clients.workflow_compiler import HttpWorkflowCompiler, WorkflowCompiler
 from app.config import settings
 from app.entities.users import User
 from app.schemas.token import TokenPayload
@@ -723,6 +724,14 @@ def get_sandbox_client() -> AbstractSandboxClient:
 SandboxClientDep = Annotated[AbstractSandboxClient, Depends(get_sandbox_client)]
 
 
+def get_workflow_compiler() -> WorkflowCompiler:
+    """Select the configured on-demand compiler HTTP endpoint."""
+    return HttpWorkflowCompiler(settings.ACTIONS_COMPILER_URL, settings.ACTIONS_COMPILER_TOKEN)
+
+
+WorkflowCompilerDep = Annotated[WorkflowCompiler, Depends(get_workflow_compiler)]
+
+
 def get_actions_service(
     store: ActionsStoreDep,
     repositories: RepositoryServiceDep,
@@ -731,6 +740,7 @@ def get_actions_service(
     pull_requests: PullRequestStoreDep,
     cache_store: ActionsCacheStoreDep,
     sandbox: SandboxClientDep,
+    compiler: WorkflowCompilerDep,
 ) -> ActionsService:
     """Inject one sandbox provider and durable workflow cache storage."""
     return ActionsService(
@@ -739,6 +749,7 @@ def get_actions_service(
         repository_store,
         blobs,
         sandbox,
+        compiler=compiler,
         provider=settings.ACTIONS_PROVIDER,
         max_timeout=settings.ACTIONS_MAX_TIMEOUT,
         max_parallel=settings.ACTIONS_MAX_PARALLEL,

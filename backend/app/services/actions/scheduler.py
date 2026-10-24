@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from app.clients.sandboxes import SandboxError
+from app.exceptions import WorkflowError
 from app.schemas.actions import ActionJob, ActionStatus
 from app.services.actions.inputs import JobInputBuilder
 from app.services.actions.runtime import finish_job, redact, update_logs
@@ -103,7 +104,7 @@ class RunScheduler:
         job.status = ActionStatus.RUNNING
         try:
             await self.sandbox.start(job.sandbox, self.inputs.build(run, job, jobs, secrets), job.timeout_seconds)
-        except SandboxError as exc:
+        except (SandboxError, WorkflowError) as exc:
             self._fail(job, exc, secrets)
             try:
                 await self.sandbox.delete(job.sandbox)
@@ -112,7 +113,7 @@ class RunScheduler:
                 logger.exception("Sandbox cleanup failed after launch for job %s", job.id)
 
     @staticmethod
-    def _fail(job: ActionJob, error: SandboxError, secrets: dict[str, str]) -> None:
+    def _fail(job: ActionJob, error: SandboxError | WorkflowError, secrets: dict[str, str]) -> None:
         logger.warning("Sandbox operation failed for job %s: %s", job.id, redact(str(error), secrets))
         job.status = ActionStatus.FAILURE
         job.completed_at = datetime.now(UTC)
