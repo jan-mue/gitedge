@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from app.schemas.workflows import CompileRequest
 
 MAX_COMPILER_RESPONSE = 4 * 1024 * 1024
+MAX_COMPILER_REQUEST = 2 * 1024 * 1024
+MAX_WORKFLOW_SOURCE = 1024 * 1024
 
 
 class WorkflowCompiler(Protocol):
@@ -37,14 +39,19 @@ class HttpWorkflowCompiler:
         """Bound response size and distinguish workflow rejection from outages."""
         if not self.url or not self.token:
             raise CompilerUnavailableError("ACTIONS_COMPILER_URL and ACTIONS_COMPILER_TOKEN must be configured")
+        if len(request.source.encode()) > MAX_WORKFLOW_SOURCE:
+            raise WorkflowError("Workflow source exceeds 1 MiB")
+        body = request.model_dump_json(by_alias=True, exclude_none=True).encode()
+        if len(body) > MAX_COMPILER_REQUEST:
+            raise WorkflowError("Compiler request exceeds 2 MiB")
         try:
             async with (
                 httpx.AsyncClient(timeout=httpx.Timeout(10, connect=3)) as client,
                 client.stream(
                     "POST",
                     self.url,
-                    headers={"Authorization": f"Bearer {self.token}"},
-                    json=request.model_dump(mode="json", by_alias=True, exclude_none=True),
+                    headers={"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"},
+                    content=body,
                 ) as response,
             ):
                 payload = bytearray()
