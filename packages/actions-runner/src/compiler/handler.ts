@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto"
-import { compileRequestSchema } from "../domain/compiled-workflow.ts"
-import { CompileError, compileWorkflow, MAX_IR_BYTES } from "./compile.ts"
+import { compileRequestSchema } from "../domain/compiled-workflow"
+import { CompileError, compileWorkflow, MAX_IR_BYTES } from "./compile"
 
 const BODY_LIMIT = 2 * 1024 * 1024
 function authorized(request: Request): boolean {

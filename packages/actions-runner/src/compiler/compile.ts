@@ -20,7 +20,7 @@ import {
   compiledWorkflowSchema,
   compileRequestSchema,
   type JsonValue,
-} from "../domain/compiled-workflow.ts"
+} from "../domain/compiled-workflow"
 
 export interface CompileIssue {
   filename: string
