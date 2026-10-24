@@ -50,7 +50,8 @@ Requests are limited to 2 MiB, source to 1 MiB of UTF-8, and IR to 4 MiB. Schema
 or workflow errors return structured 422 diagnostics with source locations when
 available. Authentication failures return 401; unexpected failures return 500.
 
-Supported triggers are push, pull request, and manual dispatch. Static matrices
+Prepared runner labels target x64 Linux; ARM64 and other operating systems fail
+explicitly. Supported triggers are push, pull request, and manual dispatch. Static matrices
 support include/exclude, a maximum of 256 expanded jobs, and require
 `fail-fast: false` when there are multiple variants. Branch/path filters support
 `*`, `**`, `?`, and ordered negation. Advanced filter patterns, dynamic matrices,

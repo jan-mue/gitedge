@@ -365,10 +365,10 @@ export async function compileWorkflow(input: CompileRequest): Promise<CompiledWo
       if (
         labels.some(
           (label) =>
-            typeof label !== "string" || !/^(ubuntu-(latest|22\.04|24\.04)|linux|self-hosted|x64|ARM64)$/.test(label),
+            typeof label !== "string" || !/^(ubuntu-(latest|22\.04|24\.04)|linux|self-hosted|x64)$/.test(label),
         )
       )
-        fail(filename, "Only prepared Linux runner labels are supported", token.find("runs-on"))
+        fail(filename, "Only prepared x64 Linux runner labels are supported", token.find("runs-on"))
       const timeout = Number(staticValue(raw["timeout-minutes"] ?? 20, context, filename, token))
       if (!Number.isFinite(timeout) || timeout <= 0)
         fail(filename, "timeout-minutes must be positive and finite", token.find("timeout-minutes"))
