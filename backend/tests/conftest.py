@@ -5,6 +5,7 @@ import concurrent.futures
 import json
 import os
 import random
+import re
 import socket
 import string
 import sys
@@ -20,6 +21,8 @@ import redis
 from alembic.command import upgrade
 from alembic.config import Config
 from pydantic import PostgresDsn, TypeAdapter
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.wait_strategies import HttpWaitStrategy
 from testcontainers.mailpit import MailpitContainer
 from testcontainers.minio import MinioContainer
 from testcontainers.postgres import PostgresContainer
@@ -30,6 +33,7 @@ from app.clients.blob_storage import S3Client
 from app.config import settings
 from app.constants import BACKEND_DIR
 from app.utils.security import get_password_hash
+from tests.qstash import QSTASH_CURRENT_KEY, QSTASH_NEXT_KEY, QSTASH_TOKEN, ActionsNetwork, FaultProxy
 
 if TYPE_CHECKING:
     from collections.abc import Coroutine, Generator
@@ -39,6 +43,27 @@ if TYPE_CHECKING:
 
 FIRST_SUPERUSER = os.environ.get("FIRST_SUPERUSER", "admin@example.com")
 FIRST_SUPERUSER_PASSWORD = os.environ.get("FIRST_SUPERUSER_PASSWORD", "changethis_admin_password_secure")
+
+
+@pytest.fixture(scope="session")
+def qstash_container() -> Generator[DockerContainer]:
+    """Require an official digest-pinned broker; never substitute a fake scheduler."""
+    image = os.environ.get("ACTIONS_TEST_QSTASH_IMAGE", "")
+    if not re.fullmatch(r"public\.ecr\.aws/upstash/qstash@sha256:[a-f0-9]{64}", image):
+        pytest.fail("ACTIONS_TEST_QSTASH_IMAGE must pin the official public.ecr.aws/upstash/qstash image digest")
+    container = (
+        DockerContainer(image)
+        .with_command("qstash dev")
+        .with_exposed_ports(8080, 8081)
+        .with_kwargs(extra_hosts={"host.docker.internal": "host-gateway"})
+        .waiting_for(
+            HttpWaitStrategy(8080, "/v2/queues")
+            .with_header("Authorization", f"Bearer {QSTASH_TOKEN}")
+            .for_status_code(200)
+        )
+    )
+    with container:
+        yield container
 
 
 @pytest.fixture(scope="session")
@@ -67,7 +92,9 @@ def mailpit_smtp_port(mailpit_container: MailpitContainer) -> int:
 
 
 @pytest.fixture(scope="session")
-def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[dict[str, str]]:
+def infrastructure(
+    mailpit_smtp_host: str, mailpit_smtp_port: int, qstash_container: DockerContainer
+) -> Generator[dict[str, str]]:
     """Start infrastructure containers (DB, Redis, MinIO)."""
     with (
         PostgresContainer("postgres:18.2", driver="psycopg") as postgres,
@@ -83,6 +110,10 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
 
         env = {
             "DATABASE_URL": db_url,
+            "QSTASH_URL": f"http://{qstash_container.get_container_host_ip()}:{qstash_container.get_exposed_port(8080)}",
+            "QSTASH_TOKEN": QSTASH_TOKEN,
+            "QSTASH_CURRENT_SIGNING_KEY": QSTASH_CURRENT_KEY,
+            "QSTASH_NEXT_SIGNING_KEY": QSTASH_NEXT_KEY,
             "ACTIONS_COMPILER_TOKEN": "integration-test-token",
             "REDIS_URL": redis_url,
             "BLOB_STORAGE_KIND": "s3",
@@ -257,7 +288,15 @@ def actions_compiler_url(infrastructure: dict[str, str], xprocess: XProcess) -> 
 
 
 @pytest.fixture(scope="session")
-def backend_url(infrastructure: dict[str, str], actions_compiler_url: str, xprocess: XProcess) -> Generator[str]:
+def actions_network() -> ActionsNetwork:
+    """Expose fault controls without replacing QStash or application dispatch."""
+    return ActionsNetwork()
+
+
+@pytest.fixture(scope="session")
+def backend_url(
+    infrastructure: dict[str, str], actions_compiler_url: str, actions_network: ActionsNetwork, xprocess: XProcess
+) -> Generator[str]:
     """Start the backend server for integration and browser tests."""
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -266,12 +305,6 @@ def backend_url(infrastructure: dict[str, str], actions_compiler_url: str, xproc
 
     backend_env = os.environ.copy()
     backend_env.update(infrastructure)
-    backend_env.update(
-        {
-            "ACTIONS_SERVER_URL": f"http://host.docker.internal:{backend_port}",
-            "ACTIONS_COMPILER_URL": actions_compiler_url,
-        }
-    )
     backend_cwd = BACKEND_DIR
 
     class BackendStarter(ProcessStarter):  # type: ignore[misc]
@@ -283,11 +316,25 @@ def backend_url(infrastructure: dict[str, str], actions_compiler_url: str, xproc
         max_read_lines = 1000
 
     backend_base_url = f"http://127.0.0.1:{backend_port}"
-    xprocess.ensure("backend", BackendStarter, restart=True)
-
-    yield backend_base_url
-
-    xprocess.getinfo("backend").terminate()
+    with (
+        FaultProxy(infrastructure["QSTASH_URL"]).running() as publishing,
+        FaultProxy(backend_base_url).running() as callbacks,
+    ):
+        actions_network.publishing, actions_network.callbacks = publishing, callbacks
+        backend_env.update(
+            {
+                "QSTASH_URL": f"http://127.0.0.1:{publishing.port}",
+                "ACTIONS_SERVER_URL": f"http://host.docker.internal:{callbacks.port}",
+                "ACTIONS_COMPILER_URL": actions_compiler_url,
+                "ACTIONS_INSPECT_INTERVAL": "1",
+                "ACTIONS_RECONCILE_INTERVAL": "2",
+            }
+        )
+        xprocess.ensure("backend", BackendStarter, restart=True)
+        try:
+            yield backend_base_url
+        finally:
+            xprocess.getinfo("backend").terminate()
 
 
 @pytest.fixture

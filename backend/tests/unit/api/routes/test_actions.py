@@ -6,8 +6,13 @@ from typing import TYPE_CHECKING
 import jwt
 import pytest
 
+from app.api.dependencies import get_actions_store
 from app.config import settings
+from app.entities.actions import WorkflowAttempt, WorkflowRun
 from app.exceptions import WorkflowError
+from app.index import app
+from app.schemas.actions import ActionJob
+from app.services.actions.capabilities import issue_capability
 from app.services.actions.service import ActionsService
 
 if TYPE_CHECKING:
@@ -73,11 +78,15 @@ def test_completion_rejects_read_only_state_tokens(client: TestClient) -> None:
 
 def test_cache_capabilities_scope_upload_lookup_and_download_to_one_repository(client: TestClient) -> None:
     def capability(repo: uuid.UUID, scope: str = "actions:cache") -> str:
-        return jwt.encode(
-            {"repo": str(repo), "run": str(uuid.uuid4()), "scope": scope, "exp": 4102444800},
-            settings.SECRET_KEY,
-            algorithm="HS256",
+        store = app.dependency_overrides[get_actions_store]()
+        job = ActionJob(id=uuid.uuid4().hex, key="job", name="job")
+        attempt = WorkflowAttempt(
+            id=uuid.uuid4(), run_id=uuid.uuid4(), job_id=job.id, generation=1, fence=uuid.uuid4(), status="running"
         )
+        job.attempt_id = attempt.id
+        run = WorkflowRun(id=attempt.run_id, repo_id=repo, status="running", jobs=[job.model_dump(mode="json")])
+        store.runs[run.id], store.attempts[attempt.id] = run, attempt
+        return issue_capability(run, job, attempt, scope)
 
     repository = uuid.uuid4()
     token = capability(repository)
