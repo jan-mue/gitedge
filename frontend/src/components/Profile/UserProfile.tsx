@@ -7,7 +7,8 @@ import {
   profilesListUserStarredRepositoriesOptions,
   profilesReadUserByUsernameOptions,
 } from "@/client/@tanstack/react-query.gen"
-import { Avatar, AvatarFallback, Button, Link as RouterLink } from "@/components/design-system"
+import { Avatar, AvatarFallback, Button } from "@/components/design-system"
+import { RepositorySummary } from "@/components/Repositories/RepositorySummary"
 import StarButton from "@/components/Repository/StarButton"
 
 interface UserProfileProps {
@@ -17,12 +18,7 @@ interface UserProfileProps {
 const RepoCard = ({ repo }: { repo: Repository }) => (
   <div className="border border-border rounded-lg bg-card px-4 py-3" data-testid={`profile-repo-${repo.name}`}>
     <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <RouterLink to="/$owner/$repo" params={{ owner: repo.owner, repo: repo.name }} appearance="repository">
-          {repo.owner}/{repo.name}
-        </RouterLink>
-        {repo.description && <p className="text-xs text-muted-foreground mt-1">{repo.description}</p>}
-      </div>
+      <RepositorySummary repo={repo} />
       <StarButton owner={repo.owner} repo={repo.name} />
     </div>
   </div>

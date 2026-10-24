@@ -8,6 +8,7 @@ import {
   handleUsersReadUserMe,
 } from "@/client/msw.gen"
 import { handlers, repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
+import { storybookSession, storybookUser } from "@/components/Storybook/session"
 import RepositorySettings from "./RepositorySettings"
 
 const initialRepository: Repository = {
@@ -26,24 +27,14 @@ const meta = {
   title: "Patterns/Repository/Settings",
   beforeEach: () => {
     repository = initialRepository
-    const previous = localStorage.getItem("access_token")
-    localStorage.setItem("access_token", "storybook-session")
-    return () => {
-      if (previous === null) localStorage.removeItem("access_token")
-      else localStorage.setItem("access_token", previous)
-    }
+    return storybookSession()
   },
   parameters: {
     msw: {
       handlers: [
         ...handlers,
         handleUsersReadUserMe({
-          body: {
-            id: "00000000-0000-0000-0000-000000000001",
-            name: "jan-mue",
-            email: "jan@example.com",
-            is_active: true,
-          },
+          body: storybookUser,
         }),
         handleRepositoriesGetRepository(() => HttpResponse.json(repository)),
         handleRepositoriesUpdateRepository(async ({ request }) => {

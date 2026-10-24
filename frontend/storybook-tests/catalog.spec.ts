@@ -58,7 +58,7 @@ for (const docs of Object.values(index.entries).filter((entry) => entry.type ===
 }
 
 for (const story of Object.values(index.entries).filter((entry) => entry.type === "story")) {
-  test(`${story.title} / ${story.name}`, async ({ page }, testInfo) => {
+  test(`${story.title} / ${story.name}`, async function checkCatalogStory({ page }, testInfo) {
     const errors: string[] = []
     page.on("pageerror", (error) => errors.push(error.message))
     const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"

@@ -22,15 +22,6 @@ export const handleError = function (this: (msg: string) => void, err: unknown) 
   this(errorMessage)
 }
 
-export const getInitials = (name: string): string => {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase()
-}
-
 export const formatSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`

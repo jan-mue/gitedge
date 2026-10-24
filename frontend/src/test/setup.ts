@@ -10,7 +10,7 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-beforeAll(() => {
+beforeAll(function setupBrowserMocks() {
   // Node's fetch requires an absolute URL; use the same origin as jsdom.
   client.setConfig({ baseUrl: window.location.origin })
   server.listen({ onUnhandledFrame: "error" })

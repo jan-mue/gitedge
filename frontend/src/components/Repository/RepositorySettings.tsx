@@ -199,21 +199,23 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
               <Controller
                 control={control}
                 name="default_branch"
-                render={({ field }) => (
-                  <SelectField
-                    id="default-branch"
-                    aria-label="Default branch"
-                    name={field.name}
-                    ref={field.ref}
-                    value={field.value ?? ""}
-                    onValueChange={field.onChange}
-                    onBlur={field.onBlur}
-                    options={(branches?.length ? branches : [{ name: data.default_branch ?? "main" }]).map(
-                      (branch) => ({ value: branch.name, label: branch.name }),
-                    )}
-                    aria-invalid={Boolean(errors.default_branch)}
-                  />
-                )}
+                render={function renderDefaultBranch({ field }) {
+                  return (
+                    <SelectField
+                      id="default-branch"
+                      aria-label="Default branch"
+                      name={field.name}
+                      ref={field.ref}
+                      value={field.value ?? ""}
+                      onValueChange={field.onChange}
+                      onBlur={field.onBlur}
+                      options={(branches?.length ? branches : [{ name: data.default_branch ?? "main" }]).map(
+                        (branch) => ({ value: branch.name, label: branch.name }),
+                      )}
+                      aria-invalid={Boolean(errors.default_branch)}
+                    />
+                  )
+                }}
               />
               {errors.default_branch && <p className="text-sm text-destructive">{errors.default_branch.message}</p>}
               <p className="mt-1 text-xs text-muted-foreground">The branch shown when visitors open the repository.</p>

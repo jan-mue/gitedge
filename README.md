@@ -160,6 +160,17 @@ The frontend lives in `frontend/` and is built with [Vite](https://vitejs.dev/),
 and [Tailwind CSS](https://tailwindcss.com/). See `frontend/package.json` for all
 available scripts.
 
+Run `bun run fallow` from the repository root to check unused code, dependencies,
+duplication, and complexity. Each analysis fails on findings. Existing complexity
+ceilings are recorded per function in `.fallowrc.json`; new functions use the
+default limits. Lower or remove a ceiling when its function is refactored.
+
+`bun run fallow:production` limits dead-code and duplication analysis to shipped
+code. Health keeps the full module graph so test reachability remains available
+for coverage-based risk estimates. Shared UI, Storybook, and email template
+exports remain entry points. Generated API client and route-tree files are
+excluded, and vendored shadcn components are excluded from health analysis.
+
 #### Storybook
 
 Run the component explorer:
