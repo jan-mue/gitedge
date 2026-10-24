@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/fallow/schema.json",
+  "extends": "./.fallowrc.jsonc",
+  "production": true,
+  // Preserve Knip's production-mode handling of locally used exports.
+  "ignoreExportsUsedInFile": true,
+  "ignoreDependencies": [
+    "@react-email/ui",
+    // Build/preview tooling, not imported by shipped source or email templates.
+    "@tailwindcss/vite",
+    "react-dom",
+    "react-email"
+  ]
+}

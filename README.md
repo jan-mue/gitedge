@@ -160,6 +160,12 @@ The frontend lives in `frontend/` and is built with [Vite](https://vitejs.dev/),
 and [Tailwind CSS](https://tailwindcss.com/). See `frontend/package.json` for all
 available scripts.
 
+Run `bun run fallow` from the repository root to check unused code and
+dependencies. Use `bun run fallow:production` for shipped code; its config also
+ignores exports referenced within their own file, matching the former Knip
+production check. Shared UI, Storybook, and email template exports remain entry
+points. Generated API client and route-tree files are excluded.
+
 #### Storybook
 
 Run the component explorer:
