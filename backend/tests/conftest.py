@@ -13,6 +13,7 @@ import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+import httpx2 as httpx
 import psycopg
 import pytest
 import redis
@@ -82,6 +83,7 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
 
         env = {
             "DATABASE_URL": db_url,
+            "ACTIONS_COMPILER_TOKEN": "integration-test-token",
             "REDIS_URL": redis_url,
             "BLOB_STORAGE_KIND": "s3",
             "S3_ENDPOINT": minio_endpoint,
@@ -231,7 +233,31 @@ def clean_repositories(infrastructure: dict[str, str]) -> Generator[None]:
 
 
 @pytest.fixture(scope="session")
-def backend_url(infrastructure: dict[str, str], xprocess: XProcess) -> Generator[str]:
+def actions_compiler_url(infrastructure: dict[str, str], xprocess: XProcess) -> Generator[str]:
+    """Run the production compiler handler in a test-owned local Bun process."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.bind(("127.0.0.1", 0))
+        port = listener.getsockname()[1]
+    repo = BACKEND_DIR.parent
+
+    class CompilerStarter(ProcessStarter):
+        pattern = "GITEDGE_COMPILER_READY"
+        terminate_on_interrupt = True
+        env = {**os.environ, "COMPILER_PORT": str(port), "COMPILER_TOKEN": infrastructure["ACTIONS_COMPILER_TOKEN"]}
+        args = ["bun", "run", str(repo / "packages/actions-runner/src/compiler/dev-server.ts")]
+        popen_kwargs = {"cwd": repo}
+
+    xprocess.ensure("actions-compiler", CompilerStarter, restart=True)
+    try:
+        base = f"http://127.0.0.1:{port}"
+        assert httpx.get(f"{base}/healthz", timeout=5).text == "ok"
+        yield f"{base}/api/compile"
+    finally:
+        xprocess.getinfo("actions-compiler").terminate()
+
+
+@pytest.fixture(scope="session")
+def backend_url(infrastructure: dict[str, str], actions_compiler_url: str, xprocess: XProcess) -> Generator[str]:
     """Start the backend server for integration and browser tests."""
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -240,13 +266,19 @@ def backend_url(infrastructure: dict[str, str], xprocess: XProcess) -> Generator
 
     backend_env = os.environ.copy()
     backend_env.update(infrastructure)
+    backend_env.update(
+        {
+            "ACTIONS_SERVER_URL": f"http://host.docker.internal:{backend_port}",
+            "ACTIONS_COMPILER_URL": actions_compiler_url,
+        }
+    )
     backend_cwd = BACKEND_DIR
 
     class BackendStarter(ProcessStarter):  # type: ignore[misc]
         terminate_on_interrupt = True
         pattern = "Application startup complete"
         env = backend_env
-        args = [sys.executable, "-m", "uvicorn", "app.index:app", "--port", str(backend_port)]
+        args = [sys.executable, "-m", "uvicorn", "app.index:app", "--host", "0.0.0.0", "--port", str(backend_port)]
         popen_kwargs = {"cwd": backend_cwd}
         max_read_lines = 1000
 

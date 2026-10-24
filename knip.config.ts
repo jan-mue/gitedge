@@ -42,6 +42,10 @@ const config: KnipConfig = {
           ]
         : [],
     },
+    "packages/actions-runner": {
+      entry: ["src/main.ts", "api/compile.ts", "artifact-compat.ts", "**/*.test.ts"],
+      project: ["**/*.ts"],
+    },
     "packages/react-email": {
       entry: ["emails/**/*.tsx!"],
       project: ["**/*.{js,jsx,ts,tsx}!"],

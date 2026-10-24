@@ -4,6 +4,7 @@ import { HttpResponse } from "msw"
 import type { ReviewPublic } from "@/client"
 import { reviewsListReviewsOptions } from "@/client/@tanstack/react-query.gen"
 import {
+  handleActionsGetPullRequestChecks,
   handleCommentsListComments,
   handleRepositoriesGetDiffFile,
   handleRepositoriesGetPullRequest,
@@ -54,6 +55,7 @@ const meta = {
   parameters: {
     msw: {
       handlers: [
+        handleActionsGetPullRequestChecks(() => HttpResponse.json({ head_sha: "a".repeat(40), runs: [] })),
         handleRepositoriesGetRepository({
           body: {
             owner: "jan-mue",

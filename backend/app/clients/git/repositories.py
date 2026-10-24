@@ -1440,3 +1440,29 @@ class GitClient:
     async def handle_http(self, request: GitHttpRequest) -> GitHttpResponse:
         """Run synchronous protocol processing off the event loop."""
         return await run_in_threadpool(handle_http, self.backend, request)
+
+    async def action_revision(self, owner: str, name: str, ref: str) -> tuple[str, str]:
+        """Resolve an Actions source commit and its canonical ref without a moving-ref race."""
+        repo = await self.load_repository(owner, name)
+        sha = self._resolve_ref(repo, ref).decode()
+        if ref == "HEAD":
+            target = repo.refs.read_loose_ref(Ref(b"HEAD"))
+            canonical = target.removeprefix(b"ref: ").decode() if target else ref
+        elif Ref(ref.encode()) in repo.refs:
+            canonical = ref
+        elif Ref(f"refs/heads/{ref}".encode()) in repo.refs:
+            canonical = f"refs/heads/{ref}"
+        elif Ref(f"refs/tags/{ref}".encode()) in repo.refs:
+            canonical = f"refs/tags/{ref}"
+        else:
+            canonical = ref
+        return sha, canonical
+
+    async def action_refs(self, owner: str, name: str) -> dict[str, str]:
+        """Snapshot branch/tag tips around a Git push for Actions event delivery."""
+        repo = await self.load_repository(owner, name)
+        return {
+            key.decode(): value.decode()
+            for key, value in repo.refs.as_dict().items()
+            if key.startswith((b"refs/heads/", b"refs/tags/"))
+        }

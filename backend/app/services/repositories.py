@@ -401,3 +401,11 @@ class RepositoryService:
     ) -> DiffHunk:
         """Delegate get diff context to the configured Git engine."""
         return await self.git.get_diff_context(owner, name, base, head, path, side, line)
+
+    async def action_revision(self, owner: str, name: str, ref: str) -> tuple[str, str]:
+        """Resolve an immutable Actions commit and its canonical ref."""
+        return await self.git.action_revision(owner, name, ref)
+
+    async def action_refs(self, owner: str, name: str) -> dict[str, str]:
+        """Snapshot branch and tag tips for authenticated push events."""
+        return await self.git.action_refs(owner, name)
