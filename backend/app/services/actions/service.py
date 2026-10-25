@@ -14,10 +14,10 @@ from pydantic import ValidationError
 from app.entities.actions import WorkflowRun
 from app.exceptions import ActionsUnavailableError, WorkflowError
 from app.schemas.action_dispatch import Delivery, RecoveryDelivery
-from app.schemas.actions import ActionJob, ActionRun, ActionStatus, PullRequestChecks, WorkflowInfo
+from app.schemas.actions import ActionJob, ActionRun, PullRequestChecks, WorkflowInfo
 from app.schemas.workflow_events import DispatchEvent, PullRequestEvent, WorkflowEvent, workflow_event_adapter
 from app.schemas.workflows import CompileEvent, CompileRequest
-from app.services.actions.capabilities import AttemptCapabilities
+from app.services.actions.capabilities import authorize_capability
 from app.services.actions.dispatcher import ActionsDispatcher
 from app.services.actions.events import WorkflowEvents, compile_event, snapshot_event
 from app.services.actions.runtime import merge_artifacts
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from app.clients.actions import ActionsStore
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.pull_requests import PullRequestStore
-    from app.clients.qstash import ActionsQueue
+    from app.clients.qstash import QStashClient
     from app.clients.repositories import RepositoryStore
     from app.clients.sandboxes import AbstractSandboxClient
     from app.clients.workflow_compiler import WorkflowCompiler
@@ -53,7 +53,7 @@ class ActionsService:
         sandbox: AbstractSandboxClient,
         *,
         compiler: WorkflowCompiler,
-        queue: ActionsQueue,
+        queue: QStashClient,
         provider: str,
         max_timeout: int,
         max_parallel: int,
@@ -73,7 +73,6 @@ class ActionsService:
         self.cache = cache
         self.scheduler = RunScheduler(max_parallel)
         self.queue = queue
-        self.capabilities = AttemptCapabilities(store)
         self.events = WorkflowEvents(repositories, repository_store, pull_requests, self.trigger)
         self.dispatcher = ActionsDispatcher(store, blobs, sandbox, queue, self.scheduler, secrets or {})
 
@@ -172,26 +171,13 @@ class ActionsService:
         if workflow and not run_ids:
             raise HTTPException(status_code=422, detail="Workflow not found or event is not enabled")
         if run_ids:
-            await self.dispatcher.outbox.flush()
+            await self.dispatcher.flush()
         return [self.public(run) for run in await self.store.list_runs(repository.id) if run.id in run_ids]
 
     @staticmethod
     def public(run: WorkflowRun) -> ActionRun:
         """Expose run state without the workflow definition, event payload, or secrets."""
-        return ActionRun(
-            id=run.id,
-            workflow=run.workflow,
-            name=run.name,
-            sha=run.sha,
-            ref=run.ref,
-            actor=run.actor,
-            event_name=run.event_name,
-            status=ActionStatus(run.status),
-            created_at=run.created_at,
-            completed_at=run.completed_at,
-            jobs=[ActionJob.model_validate(job) for job in run.jobs],
-            error=run.error,
-        )
+        return ActionRun.model_validate(run, from_attributes=True)
 
     async def list_runs(self, owner: str, name: str, user: User | None) -> list[ActionRun]:
         """Return persisted history without scheduling side effects."""
@@ -206,7 +192,7 @@ class ActionsService:
         pull = await self.pull_requests.get_by_number(repository.id, number)
         sha, _ = await self.repositories.action_revision(owner, name, pull.head_branch)
         selected: dict[tuple[str, str], WorkflowRun] = {}
-        for run in await self.store.runs_for_commit(repository.id, sha):
+        for run in await self.store.list_runs(repository.id, limit=None, sha=sha):
             event = workflow_event_adapter.validate_python({**run.event, "event_name": run.event_name})
             if isinstance(event, PullRequestEvent) and event.pull_request.number != number:
                 continue
@@ -252,29 +238,27 @@ class ActionsService:
             )
         except ValidationError as error:
             raise HTTPException(status_code=422, detail="Invalid Actions delivery") from error
-        if operation == "reconcile":
+        if isinstance(parsed, RecoveryDelivery):
             await self.dispatcher.reconcile()
         else:
-            if not isinstance(parsed, Delivery):
-                raise HTTPException(status_code=422, detail="Invalid Actions delivery")
             message = await self.store.message(parsed.id)
             if message and message.kind == operation:
                 await self.dispatcher.deliver(message)
 
     async def complete(self, token: str) -> None:
         """Collect only a completion capability for the current attempt."""
-        capability = await self.capabilities.authorize(token, "actions:complete", allow_terminal=True)
+        capability = await authorize_capability(self.store, token, "actions:complete", allow_terminal=True)
         await self.dispatcher.notify(capability)
 
     async def restore_state(self, token: str) -> bytes:
         """Restore committed artifacts without accepting stale capabilities."""
-        capability = await self.capabilities.authorize(token, "actions:state")
+        capability = await authorize_capability(self.store, token, "actions:state")
         archives = [await self.blobs.get_current(key) for key in await self.store.artifacts(capability.run)]
         return merge_artifacts([archive for archive in archives if archive is not None])
 
     async def cache_scope(self, token: str) -> uuid.UUID:
         """Authorize repository cache access for the current attempt."""
-        capability = await self.capabilities.authorize(token, "actions:cache")
+        capability = await authorize_capability(self.store, token, "actions:cache")
         self._cache_service()
         return capability.repo
 
@@ -304,9 +288,8 @@ class ActionsService:
     async def cancel_repository(self, owner: str, name: str, user: User) -> uuid.UUID:
         """Stop active sandboxes before their repository rows can be deleted."""
         repository = await self._repository(owner, name, user, write=True)
-        for repo_id, run_id in await self.store.active_runs(repository.id):
-            if repo_id == repository.id:
-                await self.cancel(owner, name, run_id, user)
+        for run_id in await self.store.active_runs(repository.id):
+            await self.dispatcher.cancel(repository.id, run_id)
         try:
             async with asyncio.timeout(15):
                 for _ in range(150):

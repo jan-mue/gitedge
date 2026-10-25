@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -17,23 +17,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-class ActionsCacheStore(Protocol):
-    """Persist only metadata, never workflow cache contents."""
-
-    async def candidates(self, repo_id: UUID, prefix: str, version: str) -> list[WorkflowCacheEntry]:
-        """Find exact/prefix matches, newest first."""
-        ...
-
-    async def payload(self, repo_id: UUID, payload_id: UUID) -> WorkflowCacheEntry | None:
-        """Find a live immutable generation within one repository."""
-        ...
-
-    async def publish(self, entry: WorkflowCacheEntry, previous: UUID | None) -> WorkflowCacheEntry:
-        """Publish uploaded archives without mixing concurrent generations."""
-        ...
-
-
-class SQLActionsCacheStore(SQLStore[WorkflowCacheEntry]):
+class ActionsCacheStore(SQLStore[WorkflowCacheEntry]):
     """Keep prefix lookup out of cache providers that cannot enumerate keys."""
 
     def __init__(self, db: AsyncSession) -> None:

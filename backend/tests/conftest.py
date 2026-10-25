@@ -5,7 +5,6 @@ import concurrent.futures
 import json
 import os
 import random
-import re
 import socket
 import string
 import sys
@@ -21,6 +20,8 @@ import redis
 from alembic.command import upgrade
 from alembic.config import Config
 from pydantic import PostgresDsn, TypeAdapter
+from pytest_httpserver import HTTPServer
+from qstash import QStash
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.wait_strategies import HttpWaitStrategy
 from testcontainers.mailpit import MailpitContainer
@@ -33,7 +34,7 @@ from app.clients.blob_storage import S3Client
 from app.config import settings
 from app.constants import BACKEND_DIR
 from app.utils.security import get_password_hash
-from tests.qstash import QSTASH_CURRENT_KEY, QSTASH_NEXT_KEY, QSTASH_TOKEN, ActionsNetwork, FaultProxy
+from tests.qstash import QSTASH_CURRENT_KEY, QSTASH_NEXT_KEY, QSTASH_TOKEN, ActionsNetwork, proxy_to
 
 if TYPE_CHECKING:
     from collections.abc import Coroutine, Generator
@@ -48,13 +49,13 @@ FIRST_SUPERUSER_PASSWORD = os.environ.get("FIRST_SUPERUSER_PASSWORD", "changethi
 @pytest.fixture(scope="session")
 def qstash_container() -> Generator[DockerContainer]:
     """Require an official digest-pinned broker; never substitute a fake scheduler."""
-    image = os.environ.get("ACTIONS_TEST_QSTASH_IMAGE", "")
-    if not re.fullmatch(r"public\.ecr\.aws/upstash/qstash@sha256:[a-f0-9]{64}", image):
-        pytest.fail("ACTIONS_TEST_QSTASH_IMAGE must pin the official public.ecr.aws/upstash/qstash image digest")
     container = (
-        DockerContainer(image)
+        DockerContainer(
+            "public.ecr.aws/upstash/qstash@sha256:a49ffd1cb967800e2b5e2bfab7375282c6c269ef5bf8d9f0f8e115560b1b5597"
+        )
         .with_command("qstash dev")
         .with_exposed_ports(8080, 8081)
+        .with_env("NO_PROXY", f"{os.environ.get('NO_PROXY', '')},host.docker.internal")
         .with_kwargs(extra_hosts={"host.docker.internal": "host-gateway"})
         .waiting_for(
             HttpWaitStrategy(8080, "/v2/queues")
@@ -64,6 +65,16 @@ def qstash_container() -> Generator[DockerContainer]:
     )
     with container:
         yield container
+
+
+@pytest.fixture(scope="session")
+def qstash(infrastructure: dict[str, str]) -> Generator[QStash]:
+    """Publish test deliveries to the real broker through its official SDK."""
+    client = QStash(QSTASH_TOKEN, base_url=infrastructure["QSTASH_URL"], retry=False)
+    try:
+        yield client
+    finally:
+        client.http._client.close()  # noqa: SLF001 — SDK has no public close method
 
 
 @pytest.fixture(scope="session")
@@ -290,7 +301,7 @@ def actions_compiler_url(infrastructure: dict[str, str], xprocess: XProcess) -> 
 @pytest.fixture(scope="session")
 def actions_network() -> ActionsNetwork:
     """Expose fault controls without replacing QStash or application dispatch."""
-    return ActionsNetwork()
+    return ActionsNetwork(HTTPServer(host="0.0.0.0", threaded=True), HTTPServer(host="0.0.0.0", threaded=True))
 
 
 @pytest.fixture(scope="session")
@@ -317,10 +328,11 @@ def backend_url(
 
     backend_base_url = f"http://127.0.0.1:{backend_port}"
     with (
-        FaultProxy(infrastructure["QSTASH_URL"]).running() as publishing,
-        FaultProxy(backend_base_url).running() as callbacks,
+        actions_network.publishing as publishing,
+        actions_network.callbacks as callbacks,
     ):
-        actions_network.publishing, actions_network.callbacks = publishing, callbacks
+        proxy_to(publishing, infrastructure["QSTASH_URL"])
+        proxy_to(callbacks, backend_base_url)
         backend_env.update(
             {
                 "QSTASH_URL": f"http://127.0.0.1:{publishing.port}",

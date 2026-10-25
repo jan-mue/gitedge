@@ -5,11 +5,12 @@ from typing import TYPE_CHECKING
 
 import jwt
 import pytest
+from qstash.errors import QStashError
 
 from app.api.dependencies import get_actions_store
 from app.config import settings
 from app.entities.actions import WorkflowAttempt, WorkflowRun
-from app.exceptions import WorkflowError
+from app.exceptions import ActionsUnavailableError, WorkflowError
 from app.index import app
 from app.schemas.actions import ActionJob
 from app.services.actions.capabilities import issue_capability
@@ -130,3 +131,16 @@ def test_workflow_errors_use_the_global_handler(
     )
     assert response.status_code == 422
     assert response.json() == {"detail": "Invalid workflow YAML"}
+
+
+@pytest.mark.parametrize("sdk_error", [False, True])
+def test_delivery_errors_use_the_global_retry_handler(
+    client: TestClient, mocker: MockerFixture, sdk_error: bool
+) -> None:
+    error = QStashError("broker unavailable") if sdk_error else ActionsUnavailableError("leased")
+    mocker.patch.object(ActionsService, "delivery", new=mocker.AsyncMock(side_effect=error))
+    response = client.post(
+        f"{settings.API_V1_STR}/actions/internal/dispatch", json={"version": 1, "id": str(uuid.uuid4())}
+    )
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == "1"

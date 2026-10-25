@@ -82,10 +82,8 @@ and broker credentials out of job manifests. Startup arms a delayed QStash
 recovery callback; each callback arms its successor before recovering outbox
 commands and expired leases. There is no resident scheduler or cron job.
 
-Integration and browser tests require `ACTIONS_TEST_QSTASH_IMAGE` to be an
-official `public.ecr.aws/upstash/qstash@sha256:...` image reference. Configure the
-same repository Actions variable for GitHub CI. A missing or unpinned reference
-fails the suite. Pytest starts the real `qstash dev` container with its documented
+Integration and browser tests use the official QStash image pinned by digest
+in `backend/tests/conftest.py`; no image configuration is required. Pytest starts the real `qstash dev` container with its documented
 local-only credentials alongside PostgreSQL, Redis, and MinIO. The broker calls
 back through `host.docker.internal`; Linux Docker must support `host-gateway`.
 Test-owned HTTP fault proxies preserve signed URLs and original request bytes
