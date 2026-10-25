@@ -37,6 +37,7 @@ import RepositoryLoading, { RepositoryError } from "@/components/Repository/Repo
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
+import { PullRequestChecks } from "./PullRequestChecks"
 import { PullRequestCommits } from "./PullRequestCommits"
 import { PullRequestConversation } from "./PullRequestConversation"
 import { PullRequestMergeButton } from "./PullRequestMergeButton"
@@ -268,6 +269,7 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
             username={user?.name}
             reviews={reviewsQuery.data ?? []}
             changes={changes}
+            checks={<PullRequestChecks owner={owner} repo={repo} number={prNumber} open={isOpen} />}
             mergeActions={isOpen ? <PullRequestMergeButton owner={owner} repo={repo} pull={pull} /> : null}
             closeActions={
               pull.state !== "merged" ? (

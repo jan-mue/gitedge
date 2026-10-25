@@ -23,6 +23,7 @@ export const PullRequestConversation = ({
   pull,
   reviews,
   changes,
+  checks,
   mergeActions,
   closeActions,
   username,
@@ -32,6 +33,7 @@ export const PullRequestConversation = ({
   pull: PullRequestPublic
   reviews: ReviewPublic[]
   changes?: CompareResult
+  checks?: ReactNode
   mergeActions: ReactNode
   closeActions: ReactNode
   username?: string
@@ -148,6 +150,7 @@ export const PullRequestConversation = ({
                   </Button>
                 </p>
               )}
+              {checks}
               {pull.state === "open" && (
                 <ConversationItem icon={<GitMerge className="size-4 shrink-0" />}>
                   <div className="rounded-lg border border-border bg-secondary/30 p-4">

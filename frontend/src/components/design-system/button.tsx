@@ -13,6 +13,10 @@ export const buttonVariants = cva(
         success: "bg-success text-success-foreground hover:opacity-90",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         dangerOutline: "rounded border border-destructive text-destructive font-normal hover:bg-destructive/10",
+        actionRun:
+          "w-full h-auto justify-start items-start whitespace-normal rounded-none px-4 py-3 text-left font-normal text-foreground hover:bg-accent/30",
+        actionStep:
+          "w-full h-auto justify-start rounded-none px-4 py-2.5 font-normal text-foreground hover:bg-accent/50",
         activity:
           "justify-start rounded text-left font-normal text-muted-foreground hover:text-foreground hover:bg-accent/50 aria-pressed:bg-accent aria-pressed:font-medium aria-pressed:text-foreground",
         filterMenu:

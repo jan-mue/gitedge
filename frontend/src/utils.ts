@@ -47,6 +47,15 @@ export const formatRelativeTime = (timestamp: number): string => {
   return `${count} ${unit}${count === 1 ? "" : "s"} ago`
 }
 
+export const formatDuration = (start?: string | null, end?: string | null) => {
+  if (!start) return "—"
+  const seconds = Math.max(
+    0,
+    Math.floor(((end ? new Date(end).getTime() : Date.now()) - new Date(start).getTime()) / 1000),
+  )
+  return seconds >= 60 ? `${Math.floor(seconds / 60)}m${seconds % 60}s` : `${seconds}s`
+}
+
 export const passwordSchema = z
   .string()
   .min(1, { message: "Password is required" })

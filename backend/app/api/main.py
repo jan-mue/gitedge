@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import (
+    actions,
     activity,
     comments,
     forks,
@@ -22,6 +23,7 @@ from app.api.routes import (
 from app.config import settings
 
 api_router = APIRouter()
+api_router.include_router(actions.router)
 api_router.include_router(login.router)
 api_router.include_router(users.router)
 api_router.include_router(git.router)

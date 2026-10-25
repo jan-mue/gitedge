@@ -51,6 +51,10 @@ class BlobStorageClient(ABC):
             key: Storage key/path to delete.
         """
 
+    async def get_current(self, key: str) -> bytes | None:
+        """Read the latest value; cache-backed clients must bypass stale responses."""
+        return await self.get(key)
+
     @abstractmethod
     async def list_keys(self, prefix: str) -> list[str]:
         """List all keys with the given prefix.
@@ -91,19 +95,25 @@ class VercelBlobClient(BlobStorageClient):
             content_type="application/octet-stream",
             add_random_suffix=False,
             cache_control_max_age=31536000,
+            overwrite=True,
         )
 
     @override
-    async def get(self, key: str) -> bytes | None:
+    async def get(self, key: str, *, use_cache: bool = True) -> bytes | None:
         """Retrieve binary data from Vercel Blob Storage."""
         try:
-            result = await self._client.get(key, access=self._access, use_cache=True)
+            result = await self._client.get(key, access=self._access, use_cache=use_cache)
         except BlobNotFoundError:
             logger.debug("Blob not found: %s", key)
             return None
         if result is None:
             return None
         return result.content  # type: ignore[no-any-return]
+
+    @override
+    async def get_current(self, key: str) -> bytes | None:
+        """Bypass the CDN after mutable workflow state or caches are overwritten."""
+        return await self.get(key, use_cache=False)
 
     @override
     async def delete(self, key: str) -> None:
