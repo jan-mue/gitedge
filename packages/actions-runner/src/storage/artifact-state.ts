@@ -2,7 +2,6 @@ import { join } from "node:path"
 import { gunzipSync } from "node:zlib"
 import { inside, readResponse, TRANSFER_LIMIT, writeFile } from "../runtime/files.ts"
 
-/** Only artifacts cross job boundaries in an archive. Caches use the controller API. */
 export class ArtifactState {
   private restoration: Promise<void> | undefined
 

@@ -1,7 +1,7 @@
-import type { CompiledJob, JsonValue, WorkflowContext } from "@gitedge/actions-compiler/workflow"
-import { compiledStepSchema, jsonValueSchema } from "@gitedge/actions-compiler/workflow"
 import { parse } from "yaml"
 import { z } from "zod"
+import type { CompiledJob, JsonValue, WorkflowContext } from "./compiled-workflow.ts"
+import { compiledStepSchema, jsonValueSchema } from "./compiled-workflow.ts"
 
 const expression = jsonValueSchema
 const stepSchema = z.union([
@@ -32,7 +32,7 @@ const actionSchema = actionBase.extend({
   ]),
 })
 
-export type { JsonValue } from "@gitedge/actions-compiler/workflow"
+export type { JsonValue } from "./compiled-workflow.ts"
 export type JsonObject = Record<string, JsonValue>
 export type Environment = Record<string, string>
 export type Expressions = Record<string, JsonValue>

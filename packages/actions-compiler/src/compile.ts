@@ -11,17 +11,19 @@ import {
 import type { EventsConfig, Job } from "@actions/workflow-parser/model/workflow-template"
 import type { TemplateContext } from "@actions/workflow-parser/templates/template-context"
 import type { MappingToken, TemplateToken } from "@actions/workflow-parser/templates/tokens/index"
+import {
+  type CompiledJob,
+  compiledJobSchema,
+  compiledStepSchema,
+  type JsonValue,
+} from "@gitedge/actions-runner/workflow"
 import { minimatch } from "minimatch"
 import { z } from "zod"
 import {
-  type CompiledJob,
   type CompiledWorkflow,
   type CompileRequest,
-  compiledJobSchema,
-  compiledStepSchema,
   compiledWorkflowSchema,
   compileRequestSchema,
-  type JsonValue,
 } from "./domain/compiled-workflow"
 
 export interface CompileIssue {

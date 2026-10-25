@@ -2,10 +2,6 @@
   "name": "@gitedge/actions-compiler",
   "private": true,
   "type": "module",
-  "exports": {
-    ".": "./src/compile.ts",
-    "./workflow": "./src/domain/compiled-workflow.ts"
-  },
   "scripts": {
     "dev": "bun src/dev-server.ts",
     "test": "bun --bun vitest run --config ../../vitest.config.ts --project actions-compiler",
@@ -18,6 +14,7 @@
     "@actions/workflow-parser": "0.3.61",
     "minimatch": "10.2.4",
     "zod": "4.6.7",
-    "@vercel/oidc": "4.0.3"
+    "@vercel/oidc": "4.0.3",
+    "@gitedge/actions-runner": "workspace:*"
   }
 }
