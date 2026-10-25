@@ -131,7 +131,7 @@ repos:
         name: fallow
         entry: bun run fallow
         language: system
-        files: \.(ts|js|tsx|jsx|mjs|css|mdx)$|(^|/)package\.json$|^bun\.lock$|^\.fallowrc(?:\.production)?\.json$
+        files: \.(ts|js|tsx|jsx|mjs|css|mdx)$|(^|/)package\.json$|^bun\.lock$|^\.fallowrc\.json$
         pass_filenames: false
 
       - id: generate-frontend-sdk
