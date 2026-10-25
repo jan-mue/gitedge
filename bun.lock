@@ -5,6 +5,7 @@
     "": {
       "name": "fastapi-full-stack-template",
       "devDependencies": {
+        "css-tree": "3.2.1",
         "fallow": "3.35.0",
       },
     },

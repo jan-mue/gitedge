@@ -13,15 +13,15 @@
     "frontend/openapi-ts.config.ts",
     "frontend/src/components/Repository/diff-fixtures.ts",
     "frontend/src/components/Repository/tracker-story-fixtures.ts",
-    "packages/react-email/emails/**/*.tsx",
-    "packages/react-email/export.mjs"
+    "packages/react-email/emails/**/*.tsx"
   ],
   "ignorePatterns": [
     "frontend/src/client/**",
     "frontend/src/routeTree.gen.ts"
   ],
   "ignoreDependencies": [
-    "@react-email/ui"
+    "@react-email/ui",
+    "css-tree"
   ],
   "rules": {
     "unused-enum-members": "off",
