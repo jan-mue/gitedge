@@ -1,6 +1,6 @@
 # Actions compiler and agent
 
-This Bun 1.4.3 workspace contains the on-demand compiler Function and the
+This Bun 1.4.4 workspace contains the on-demand compiler Function and the
 job-scoped sandbox agent. `@actions/workflow-parser` and `@actions/expressions`
 are pinned together at 0.3.61. FastAPI sends workflow source over HTTP and stores
 the returned IR; the agent executes that manifest without parsing workflow YAML.
@@ -11,7 +11,7 @@ Deploy this workspace as a Vercel project with root directory
 `packages/actions-runner` and access to source files outside that directory so
 the root Bun workspace and lockfile are available. The included `vercel.json`
 selects the provider-managed Bun 1.4.x runtime and caps Function duration at ten
-seconds. Local tests and sandbox bytecode builds pin Bun 1.4.3; Vercel may
+seconds. Local tests and sandbox bytecode builds pin Bun 1.4.4; Vercel may
 advance the compiler runtime patch version within 1.4.x. `api/compile.ts` and the local server use the same Web API handler.
 
 Set a dedicated `COMPILER_TOKEN` on the compiler project. Set
