@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import PullRequestDetail from "@/components/Repository/PullRequestDetail"
+import { PullRequestDetail } from "@/components/Repository/PullRequestDetail"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/pulls/$number")({
   component: PullRequestDetailPage,

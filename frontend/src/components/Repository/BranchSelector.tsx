@@ -17,6 +17,8 @@ export interface BranchChoice {
   is_default?: boolean
   disabled?: boolean
 }
+type RefStatus = { loading?: boolean; error?: boolean; onRetry?: () => void }
+type Disclosure = { open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void }
 type RefKind = "branch" | "tag"
 
 type BranchSelectorProps = {
@@ -27,39 +29,19 @@ type BranchSelectorProps = {
   onValueChange: (name: string, kind: RefKind) => void
   label?: string
   disabled?: boolean
-  loading?: boolean
-  error?: boolean
-  onRetry?: () => void
-  tagsLoading?: boolean
-  tagsError?: boolean
-  onRetryTags?: () => void
-  open?: boolean
-  defaultOpen?: boolean
-  onOpenChange?: (open: boolean) => void
+  status?: { branch?: RefStatus; tag?: RefStatus }
+  disclosure?: Disclosure
   "data-testid"?: string
   dropdownTestId?: string
 } & Pick<ComponentProps<typeof Button>, "id">
 
-const BranchSelector = ({
-  branches,
-  tags = [],
-  value,
-  kind = "branch",
-  onValueChange,
-  label = "Switch branch",
-  disabled,
-  loading,
-  error,
-  onRetry,
-  tagsLoading,
-  tagsError,
-  onRetryTags,
-  open: controlledOpen,
-  defaultOpen = false,
-  onOpenChange,
-  dropdownTestId = "branch-dropdown",
-  ...triggerProps
-}: BranchSelectorProps) => {
+const nextOptionIndex = (key: string, current: number, count: number) => {
+  if (key === "Home") return 0
+  if (key === "End") return count - 1
+  if (key === "ArrowUp") return current < 0 ? count - 1 : (current - 1 + count) % count
+  return (current + 1) % count
+}
+const useBranchPicker = (kind: RefKind, { open: controlledOpen, defaultOpen = false, onOpenChange }: Disclosure) => {
   const [localOpen, setLocalOpen] = useState(defaultOpen)
   const [tab, setTab] = useState<RefKind>(kind)
   const [search, setSearch] = useState("")
@@ -84,24 +66,75 @@ const BranchSelector = ({
     if (!options.length) return
     event.preventDefault()
     const current = options.indexOf(document.activeElement as HTMLButtonElement)
-    const index =
-      event.key === "Home"
-        ? 0
-        : event.key === "End"
-          ? options.length - 1
-          : event.key === "ArrowUp"
-            ? current < 0
-              ? options.length - 1
-              : (current - 1 + options.length) % options.length
-            : (current + 1) % options.length
+    const index = nextOptionIndex(event.key, current, options.length)
     options[index]?.focus()
   }
+  return { tab, search, setSearch, setTab, input, list, open, changeOpen, focusOption }
+}
+
+export const BranchSelector = ({
+  branches,
+  tags = [],
+  value,
+  kind = "branch",
+  onValueChange,
+  label = "Switch branch",
+  disabled,
+  status = {},
+  disclosure = {},
+  dropdownTestId = "branch-dropdown",
+  ...triggerProps
+}: BranchSelectorProps) => {
+  const { tab, search, setSearch, setTab, input, list, open, changeOpen, focusOption } = useBranchPicker(
+    kind,
+    disclosure,
+  )
   const items = tab === "branch" ? branches : tags
   const filtered = items.filter((item) => item.name.toLowerCase().includes(search.toLowerCase()))
-  const pending = tab === "branch" ? loading : tagsLoading
-  const failed = tab === "branch" ? error : tagsError
-  const retry = tab === "branch" ? onRetry : onRetryTags
-  const plural = tab === "branch" ? "branches" : "tags"
+  const { loading: pending, error: failed, onRetry: retry } = status[tab] ?? {}
+  const plural = { branch: "branches", tag: "tags" }[tab]
+  const renderOptions = () =>
+    filtered.length > 0 && (
+      <div
+        ref={list}
+        role="listbox"
+        aria-label={tab === "branch" ? "Branches" : "Tags"}
+        aria-busy={pending || undefined}
+        onKeyDown={focusOption}
+      >
+        {filtered.map((item) => (
+          <Button
+            key={item.name}
+            role="option"
+            aria-label={item.name}
+            aria-selected={item.name === value && tab === kind}
+            disabled={item.disabled}
+            variant="branchItem"
+            size="branchItem"
+            onClick={() => {
+              onValueChange(item.name, tab)
+              changeOpen(false)
+            }}
+            data-testid={`${tab}-option-${item.name}`}
+          >
+            {item.name === value && tab === kind ? (
+              <Check aria-hidden="true" className="size-3.5 shrink-0 text-primary" />
+            ) : (
+              <span aria-hidden="true" className="w-3.5 shrink-0" />
+            )}
+            <span className="truncate">{item.name}</span>
+            {tab === "branch" && item.is_default && (
+              <span
+                aria-hidden="true"
+                className="ml-auto shrink-0 rounded border border-border bg-accent px-1.5 py-0.5 text-xs text-muted-foreground"
+              >
+                default
+              </span>
+            )}
+          </Button>
+        ))}
+      </div>
+    )
 
   return (
     <BranchPicker open={open} onOpenChange={changeOpen}>
@@ -153,47 +186,7 @@ const BranchSelector = ({
           </TabsList>
           <TabsContent value={tab} appearance="branchPicker">
             <div className="max-h-64 overflow-y-auto">
-              {filtered.length > 0 && (
-                <div
-                  ref={list}
-                  role="listbox"
-                  aria-label={tab === "branch" ? "Branches" : "Tags"}
-                  aria-busy={pending || undefined}
-                  onKeyDown={focusOption}
-                >
-                  {filtered.map((item) => (
-                    <Button
-                      key={item.name}
-                      role="option"
-                      aria-label={item.name}
-                      aria-selected={item.name === value && tab === kind}
-                      disabled={item.disabled}
-                      variant="branchItem"
-                      size="branchItem"
-                      onClick={() => {
-                        onValueChange(item.name, tab)
-                        changeOpen(false)
-                      }}
-                      data-testid={`${tab}-option-${item.name}`}
-                    >
-                      {item.name === value && tab === kind ? (
-                        <Check aria-hidden="true" className="size-3.5 shrink-0 text-primary" />
-                      ) : (
-                        <span aria-hidden="true" className="w-3.5 shrink-0" />
-                      )}
-                      <span className="truncate">{item.name}</span>
-                      {tab === "branch" && item.is_default && (
-                        <span
-                          aria-hidden="true"
-                          className="ml-auto shrink-0 rounded border border-border bg-accent px-1.5 py-0.5 text-xs text-muted-foreground"
-                        >
-                          default
-                        </span>
-                      )}
-                    </Button>
-                  ))}
-                </div>
-              )}
+              {renderOptions()}
               {pending && (
                 <p role="status" className="px-3 py-4 text-center text-sm text-muted-foreground">
                   Loading {plural}…
@@ -221,4 +214,3 @@ const BranchSelector = ({
     </BranchPicker>
   )
 }
-export default BranchSelector

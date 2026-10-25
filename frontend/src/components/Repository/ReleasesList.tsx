@@ -69,8 +69,8 @@ const ReleaseCard = ({
   release: ReleasePublic
   canEdit: boolean
   onEdit: (release: ReleasePublic) => void
-}) => (
-  <div className="border border-border rounded-lg bg-card px-4 py-3" data-testid={`release-${release.tag_name}`}>
+}) => {
+  const renderReleaseHeader = () => (
     <div className="flex items-center gap-2">
       <Tag className="w-4 h-4 text-muted-foreground" />
       <span className="font-mono text-sm font-medium text-foreground">{release.tag_name}</span>
@@ -92,11 +92,17 @@ const ReleaseCard = ({
         )}
       </div>
     </div>
-    {release.name && <p className="mt-2 text-sm font-medium text-foreground">{release.name}</p>}
-    {release.body && <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">{release.body}</p>}
-    {release.author_username && <p className="mt-2 text-xs text-muted-foreground">by {release.author_username}</p>}
-  </div>
-)
+  )
+
+  return (
+    <div className="border border-border rounded-lg bg-card px-4 py-3" data-testid={`release-${release.tag_name}`}>
+      {renderReleaseHeader()}
+      {release.name && <p className="mt-2 text-sm font-medium text-foreground">{release.name}</p>}
+      {release.body && <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">{release.body}</p>}
+      {release.author_username && <p className="mt-2 text-xs text-muted-foreground">by {release.author_username}</p>}
+    </div>
+  )
+}
 
 const EditReleaseDialog = ({
   owner,
@@ -210,8 +216,7 @@ const EditReleaseDialog = ({
     </Dialog>
   )
 }
-
-const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
+const useReleases = ({ owner, repo }: ReleasesListProps) => {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const { showSuccessToast, showErrorToast } = useCustomToast()
@@ -257,6 +262,43 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
   const releases = releasesData?.data ?? []
   const tags = tagsData?.data ?? []
 
+  return {
+    user,
+    isOpen,
+    setIsOpen,
+    editingRelease,
+    setEditingRelease,
+    isPending,
+    isError,
+    refetch,
+    tagsPending,
+    tagsError,
+    refetchTags,
+    form,
+    mutation,
+    releases,
+    tags,
+  }
+}
+
+export const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
+  const {
+    user,
+    isOpen,
+    setIsOpen,
+    editingRelease,
+    setEditingRelease,
+    isPending,
+    isError,
+    refetch,
+    tagsPending,
+    tagsError,
+    refetchTags,
+    form,
+    mutation,
+    releases,
+    tags,
+  } = useReleases({ owner, repo })
   if (isPending || tagsPending) return <RepositoryLoading label="Loading releases and tags" />
   if (isError || tagsError)
     return (
@@ -268,6 +310,97 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
         }}
       />
     )
+  const renderCreateRelease = () => (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button size="compact" variant="repository" data-testid="new-release-button">
+          <Plus className="w-3.5 h-3.5" />
+          New release
+        </Button>
+      </DialogTrigger>
+      <DialogContent appearance="compact">
+        <DialogHeader>
+          <DialogTitle>Create release</DialogTitle>
+          <DialogDescription>Create a release tied to a Git tag.</DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit((data) =>
+              mutation.mutate({
+                path: { owner, repo },
+                body: {
+                  tag_name: data.tag_name,
+                  name: data.name || null,
+                  body: data.body || null,
+                  is_prerelease: data.is_prerelease ?? false,
+                },
+              }),
+            )}
+          >
+            <div className="grid gap-4 py-4">
+              <FormField
+                control={form.control}
+                name="tag_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Tag name <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="v1.0.0" data-testid="release-tag-input" {...field} required />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Release title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Release title" data-testid="release-name-input" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="body"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        id="release-body"
+                        rows={5}
+                        placeholder="Release notes"
+                        data-testid="release-body-input"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="repository" disabled={mutation.isPending}>
+                  Cancel
+                </Button>
+              </DialogClose>
+              <LoadingButton type="submit" loading={mutation.isPending} data-testid="release-submit">
+                Create release
+              </LoadingButton>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
 
   return (
     <div className="space-y-6" data-testid="releases-list">
@@ -275,95 +408,7 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
         <h2 className="text-sm font-semibold text-foreground">
           {releases.length} {releases.length === 1 ? "release" : "releases"}
         </h2>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button size="compact" variant="repository" data-testid="new-release-button">
-              <Plus className="w-3.5 h-3.5" />
-              New release
-            </Button>
-          </DialogTrigger>
-          <DialogContent appearance="compact">
-            <DialogHeader>
-              <DialogTitle>Create release</DialogTitle>
-              <DialogDescription>Create a release tied to a Git tag.</DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit((data) =>
-                  mutation.mutate({
-                    path: { owner, repo },
-                    body: {
-                      tag_name: data.tag_name,
-                      name: data.name || null,
-                      body: data.body || null,
-                      is_prerelease: data.is_prerelease ?? false,
-                    },
-                  }),
-                )}
-              >
-                <div className="grid gap-4 py-4">
-                  <FormField
-                    control={form.control}
-                    name="tag_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Tag name <span className="text-destructive">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input placeholder="v1.0.0" data-testid="release-tag-input" {...field} required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Release title</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Release title" data-testid="release-name-input" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="body"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            id="release-body"
-                            rows={5}
-                            placeholder="Release notes"
-                            data-testid="release-body-input"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="repository" disabled={mutation.isPending}>
-                      Cancel
-                    </Button>
-                  </DialogClose>
-                  <LoadingButton type="submit" loading={mutation.isPending} data-testid="release-submit">
-                    Create release
-                  </LoadingButton>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        {renderCreateRelease()}
       </div>
 
       {releases.length > 0 ? (
@@ -412,5 +457,3 @@ const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
     </div>
   )
 }
-
-export default ReleasesList

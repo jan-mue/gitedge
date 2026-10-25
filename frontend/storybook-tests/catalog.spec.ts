@@ -57,6 +57,26 @@ for (const docs of Object.values(index.entries).filter((entry) => entry.type ===
   })
 }
 
+const assertStoryOverlay = async (page: Page, storyId: string) => {
+  if (/components-(dialog--(dialog-open|compact-dialog)|sheet--sheet-(right|left|top|bottom))$/.test(storyId)) {
+    await expect(page.getByRole("dialog")).toBeVisible()
+  }
+  if (storyId === "components-dropdown-menu--menu-open") await expect(page.getByRole("menu")).toBeVisible()
+  if (storyId === "components-select--select-open") await expect(page.getByRole("listbox")).toBeVisible()
+}
+const assertRepositoryStory = async (page: Page, storyId: string) => {
+  if (storyId === "patterns-repository-header--header" || storyId === "patterns-repository-header--selected-actions") {
+    await expect(page.getByTestId("star-count")).toHaveText(/128|129/)
+  }
+  if (storyId === "patterns-repository-statistics--statistics")
+    await expect(page.getByText("255", { exact: true })).toBeVisible()
+  if (storyId === "patterns-repository-issues--empty-issues")
+    await expect(page.getByTestId("issues-empty-state")).toBeVisible()
+  if (storyId === "patterns-repository-issues--issues-error") await expect(page.getByRole("alert")).toBeVisible()
+  if (storyId === "patterns-repository-pull-requests--empty-pull-requests")
+    await expect(page.getByTestId("pulls-empty-state")).toBeVisible()
+}
+
 for (const story of Object.values(index.entries).filter((entry) => entry.type === "story")) {
   test(`${story.title} / ${story.name}`, async function checkCatalogStory({ page }, testInfo) {
     const errors: string[] = []
@@ -65,11 +85,7 @@ for (const story of Object.values(index.entries).filter((entry) => entry.type ==
     await page.goto(`/iframe.html?id=${story.id}&viewMode=story&globals=theme:${theme}`)
     await expect(page.locator("#storybook-root .story-canvas")).toBeAttached()
     await expect(page.locator(".sb-errordisplay")).not.toBeVisible()
-    if (/components-(dialog--(dialog-open|compact-dialog)|sheet--sheet-(right|left|top|bottom))$/.test(story.id)) {
-      await expect(page.getByRole("dialog")).toBeVisible()
-    }
-    if (story.id === "components-dropdown-menu--menu-open") await expect(page.getByRole("menu")).toBeVisible()
-    if (story.id === "components-select--select-open") await expect(page.getByRole("listbox")).toBeVisible()
+    await assertStoryOverlay(page, story.id)
     await page.evaluate(async () => {
       await document.fonts.ready
       // Theme decorators and overlays can start a transition after the first render.
@@ -98,19 +114,7 @@ for (const story of Object.values(index.entries).filter((entry) => entry.type ==
         ),
       )
       .toBe(0)
-    if (
-      story.id === "patterns-repository-header--header" ||
-      story.id === "patterns-repository-header--selected-actions"
-    ) {
-      await expect(page.getByTestId("star-count")).toHaveText(/128|129/)
-    }
-    if (story.id === "patterns-repository-statistics--statistics")
-      await expect(page.getByText("255", { exact: true })).toBeVisible()
-    if (story.id === "patterns-repository-issues--empty-issues")
-      await expect(page.getByTestId("issues-empty-state")).toBeVisible()
-    if (story.id === "patterns-repository-issues--issues-error") await expect(page.getByRole("alert")).toBeVisible()
-    if (story.id === "patterns-repository-pull-requests--empty-pull-requests")
-      await expect(page.getByTestId("pulls-empty-state")).toBeVisible()
+    await assertRepositoryStory(page, story.id)
     expect(errors).toEqual([])
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
     expect(overflow, "The story should fit the viewport without page-level horizontal scrolling").toBe(false)

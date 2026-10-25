@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Section } from "@/components/design-system"
 import RepositoryLayout from "@/components/Repositories/RepositoryLayout"
-import Watchers from "@/components/Repository/Watchers"
+import { Watchers } from "@/components/Repository/Watchers"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/watchers")({
   component: WatchersPage,

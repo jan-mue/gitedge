@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import CommitDetail from "@/components/Repository/CommitDetail"
+import { CommitDetail } from "@/components/Repository/CommitDetail"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/commit/$hash")({
   component: CommitDetailPage,

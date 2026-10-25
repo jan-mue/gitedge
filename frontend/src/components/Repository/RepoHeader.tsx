@@ -19,7 +19,7 @@ import {
   Link as RouterLink,
 } from "@/components/design-system"
 import ForkButton from "@/components/Repository/ForkButton"
-import StarButton from "@/components/Repository/StarButton"
+import { StarButton } from "@/components/Repository/StarButton"
 import WatchButton from "@/components/Repository/WatchButton"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 

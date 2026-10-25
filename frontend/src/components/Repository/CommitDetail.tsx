@@ -6,7 +6,7 @@ import { Link as RouterLink } from "@/components/design-system"
 import { DiffViewer } from "@/components/Repository/DiffViewer"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 
-const CommitDetail = () => {
+export const CommitDetail = () => {
   const { owner, repo, hash } = useParams({ from: "/_layout/$owner/$repo/commit/$hash" })
 
   const {
@@ -23,14 +23,25 @@ const CommitDetail = () => {
 
   const [title, ...bodyLines] = commit.message.split("\n")
   const body = bodyLines.join("\n").trim()
+  const renderMetadata = () => {
+    const renderParents = () =>
+      commit.parents.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span>Parent{commit.parents.length > 1 ? "s" : ""}:</span>
+          {commit.parents.map((parent) => (
+            <RouterLink
+              key={parent}
+              to="/$owner/$repo/commit/$hash"
+              params={{ owner, repo, hash: parent }}
+              appearance="revision"
+            >
+              {parent.slice(0, 10)}
+            </RouterLink>
+          ))}
+        </div>
+      )
 
-  return (
-    <div className="space-y-4" data-testid="commit-detail">
-      <RouterLink to="/$owner/$repo/commits" params={{ owner, repo }} appearance="muted">
-        <ArrowLeft className="h-4 w-4" />
-        Back to commits
-      </RouterLink>
-
+    return (
       <div className="rounded-lg border border-border bg-card px-4 py-4">
         <h1 className="text-lg font-semibold text-foreground">{title}</h1>
         {body && <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{body}</p>}
@@ -47,22 +58,19 @@ const CommitDetail = () => {
             {new Date(commit.timestamp * 1000).toLocaleString()}
           </span>
         </div>
-        {commit.parents.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>Parent{commit.parents.length > 1 ? "s" : ""}:</span>
-            {commit.parents.map((parent) => (
-              <RouterLink
-                key={parent}
-                to="/$owner/$repo/commit/$hash"
-                params={{ owner, repo, hash: parent }}
-                appearance="revision"
-              >
-                {parent.slice(0, 10)}
-              </RouterLink>
-            ))}
-          </div>
-        )}
+        {renderParents()}
       </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4" data-testid="commit-detail">
+      <RouterLink to="/$owner/$repo/commits" params={{ owner, repo }} appearance="muted">
+        <ArrowLeft className="h-4 w-4" />
+        Back to commits
+      </RouterLink>
+
+      {renderMetadata()}
 
       <RouterLink
         to="/$owner/$repo/compare"
@@ -81,5 +89,3 @@ const CommitDetail = () => {
     </div>
   )
 }
-
-export default CommitDetail

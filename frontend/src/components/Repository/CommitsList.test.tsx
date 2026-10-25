@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from "vitest"
 import { handleReleasesListTags, handleRepositoriesListBranches, handleRepositoriesListCommits } from "@/client/msw.gen"
 import { server } from "@/test/server"
 import { render, screen } from "@/test/test-utils"
-import CommitsList from "./CommitsList"
+import { CommitsList } from "./CommitsList"
 
 const navigate = vi.hoisted(() => vi.fn())
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }))

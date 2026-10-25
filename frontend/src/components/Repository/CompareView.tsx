@@ -15,6 +15,23 @@ export const CompareView = () => {
   const { data, isPending, isError, refetch } = useQuery(
     repositoriesCompareRevisionsOptions({ path: { owner, repo }, query: { base, head, include_diff: false } }),
   )
+  const renderComparison = () =>
+    isPending ? (
+      <RepositoryLoading label="Calculating diff" />
+    ) : isError || !data ? (
+      <RepositoryError message="Unable to compare revisions." retry={() => refetch()} />
+    ) : !data.base_commit || !data.head_commit ? (
+      <p className="text-sm text-muted-foreground">One or both revisions could not be found.</p>
+    ) : (
+      <DiffViewer
+        key={`${data.base_commit}/${data.head_commit}`}
+        diffSource={{ owner, repo, base: data.base_commit, head: data.head_commit }}
+        files={data.files}
+        additions={data.additions}
+        deletions={data.deletions}
+      />
+    )
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Compare revisions</h1>
@@ -41,21 +58,7 @@ export const CompareView = () => {
           Compare
         </Button>
       </form>
-      {isPending ? (
-        <RepositoryLoading label="Calculating diff" />
-      ) : isError || !data ? (
-        <RepositoryError message="Unable to compare revisions." retry={() => refetch()} />
-      ) : !data.base_commit || !data.head_commit ? (
-        <p className="text-sm text-muted-foreground">One or both revisions could not be found.</p>
-      ) : (
-        <DiffViewer
-          key={`${data.base_commit}/${data.head_commit}`}
-          diffSource={{ owner, repo, base: data.base_commit, head: data.head_commit }}
-          files={data.files}
-          additions={data.additions}
-          deletions={data.deletions}
-        />
-      )}
+      {renderComparison()}
     </div>
   )
 }

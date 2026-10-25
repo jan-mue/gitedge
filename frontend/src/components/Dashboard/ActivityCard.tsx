@@ -101,14 +101,7 @@ const Description = ({ text }: { text: string }) => (
   </div>
 )
 
-const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
-  const [expanded, setExpanded] = useState(false)
-  const [, copy] = useCopyToClipboard()
-  const { showSuccessToast, showErrorToast } = useCustomToast()
-  const body = activity.preview?.body ?? ""
-  const isLong = body.length > 200
-  const owner = activity.repo_owner
-  const repo = activity.repo_name
+const activityStatus = (activity: ActivityPublic) => {
   const target = activity.target_type
   const isDiscussion = target === "issue" || target === "pull_request"
   const state =
@@ -121,6 +114,20 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
           ? "open"
           : undefined)
   const StatusIcon = state === "merged" ? GitMerge : target === "pull_request" ? GitPullRequest : CircleDot
+  return { state, StatusIcon }
+}
+
+export const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
+  const [expanded, setExpanded] = useState(false)
+  const [, copy] = useCopyToClipboard()
+  const { showSuccessToast, showErrorToast } = useCustomToast()
+  const body = activity.preview?.body ?? ""
+  const isLong = body.length > 200
+  const owner = activity.repo_owner
+  const repo = activity.repo_name
+  const target = activity.target_type
+  const isDiscussion = target === "issue" || target === "pull_request"
+  const { state, StatusIcon } = activityStatus(activity)
   const bodyId = `feed-body-${activity.id}`
   const copyLink = async () => {
     if (!owner || !repo) return
@@ -133,6 +140,81 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
           : base
     if (await copy(`${window.location.origin}${path}`)) showSuccessToast("Link copied to clipboard.")
     else showErrorToast("Unable to copy the link.")
+  }
+  const renderDetails = () => {
+    const renderPreview = () => (
+      <div id={bodyId} className="rounded-lg bg-secondary p-4">
+        {activity.kind === "comment" && <p className="mb-2 text-xs text-muted-foreground">Comment</p>}
+        <Description text={expanded || !isLong ? body : `${body.slice(0, 200).trimEnd()}…`} />
+        {expanded && activity.preview?.body_truncated && (
+          <TargetLink activity={activity} appearance="preview">
+            {activity.kind === "comment" ? "View full comment" : "View full description"}
+          </TargetLink>
+        )}
+      </div>
+    )
+    const renderStatus = () => (
+      <div className="mb-3 flex items-center gap-2">
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${state === "merged" ? "bg-merged text-merged-foreground" : state === "closed" ? "bg-destructive/15 text-destructive" : "bg-success/15 text-success"}`}
+        >
+          <StatusIcon className="size-3" aria-hidden="true" />
+          {state === "merged" ? "Merged" : state === "closed" ? "Closed" : "Open"}
+        </span>
+        <span className="text-xs text-muted-foreground">{target === "pull_request" ? "Pull request" : "Issue"}</span>
+      </div>
+    )
+    const renderDiscussion = () => (
+      <footer className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+        <TargetLink activity={activity} appearance="comments">
+          <MessageSquare className="size-3.5" aria-hidden="true" />
+          {activity.preview?.comments_count
+            ? `${activity.preview.comments_count} ${activity.preview.comments_count === 1 ? "comment" : "comments"}`
+            : "Join the discussion"}
+        </TargetLink>
+      </footer>
+    )
+    const renderTitle = () => (
+      <h3 className="mb-2 break-words text-base font-semibold [overflow-wrap:anywhere]">
+        <TargetLink activity={activity} appearance="target">
+          {activity.title}
+          {activity.target_number != null && (
+            <>
+              {" "}
+              <span className="font-normal text-muted-foreground">#{activity.target_number}</span>
+            </>
+          )}
+        </TargetLink>
+      </h3>
+    )
+    const renderReadMore = () =>
+      isLong && (
+        <Button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={bodyId}
+          onClick={() => setExpanded((value) => !value)}
+          variant="readMore"
+          size="text"
+        >
+          {expanded ? "Show less" : "Read more"}
+        </Button>
+      )
+
+    return (
+      activity.title && (
+        <div className="px-4 pb-4">
+          {renderTitle()}
+          {isDiscussion && state && renderStatus()}
+          {body && renderPreview()}
+          {!body && activity.kind === "comment" && (
+            <p className="rounded-lg bg-secondary p-4 text-sm text-muted-foreground">Comment preview unavailable.</p>
+          )}
+          {renderReadMore()}
+          {isDiscussion && renderDiscussion()}
+        </div>
+      )
+    )
   }
 
   return (
@@ -186,72 +268,7 @@ const ActivityCard = ({ activity }: { activity: ActivityPublic }) => {
           </DropdownMenu>
         )}
       </header>
-      {activity.title && (
-        <div className="px-4 pb-4">
-          <h3 className="mb-2 break-words text-base font-semibold [overflow-wrap:anywhere]">
-            <TargetLink activity={activity} appearance="target">
-              {activity.title}
-              {activity.target_number != null && (
-                <>
-                  {" "}
-                  <span className="font-normal text-muted-foreground">#{activity.target_number}</span>
-                </>
-              )}
-            </TargetLink>
-          </h3>
-          {isDiscussion && state && (
-            <div className="mb-3 flex items-center gap-2">
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${state === "merged" ? "bg-merged text-merged-foreground" : state === "closed" ? "bg-destructive/15 text-destructive" : "bg-success/15 text-success"}`}
-              >
-                <StatusIcon className="size-3" aria-hidden="true" />
-                {state === "merged" ? "Merged" : state === "closed" ? "Closed" : "Open"}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {target === "pull_request" ? "Pull request" : "Issue"}
-              </span>
-            </div>
-          )}
-          {body && (
-            <div id={bodyId} className="rounded-lg bg-secondary p-4">
-              {activity.kind === "comment" && <p className="mb-2 text-xs text-muted-foreground">Comment</p>}
-              <Description text={expanded || !isLong ? body : `${body.slice(0, 200).trimEnd()}…`} />
-              {expanded && activity.preview?.body_truncated && (
-                <TargetLink activity={activity} appearance="preview">
-                  {activity.kind === "comment" ? "View full comment" : "View full description"}
-                </TargetLink>
-              )}
-            </div>
-          )}
-          {!body && activity.kind === "comment" && (
-            <p className="rounded-lg bg-secondary p-4 text-sm text-muted-foreground">Comment preview unavailable.</p>
-          )}
-          {isLong && (
-            <Button
-              type="button"
-              aria-expanded={expanded}
-              aria-controls={bodyId}
-              onClick={() => setExpanded((value) => !value)}
-              variant="readMore"
-              size="text"
-            >
-              {expanded ? "Show less" : "Read more"}
-            </Button>
-          )}
-          {isDiscussion && (
-            <footer className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-              <TargetLink activity={activity} appearance="comments">
-                <MessageSquare className="size-3.5" aria-hidden="true" />
-                {activity.preview?.comments_count
-                  ? `${activity.preview.comments_count} ${activity.preview.comments_count === 1 ? "comment" : "comments"}`
-                  : "Join the discussion"}
-              </TargetLink>
-            </footer>
-          )}
-        </div>
-      )}
+      {renderDetails()}
     </article>
   )
 }
-
-export default ActivityCard

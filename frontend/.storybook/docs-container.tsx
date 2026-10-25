@@ -26,24 +26,25 @@ const subscribe = (notify: () => void) => {
 }
 const lightTheme = create({ base: "light", fontBase: theme.fontBase, fontCode: theme.fontCode })
 
+const updateScrollableRegion = (element: HTMLElement) => {
+  element.tabIndex = 0
+  element.setAttribute("aria-label", element.tagName === "TABLE" ? "Component properties" : "Component example")
+  if (element.tagName !== "TABLE") element.setAttribute("role", "region")
+}
+const update = (element: HTMLElement) => {
+  const scrolls = element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1
+  if (scrolls) return updateScrollableRegion(element)
+  element.removeAttribute("tabindex")
+  element.removeAttribute("aria-label")
+  if (element.tagName !== "TABLE") element.removeAttribute("role")
+}
+
 export const ThemedDocsContainer = (props: PropsWithChildren<DocsContainerProps>) => {
   const currentTheme = useSyncExternalStore(subscribe, () => selectedTheme)
   useEffect(() => {
     const root = document.querySelector(".sbdocs-wrapper")
     if (!root) return
     const observed = new Set<HTMLElement>()
-    const update = (element: HTMLElement) => {
-      const scrolls = element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1
-      if (scrolls) {
-        element.tabIndex = 0
-        element.setAttribute("aria-label", element.tagName === "TABLE" ? "Component properties" : "Component example")
-        if (element.tagName !== "TABLE") element.setAttribute("role", "region")
-      } else {
-        element.removeAttribute("tabindex")
-        element.removeAttribute("aria-label")
-        if (element.tagName !== "TABLE") element.removeAttribute("role")
-      }
-    }
     const resize = new ResizeObserver((entries) => {
       for (const entry of entries) update(entry.target as HTMLElement)
     })

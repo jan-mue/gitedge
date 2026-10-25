@@ -9,7 +9,7 @@ import {
 } from "@/client/msw.gen"
 import { handlers, repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
 import { storybookSession, storybookUser } from "@/components/Storybook/session"
-import RepositorySettings from "./RepositorySettings"
+import { RepositorySettings } from "./RepositorySettings"
 
 const initialRepository: Repository = {
   name: "gitedge",

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { delay, HttpResponse } from "msw"
 import { handleRepositoriesGetStatistics } from "@/client/msw.gen"
-import RepoStats from "@/components/Repository/RepoStats"
+import { RepoStats } from "@/components/Repository/RepoStats"
 import { handlers, repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
 
 const meta = { ...repositoryStoryMeta, title: "Patterns/Repository/Statistics" } satisfies Meta

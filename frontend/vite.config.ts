@@ -14,30 +14,27 @@ function normalizeApiUrl(value: string): string {
   return withScheme.replace(/\/+$/, "")
 }
 
+function productionApiUrl(): string {
+  const url = process.env.VITE_API_URL
+  if (!url) throw new Error("Missing VITE_API_URL environment variable for a production build.")
+  return normalizeApiUrl(url)
+}
+function previewApiUrl(): string {
+  const resolved = withRelatedProject({
+    projectName: BACKEND_PROJECT_NAME,
+    defaultHost: process.env.VITE_API_URL || DEV_API_URL,
+  })
+  if (!resolved || resolved === DEV_API_URL) {
+    throw new Error(
+      `Could not resolve the preview URL for related project "${BACKEND_PROJECT_NAME}". ` +
+        "Ensure the backend project is listed in frontend/vercel.ts's relatedProjects, or set a branch-scoped VITE_API_URL to its backend preview.",
+    )
+  }
+  return normalizeApiUrl(resolved)
+}
 function resolveApiUrl(): string {
-  const vercelEnv = process.env.VERCEL_ENV
-  if (vercelEnv === "production") {
-    const productionUrl = process.env.VITE_API_URL
-    if (!productionUrl) {
-      throw new Error("Missing VITE_API_URL environment variable for a production build.")
-    }
-    return normalizeApiUrl(productionUrl)
-  }
-  if (vercelEnv === "preview") {
-    const resolved = withRelatedProject({
-      projectName: BACKEND_PROJECT_NAME,
-      defaultHost: process.env.VITE_API_URL || DEV_API_URL,
-    })
-    if (!resolved || resolved === DEV_API_URL) {
-      throw new Error(
-        `Could not resolve the preview URL for related project "${BACKEND_PROJECT_NAME}". ` +
-          "Ensure the backend project is listed in frontend/vercel.ts's relatedProjects, or set a branch-scoped VITE_API_URL to its backend preview.",
-      )
-    }
-    return normalizeApiUrl(resolved)
-  }
-  // Local development: use relative URLs and let the dev server proxy
-  // API and git-smart-http requests to the backend.
+  if (process.env.VERCEL_ENV === "production") return productionApiUrl()
+  if (process.env.VERCEL_ENV === "preview") return previewApiUrl()
   return ""
 }
 

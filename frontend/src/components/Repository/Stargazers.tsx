@@ -8,7 +8,7 @@ interface StargazersProps {
   repo: string
 }
 
-const Stargazers = ({ owner, repo }: StargazersProps) => {
+export const Stargazers = ({ owner, repo }: StargazersProps) => {
   const { data, isPending, isError, refetch } = useQuery({
     ...starsListStargazersOptions({ path: { owner, repo } }),
   })
@@ -16,7 +16,5 @@ const Stargazers = ({ owner, repo }: StargazersProps) => {
   if (isPending) return <RepositoryLoading label="Loading stargazers" />
   if (isError) return <RepositoryError message="Unable to load stargazers." retry={() => refetch()} />
 
-  return <PeopleList users={data?.data ?? []} emptyText="No stargazers yet." />
+  return <PeopleList users={data.data} emptyText="No stargazers yet." />
 }
-
-export default Stargazers

@@ -10,7 +10,7 @@ interface PullRequestsListProps {
   repo: string
 }
 
-const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
+export const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
   const {
     data: pullsData,
     isPending,
@@ -95,5 +95,3 @@ const PullRequestsList = ({ owner, repo }: PullRequestsListProps) => {
     </div>
   )
 }
-
-export default PullRequestsList

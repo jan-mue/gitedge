@@ -8,7 +8,7 @@ interface ForksProps {
   repo: string
 }
 
-const Forks = ({ owner, repo }: ForksProps) => {
+export const Forks = ({ owner, repo }: ForksProps) => {
   const { data, isPending, isError, refetch } = useQuery({
     ...forksListForksOptions({ path: { owner, repo } }),
   })
@@ -16,7 +16,5 @@ const Forks = ({ owner, repo }: ForksProps) => {
   if (isPending) return <RepositoryLoading label="Loading forks" />
   if (isError) return <RepositoryError message="Unable to load forks." retry={() => refetch()} />
 
-  return <ForksList forks={data?.data ?? []} />
+  return <ForksList forks={data.data} />
 }
-
-export default Forks

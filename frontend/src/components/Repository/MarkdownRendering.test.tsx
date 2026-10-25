@@ -11,9 +11,9 @@ import {
 import { issue, pullRequest } from "@/test/fixtures"
 import { server } from "@/test/server"
 import { render, screen } from "@/test/test-utils"
-import CommentsSection from "./CommentsSection"
-import IssueDetail from "./IssueDetail"
-import PullRequestDetail from "./PullRequestDetail"
+import { CommentsSection } from "./CommentsSection"
+import { IssueDetail } from "./IssueDetail"
+import { PullRequestDetail } from "./PullRequestDetail"
 
 vi.mock("@tanstack/react-router", () => ({
   useParams: () => ({ owner: "owner", repo: "repo", number: "1" }),

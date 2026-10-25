@@ -53,6 +53,9 @@ const methods = [
   },
 ] as const
 
+const canManageRepository = (user: { name: string; is_superuser?: boolean } | undefined, owner: string) =>
+  Boolean(user && (user.name.toLowerCase() === owner.toLowerCase() || user.is_superuser))
+
 export const PullRequestMergeButton = ({
   owner,
   repo,
@@ -65,7 +68,7 @@ export const PullRequestMergeButton = ({
   const { user } = useAuth()
   const client = useQueryClient()
   const [selected, setSelected] = useState<MergeMethod>("merge")
-  const canMerge = Boolean(user && (user.name.toLowerCase() === owner.toLowerCase() || user.is_superuser))
+  const canMerge = canManageRepository(user, owner)
   const settings = useQuery({
     ...repositoriesGetRepositoryOptions({ path: { owner, repo } }),
     enabled: pull.state === "open",
@@ -116,53 +119,119 @@ export const PullRequestMergeButton = ({
   if (!method)
     return <p className="text-sm text-muted-foreground">All merge methods are disabled in repository settings.</p>
   const Icon = method.icon
-  const checking = !settings.data || mergeability.isPending || mergeability.isFetching
-  const ready = !checking && !mergeability.isError && mergeability.data?.mergeable === true
+  const checking = [!settings.data, mergeability.isPending, mergeability.isFetching].some(Boolean)
+  const ready = [!checking, !mergeability.isError, mergeability.data?.mergeable === true].every(Boolean)
   const conflicts = mergeability.data?.conflicting_files ?? []
+  const mergeStatusMessage = () =>
+    checking
+      ? "Checking whether this pull request can be merged…"
+      : mergeability.isError
+        ? "Unable to check for merge conflicts"
+        : ready
+          ? "This branch has no conflicts with the base branch"
+          : conflicts.length
+            ? "This branch has conflicts that must be resolved"
+            : "This pull request cannot be merged"
+  const renderConflicts = () =>
+    !checking &&
+    !ready && (
+      <>
+        <p className="text-muted-foreground">
+          {mergeability.isError
+            ? "Try checking again before merging."
+            : conflicts.length
+              ? "Resolve the conflicts on the PR branch before merging."
+              : mergeability.data?.reason}
+        </p>
+        {conflicts.length > 0 && (
+          <ul className="max-h-40 overflow-auto font-mono text-xs" aria-label="Conflicting files">
+            {conflicts.map((path) => (
+              <li key={path} className="break-all py-0.5">
+                {path}
+              </li>
+            ))}
+          </ul>
+        )}
+      </>
+    )
+  const renderMergeActions = () => (
+    <fieldset className="inline-flex" aria-label="Merge pull request">
+      <Button
+        variant="success"
+        size="compact"
+        shape="start"
+        loading={mutation.isPending}
+        disabled={!ready || mutation.isPending}
+        data-testid="merge-pr"
+        onClick={() =>
+          mutation.mutate({
+            path: { owner, repo, number: pull.number },
+            body: {
+              method: method.value,
+              head_commit: mergeability.data?.head_commit,
+              base_commit: mergeability.data?.base_commit,
+            },
+          })
+        }
+      >
+        <Icon className="size-4" />
+        {method.label}
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="success"
+            size="icon-sm"
+            shape="end"
+            aria-label="Choose merge method"
+            disabled={!settings.data || mutation.isPending}
+          >
+            <ChevronDown className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          {enabled.map((item) => (
+            <DropdownMenuItem
+              key={item.value}
+              onSelect={() => {
+                setSelected(item.value)
+                mutation.reset()
+              }}
+            >
+              <div className="flex items-start gap-2 py-1">
+                <span className="mt-0.5 flex size-4 shrink-0 items-center">
+                  {method.value === item.value && <Check className="size-4" />}
+                </span>
+                <span>
+                  <span className="block font-medium">{item.label}</span>
+                  <span className="block text-xs text-muted-foreground">{item.description}</span>
+                </span>
+              </div>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </fieldset>
+  )
+  const renderMergeStatus = () => (
+    <div role="status" aria-live="polite" className="flex items-start gap-3" data-testid="mergeability-status">
+      {checking ? (
+        <LoaderCircle className="mt-0.5 size-5 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />
+      ) : ready ? (
+        <CircleCheck className="mt-0.5 size-5 shrink-0 text-success" />
+      ) : (
+        <TriangleAlert className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+      )}
+      <div className="min-w-0 space-y-1 text-sm">
+        <p className="font-medium">{mergeStatusMessage()}</p>
+        {renderConflicts()}
+      </div>
+    </div>
+  )
+
   return (
     <div className="space-y-3">
-      <div role="status" aria-live="polite" className="flex items-start gap-3" data-testid="mergeability-status">
-        {checking ? (
-          <LoaderCircle className="mt-0.5 size-5 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />
-        ) : ready ? (
-          <CircleCheck className="mt-0.5 size-5 shrink-0 text-success" />
-        ) : (
-          <TriangleAlert className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
-        )}
-        <div className="min-w-0 space-y-1 text-sm">
-          <p className="font-medium">
-            {checking
-              ? "Checking whether this pull request can be merged…"
-              : mergeability.isError
-                ? "Unable to check for merge conflicts"
-                : ready
-                  ? "This branch has no conflicts with the base branch"
-                  : conflicts.length
-                    ? "This branch has conflicts that must be resolved"
-                    : "This pull request cannot be merged"}
-          </p>
-          {!checking && !ready && (
-            <>
-              <p className="text-muted-foreground">
-                {mergeability.isError
-                  ? "Try checking again before merging."
-                  : conflicts.length
-                    ? "Resolve the conflicts on the PR branch before merging."
-                    : mergeability.data?.reason}
-              </p>
-              {conflicts.length > 0 && (
-                <ul className="max-h-40 overflow-auto font-mono text-xs" aria-label="Conflicting files">
-                  {conflicts.map((path) => (
-                    <li key={path} className="break-all py-0.5">
-                      {path}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+      {renderMergeStatus()}
       {mutation.isError && (
         <p role="alert" className="max-w-prose break-words text-sm text-foreground">
           {extractErrorMessage(mutation.error)}
@@ -170,63 +239,7 @@ export const PullRequestMergeButton = ({
       )}
       <div className="flex flex-wrap items-center gap-3">
         {canMerge ? (
-          <fieldset className="inline-flex" aria-label="Merge pull request">
-            <Button
-              variant="success"
-              size="compact"
-              shape="start"
-              loading={mutation.isPending}
-              disabled={!ready || mutation.isPending}
-              data-testid="merge-pr"
-              onClick={() =>
-                mutation.mutate({
-                  path: { owner, repo, number: pull.number },
-                  body: {
-                    method: method.value,
-                    head_commit: mergeability.data?.head_commit,
-                    base_commit: mergeability.data?.base_commit,
-                  },
-                })
-              }
-            >
-              <Icon className="size-4" />
-              {method.label}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="success"
-                  size="icon-sm"
-                  shape="end"
-                  aria-label="Choose merge method"
-                  disabled={!settings.data || mutation.isPending}
-                >
-                  <ChevronDown className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {enabled.map((item) => (
-                  <DropdownMenuItem
-                    key={item.value}
-                    onSelect={() => {
-                      setSelected(item.value)
-                      mutation.reset()
-                    }}
-                  >
-                    <div className="flex items-start gap-2 py-1">
-                      <span className="mt-0.5 flex size-4 shrink-0 items-center">
-                        {method.value === item.value && <Check className="size-4" />}
-                      </span>
-                      <span>
-                        <span className="block font-medium">{item.label}</span>
-                        <span className="block text-xs text-muted-foreground">{item.description}</span>
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </fieldset>
+          renderMergeActions()
         ) : (
           <p className="text-sm text-muted-foreground">Only the repository owner can merge this pull request.</p>
         )}

@@ -2,7 +2,7 @@ import type { ComponentPropsWithRef } from "react"
 import { describe, expect, test, vi } from "vitest"
 import type { ActivityPublic } from "@/client"
 import { render, screen } from "@/test/test-utils"
-import ActivityCard from "./ActivityCard"
+import { ActivityCard } from "./ActivityCard"
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ to, params, ...props }: ComponentPropsWithRef<"a"> & { to: string; params: Record<string, string> }) => (

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import RepositoryLayout from "@/components/Repositories/RepositoryLayout"
-import BlameView from "@/components/Repository/BlameView"
+import { BlameView } from "@/components/Repository/BlameView"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/blame/$")({
   validateSearch: (search: Record<string, unknown>) => ({ ref: typeof search.ref === "string" ? search.ref : "HEAD" }),

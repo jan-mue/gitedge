@@ -28,19 +28,21 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>
 
-const UserInformation = () => {
+export const UserInformation = () => {
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const [editMode, setEditMode] = useState(false)
   const { user: currentUser } = useAuth()
+
+  const { display_name: initialDisplayName, email: initialEmail } = currentUser ?? {}
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
     criteriaMode: "all",
     defaultValues: {
-      display_name: currentUser?.display_name ?? undefined,
-      email: currentUser?.email,
+      display_name: initialDisplayName ?? undefined,
+      email: initialEmail,
     },
   })
 
@@ -64,10 +66,10 @@ const UserInformation = () => {
     const updateData: UserUpdateMe = {}
 
     // only include fields that have changed
-    if (data.display_name !== currentUser?.display_name) {
+    if (data.display_name !== initialDisplayName) {
       updateData.display_name = data.display_name
     }
-    if (data.email !== currentUser?.email) {
+    if (data.email !== initialEmail) {
       updateData.email = data.email
     }
 
@@ -149,5 +151,3 @@ const UserInformation = () => {
     </div>
   )
 }
-
-export default UserInformation

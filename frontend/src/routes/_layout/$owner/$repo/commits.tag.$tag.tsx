@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Section } from "@/components/design-system"
-import CommitsList from "@/components/Repository/CommitsList"
+import { CommitsList } from "@/components/Repository/CommitsList"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/commits/tag/$tag")({
   validateSearch: (search: Record<string, unknown>): { path?: string } => ({

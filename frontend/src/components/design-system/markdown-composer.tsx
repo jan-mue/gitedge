@@ -22,15 +22,12 @@ export const MarkdownComposer = ({
 }) => {
   const [tab, setTab] = useState("write")
   const preview = useMutation(utilsPreviewMarkdownMutation())
+  const renderEditor = () => (tab === "write" ? "repository" : "quiet")
+
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
       <fieldset className="flex gap-2 border-b border-border bg-secondary px-4 py-2.5" aria-label="Comment editor">
-        <Button
-          size="compact"
-          variant={tab === "write" ? "repository" : "quiet"}
-          aria-pressed={tab === "write"}
-          onClick={() => setTab("write")}
-        >
+        <Button size="compact" variant={renderEditor()} aria-pressed={tab === "write"} onClick={() => setTab("write")}>
           Write
         </Button>
         <Button

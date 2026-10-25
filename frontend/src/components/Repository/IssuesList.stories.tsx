@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { HttpResponse } from "msw"
 import { handleRepositoriesListIssues } from "@/client/msw.gen"
-import IssuesList from "@/components/Repository/IssuesList"
+import { IssuesList } from "@/components/Repository/IssuesList"
 import { repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
 import { trackerIssues } from "./tracker-story-fixtures"
 

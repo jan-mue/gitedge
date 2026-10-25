@@ -7,7 +7,7 @@ import {
   repositoriesListCommitsOptions,
 } from "@/client/@tanstack/react-query.gen"
 import { Link as RouterLink } from "@/components/design-system"
-import BranchSelector from "@/components/Repository/BranchSelector"
+import { BranchSelector } from "@/components/Repository/BranchSelector"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 
 interface CommitsListProps {
@@ -20,7 +20,7 @@ interface CommitsListProps {
 
 const formatDate = (timestamp: number) => new Date(timestamp * 1000).toLocaleString()
 
-const CommitsList = ({ owner, repo, branch, tag, filePath }: CommitsListProps) => {
+export const CommitsList = ({ owner, repo, branch, tag, filePath }: CommitsListProps) => {
   const ref = tag ? `refs/tags/${tag}` : (branch ?? "main")
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -73,6 +73,27 @@ const CommitsList = ({ owner, repo, branch, tag, filePath }: CommitsListProps) =
 
   if (isPending) return <RepositoryLoading label="Loading commits" />
   if (isError) return <RepositoryError message="Unable to load commits." retry={() => refetch()} />
+  const renderBranchSelector = () => (
+    <div className="flex items-center gap-2">
+      <BranchSelector
+        branches={branches ?? []}
+        tags={tags?.data ?? []}
+        value={tag ?? ref}
+        kind={tag ? "tag" : "branch"}
+        onValueChange={selectBranch}
+        disclosure={{ open: open, onOpenChange: setOpen }}
+        status={{
+          branch: { loading: branchesPending, error: branchesError, onRetry: () => refetchBranches() },
+          tag: { loading: tagsPending, error: tagsError, onRetry: () => refetchTags() },
+        }}
+        data-testid="commits-branch-selector"
+        dropdownTestId="commits-branch-dropdown"
+      />
+      <span className="text-sm text-muted-foreground">
+        {commits.length} {commits.length === 1 ? "commit" : "commits"}
+      </span>
+    </div>
+  )
 
   return (
     <div className="space-y-3">
@@ -81,28 +102,7 @@ const CommitsList = ({ owner, repo, branch, tag, filePath }: CommitsListProps) =
           History of <span className="font-mono">{filePath}</span>
         </h2>
       )}
-      <div className="flex items-center gap-2">
-        <BranchSelector
-          branches={branches ?? []}
-          tags={tags?.data ?? []}
-          value={tag ?? ref}
-          kind={tag ? "tag" : "branch"}
-          onValueChange={selectBranch}
-          open={open}
-          onOpenChange={setOpen}
-          loading={branchesPending}
-          error={branchesError}
-          onRetry={() => refetchBranches()}
-          tagsLoading={tagsPending}
-          tagsError={tagsError}
-          onRetryTags={() => refetchTags()}
-          data-testid="commits-branch-selector"
-          dropdownTestId="commits-branch-dropdown"
-        />
-        <span className="text-sm text-muted-foreground">
-          {commits.length} {commits.length === 1 ? "commit" : "commits"}
-        </span>
-      </div>
+      {renderBranchSelector()}
 
       <div className="overflow-hidden rounded-lg border border-border bg-card" data-testid="commits-list">
         {commits.map((commit, index) => (
@@ -139,5 +139,3 @@ const CommitsList = ({ owner, repo, branch, tag, filePath }: CommitsListProps) =
     </div>
   )
 }
-
-export default CommitsList

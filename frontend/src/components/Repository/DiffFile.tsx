@@ -68,219 +68,237 @@ const CommentEditor = ({
   )
 }
 
+const matchesEditor = (
+  editor: { path: string; side: "old" | "new"; line: number } | null,
+  path: string,
+  side: "old" | "new",
+  line: number,
+) => editor?.path === path && editor.side === side && editor.line === line
+
 interface DiffFileProps {
   file: CommitFileChange
   id: string
   source?: DiffSource
-  collapsed: boolean
-  reviewed: boolean
-  annotations?: DiffAnnotation[]
-  onEditorChange: (path: string, editing: boolean) => void
-  onToggle: (path: string) => void
-  onReviewed?: (path: string, reviewed: boolean) => void
-  reviewBusy?: boolean
-  onAddComment?: (comment: ReviewLineComment) => Promise<void>
-  onDeleteComment?: (id: string) => void
-  layout: "unified" | "split"
+  view: { collapsed: boolean; layout: "unified" | "split"; onToggle: (path: string) => void }
+  review: {
+    reviewed: boolean
+    annotations?: DiffAnnotation[]
+    onEditorChange: (path: string, editing: boolean) => void
+    onReviewed?: (path: string, reviewed: boolean) => void
+    busy?: boolean
+    onAddComment?: (comment: ReviewLineComment) => Promise<void>
+    onDeleteComment?: (id: string) => void
+  }
 }
 
-export const DiffFile = memo(
-  ({
-    file,
-    id,
-    source,
-    collapsed,
+export const DiffFile = memo(({ file, id, source, view, review }: DiffFileProps) => {
+  const { collapsed, layout, onToggle } = view
+  const {
     reviewed,
     annotations = EMPTY_ANNOTATIONS,
-    onToggle,
+    onEditorChange,
     onReviewed,
-    reviewBusy,
+    busy: reviewBusy,
     onAddComment,
     onDeleteComment,
-    layout,
-    onEditorChange,
-  }: DiffFileProps) => {
-    const {
-      data: loaded,
-      isError,
-      refetch,
-    } = useQuery({
-      ...repositoriesGetDiffFileOptions({
-        path: { owner: source?.owner ?? "", repo: source?.repo ?? "" },
-        query: { base: source?.base ?? "", head: source?.head ?? "0".repeat(40), file_path: file.path },
-      }),
-      enabled: file.diff_loaded === false && !!source && !collapsed,
-      staleTime: Infinity,
-    })
-    const data = file.diff_loaded === false ? loaded : file
-    const [editor, setEditor] = useState<{ path: string; side: "old" | "new"; line: number } | null>(null)
-    const [commentBody, setCommentBody] = useState("")
-    const closeEditor = () => {
-      setEditor(null)
-      setCommentBody("")
-      onEditorChange(file.path, false)
+  } = review
+  const {
+    data: loaded,
+    isError,
+    refetch,
+  } = useQuery({
+    ...repositoriesGetDiffFileOptions({
+      path: { owner: source?.owner ?? "", repo: source?.repo ?? "" },
+      query: { base: source?.base ?? "", head: source?.head ?? "0".repeat(40), file_path: file.path },
+    }),
+    enabled: file.diff_loaded === false && !!source && !collapsed,
+    staleTime: Infinity,
+  })
+  const data = file.diff_loaded === false ? loaded : file
+  const [editor, setEditor] = useState<{ path: string; side: "old" | "new"; line: number } | null>(null)
+  const [commentBody, setCommentBody] = useState("")
+  const closeEditor = () => {
+    setEditor(null)
+    setCommentBody("")
+    onEditorChange(file.path, false)
+  }
+  const commentsByLine = useMemo(() => {
+    const indexed = new Map<string, DiffAnnotation[]>()
+    for (const comment of annotations) {
+      const key = `${comment.side}:${comment.line}`
+      const entries = indexed.get(key) ?? []
+      entries.push(comment)
+      indexed.set(key, entries)
     }
-    const commentsByLine = useMemo(() => {
-      const indexed = new Map<string, DiffAnnotation[]>()
-      for (const comment of annotations) {
-        const key = `${comment.side}:${comment.line}`
-        const entries = indexed.get(key) ?? []
-        entries.push(comment)
-        indexed.set(key, entries)
-      }
-      return indexed
-    }, [annotations])
-    const threads = (file: CommitFileChange, line: DiffLine, side: "old" | "new") => {
-      const number = side === "old" ? line.old_line : line.new_line
-      if (number == null) return null
-      const comments = commentsByLine.get(`${side}:${number}`) ?? EMPTY_ANNOTATIONS
-      const editing = editor?.path === file.path && editor.side === side && editor.line === number
-      if (!comments.length && !editing) return null
-      return (
-        <div className="diff-threads">
-          {comments.map((comment) => (
-            <div key={comment.id} className="diff-comment">
-              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span>
-                  <strong className="text-foreground">{comment.author}</strong>
-                  {comment.pending && " · Pending review"}
-                </span>
-                {comment.pending && onDeleteComment && (
-                  <Button variant="textDanger" size="text" onClick={() => onDeleteComment(comment.id)}>
-                    Remove
-                  </Button>
-                )}
-              </div>
-              <p className="mt-2 whitespace-pre-wrap text-sm">{comment.body}</p>
-            </div>
-          ))}
-          {editing && onAddComment && (
-            <CommentEditor
-              body={commentBody}
-              onBodyChange={setCommentBody}
-              onCancel={closeEditor}
-              onSave={async (body) => {
-                await onAddComment({ path: file.path, side, line: number, body })
-                closeEditor()
-              }}
-            />
-          )}
-        </div>
-      )
-    }
-
-    const cell = (file: CommitFileChange, line: DiffLine | undefined, side?: "old" | "new") => {
-      if (!line) return <div className="diff-cell diff-empty" />
-      const anchorSide = side ?? (line.kind === "delete" ? "old" : "new")
-      const number = anchorSide === "old" ? line.old_line : line.new_line
-      return (
-        <div className="diff-cell" data-kind={line.kind}>
-          <DiffCodeRow
-            line={line}
-            side={side}
-            action={
-              onAddComment &&
-              number != null && (
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  disabled={reviewBusy}
-                  aria-label={`Comment on ${file.path} ${anchorSide} line ${number}`}
-                  onClick={() => {
-                    setEditor({ path: file.path, side: anchorSide, line: number })
-                    onEditorChange(file.path, true)
-                  }}
-                >
-                  <Plus className="size-3" />
-                </Button>
-              )
-            }
-          />
-          {line.no_newline && <div className="diff-no-newline">No newline at end of file</div>}
-          {side ? (
-            threads(file, line, side)
-          ) : (
-            <>
-              {threads(file, line, "old")}
-              {threads(file, line, "new")}
-            </>
-          )}
-        </div>
-      )
-    }
-
-    return (
-      <section
-        id={id}
-        className="diff-file"
-        aria-label={`Diff for ${file.path}`}
-        data-testid={`commit-file-${file.path}`}
-      >
-        <header className="diff-file-header">
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label={`${collapsed ? "Expand" : "Collapse"} ${file.path}`}
-            aria-expanded={!collapsed}
-            onClick={() => onToggle(file.path)}
-          >
-            {collapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
+    return indexed
+  }, [annotations])
+  const renderThreadComment = (comment: DiffAnnotation) => (
+    <div key={comment.id} className="diff-comment">
+      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>
+          <strong className="text-foreground">{comment.author}</strong>
+          {comment.pending && " · Pending review"}
+        </span>
+        {comment.pending && onDeleteComment && (
+          <Button variant="textDanger" size="text" onClick={() => onDeleteComment(comment.id)}>
+            Remove
           </Button>
-          <FileCode2 className="size-4 shrink-0 text-muted-foreground" />
-          <div className="min-w-0 flex-1">
-            <span className="break-all font-mono text-xs font-medium">
-              {file.old_path && <span className="text-muted-foreground">{file.old_path} → </span>}
-              {file.path}
-            </span>
-          </div>
-          <span className={`diff-status diff-status-${file.change_type}`}>{labels[file.change_type]}</span>
-          <span className="font-mono text-xs text-success">+{file.additions}</span>
-          <span className="font-mono text-xs text-destructive">−{file.deletions}</span>
-          {source && (file.change_type !== "delete" || source.base) && (
-            <FileLink
-              href={`/${encodeURIComponent(source.owner)}/${encodeURIComponent(source.repo)}/src/commit/${file.change_type === "delete" ? source.base : source.head}/${file.path.split("/").map(encodeURIComponent).join("/")}`}
-              appearance="codeAction"
-              data-testid={`view-file-${file.path}`}
-              aria-label={`${file.change_type === "delete" ? "View original file" : "View file"} ${file.path}`}
-            >
-              <ExternalLink className="size-3.5" />
-            </FileLink>
-          )}
-          {onReviewed && (
-            <label className="ml-2 flex items-center gap-2 text-xs" htmlFor={`${id}-viewed`}>
-              <Checkbox
-                id={`${id}-viewed`}
-                checked={reviewed}
-                disabled={reviewBusy}
-                onCheckedChange={(checked) => onReviewed(file.path, checked === true)}
-                aria-label={`Mark ${file.path} as viewed`}
-              />
-              Viewed
-            </label>
-          )}
-        </header>
-        {!collapsed && (
-          <div className="diff-scroll" data-layout={layout}>
-            {isError ? (
-              <div role="alert" className="p-4 text-sm">
-                Unable to load this diff.{" "}
-                <Button variant="repository" size="compact" onClick={() => refetch()}>
-                  Retry
-                </Button>
-              </div>
-            ) : data ? (
-              <DiffBody file={data} layout={layout} renderCell={cell} editor={editor} />
-            ) : (
-              <CodeSkeleton lineCount={Math.ceil((file.diff_line_count ?? 8) / (layout === "split" ? 2 : 1))} />
-            )}
-          </div>
         )}
-      </section>
+      </div>
+      <p className="mt-2 whitespace-pre-wrap text-sm">{comment.body}</p>
+    </div>
+  )
+  const threads = (file: CommitFileChange, line: DiffLine, side: "old" | "new") => {
+    const number = side === "old" ? line.old_line : line.new_line
+    if (number == null) return null
+    const comments = commentsByLine.get(`${side}:${number}`) ?? EMPTY_ANNOTATIONS
+    const editing = matchesEditor(editor, file.path, side, number)
+    if (!comments.length && !editing) return null
+    return (
+      <div className="diff-threads">
+        {comments.map(renderThreadComment)}
+        {editing && onAddComment && (
+          <CommentEditor
+            body={commentBody}
+            onBodyChange={setCommentBody}
+            onCancel={closeEditor}
+            onSave={async (body) => {
+              await onAddComment({ path: file.path, side, line: number, body })
+              closeEditor()
+            }}
+          />
+        )}
+      </div>
     )
-  },
-)
+  }
+
+  const cell = (file: CommitFileChange, line: DiffLine | undefined, side?: "old" | "new") => {
+    if (!line) return <div className="diff-cell diff-empty" />
+    const anchorSide = side ?? (line.kind === "delete" ? "old" : "new")
+    const number = anchorSide === "old" ? line.old_line : line.new_line
+    return (
+      <div className="diff-cell" data-kind={line.kind}>
+        <DiffCodeRow
+          line={line}
+          side={side}
+          action={
+            onAddComment &&
+            number != null && (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                disabled={reviewBusy}
+                aria-label={`Comment on ${file.path} ${anchorSide} line ${number}`}
+                onClick={() => {
+                  setEditor({ path: file.path, side: anchorSide, line: number })
+                  onEditorChange(file.path, true)
+                }}
+              >
+                <Plus className="size-3" />
+              </Button>
+            )
+          }
+        />
+        {line.no_newline && <div className="diff-no-newline">No newline at end of file</div>}
+        {side ? (
+          threads(file, line, side)
+        ) : (
+          <>
+            {threads(file, line, "old")}
+            {threads(file, line, "new")}
+          </>
+        )}
+      </div>
+    )
+  }
+  const renderFileLink = () =>
+    source &&
+    (file.change_type !== "delete" || source.base) && (
+      <FileLink
+        href={`/${encodeURIComponent(source.owner)}/${encodeURIComponent(source.repo)}/src/commit/${file.change_type === "delete" ? source.base : source.head}/${file.path.split("/").map(encodeURIComponent).join("/")}`}
+        appearance="codeAction"
+        data-testid={`view-file-${file.path}`}
+        aria-label={`${file.change_type === "delete" ? "View original file" : "View file"} ${file.path}`}
+      >
+        <ExternalLink className="size-3.5" />
+      </FileLink>
+    )
+  const renderDiffBody = () =>
+    !collapsed && (
+      <div className="diff-scroll" data-layout={layout}>
+        {isError ? (
+          <div role="alert" className="p-4 text-sm">
+            Unable to load this diff.{" "}
+            <Button variant="repository" size="compact" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </div>
+        ) : data ? (
+          <DiffBody file={data} layout={layout} renderCell={cell} editor={editor} />
+        ) : (
+          <CodeSkeleton lineCount={Math.ceil((file.diff_line_count ?? 8) / (layout === "split" ? 2 : 1))} />
+        )}
+      </div>
+    )
+
+  return (
+    <section
+      id={id}
+      className="diff-file"
+      aria-label={`Diff for ${file.path}`}
+      data-testid={`commit-file-${file.path}`}
+    >
+      <header className="diff-file-header">
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label={`${collapsed ? "Expand" : "Collapse"} ${file.path}`}
+          aria-expanded={!collapsed}
+          onClick={() => onToggle(file.path)}
+        >
+          {collapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
+        </Button>
+        <FileCode2 className="size-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
+          <span className="break-all font-mono text-xs font-medium">
+            {file.old_path && <span className="text-muted-foreground">{file.old_path} → </span>}
+            {file.path}
+          </span>
+        </div>
+        <span className={`diff-status diff-status-${file.change_type}`}>{labels[file.change_type]}</span>
+        <span className="font-mono text-xs text-success">+{file.additions}</span>
+        <span className="font-mono text-xs text-destructive">−{file.deletions}</span>
+        {renderFileLink()}
+        {onReviewed && (
+          <label className="ml-2 flex items-center gap-2 text-xs" htmlFor={`${id}-viewed`}>
+            <Checkbox
+              id={`${id}-viewed`}
+              checked={reviewed}
+              disabled={reviewBusy}
+              onCheckedChange={(checked) => onReviewed(file.path, checked === true)}
+              aria-label={`Mark ${file.path} as viewed`}
+            />
+            Viewed
+          </label>
+        )}
+      </header>
+      {renderDiffBody()}
+    </section>
+  )
+})
 
 type BodyRow = { header: string } | { old?: DiffLine; new?: DiffLine; line?: DiffLine }
+const hunkRows = (hunk: NonNullable<CommitFileChange["hunks"]>[number], layout: "unified" | "split"): BodyRow[] => {
+  const rows =
+    layout === "unified"
+      ? hunk.lines.map((line) => ({ line }))
+      : hunk.rows.map((row) => ({
+          old: row.old == null ? undefined : hunk.lines[row.old],
+          new: row.new == null ? undefined : hunk.lines[row.new],
+        }))
+  return [{ header: hunk.header }, ...rows]
+}
+
 const DiffBody = ({
   file,
   layout,
@@ -292,20 +310,7 @@ const DiffBody = ({
   layout: "unified" | "split"
   renderCell: (file: CommitFileChange, line: DiffLine | undefined, side?: "old" | "new") => ReactNode
 }) => {
-  const rows = useMemo(() => {
-    const result: BodyRow[] = []
-    for (const hunk of file.hunks ?? []) {
-      result.push({ header: hunk.header })
-      if (layout === "unified") for (const line of hunk.lines) result.push({ line })
-      else
-        for (const row of hunk.rows)
-          result.push({
-            old: row.old == null ? undefined : hunk.lines[row.old],
-            new: row.new == null ? undefined : hunk.lines[row.new],
-          })
-    }
-    return result
-  }, [file, layout])
+  const rows = useMemo(() => (file.hunks ?? []).flatMap((hunk) => hunkRows(hunk, layout)), [file, layout])
   const renderRow = (row: BodyRow) =>
     "header" in row ? (
       <div className="diff-hunk">{row.header}</div>

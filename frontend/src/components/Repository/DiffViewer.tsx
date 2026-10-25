@@ -36,70 +36,14 @@ const EMPTY_PATHS: string[] = []
 const lineCount = (file: CommitFileChange) =>
   file.diff_line_count || (file.hunks ?? []).reduce((sum, hunk) => sum + hunk.lines.length, 0)
 
-export const DiffViewer = ({
-  files,
-  additions,
-  deletions,
-  toolbar,
-  diffSource,
-  reviewedPaths = EMPTY_PATHS,
-  onReviewed,
-  reviewBusy,
-  annotations = EMPTY_ANNOTATIONS,
-  onAddComment,
-  onDeleteComment,
-}: DiffViewerProps) => {
-  const id = useId()
-  const [filter, setFilter] = useState("")
-  const [layout, setLayout] = useState<"unified" | "split">("unified")
-  const [wrap, setWrap] = useState(false)
+const useDiffReviewState = (reviewedPaths: string[], onReviewed?: DiffViewerProps["onReviewed"]) => {
   const [collapsed, setCollapsed] = useState<Map<string, { reviewed: boolean; collapsed: boolean }>>(new Map())
   const [editingPaths, setEditingPaths] = useState<Set<string>>(new Set())
-  const [selected, setSelected] = useState(files[0]?.path)
-  const listRef = useRef<HTMLDivElement>(null)
-  const offset = useDocumentOffset(listRef)
-  const visibleFiles = useMemo(
-    () => files.filter((file) => file.path.toLowerCase().includes(filter.toLowerCase())),
-    [files, filter],
-  )
   const reviewed = useMemo(() => new Set(reviewedPaths), [reviewedPaths])
   const isCollapsed = (path: string) => {
     const override = collapsed.get(path)
     return override?.reviewed === reviewed.has(path) ? override.collapsed : reviewed.has(path)
   }
-  const byFile = useMemo(() => {
-    const map = new Map<string, DiffAnnotation[]>()
-    for (const annotation of annotations) {
-      const entries = map.get(annotation.path) ?? []
-      entries.push(annotation)
-      map.set(annotation.path, entries)
-    }
-    return map
-  }, [annotations])
-  const useVirtualFiles = visibleFiles.length > 20 || visibleFiles.some((file) => lineCount(file) > 200)
-  const virtualizer = useWindowVirtualizer({
-    count: visibleFiles.length,
-    enabled: useVirtualFiles,
-    scrollMargin: offset,
-    estimateSize: (index) =>
-      isCollapsed(visibleFiles[index].path)
-        ? 70
-        : 110 + Math.max(1, Math.ceil(lineCount(visibleFiles[index]) / (layout === "split" ? 2 : 1))) * 22,
-    getItemKey: (index) => visibleFiles[index].path,
-    overscan: 1,
-    useAnimationFrameWithResizeObserver: true,
-    rangeExtractor: (range) =>
-      [
-        ...new Set([
-          ...defaultRangeExtractor(range),
-          ...visibleFiles.flatMap((file, index) => (editingPaths.has(file.path) ? [index] : [])),
-        ]),
-      ].sort((a, b) => a - b),
-  })
-  useLayoutEffect(() => {
-    if (layout) virtualizer.measure()
-  }, [layout, virtualizer])
-  const fileId = (path: string) => `${id}-file-${encodeURIComponent(path)}`
   const onEditorChange = useCallback(
     (path: string, editing: boolean) =>
       setEditingPaths((previous) => {
@@ -133,22 +77,151 @@ export const DiffViewer = ({
     },
     [onReviewed],
   )
+  return { reviewed, editingPaths, isCollapsed, setCollapsed, onEditorChange, toggle, markReviewed }
+}
+const useDiffViewer = ({
+  files,
+  reviewedPaths = EMPTY_PATHS,
+  onReviewed,
+  annotations = EMPTY_ANNOTATIONS,
+}: DiffViewerProps) => {
+  const id = useId()
+  const [filter, setFilter] = useState("")
+  const [layout, setLayout] = useState<"unified" | "split">("unified")
+  const [wrap, setWrap] = useState(false)
+  const [selected, setSelected] = useState(files[0]?.path)
+  const listRef = useRef<HTMLDivElement>(null)
+  const offset = useDocumentOffset(listRef)
+  const visibleFiles = useMemo(
+    () => files.filter((file) => file.path.toLowerCase().includes(filter.toLowerCase())),
+    [files, filter],
+  )
+  const byFile = useMemo(() => {
+    const map = new Map<string, DiffAnnotation[]>()
+    for (const annotation of annotations) {
+      const entries = map.get(annotation.path) ?? []
+      entries.push(annotation)
+      map.set(annotation.path, entries)
+    }
+    return map
+  }, [annotations])
+  const { reviewed, editingPaths, isCollapsed, setCollapsed, onEditorChange, toggle, markReviewed } =
+    useDiffReviewState(reviewedPaths, onReviewed)
+  const useVirtualFiles = visibleFiles.length > 20 || visibleFiles.some((file) => lineCount(file) > 200)
+  const virtualizer = useWindowVirtualizer({
+    count: visibleFiles.length,
+    enabled: useVirtualFiles,
+    scrollMargin: offset,
+    estimateSize: (index) =>
+      isCollapsed(visibleFiles[index].path)
+        ? 70
+        : 110 + Math.max(1, Math.ceil(lineCount(visibleFiles[index]) / (layout === "split" ? 2 : 1))) * 22,
+    getItemKey: (index) => visibleFiles[index].path,
+    overscan: 1,
+    useAnimationFrameWithResizeObserver: true,
+    rangeExtractor: (range) =>
+      [
+        ...new Set([
+          ...defaultRangeExtractor(range),
+          ...visibleFiles.flatMap((file, index) => (editingPaths.has(file.path) ? [index] : [])),
+        ]),
+      ].sort((a, b) => a - b),
+  })
+  useLayoutEffect(() => {
+    if (layout) virtualizer.measure()
+  }, [layout, virtualizer])
+  const fileId = (path: string) => `${id}-file-${encodeURIComponent(path)}`
+
+  return {
+    id,
+    filter,
+    setFilter,
+    layout,
+    setLayout,
+    wrap,
+    setWrap,
+    selected,
+    setSelected,
+    listRef,
+    offset,
+    visibleFiles,
+    byFile,
+    reviewed,
+    isCollapsed,
+    setCollapsed,
+    onEditorChange,
+    toggle,
+    markReviewed,
+    useVirtualFiles,
+    virtualizer,
+    fileId,
+  }
+}
+
+export const DiffViewer = ({
+  files,
+  additions,
+  deletions,
+  toolbar,
+  diffSource,
+  reviewedPaths = EMPTY_PATHS,
+  onReviewed,
+  reviewBusy,
+  annotations = EMPTY_ANNOTATIONS,
+  onAddComment,
+  onDeleteComment,
+}: DiffViewerProps) => {
+  const {
+    filter,
+    setFilter,
+    layout,
+    setLayout,
+    wrap,
+    setWrap,
+    selected,
+    setSelected,
+    listRef,
+    offset,
+    visibleFiles,
+    byFile,
+    reviewed,
+    isCollapsed,
+    setCollapsed,
+    onEditorChange,
+    toggle,
+    markReviewed,
+    useVirtualFiles,
+    virtualizer,
+    fileId,
+  } = useDiffViewer({
+    files,
+    additions,
+    deletions,
+    toolbar,
+    diffSource,
+    reviewedPaths,
+    onReviewed,
+    reviewBusy,
+    annotations,
+    onAddComment,
+    onDeleteComment,
+  })
   const renderFile = (file: CommitFileChange) => (
     <DiffFile
       key={file.path}
       file={file}
       id={fileId(file.path)}
       source={diffSource}
-      layout={layout}
-      collapsed={isCollapsed(file.path)}
-      reviewed={reviewed.has(file.path)}
-      annotations={byFile.get(file.path)}
-      onToggle={toggle}
-      onReviewed={onReviewed ? markReviewed : undefined}
-      reviewBusy={reviewBusy}
-      onAddComment={onAddComment}
-      onDeleteComment={onDeleteComment}
-      onEditorChange={onEditorChange}
+      view={{ layout, collapsed: isCollapsed(file.path), onToggle: toggle }}
+      review={{
+        reviewed: reviewed.has(file.path),
+        annotations: byFile.get(file.path),
+        onReviewed: onReviewed ? markReviewed : undefined,
+        busy: reviewBusy,
+        onAddComment,
+        onDeleteComment,
+        onEditorChange,
+      }}
     />
   )
   return (

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import IssuesList from "@/components/Repository/IssuesList"
+import { IssuesList } from "@/components/Repository/IssuesList"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/issues/")({
   component: IssuesIndex,

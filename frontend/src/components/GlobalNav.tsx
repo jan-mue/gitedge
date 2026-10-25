@@ -33,29 +33,17 @@ import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
-const GlobalNav = () => {
+const useNewRepository = (username: string) => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { user, logout } = useAuth()
   const { showErrorToast } = useCustomToast()
-
   const [showNewRepo, setShowNewRepo] = useState(false)
   const repoNameInput = useRef<HTMLInputElement>(null)
-  const [showNewOrg, setShowNewOrg] = useState(false)
   const [repoName, setRepoName] = useState("")
   const [repoDesc, setRepoDesc] = useState("")
   const [repoOwner, setRepoOwner] = useState("")
-  const [orgName, setOrgName] = useState("")
 
-  const username = user?.name ?? ""
-
-  const { data: organizations } = useQuery({
-    ...organizationsListOrganizationsOptions(),
-  })
-
-  const ownerOptions = [username, ...(organizations?.data.map((org) => org.name) ?? [])].filter(Boolean)
   const selectedOwner = repoOwner || username
-
   const createRepoMutation = useMutation({
     ...repositoriesCreateRepositoryMutation(),
     onSuccess: () => {
@@ -68,6 +56,24 @@ const GlobalNav = () => {
     onError: handleError.bind(showErrorToast),
   })
 
+  return {
+    showNewRepo,
+    setShowNewRepo,
+    repoNameInput,
+    repoName,
+    setRepoName,
+    repoDesc,
+    setRepoDesc,
+    setRepoOwner,
+    selectedOwner,
+    createRepoMutation,
+  }
+}
+const useNewOrganization = () => {
+  const queryClient = useQueryClient()
+  const { showErrorToast } = useCustomToast()
+  const [showNewOrg, setShowNewOrg] = useState(false)
+  const [orgName, setOrgName] = useState("")
   const createOrgMutation = useMutation({
     ...organizationsCreateOrganizationMutation(),
     onSuccess: () => {
@@ -77,6 +83,77 @@ const GlobalNav = () => {
     },
     onError: handleError.bind(showErrorToast),
   })
+  return { showNewOrg, setShowNewOrg, orgName, setOrgName, createOrgMutation }
+}
+
+export const GlobalNav = () => {
+  const { user, logout } = useAuth()
+
+  const username = user?.name ?? ""
+
+  const { data: organizations } = useQuery({
+    ...organizationsListOrganizationsOptions(),
+  })
+
+  const ownerOptions = [username, ...(organizations?.data.map((org) => org.name) ?? [])].filter(Boolean)
+  const {
+    showNewRepo,
+    setShowNewRepo,
+    repoNameInput,
+    repoName,
+    setRepoName,
+    repoDesc,
+    setRepoDesc,
+    setRepoOwner,
+    selectedOwner,
+    createRepoMutation,
+  } = useNewRepository(username)
+  const { showNewOrg, setShowNewOrg, orgName, setOrgName, createOrgMutation } = useNewOrganization()
+
+  const renderAccountMenu = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" data-testid="user-menu" aria-label="Open user menu" variant="avatar" size="icon-sm">
+          {(user?.display_name || username || "U").slice(0, 1).toUpperCase()}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" appearance="account">
+        <div className="px-3 py-2 text-sm">
+          <p className="font-medium text-foreground">{user?.display_name || username}</p>
+          <p className="text-xs text-muted-foreground">{user?.email}</p>
+        </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <RouterLink to="/profile/$username" params={{ username }} appearance="item">
+            <User className="h-4 w-4" />
+            Profile
+          </RouterLink>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <RouterLink to="/settings" appearance="item">
+            <Settings className="h-4 w-4" />
+            Settings
+          </RouterLink>
+        </DropdownMenuItem>
+        {user?.is_superuser && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <RouterLink to="/admin" appearance="item">
+                <ShieldCheck className="h-4 w-4" />
+                Site Administration
+              </RouterLink>
+            </DropdownMenuItem>
+          </>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem appearance="destructive" onClick={logout}>
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 
   return (
     <>
@@ -119,54 +196,7 @@ const GlobalNav = () => {
               </span>
             </Button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  data-testid="user-menu"
-                  aria-label="Open user menu"
-                  variant="avatar"
-                  size="icon-sm"
-                >
-                  {(user?.display_name || username || "U").slice(0, 1).toUpperCase()}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" appearance="account">
-                <div className="px-3 py-2 text-sm">
-                  <p className="font-medium text-foreground">{user?.display_name || username}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <RouterLink to="/profile/$username" params={{ username }} appearance="item">
-                    <User className="h-4 w-4" />
-                    Profile
-                  </RouterLink>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <RouterLink to="/settings" appearance="item">
-                    <Settings className="h-4 w-4" />
-                    Settings
-                  </RouterLink>
-                </DropdownMenuItem>
-                {user?.is_superuser && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <RouterLink to="/admin" appearance="item">
-                        <ShieldCheck className="h-4 w-4" />
-                        Site Administration
-                      </RouterLink>
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem appearance="destructive" onClick={logout}>
-                  <LogOut className="h-4 w-4" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {renderAccountMenu()}
           </div>
         </div>
       </nav>
@@ -291,5 +321,3 @@ const GlobalNav = () => {
     </>
   )
 }
-
-export default GlobalNav

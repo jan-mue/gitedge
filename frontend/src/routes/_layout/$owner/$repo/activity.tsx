@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import RepositoryLayout from "@/components/Repositories/RepositoryLayout"
-import RepositoryActivity from "@/components/Repository/RepositoryActivity"
+import { RepositoryActivity } from "@/components/Repository/RepositoryActivity"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/activity")({
   component: ActivityPage,

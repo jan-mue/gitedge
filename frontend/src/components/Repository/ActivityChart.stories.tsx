@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import ActivityChart from "@/components/Repository/ActivityChart"
+import { ActivityChart } from "@/components/Repository/ActivityChart"
 import { repositoryStoryMeta, series } from "@/components/Storybook/repository-fixtures"
 
 const meta = { ...repositoryStoryMeta, title: "Patterns/Repository/Activity chart" } satisfies Meta

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import NewPullRequestForm from "@/components/Repository/NewPullRequestForm"
+import { NewPullRequestForm } from "@/components/Repository/NewPullRequestForm"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/pulls/new")({
   component: NewPullRequest,

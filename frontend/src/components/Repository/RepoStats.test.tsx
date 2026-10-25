@@ -11,7 +11,7 @@ import {
 } from "@/client/msw.gen"
 import { server } from "@/test/server"
 import { render, screen, waitFor } from "@/test/test-utils"
-import RepoStats from "./RepoStats"
+import { RepoStats } from "./RepoStats"
 
 const navigate = vi.hoisted(() => vi.fn())
 

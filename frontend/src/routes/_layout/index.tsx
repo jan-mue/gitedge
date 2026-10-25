@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import Feed from "@/components/Dashboard/Feed"
+import { Feed } from "@/components/Dashboard/Feed"
 
 export const Route = createFileRoute("/_layout/")({
   component: Dashboard,

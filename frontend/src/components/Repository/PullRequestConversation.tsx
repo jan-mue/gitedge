@@ -14,7 +14,7 @@ import {
   ReviewStatusIcon,
   Link as RouterLink,
 } from "@/components/design-system"
-import CommentsSection from "./CommentsSection"
+import { CommentsSection } from "./CommentsSection"
 import { ReviewTimeline } from "./PullRequestFiles"
 
 export const PullRequestConversation = ({
