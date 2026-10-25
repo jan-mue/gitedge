@@ -13,7 +13,7 @@ test("distributed Bun bytecode launcher executes a job and keeps launch controls
   const execute = promisify(execFile)
   try {
     await execute("bun", ["build.ts"], {
-      cwd: fileURLToPath(new URL(".", import.meta.url)),
+      cwd: fileURLToPath(new URL("../../../actions-runner/", import.meta.url)),
       env: { ...process.env, GITEDGE_RUNNER_BUILD_OUTDIR: directory },
       timeout: 10000,
     })
@@ -50,4 +50,18 @@ jobs:
   } finally {
     await rm(directory, { recursive: true, force: true })
   }
+})
+
+test("the agent bundle excludes the workflow compiler and cloud authentication", async () => {
+  const result = await Bun.build({
+    entrypoints: [fileURLToPath(new URL("../../../actions-runner/src/main.ts", import.meta.url))],
+    target: "bun",
+    metafile: true,
+  })
+  assert.ok(result.success, result.logs.map(String).join("\n"))
+  assert.ok(result.metafile)
+  assert.deepEqual(
+    Object.keys(result.metafile.inputs).filter((path) => /actions-compiler|workflow-parser|@vercel[/+]oidc/.test(path)),
+    [],
+  )
 })

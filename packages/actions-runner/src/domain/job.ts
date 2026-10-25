@@ -1,5 +1,5 @@
-import { compiledJobSchema, expressionsSchema, workflowContextSchema } from "@gitedge/actions-compiler/workflow"
 import { z } from "zod"
+import { compiledJobSchema, expressionsSchema, workflowContextSchema } from "./compiled-workflow.ts"
 
 const statusSchema = z.enum(["success", "failure", "cancelled", "skipped"])
 const strings = z.record(z.string(), z.string())
