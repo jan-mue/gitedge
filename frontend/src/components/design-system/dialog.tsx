@@ -13,6 +13,7 @@ import {
   DialogTrigger as PrimitiveDialogTrigger,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { Button, LoadingButton } from "./button"
 import { component } from "./component"
 export const Dialog = component(PrimitiveDialog, {})
 export const DialogClose = component(PrimitiveDialogClose, {})
@@ -52,3 +53,18 @@ export const DialogOverlay = component(PrimitiveDialogOverlay, {}, "bg-overlay")
 export const DialogPortal = component(PrimitiveDialogPortal, {})
 export const DialogTitle = component(PrimitiveDialogTitle, {})
 export const DialogTrigger = component(PrimitiveDialogTrigger, {})
+
+export const DialogActionFooter = ({ pending, destructive = false }: { pending: boolean; destructive?: boolean }) => {
+  return (
+    <DialogFooter appearance={destructive ? "spaced" : undefined}>
+      <DialogClose asChild>
+        <Button variant="repository" disabled={pending}>
+          Cancel
+        </Button>
+      </DialogClose>
+      <LoadingButton variant={destructive ? "destructive" : undefined} type="submit" loading={pending}>
+        {destructive ? "Delete" : "Save"}
+      </LoadingButton>
+    </DialogFooter>
+  )
+}

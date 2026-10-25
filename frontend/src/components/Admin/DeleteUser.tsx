@@ -3,7 +3,6 @@ import { Trash2 } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { usersDeleteUserMutation } from "@/client/@tanstack/react-query.gen"
-import { DialogActionFooter } from "@/components/Common/DialogActionFooter"
 import {
   Dialog,
   DialogContent,
@@ -12,6 +11,7 @@ import {
   DialogTitle,
   DropdownMenuItem,
 } from "@/components/design-system"
+import { DialogActionFooter } from "@/components/design-system/dialog"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 

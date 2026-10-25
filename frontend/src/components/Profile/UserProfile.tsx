@@ -8,7 +8,7 @@ import {
   profilesReadUserByUsernameOptions,
 } from "@/client/@tanstack/react-query.gen"
 import { Avatar, AvatarFallback, Button } from "@/components/design-system"
-import { RepositorySummary } from "@/components/Repositories/RepositorySummary"
+import { RepositorySummary } from "@/components/Repositories/columns"
 import StarButton from "@/components/Repository/StarButton"
 
 interface UserProfileProps {

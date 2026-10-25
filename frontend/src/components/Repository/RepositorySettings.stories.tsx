@@ -8,7 +8,7 @@ import {
   handleUsersReadUserMe,
 } from "@/client/msw.gen"
 import { handlers, repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
-import { storybookSession, storybookUser } from "@/components/Storybook/session"
+import { storybookSession, storybookUser } from "@/components/Storybook/StoryRouter"
 import RepositorySettings from "./RepositorySettings"
 
 const initialRepository: Repository = {

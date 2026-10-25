@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { loginResetPasswordMutation } from "@/client/@tanstack/react-query.gen"
 import { AuthLayout } from "@/components/Common/AuthLayout"
-import { FormInputField } from "@/components/Common/FormInputField"
 import {
   AuthFooter,
   AuthForm,
@@ -16,10 +15,10 @@ import {
   LoadingButton,
   Link as RouterLink,
 } from "@/components/design-system"
+import { FormInputField } from "@/components/design-system/form"
 import { isLoggedIn } from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
-import { matchingPasswords, passwordConfirmationSchema, passwordMismatch } from "@/lib/password-schema"
-import { handleError } from "@/utils"
+import { handleError, matchingPasswords, passwordConfirmationSchema, passwordMismatch } from "@/utils"
 
 const searchSchema = z.object({
   token: z.string().catch(""),

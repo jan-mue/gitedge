@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event"
 import { useForm } from "react-hook-form"
 import { describe, expect, test } from "vitest"
-import { FormInputField } from "@/components/Common/FormInputField"
 import { Form } from "@/components/design-system"
+import { FormInputField } from "@/components/design-system/form"
 import { render, screen } from "@/test/test-utils"
 
 function PasswordForm() {

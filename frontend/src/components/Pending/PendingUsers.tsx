@@ -1,5 +1,5 @@
 import { Skeleton, TableCell, TableRow } from "@/components/design-system"
-import { PendingTable } from "@/components/Pending/PendingTable"
+import { PendingTable } from "@/components/design-system/table"
 
 const PendingUsers = () => (
   <PendingTable headings={["Full Name", "Email", "Role", "Status"]}>

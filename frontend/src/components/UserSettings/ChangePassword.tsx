@@ -14,8 +14,7 @@ import {
   PasswordInput,
 } from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
-import { matchingPasswords, passwordConfirmationSchema, passwordMismatch, passwordSchema } from "@/lib/password-schema"
-import { handleError } from "@/utils"
+import { handleError, matchingPasswords, passwordConfirmationSchema, passwordMismatch, passwordSchema } from "@/utils"
 
 const formSchema = passwordConfirmationSchema
   .extend({ current_password: passwordSchema })

@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react"
+import type { ComponentProps, ReactNode } from "react"
 export const Table = ({
   scrollLabel = "Data table",
   ...props
@@ -32,3 +32,21 @@ export const TableHead = component(PrimitiveTableHead, {}, "h-12 px-4 text-muted
 export const TableRow = component(PrimitiveTableRow, { static: "hover:bg-transparent" })
 export const TableCell = component(PrimitiveTableCell, { empty: "h-32 text-center text-muted-foreground" }, "p-4")
 export const TableCaption = component(PrimitiveTableCaption, {})
+
+export const PendingTable = ({ headings, children }: { headings: string[]; children: ReactNode }) => {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          {headings.map((heading) => (
+            <TableHead key={heading}>{heading}</TableHead>
+          ))}
+          <TableHead>
+            <span className="sr-only">Actions</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>{children}</TableBody>
+    </Table>
+  )
+}

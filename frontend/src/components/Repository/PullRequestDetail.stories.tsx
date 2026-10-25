@@ -22,7 +22,7 @@ import {
   handleUtilsPreviewMarkdown,
 } from "@/client/msw.gen"
 import { repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
-import { storybookSession } from "@/components/Storybook/session"
+import { storybookSession } from "@/components/Storybook/StoryRouter"
 import { comparisonFixture } from "./diff-fixtures"
 import { PullRequestDetailView } from "./PullRequestDetail"
 import { PullRequestFiles, ReviewTimeline } from "./PullRequestFiles"

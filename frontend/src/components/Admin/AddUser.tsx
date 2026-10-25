@@ -6,7 +6,6 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { usersCreateUserMutation, usersReadUsersQueryKey } from "@/client/@tanstack/react-query.gen"
 import { UserFormFields } from "@/components/Admin/UserFormFields"
-import { DialogActionFooter } from "@/components/Common/DialogActionFooter"
 import {
   Button,
   Dialog,
@@ -17,9 +16,9 @@ import {
   DialogTrigger,
   Form,
 } from "@/components/design-system"
+import { DialogActionFooter } from "@/components/design-system/dialog"
 import useCustomToast from "@/hooks/useCustomToast"
-import { passwordSchema } from "@/lib/password-schema"
-import { handleError } from "@/utils"
+import { handleError, passwordSchema } from "@/utils"
 
 const formSchema = z
   .object({

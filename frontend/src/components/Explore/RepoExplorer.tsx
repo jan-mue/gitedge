@@ -3,7 +3,7 @@ import { GitBranch, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
 import { Input } from "@/components/design-system"
-import { RepositorySummary } from "@/components/Repositories/RepositorySummary"
+import { RepositorySummary } from "@/components/Repositories/columns"
 import StarButton from "@/components/Repository/StarButton"
 
 const RepoExplorer = () => {

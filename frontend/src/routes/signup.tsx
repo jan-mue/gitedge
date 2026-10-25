@@ -3,7 +3,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { AuthLayout } from "@/components/Common/AuthLayout"
-import { FormInputField } from "@/components/Common/FormInputField"
 import {
   AuthFooter,
   AuthForm,
@@ -14,9 +13,9 @@ import {
   LoadingButton,
   Link as RouterLink,
 } from "@/components/design-system"
+import { FormInputField } from "@/components/design-system/form"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
-import { passwordSchema } from "@/lib/password-schema"
-import { signupsEnabled } from "@/utils"
+import { passwordSchema, signupsEnabled } from "@/utils"
 
 const formSchema = z
   .object({

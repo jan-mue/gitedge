@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event"
 import { describe, expect, test } from "vitest"
-import { DialogActionFooter } from "@/components/Common/DialogActionFooter"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/design-system"
+import { DialogActionFooter } from "@/components/design-system/dialog"
 import { render, screen } from "@/test/test-utils"
 
 function DeleteDialog({ pending = false }: { pending?: boolean }) {

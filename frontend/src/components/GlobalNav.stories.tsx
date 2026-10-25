@@ -7,7 +7,7 @@ import {
 } from "@/client/msw.gen"
 import GlobalNav from "@/components/GlobalNav"
 import { repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
-import { storybookSession, storybookUser } from "@/components/Storybook/session"
+import { storybookSession, storybookUser } from "@/components/Storybook/StoryRouter"
 
 const meta = { ...repositoryStoryMeta, title: "Patterns/Navigation" } satisfies Meta
 export default meta
