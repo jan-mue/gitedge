@@ -21,6 +21,7 @@ function expressionData(value: JsonValue): data.ExpressionData {
         : new data.Dictionary(...Object.entries(value).map(([key, value]) => ({ key, value: expressionData(value) })))
   }
 }
+
 function jsonValue(value: data.ExpressionData): JsonValue {
   if (value.kind === data.Kind.Dictionary)
     return Object.fromEntries(value.pairs().map(({ key, value }) => [key, jsonValue(value)]))
@@ -29,6 +30,7 @@ function jsonValue(value: data.ExpressionData): JsonValue {
   if ("value" in value) return value.value
   throw new Error("Unsupported expression result")
 }
+
 class HashFilesRequest extends Error {
   constructor(readonly patterns: string[]) {
     super("hashFiles requires asynchronous file access")
@@ -37,6 +39,7 @@ class HashFilesRequest extends Error {
 
 export class ExpressionEngine {
   constructor(private readonly workspace: Workspace) {}
+
   async evaluate(expression: string, context: JsonObject, status: JobStatus): Promise<data.ExpressionData> {
     const hashes = new Map<string, string>()
     const functions = new Map<string, FunctionDefinition>()
@@ -74,12 +77,13 @@ export class ExpressionEngine {
     }
     throw new Error("Too many hashFiles calls in one expression")
   }
+
   async interpolate(value: JsonValue | undefined, context: JsonObject, status: JobStatus): Promise<JsonValue> {
     if (typeof value !== "string") return value ?? null
     const whole = value.match(/^\s*\$\{\{([\s\S]*?)\}\}\s*$/)
     if (whole) return jsonValue(await this.evaluate(whole[1], context, status))
-    let output = "",
-      offset = 0
+    let output = ""
+    let offset = 0
     for (const match of value.matchAll(/\$\{\{([\s\S]*?)\}\}/g)) {
       output += value.slice(offset, match.index)
       output += (await this.evaluate(match[1], context, status)).coerceString()
@@ -87,6 +91,7 @@ export class ExpressionEngine {
     }
     return output + value.slice(offset)
   }
+
   async condition(value: JsonValue | undefined, context: JsonObject, status: JobStatus): Promise<boolean> {
     if (value == null) return status === "success"
     if (typeof value === "boolean") return value && status === "success"
@@ -94,6 +99,7 @@ export class ExpressionEngine {
     if (!/\b(success|failure|cancelled|always)\s*\(/.test(expression) && status !== "success") return false
     return truthy(await this.evaluate(expression, context, status))
   }
+
   async environment(
     values: Expressions | undefined,
     context: JsonObject,

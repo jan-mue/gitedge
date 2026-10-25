@@ -10,17 +10,20 @@ export interface ResolvedAction {
   reference: string
   definition: Action
 }
+
 export class ActionResolver {
   private manifest: Promise<Record<string, string>> | undefined
+
   constructor(
     private readonly workspace: string,
     private readonly prepared: string,
   ) {}
+
   async resolve(uses: string): Promise<ResolvedAction> {
-    let directory: string,
-      repositoryRoot: string,
-      repository = "",
-      reference = ""
+    let directory: string
+    let repositoryRoot: string
+    let repository = ""
+    let reference = ""
     if (uses.startsWith("./")) {
       repositoryRoot = this.workspace
       directory = inside(this.workspace, uses)

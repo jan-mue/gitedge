@@ -1,15 +1,40 @@
-import { timingSafeEqual } from "node:crypto"
-import { compileRequestSchema } from "../domain/compiled-workflow"
+import { verifyVercelOidcToken } from "@vercel/oidc"
 import { CompileError, compileWorkflow, MAX_IR_BYTES } from "./compile"
+import { compileRequestSchema } from "./domain/compiled-workflow"
 
 const BODY_LIMIT = 2 * 1024 * 1024
-function authorized(request: Request): boolean {
-  const token = process.env.COMPILER_TOKEN
+
+async function authorized(request: Request): Promise<boolean> {
+  const token = request.headers.get("x-vercel-trusted-oidc-idp-token")
   if (!token) return false
-  const actual = new TextEncoder().encode(request.headers.get("authorization") || "")
-  const expected = new TextEncoder().encode(`Bearer ${token}`)
-  return actual.length === expected.length && timingSafeEqual(actual, expected)
+  const projectId = process.env.COMPILER_CALLER_PROJECT_ID
+  const environment = process.env.VERCEL_TARGET_ENV || process.env.VERCEL_ENV
+  if (!projectId || projectId === "*" || !environment || environment === "*")
+    throw new Error("Compiler caller project and deployment environment must be configured")
+
+  try {
+    await verifyVercelOidcToken(token, { projectId, environment, requiredClaims: ["exp", "iat", "sub"] })
+    return true
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      [
+        "ERR_JWT_EXPIRED",
+        "ERR_JWT_CLAIM_VALIDATION_FAILED",
+        "ERR_JWT_INVALID",
+        "ERR_JWS_INVALID",
+        "ERR_JWS_SIGNATURE_VERIFICATION_FAILED",
+        "ERR_JOSE_ALG_NOT_ALLOWED",
+        "ERR_JWKS_NO_MATCHING_KEY",
+        "ERR_VERCEL_OIDC_TOKEN_VALIDATION",
+      ].includes(String(error.code))
+    )
+      return false
+    throw error
+  }
 }
+
 async function body(request: Request): Promise<string | undefined> {
   if (Number(request.headers.get("content-length")) > BODY_LIMIT) return undefined
   const reader = request.body?.getReader()
@@ -32,14 +57,18 @@ async function body(request: Request): Promise<string | undefined> {
     reader.releaseLock()
   }
 }
-export async function handleCompile(request: Request): Promise<Response> {
+
+export async function handleCompile(
+  request: Request,
+  authenticate: (request: Request) => Promise<boolean> = authorized,
+): Promise<Response> {
   const path = new URL(request.url).pathname
   if (path === "/healthz" && request.method === "GET") return new Response("ok")
   if (path !== "/api/compile") return new Response("Not found", { status: 404 })
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405, headers: { Allow: "POST" } })
-  if (!authorized(request)) return new Response("Unauthorized", { status: 401 })
   const headers = { "Cache-Control": "private, no-store" }
   try {
+    if (!(await authenticate(request))) return new Response("Unauthorized", { status: 401, headers })
     const text = await body(request)
     if (text === undefined) return Response.json({ error: "request_too_large" }, { status: 413, headers })
     let input: unknown

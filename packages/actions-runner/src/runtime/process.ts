@@ -15,12 +15,14 @@ export interface ProcessRequest {
   state: Environment
   signal: AbortSignal
 }
+
 export class ProcessExecutor {
   constructor(
     private readonly workspace: Workspace,
     private readonly environment: JobEnvironment,
     private readonly logger: JobLogger,
   ) {}
+
   async run(request: ProcessRequest): Promise<void> {
     request.signal.throwIfAborted()
     const commands = new CommandFiles(join(this.workspace.temporary, crypto.randomUUID()))

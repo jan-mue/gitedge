@@ -29,9 +29,9 @@ test("official expressions preserve types, context wildcards, and status conditi
     needs: { one: { result: "failure" }, two: { result: "success" } },
     github: { workspace: "/tmp" },
   }
-  assert.equal(await expressions.interpolate("${{ matrix.version }}", context, "success"), 24)
+  assert.equal(await expressions.interpolate(`\${{ matrix.version }}`, context, "success"), 24)
   assert.equal(
-    await expressions.interpolate("node-${{ format('{0}', matrix.version) }}", context, "success"),
+    await expressions.interpolate(`node-\${{ format('{0}', matrix.version) }}`, context, "success"),
     "node-24",
   )
   assert.equal(

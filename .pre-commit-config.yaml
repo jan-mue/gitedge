@@ -124,7 +124,7 @@ repos:
         entry: bun run lint
         language: system
         types: [text]
-        files: ^(frontend/|packages/actions-runner/)
+        files: ^(frontend/|packages/actions-(runner|compiler)/)
         pass_filenames: false
 
       - id: fallow

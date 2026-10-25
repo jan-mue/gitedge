@@ -14,20 +14,21 @@ export interface LaunchOptions {
   signal?: AbortSignal
   cache?: CacheClient
 }
+
 export async function launch(
   descriptor: JobInput,
   options: LaunchOptions = {},
 ): Promise<{ code: number; result: JobResult }> {
-  const input = jobSchema.parse(descriptor),
-    root = options.root || "/gitedge"
+  const input = jobSchema.parse(descriptor)
+  const root = options.root || "/gitedge"
   await mkdir(root, { recursive: true })
   const log = new FileLog(join(root, "log.jsonl"))
-  const timeout = new AbortController(),
-    timer = setTimeout(() => timeout.abort(new Error("Job exceeded timeout-minutes")), input.timeout_seconds * 1000)
+  const timeout = new AbortController()
+  const timer = setTimeout(() => timeout.abort(new Error("Job exceeded timeout-minutes")), input.timeout_seconds * 1000)
   const signal = options.signal ? AbortSignal.any([timeout.signal, options.signal]) : timeout.signal
   const state = new ArtifactState(root, options.restoreUrl || input.restore_url, signal)
-  let result: JobResult = { status: "failure", steps: {}, outputs: {} },
-    code = 1
+  let result: JobResult = { status: "failure", steps: {}, outputs: {} }
+  let code = 1
   try {
     result = await new WorkflowRunner(input, {
       root,
