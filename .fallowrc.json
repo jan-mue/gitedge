@@ -13,8 +13,7 @@
     "frontend/openapi-ts.config.ts",
     "frontend/src/components/Repository/diff-fixtures.ts",
     "frontend/src/components/Repository/tracker-story-fixtures.ts",
-    "packages/react-email/emails/**/*.tsx",
-    "packages/actions-runner/artifact-compat.ts"
+    "packages/react-email/emails/**/*.tsx"
   ],
   "ignorePatterns": [
     "frontend/src/client/**",

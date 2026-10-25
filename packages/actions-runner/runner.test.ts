@@ -144,40 +144,52 @@ test("failed dependencies skip jobs unless an explicit status function allows th
   }
 })
 
-test("repository subdirectory actions share JavaScript entrypoints and cleanup hooks", async () => {
-  const root = await mkdtemp(join(tmpdir(), "gitedge-subdirectory-action-"))
-  try {
-    const actionRoot = join(root, "prepared")
-    const repository = join(actionRoot, "owner-repo", "sha")
-    await mkdir(join(repository, "init"), { recursive: true })
-    await mkdir(join(repository, "lib"), { recursive: true })
-    await writeFile(join(actionRoot, "manifest.json"), JSON.stringify({ "owner/repo@sha": "owner-repo/sha" }))
-    await writeFile(
-      join(repository, "init", "action.yml"),
-      "name: Nested\nruns:\n  using: node24\n  main: ../lib/main.cjs\n  post: ../lib/post.cjs\n",
-    )
-    await writeFile(
-      join(repository, "lib", "main.cjs"),
-      "require('fs').appendFileSync(process.env.GITHUB_OUTPUT,'value=shared\\n')",
-    )
-    await writeFile(join(repository, "lib", "post.cjs"), "console.log('shared cleanup')")
-    const entries: LogEntry[] = []
-    const result = await execute(
-      {
-        workflow:
-          "on: workflow_dispatch\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - id: nested\n        uses: owner/repo/init@sha\n",
-        job: "test",
-        env: { GITHUB_RUN_ID: "1" },
-      },
-      { root, actionRoot, log: (entry) => entries.push(entry) },
-    )
-    assert.equal(result.status, "success")
-    assert.equal(result.steps.nested.outputs.value, "shared")
-    assert.ok(entries.some((entry) => entry.msg === "shared cleanup"))
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-})
+test.each(["owner/repo", "actions/upload-artifact"])(
+  "%s subdirectory actions share JavaScript entrypoints and cleanup hooks",
+  async (actionRepository) => {
+    const root = await mkdtemp(join(tmpdir(), "gitedge-subdirectory-action-"))
+    try {
+      const actionRoot = join(root, "prepared")
+      const repository = join(actionRoot, "owner-repo", "sha")
+      await mkdir(join(repository, "init"), { recursive: true })
+      await mkdir(join(repository, "lib"), { recursive: true })
+      await writeFile(
+        join(actionRoot, "manifest.json"),
+        JSON.stringify({ [`${actionRepository}@sha`]: "owner-repo/sha" }),
+      )
+      await writeFile(
+        join(repository, "init", "action.yml"),
+        "name: Nested\nruns:\n  using: node24\n  main: ../lib/main.cjs\n  post: ../lib/post.cjs\n",
+      )
+      await writeFile(
+        join(repository, "lib", "main.cjs"),
+        "require('fs').appendFileSync(process.env.GITHUB_OUTPUT,'value=shared\\n'); console.log('Toolkit host: ' + process.env.GITHUB_SERVER_URL)",
+      )
+      await writeFile(join(repository, "lib", "post.cjs"), "console.log('shared cleanup')")
+      const entries: LogEntry[] = []
+      const result = await execute(
+        {
+          workflow: `on: workflow_dispatch\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - id: nested\n        uses: ${actionRepository}/init@sha\n`,
+          job: "test",
+          env: { GITHUB_RUN_ID: "1", GITHUB_SERVER_URL: "https://gitedge.test" },
+        },
+        { root, actionRoot, log: (entry) => entries.push(entry) },
+      )
+      assert.equal(result.status, "success")
+      assert.equal(result.steps.nested.outputs.value, "shared")
+      assert.ok(
+        entries.some(
+          (entry) =>
+            entry.msg ===
+            `Toolkit host: ${actionRepository === "actions/upload-artifact" ? "https://github.com" : "https://gitedge.test"}`,
+        ),
+      )
+      assert.ok(entries.some((entry) => entry.msg === "shared cleanup"))
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  },
+)
 
 test("custom Bun shells execute JavaScript without treating it as a shell script", async () => {
   const root = await mkdtemp(join(tmpdir(), "gitedge-bun-shell-"))
