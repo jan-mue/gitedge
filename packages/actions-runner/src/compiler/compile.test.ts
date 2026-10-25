@@ -194,7 +194,7 @@ test("the GitEdge runner workflow shares the GitHub definition through a symlink
   expect(compiled.jobs[0].config.steps.some((step) => step.kind === "run" && step.run.includes("typecheck"))).toBe(true)
 })
 
-test.each(["write-all", "{contents: write}", "{issues: read}"])(
+test.each(["write-all", "{}", "{contents: write}", "{issues: read}"])(
   "rejects unsupported token permissions %s",
   async (access) => {
     await expect(
