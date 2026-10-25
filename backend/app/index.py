@@ -7,6 +7,7 @@ import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from qstash.errors import QStashError
 
 from app.api.main import api_router
 from app.api.routes import git
@@ -74,7 +75,8 @@ async def compiler_exception_handler(request: Request, exc: CompilerUnavailableE
 
 
 @app.exception_handler(ActionsUnavailableError)
-async def actions_unavailable_handler(_request: Request, exc: ActionsUnavailableError) -> JSONResponse:
+@app.exception_handler(QStashError)
+async def actions_unavailable_handler(_request: Request, exc: ActionsUnavailableError | QStashError) -> JSONResponse:
     """Return a retryable response for a temporary delivery failure."""
     logger.warning("Actions delivery will retry: %s", exc)
     return JSONResponse(

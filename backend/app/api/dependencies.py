@@ -15,8 +15,8 @@ from redis_fastapi import get_async_redis
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clients.actions import ActionsStore, SQLActionsStore
-from app.clients.actions_cache import ActionsCacheStore, SQLActionsCacheStore
+from app.clients.actions import ActionsStore
+from app.clients.actions_cache import ActionsCacheStore
 from app.clients.activity import ActivityStore, SQLActivityStore
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
 from app.clients.cache import (
@@ -35,7 +35,7 @@ from app.clients.git.storage import RepositoryStorage
 from app.clients.issues import IssueStore, SQLIssueStore
 from app.clients.organizations import OrganizationStore, SQLOrganizationStore
 from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
-from app.clients.qstash import ActionsQueue, QStashClient
+from app.clients.qstash import QStashClient
 from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClient
 from app.clients.releases import ReleaseStore, SQLReleaseStore
 from app.clients.repositories import RepositoryStore, SQLRepositoryStore
@@ -699,7 +699,7 @@ OptionalUser = Annotated[User | None, Depends(get_optional_user)]
 
 def get_actions_store(session: SessionDep) -> ActionsStore:
     """Get the durable workflow store."""
-    return SQLActionsStore(session)
+    return ActionsStore(session)
 
 
 ActionsStoreDep = Annotated[ActionsStore, Depends(get_actions_store)]
@@ -707,7 +707,7 @@ ActionsStoreDep = Annotated[ActionsStore, Depends(get_actions_store)]
 
 def get_actions_cache_store(session: SessionDep) -> ActionsCacheStore:
     """Get searchable cache metadata independently from cached payload bytes."""
-    return SQLActionsCacheStore(session)
+    return ActionsCacheStore(session)
 
 
 ActionsCacheStoreDep = Annotated[ActionsCacheStore, Depends(get_actions_cache_store)]
@@ -733,12 +733,12 @@ def get_workflow_compiler() -> WorkflowCompiler:
 WorkflowCompilerDep = Annotated[WorkflowCompiler, Depends(get_workflow_compiler)]
 
 
-def get_actions_queue() -> ActionsQueue:
+def get_actions_queue(request: Request) -> QStashClient:
     """Inject the durable QStash HTTP client."""
-    return QStashClient()
+    return request.state.actions_queue
 
 
-ActionsQueueDep = Annotated[ActionsQueue, Depends(get_actions_queue)]
+QStashClientDep = Annotated[QStashClient, Depends(get_actions_queue)]
 
 
 def get_actions_service(
@@ -750,7 +750,7 @@ def get_actions_service(
     cache_store: ActionsCacheStoreDep,
     sandbox: SandboxClientDep,
     compiler: WorkflowCompilerDep,
-    queue: ActionsQueueDep,
+    queue: QStashClientDep,
 ) -> ActionsService:
     """Inject one sandbox provider and durable workflow cache storage."""
     return ActionsService(

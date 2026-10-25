@@ -29,6 +29,7 @@ dependencies = [
     "pygments==2.21.0",
     "pyjwt==2.15.1",
     "python-multipart==0.0.32",
+    "qstash==3.4.0",
     "redis[hiredis]==8.1.0",
     "sentry-sdk==2.72.0",
     "sqlalchemy[asyncio]==2.1.5",
@@ -45,12 +46,14 @@ dev = [
     "inline-snapshot[black]==0.36.1",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
+    "pytest-httpserver==1.2.0",
     "pytest-mock==3.17.0",
     "pytest-playwright==0.10.0",
     "pytest-socket==0.8.1",
     "pytest-xprocess==1.0.2",
     "testcontainers[mailpit,minio,postgres,redis]==4.15.0",
     "types-pygments==2.21.0.20260819",
+    "werkzeug==3.1.9",
 ]
 
 [tool.ruff]

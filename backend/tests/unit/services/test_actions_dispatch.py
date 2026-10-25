@@ -114,7 +114,7 @@ async def test_lost_publish_is_recovered_from_the_committed_outbox(execution: Ex
     command = pending(store, "dispatch")[0]
     publish = mocker.patch.object(queue, "publish", side_effect=ActionsUnavailableError("outage"))
     with pytest.raises(ActionsUnavailableError):
-        await service.dispatcher.outbox.flush()
+        await service.dispatcher.flush()
     assert run.id in store.runs
     assert command.published_at is None
     publish.side_effect = None

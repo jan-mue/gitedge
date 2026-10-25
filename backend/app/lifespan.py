@@ -23,6 +23,7 @@ class LifespanState(TypedDict):
     """Shared resources created on startup and exposed via ``request.state``."""
 
     db_session_factory: async_sessionmaker[AsyncSession]
+    actions_queue: QStashClient
 
 
 @asynccontextmanager
@@ -39,8 +40,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[LifespanState]:
         if uses_redis_cache():
             await stack.enter_async_context(redis_lifespan(app))
         engine = await stack.enter_async_context(create_db_engine())
+        queue = QStashClient()
+        stack.push_async_callback(queue.close)
         if settings.QSTASH_TOKEN:
-            await QStashClient().recover_later()
+            await queue.recover_later()
         yield {
             "db_session_factory": create_session_factory(engine),
+            "actions_queue": queue,
         }

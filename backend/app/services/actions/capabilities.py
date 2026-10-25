@@ -37,20 +37,15 @@ def issue_capability(run: WorkflowRun, job: ActionJob, attempt: WorkflowAttempt,
     )
 
 
-class AttemptCapabilities:
-    """Revoke capabilities when attempts change or cancellation commits."""
-
-    def __init__(self, store: ActionsStore) -> None:
-        """Use authoritative attempt state to revoke signed capabilities."""
-        self.store = store
-
-    async def authorize(self, token: str, scope: str, *, allow_terminal: bool = False) -> Capability:
-        """Validate the token and check its current database generation."""
-        try:
-            claims = jwt.decode(token, settings.SECRET_KEY, algorithms=[security.ALGORITHM])
-            capability = Capability.model_validate(claims)
-        except (jwt.InvalidTokenError, ValueError) as error:
-            raise HTTPException(status_code=403, detail="Invalid sandbox token") from error
-        if capability.scope != scope or not await self.store.current(capability, allow_terminal):
-            raise HTTPException(status_code=403, detail="Sandbox capability is stale or has the wrong scope")
-        return capability
+async def authorize_capability(
+    store: ActionsStore, token: str, scope: str, *, allow_terminal: bool = False
+) -> Capability:
+    """Authorize a signed capability against the current database generation."""
+    try:
+        claims = jwt.decode(token, settings.SECRET_KEY, algorithms=[security.ALGORITHM])
+        capability = Capability.model_validate(claims)
+    except (jwt.InvalidTokenError, ValueError) as error:
+        raise HTTPException(status_code=403, detail="Invalid sandbox token") from error
+    if capability.scope != scope or not await store.current(capability, allow_terminal):
+        raise HTTPException(status_code=403, detail="Sandbox capability is stale or has the wrong scope")
+    return capability

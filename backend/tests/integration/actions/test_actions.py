@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import io
 import json
+import re
 import tarfile
 import time
 import uuid
@@ -20,10 +21,12 @@ from aiodocker import Docker
 from app.clients.blob_storage import S3Client
 from tests.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD
 from tests.git import run_git
-from tests.qstash import QSTASH_TOKEN
+from tests.qstash import deliveries
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    from qstash import QStash
 
     from tests.qstash import ActionsNetwork
 
@@ -277,17 +280,19 @@ def test_real_qstash_retries_a_failed_signed_callback(
     client, _, path = actions_repo
     wait_for_run(client, path)
     callbacks = actions_network.callbacks
-    assert callbacks is not None
-    suffix = "/actions/internal/dispatch"
-    offset = len(callbacks.observed(suffix))
-    callbacks.fail_next(suffix)
+    offset = len(deliveries(callbacks))
+    callbacks.expect_oneshot_request("/api/v1/actions/internal/dispatch").respond_with_data(status=503)
     response = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cache-bystander.yaml"})
     response.raise_for_status()
     run = wait_for_run(client, path, response.json()["id"])
     assert run["status"] == "success", json.dumps(run, indent=2)
-    records = callbacks.observed(suffix)[offset:]
-    assert any(record.status == 503 and record.signed for record in records)
-    assert any(record.status == 202 and record.signed for record in records)
+    records = deliveries(callbacks)[offset:]
+    assert any(
+        response.status_code == 503 and request.headers.get("Upstash-Signature") for request, response in records
+    )
+    assert any(
+        response.status_code == 202 and request.headers.get("Upstash-Signature") for request, response in records
+    )
 
 
 def test_committed_outbox_recovers_after_real_publish_failure(
@@ -296,10 +301,8 @@ def test_committed_outbox_recovers_after_real_publish_failure(
     client, _, path = actions_repo
     initial = wait_for_run(client, path)
     publishing = actions_network.publishing
-    assert publishing is not None
-    suffix = "/actions/internal/dispatch"
-    offset = len(publishing.observed(suffix))
-    publishing.fail_next(suffix)
+    offset = len(deliveries(publishing))
+    publishing.expect_oneshot_request(re.compile(".*/actions/internal/dispatch")).respond_with_data(status=503)
     response = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cache-bystander.yaml"})
     assert response.status_code == 503
     response = client.get(f"{path}/runs")
@@ -307,9 +310,9 @@ def test_committed_outbox_recovers_after_real_publish_failure(
     run_id = next(run["id"] for run in response.json() if run["id"] != initial["id"])
     run = wait_for_run(client, path, run_id)
     assert run["status"] == "success", json.dumps(run, indent=2)
-    records = publishing.observed(suffix)[offset:]
-    assert any(record.status == 503 for record in records)
-    assert any(record.status == 200 for record in records)
+    records = deliveries(publishing)[offset:]
+    assert any(response.status_code == 503 for _, response in records)
+    assert any(response.status_code == 200 for _, response in records)
     db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
     with psycopg.connect(db_url) as connection:
         row = connection.execute(
@@ -321,14 +324,15 @@ def test_committed_outbox_recovers_after_real_publish_failure(
 
 
 def test_real_duplicate_deliveries_do_not_create_another_attempt(
-    actions_repo: tuple[httpx.Client, Path, str], actions_network: ActionsNetwork, infrastructure: dict[str, str]
+    actions_repo: tuple[httpx.Client, Path, str],
+    actions_network: ActionsNetwork,
+    infrastructure: dict[str, str],
+    qstash: QStash,
 ) -> None:
     client, _, path = actions_repo
     run = wait_for_run(client, path)
     callbacks = actions_network.callbacks
-    assert callbacks is not None
-    suffix = "/actions/internal/dispatch"
-    offset = len(callbacks.observed(suffix))
+    offset = len(deliveries(callbacks))
     db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
     with psycopg.connect(db_url, autocommit=True) as connection:
         message = connection.execute(
@@ -338,22 +342,22 @@ def test_real_duplicate_deliveries_do_not_create_another_attempt(
         count = connection.execute("SELECT count(*) FROM workflow_attempt WHERE run_id = %s", (run["id"],)).fetchone()
         destination = f"http://host.docker.internal:{callbacks.port}/api/v1/actions/internal/dispatch"
         for _ in range(2):
-            published = httpx.post(
-                f"{infrastructure['QSTASH_URL']}/v2/publish/{destination}",
-                headers={"Authorization": f"Bearer {QSTASH_TOKEN}", "Upstash-Deduplication-Id": str(uuid.uuid4())},
-                json={"version": 1, "id": str(message[0])},
-                timeout=10,
+            qstash.message.publish_json(
+                url=destination,
+                body={"version": 1, "id": str(message[0])},
+                deduplication_id=str(uuid.uuid4()),
             )
-            published.raise_for_status()
         deadline = time.monotonic() + 20
         while time.monotonic() < deadline:
-            records = callbacks.observed(suffix)[offset:]
+            records = deliveries(callbacks)[offset:]
             if len(records) >= 2:
                 break
             time.sleep(0.1)
         else:
             pytest.fail("Real QStash did not deliver both duplicate commands")
-        assert all(record.signed and record.status == 202 for record in records)
+        assert all(
+            request.headers.get("Upstash-Signature") and response.status_code == 202 for request, response in records
+        )
         assert (
             connection.execute("SELECT count(*) FROM workflow_attempt WHERE run_id = %s", (run["id"],)).fetchone()
             == count
