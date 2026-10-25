@@ -1,9 +1,14 @@
 """Turn structured executor output into public job state."""
 
+import io
 import json
+import tarfile
 from datetime import UTC, datetime
+from pathlib import PurePosixPath
 from typing import Any
 
+from app.exceptions import WorkflowError
+from app.schemas.action_dispatch import AttemptIdentity
 from app.schemas.actions import ActionJob, ActionStatus
 
 
@@ -15,7 +20,7 @@ def redact(value: str, secrets: dict[str, str]) -> str:
     return value
 
 
-def update_logs(job: ActionJob, data: bytes, secrets: dict[str, str]) -> None:
+def update_logs(job: ActionJob, data: bytes, secrets: dict[str, str], identity: AttemptIdentity | None = None) -> None:
     """Group executor JSON records by step while preserving plain text safely."""
     lines: list[str] = []
     for step in job.steps:
@@ -28,6 +33,13 @@ def update_logs(job: ActionJob, data: bytes, secrets: dict[str, str]) -> None:
             lines.append(raw)
             continue
         if not isinstance(entry, dict):
+            continue
+        if identity and (
+            entry.get("attemptID") != str(identity.id)
+            or entry.get("fence") != str(identity.fence)
+            or entry.get("jobID") != identity.job_id
+            or entry.get("generation") != identity.generation
+        ):
             continue
         message = str(entry.get("msg", ""))
         lines.append(message)
@@ -44,7 +56,9 @@ def update_logs(job: ActionJob, data: bytes, secrets: dict[str, str]) -> None:
     job.log = redact("\n".join(lines), secrets)
 
 
-def finish_job(job: ActionJob, files: dict[str, bytes], secrets: dict[str, str]) -> None:
+def finish_job(
+    job: ActionJob, files: dict[str, bytes], secrets: dict[str, str], identity: AttemptIdentity | None = None
+) -> None:
     """Use explicit completion markers; missing/invalid results always fail the job."""
     job.completed_at = datetime.now(UTC)
     job.status = ActionStatus.FAILURE
@@ -56,6 +70,8 @@ def finish_job(job: ActionJob, files: dict[str, bytes], secrets: dict[str, str])
         return
     try:
         result = json.loads(files["result.json"])
+        if identity and AttemptIdentity.model_validate(result.get("attempt")) != identity:
+            raise ValueError("Executor result belongs to a different attempt")
         status = ActionStatus(result["status"])
         if status not in {ActionStatus.SUCCESS, ActionStatus.FAILURE, ActionStatus.SKIPPED, ActionStatus.CANCELLED}:
             raise ValueError("Nonterminal job result")
@@ -78,3 +94,34 @@ def finish_job(job: ActionJob, files: dict[str, bytes], secrets: dict[str, str])
     except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
         job.status = ActionStatus.FAILURE
         job.error = f"Invalid executor result: {exc}"
+
+
+def merge_artifacts(archives: list[bytes]) -> bytes:
+    """Combine committed artifact files without restoring arbitrary paths."""
+    files: dict[str, bytes] = {}
+    total = 0
+    for data in archives:
+        with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
+            for member in archive:
+                path = PurePosixPath(member.name)
+                if (
+                    not member.isfile()
+                    or path.is_absolute()
+                    or ".." in path.parts
+                    or not path.parts
+                    or path.parts[0] != "artifacts"
+                ):
+                    continue
+                total += member.size - len(files.get(member.name, b""))
+                if total > 32 * 1024 * 1024:
+                    raise WorkflowError("Artifacts exceed 32 MiB")
+                stream = archive.extractfile(member)
+                if stream:
+                    files[member.name] = stream.read()
+    result = io.BytesIO()
+    with tarfile.open(fileobj=result, mode="w:gz") as archive:
+        for name, data in files.items():
+            member = tarfile.TarInfo(name)
+            member.size = len(data)
+            archive.addfile(member, io.BytesIO(data))
+    return result.getvalue()

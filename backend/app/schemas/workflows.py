@@ -5,6 +5,8 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from pydantic.alias_generators import to_camel
 
+from app.schemas.action_dispatch import AttemptIdentity
+
 
 class CompilerModel(BaseModel):
     """Keep Python field names independent of the shared JSON wire format."""
@@ -134,7 +136,8 @@ class JobDependency(BaseModel):
 class JobInput(BaseModel):
     """Versioned manifest consumed directly by the sandbox agent."""
 
-    version: Literal[1] = 1
+    version: Literal[2] = 2
+    attempt: AttemptIdentity
     workflow: WorkflowContext
     job: CompiledJob
     inputs: dict[str, JsonValue]

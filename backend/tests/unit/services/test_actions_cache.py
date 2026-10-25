@@ -11,6 +11,7 @@ from app.services.actions.cache import STATE_LIMIT, ActionsCacheService
 from app.services.actions.service import ActionsService
 from app.services.authorization import AuthorizationService
 from tests.unit.utils.actions import FakeActionsStore, FakeWorkflowCompiler
+from tests.unit.utils.actions import FakeActionsQueue, FakeActionsStore, FakeWorkflowCompiler
 from tests.unit.utils.fakes import FakeActionsCacheStore, FakeBlobStorageClient
 
 if TYPE_CHECKING:
@@ -114,6 +115,7 @@ async def test_repository_deletion_removes_cache_archives_and_preserves_other_re
         mocker.AsyncMock(),
         compiler=FakeWorkflowCompiler(),
         authorization=mocker.AsyncMock(spec=AuthorizationService),
+        queue=FakeActionsQueue(),
         provider="docker",
         max_timeout=60,
         max_parallel=1,
