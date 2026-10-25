@@ -7,6 +7,17 @@ import { render, screen, within } from "@/test/test-utils"
 import { DiffViewer } from "./DiffViewer"
 import { comparisonFixture } from "./diff-fixtures"
 
+const Review = () => {
+  const [paths, setPaths] = useState<string[]>([])
+  return (
+    <DiffViewer
+      {...comparisonFixture}
+      reviewedPaths={paths}
+      onReviewed={(path, viewed) => setPaths(viewed ? [path] : [])}
+    />
+  )
+}
+
 describe("DiffViewer", () => {
   test("file links use the displayed head, or the base revision for deleted files", () => {
     const head = "b".repeat(40)
@@ -31,16 +42,6 @@ describe("DiffViewer", () => {
     )
   })
   test("viewed files collapse, allow manual expansion, and expand when unmarked", async () => {
-    const Review = () => {
-      const [paths, setPaths] = useState<string[]>([])
-      return (
-        <DiffViewer
-          {...comparisonFixture}
-          reviewedPaths={paths}
-          onReviewed={(path, viewed) => setPaths(viewed ? [path] : [])}
-        />
-      )
-    }
     const { user } = render(<Review />)
     await user.click(screen.getByRole("checkbox", { name: "Mark src/config.py as viewed" }))
     expect(screen.getByRole("button", { name: "Expand src/config.py" })).toBeInTheDocument()
