@@ -83,7 +83,6 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
 
         env = {
             "DATABASE_URL": db_url,
-            "ACTIONS_COMPILER_TOKEN": "integration-test-token",
             "REDIS_URL": redis_url,
             "BLOB_STORAGE_KIND": "s3",
             "S3_ENDPOINT": minio_endpoint,
@@ -233,7 +232,7 @@ def clean_repositories(infrastructure: dict[str, str]) -> Generator[None]:
 
 
 @pytest.fixture(scope="session")
-def actions_compiler_url(infrastructure: dict[str, str], xprocess: XProcess) -> Generator[str]:
+def actions_compiler_url(xprocess: XProcess) -> Generator[str]:
     """Run the production compiler handler in a test-owned local Bun process."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.bind(("127.0.0.1", 0))
@@ -243,8 +242,8 @@ def actions_compiler_url(infrastructure: dict[str, str], xprocess: XProcess) -> 
     class CompilerStarter(ProcessStarter):
         pattern = "GITEDGE_COMPILER_READY"
         terminate_on_interrupt = True
-        env = {**os.environ, "COMPILER_PORT": str(port), "COMPILER_TOKEN": infrastructure["ACTIONS_COMPILER_TOKEN"]}
-        args = ["bun", "run", str(repo / "packages/actions-runner/src/compiler/dev-server.ts")]
+        env = {**os.environ, "COMPILER_PORT": str(port)}
+        args = ["bun", "run", str(repo / "packages/actions-compiler/src/dev-server.ts")]
         popen_kwargs = {"cwd": repo}
 
     xprocess.ensure("actions-compiler", CompilerStarter, restart=True)
