@@ -1,4 +1,4 @@
-import { Heading as BaseHeading } from "@react-email/components"
+import { Heading as BaseHeading } from "react-email"
 
 type HeadingProps = React.PropsWithChildren
 
