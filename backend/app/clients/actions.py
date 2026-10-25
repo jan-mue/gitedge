@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, override
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -18,37 +19,38 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-class ActionsStore(Protocol):
+class ActionsStore(ABC):
     """Storage contract for on-demand workflow orchestration."""
 
+    @abstractmethod
     async def add_run(self, run: WorkflowRun) -> WorkflowRun:
         """Insert a run, deduplicating delivery of the same event."""
-        ...
 
+    @abstractmethod
     async def list_runs(self, repo_id: UUID, limit: int = 100) -> list[WorkflowRun]:
         """List recent repository runs."""
-        ...
 
+    @abstractmethod
     async def runs_for_commit(self, repo_id: UUID, sha: str) -> list[WorkflowRun]:
         """List runs for the exact PR head, newest first."""
-        ...
 
+    @abstractmethod
     async def active_runs(self, repo_id: UUID | None = None) -> list[tuple[UUID, UUID]]:
         """List runs needing collection, paired with their repository."""
-        ...
 
+    @abstractmethod
     def locked(self, repo_id: UUID, run_id: UUID) -> AbstractAsyncContextManager[WorkflowRun | None]:
         """Lock a run for mutation; concurrent event handlers skip it."""
-        ...
 
 
-class SQLActionsStore(SQLStore[WorkflowRun]):
+class SQLActionsStore(ActionsStore, SQLStore[WorkflowRun]):
     """Persist run updates atomically under a PostgreSQL row lock."""
 
     def __init__(self, db: AsyncSession) -> None:
         """Use the request-scoped database session."""
         super().__init__(db, WorkflowRun)
 
+    @override
     async def add_run(self, run: WorkflowRun) -> WorkflowRun:
         """Insert once per repository, workflow, and event delivery."""
         values = {
@@ -69,6 +71,7 @@ class SQLActionsStore(SQLStore[WorkflowRun]):
             raise RuntimeError("Workflow insertion did not return a run")
         return result
 
+    @override
     async def list_runs(self, repo_id: UUID, limit: int = 100) -> list[WorkflowRun]:
         """Read recent runs without provider side effects."""
         return list(
@@ -80,6 +83,7 @@ class SQLActionsStore(SQLStore[WorkflowRun]):
             )
         )
 
+    @override
     async def runs_for_commit(self, repo_id: UUID, sha: str) -> list[WorkflowRun]:
         """Select commit checks without truncating to the recent history page."""
         return list(
@@ -90,6 +94,7 @@ class SQLActionsStore(SQLStore[WorkflowRun]):
             )
         )
 
+    @override
     async def active_runs(self, repo_id: UUID | None = None) -> list[tuple[UUID, UUID]]:
         """List active runs for repository cancellation."""
         query = select(WorkflowRun.repo_id, WorkflowRun.id).where(WorkflowRun.status.in_(["queued", "running"]))
@@ -97,6 +102,7 @@ class SQLActionsStore(SQLStore[WorkflowRun]):
         rows = await self.db.execute(query.order_by(WorkflowRun.updated_at))
         return [(row.repo_id, row.id) for row in rows]
 
+    @override
     @asynccontextmanager
     async def locked(self, repo_id: UUID, run_id: UUID) -> AsyncGenerator[WorkflowRun | None]:
         """Commit the complete state transition, releasing the lock on failure."""

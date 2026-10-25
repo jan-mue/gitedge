@@ -71,6 +71,14 @@ function record(token: MappingToken, allowed: string[], filename: string): Recor
   }
   return result
 }
+function checkPermissions(token: TemplateToken | undefined, filename: string): void {
+  if (!token) return
+  const permissions = value(token, filename)
+  if (permissions === null || typeof permissions !== "object" || Array.isArray(permissions))
+    fail(filename, "Only contents: read permissions are supported", token)
+  if (Object.entries(permissions).some(([key, access]) => key !== "contents" || access !== "read"))
+    fail(filename, "Only contents: read permissions are supported", token)
+}
 function expressionData(input: JsonValue): data.ExpressionData {
   if (input === null) return new data.Null()
   if (Array.isArray(input)) return new data.Array(...input.map(expressionData))
@@ -254,10 +262,11 @@ export async function compileWorkflow(input: CompileRequest): Promise<CompiledWo
   const template = await convertWorkflowTemplate(parsed.context, parsed.value)
   check(parsed.context, filename)
   const root = parsed.value.assertMapping("workflow")
-  const shared = record(root, ["name", "on", "jobs", "env", "defaults"], filename)
+  const shared = record(root, ["name", "on", "jobs", "env", "defaults", "permissions"], filename)
   for (const event of Object.keys(template.events))
     if (!["push", "pull_request", "workflow_dispatch"].includes(event))
       fail(filename, `Unsupported workflow event: ${event}`, root.find("on"))
+  checkPermissions(root.find("permissions"), filename)
   const resolvedInputs = inputs(template.events, request)
   const jobs: CompiledJob[] = []
   const jobMap = root.find("jobs")?.assertMapping("jobs")
@@ -286,9 +295,11 @@ export async function compileWorkflow(input: CompileRequest): Promise<CompiledWo
         "strategy",
         "timeout-minutes",
         "continue-on-error",
+        "permissions",
       ],
       filename,
     )
+    checkPermissions(token.find("permissions"), filename)
     const converted = template.jobs[jobIndex]
     if (converted?.type !== "job") fail(filename, "Reusable workflows are not supported", token)
     const needs = (converted.needs || []).map(

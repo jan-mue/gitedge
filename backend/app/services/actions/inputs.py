@@ -58,7 +58,6 @@ class JobInputBuilder:
             secrets={**secrets, "GITHUB_TOKEN": self._token(run, job, "git:read")},
             restore_url=self._callback(run, job, "state"),
             complete_url=self._callback(run, job, "complete"),
-            cache_url=self._callback(run, job, "cache"),
         )
         return {"input.json": payload.model_dump_json(by_alias=True, exclude_none=True).encode()}
 

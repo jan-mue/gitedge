@@ -16,7 +16,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.actions import ActionsStore, SQLActionsStore
-from app.clients.actions_cache import ActionsCacheStore, SQLActionsCacheStore
 from app.clients.activity import ActivityStore, SQLActivityStore
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
 from app.clients.cache import (
@@ -47,7 +46,6 @@ from app.clients.workflow_compiler import HttpWorkflowCompiler, WorkflowCompiler
 from app.config import settings
 from app.entities.users import User
 from app.schemas.token import TokenPayload
-from app.services.actions.cache import ActionsCacheService
 from app.services.actions.service import ActionsService
 from app.services.activity import ActivityService
 from app.services.comments import CommentService
@@ -704,14 +702,6 @@ def get_actions_store(session: SessionDep) -> ActionsStore:
 ActionsStoreDep = Annotated[ActionsStore, Depends(get_actions_store)]
 
 
-def get_actions_cache_store(session: SessionDep) -> ActionsCacheStore:
-    """Get searchable cache metadata independently from cached payload bytes."""
-    return SQLActionsCacheStore(session)
-
-
-ActionsCacheStoreDep = Annotated[ActionsCacheStore, Depends(get_actions_cache_store)]
-
-
 def get_sandbox_client() -> AbstractSandboxClient:
     """Select the configured job sandbox provider."""
     if settings.ACTIONS_PROVIDER == "vercel":
@@ -738,7 +728,6 @@ def get_actions_service(
     repository_store: RepositoryStoreDep,
     blobs: BlobStorageClientDep,
     pull_requests: PullRequestStoreDep,
-    cache_store: ActionsCacheStoreDep,
     sandbox: SandboxClientDep,
     compiler: WorkflowCompilerDep,
 ) -> ActionsService:
@@ -755,7 +744,6 @@ def get_actions_service(
         max_parallel=settings.ACTIONS_MAX_PARALLEL,
         secrets=settings.ACTIONS_SECRETS,
         pull_requests=pull_requests,
-        cache=ActionsCacheService(cache_store, blobs),
     )
 
 

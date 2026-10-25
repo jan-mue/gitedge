@@ -6,21 +6,17 @@ import { errorMessage } from "../domain/job.ts"
 import type { Environment } from "../domain/workflow.ts"
 import { readResponse } from "../runtime/files.ts"
 import { ArtifactStore } from "./artifacts.ts"
-import type { CacheClient } from "./cache-client.ts"
-import { CacheProtocol } from "./cache-protocol.ts"
 import { BlobTransfers } from "./transfers.ts"
 
 export interface StorageOptions {
   root: string
   run: string
   job: string
-  cache: CacheClient
   restoreArtifacts?: () => Promise<void>
 }
 /** A loopback SDK adapter lives only for this job; it is not a resident runner. */
 export class StorageServer {
   private readonly token: string
-  private readonly cache: CacheProtocol
   private readonly artifacts: ArtifactStore
   private readonly transfers: BlobTransfers
   private readonly server: Bun.Server<undefined>
@@ -37,7 +33,6 @@ export class StorageServer {
     const unsigned = `${header}.${payload}`
     this.token = `${unsigned}.${new Bun.CryptoHasher("sha256", crypto.randomUUID()).update(unsigned).digest("base64url")}`
     this.transfers = new BlobTransfers(() => this.origin)
-    this.cache = new CacheProtocol(options.cache, join(options.root, "uploads"), this.transfers)
     this.artifacts = new ArtifactStore(
       join(options.root, "artifacts"),
       options.run,
@@ -74,8 +69,7 @@ export class StorageServer {
           expected = Buffer.from(`Bearer ${this.token}`)
         if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected))
           return Response.json({ error: "Unauthorized" }, { status: 403 })
-        if (url.pathname.startsWith("/_apis/artifactcache/")) response = await this.cache.legacy(request, url)
-        else {
+        {
           const raw = await readResponse(new Response(request.body))
           const input = z.record(z.string(), z.unknown()).parse(JSON.parse(new TextDecoder().decode(raw) || "{}"))
           const normalized = Object.fromEntries(
@@ -85,11 +79,9 @@ export class StorageServer {
             ]),
           )
           const method = url.pathname.split("/").pop() || ""
-          response = url.pathname.includes("CacheService/")
-            ? await this.cache.twirp(method, normalized)
-            : url.pathname.includes("ArtifactService/")
-              ? await this.artifact(method, normalized)
-              : new Response(null, { status: 404 })
+          response = url.pathname.includes("ArtifactService/")
+            ? await this.artifact(method, normalized)
+            : new Response(null, { status: 404 })
         }
       }
       response.headers.set("x-ms-request-id", crypto.randomUUID())

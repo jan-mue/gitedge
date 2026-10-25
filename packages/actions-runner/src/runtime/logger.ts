@@ -44,7 +44,4 @@ export class JobLogger {
       ...(status ? { stepResult: status } : {}),
     })
   }
-  close(): Promise<void> {
-    return this.sink.close()
-  }
 }

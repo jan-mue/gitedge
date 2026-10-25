@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+import posixpath
 import re
 import stat
 import time
@@ -207,8 +208,10 @@ class GitClient:
         return value
 
     @staticmethod
-    def _revision_files(repo: BlobRepository, sha: bytes) -> Iterator[tuple[str, ObjectID]]:
-        """Iterate file paths and object IDs, skipping submodules and symlinks."""
+    def _revision_files(
+        repo: BlobRepository, sha: bytes, *, include_symlinks: bool = False
+    ) -> Iterator[tuple[str, ObjectID]]:
+        """Iterate files and optional symlinks, skipping submodules."""
         root = GitClient._get_tree_at_path(repo, sha, "")
         pending = [("", root)]
         while pending:
@@ -219,7 +222,7 @@ class GitClient:
                     child = repo.object_store[entry.sha]
                     if isinstance(child, Tree):
                         pending.append((path + "/", child))
-                elif stat.S_ISREG(entry.mode):
+                elif stat.S_ISREG(entry.mode) or (include_symlinks and stat.S_ISLNK(entry.mode)):
                     yield path, entry.sha
 
     @staticmethod
@@ -704,11 +707,13 @@ class GitClient:
             if sha is None:
                 return FileIndex(paths=[])
             return await run_in_threadpool(
-                lambda: FileIndex(paths=sorted(path for path, _ in self._revision_files(repo, sha)))
+                lambda: FileIndex(
+                    paths=sorted(path for path, _ in self._revision_files(repo, sha, include_symlinks=True))
+                )
             )
 
         return await self._cached_model(
-            key=f"files:{ref}",
+            key=f"files:v2:{ref}",
             group=self._cache_group(owner, name),
             ttl=self._ttl_for_ref(ref),
             model=FileIndex,
@@ -770,12 +775,26 @@ class GitClient:
             compute=compute,
         )
 
-    async def get_raw(self, owner: str, name: str, ref: str, file_path: str) -> bytes:
+    async def get_raw(self, owner: str, name: str, ref: str, file_path: str, *, follow_symlinks: bool = False) -> bytes:
         """Return a file's original bytes."""
         repo = await self.load_repository(owner, name)
         sha = self._resolve_ref(repo, ref)
-        blob, _ = self._get_blob_at_path(repo, sha, file_path)
-        return blob.data
+        for _ in range(8):
+            blob, _ = self._get_blob_at_path(repo, sha, file_path)
+            if not follow_symlinks:
+                return blob.data
+            tree = self._get_tree_at_path(repo, sha, "")
+            mode, _ = tree.lookup_path(repo.object_store.__getitem__, file_path.encode())
+            if not stat.S_ISLNK(mode):
+                return blob.data
+            try:
+                target = blob.data.decode("utf-8")
+            except UnicodeDecodeError as error:
+                raise HTTPException(status_code=422, detail="Workflow symlink target must be UTF-8") from error
+            file_path = posixpath.normpath(posixpath.join(posixpath.dirname(file_path), target))
+            if target.startswith("/") or file_path == ".." or file_path.startswith("../"):
+                raise HTTPException(status_code=422, detail="Workflow symlink must stay inside its repository")
+        raise HTTPException(status_code=422, detail="Workflow symlink chain is cyclic or too deep")
 
     async def get_source(self, owner: str, name: str, ref: str, path: str) -> TreeListing | FileContent:
         """Resolve a source path in one request, avoiding a failed tree request in the browser."""
