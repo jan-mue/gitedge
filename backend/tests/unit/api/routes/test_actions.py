@@ -71,6 +71,34 @@ def test_completion_rejects_read_only_state_tokens(client: TestClient) -> None:
     assert client.post(f"{settings.API_V1_STR}/actions/complete", params={"token": token}).status_code == 403
 
 
+def test_cache_capabilities_scope_upload_lookup_and_download_to_one_repository(client: TestClient) -> None:
+    def capability(repo: uuid.UUID, scope: str = "actions:cache") -> str:
+        return jwt.encode(
+            {"repo": str(repo), "run": str(uuid.uuid4()), "scope": scope, "exp": 4102444800},
+            settings.SECRET_KEY,
+            algorithm="HS256",
+        )
+
+    repository = uuid.uuid4()
+    token = capability(repository)
+    path = f"{settings.API_V1_STR}/actions/cache"
+    params = {"token": token, "key": "linux-bun", "version": "v1"}
+    assert client.get(f"{path}/lookup", params=params).json() is None
+    saved = client.post(path, params=params, content=b"portable cache")
+    assert saved.status_code == 200
+    entry = saved.json()
+    assert client.get(f"{path}/lookup", params=params).json() == entry
+    assert client.get(f"{path}/{entry['id']}", params={"token": token}).content == b"portable cache"
+    other = capability(uuid.uuid4())
+    assert client.get(f"{path}/lookup", params={**params, "token": other}).json() is None
+    assert client.get(f"{path}/{entry['id']}", params={"token": other}).status_code == 404
+    for wrong_scope in ["actions:state", "actions:complete"]:
+        bad_params = {**params, "token": capability(repository, wrong_scope)}
+        assert client.post(path, params=bad_params, content=b"invalid").status_code == 403
+        assert client.get(f"{path}/lookup", params=bad_params).status_code == 403
+    assert client.get(f"{path}/lookup", params={**params, "restore_keys": "x" * 513}).status_code == 422
+
+
 @pytest.mark.parametrize(
     ("method", "endpoint", "operation"), [("GET", "workflows", "workflows"), ("POST", "dispatch", "dispatch")]
 )

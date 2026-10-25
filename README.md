@@ -211,6 +211,10 @@ starts a compiler subprocess. Build the agent with
 `bun run --filter @gitedge/actions-runner build` before preparing an image or
 snapshot. Prepared runner labels support x64 Linux.
 
+Cache metadata is repository-scoped in PostgreSQL. Immutable, checksummed cache
+archives use the existing Blob/S3 provider; sandbox agents transfer them through
+scoped controller capabilities. Cache archives are bounded to 32 MiB.
+
 Supported events are push, pull request and manual dispatch. Static matrices
 support include/exclude and require `fail-fast: false` for multiple variants.
 Filters use minimatch with ordered exclusion and re-inclusion. Dynamic matrices,

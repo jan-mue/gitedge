@@ -9,9 +9,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
 from typing import TYPE_CHECKING, override
+from uuid import UUID
 
 from sqlalchemy.schema import ColumnDefault
 
+from app.clients.actions_cache import ActionsCacheStore
 from app.clients.activity import ActivityStore
 from app.clients.blob_storage import BlobStorageClient
 from app.clients.cache import AbstractCacheClient
@@ -55,6 +57,8 @@ from app.utils.security import get_password_hash
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any
+
+    from app.entities.actions import WorkflowCacheEntry
 
 logger = logging.getLogger(__name__)
 
@@ -958,3 +962,47 @@ def build_fake_stores() -> FakeStores:
     )
     repository.stores = stores
     return stores
+
+
+class FakeActionsCacheStore(ActionsCacheStore):
+    def __init__(self) -> None:
+        self.entries: dict[tuple[UUID, str, str], WorkflowCacheEntry] = {}
+
+    @override
+    async def candidates(self, repo_id: UUID, prefix: str, version: str) -> list[WorkflowCacheEntry]:
+        return sorted(
+            [
+                entry
+                for entry in self.entries.values()
+                if entry.repo_id == repo_id and entry.version == version and entry.key.startswith(prefix)
+            ],
+            key=lambda entry: entry.updated_at,
+            reverse=True,
+        )
+
+    @override
+    async def payload(self, repo_id: UUID, payload_id: UUID) -> WorkflowCacheEntry | None:
+        return next(
+            (
+                entry
+                for entry in self.entries.values()
+                if entry.repo_id == repo_id and entry.payload_id == payload_id and entry.expires_at > datetime.now(UTC)
+            ),
+            None,
+        )
+
+    @override
+    async def publish(self, entry: WorkflowCacheEntry, previous: UUID | None) -> WorkflowCacheEntry:
+        key = (entry.repo_id, entry.key, entry.version)
+        existing = self.entries.get(key)
+        if existing and existing.payload_id != previous and existing.expires_at > datetime.now(UTC):
+            return existing
+        if existing:
+            for name in ("payload_id", "size", "checksum", "expires_at"):
+                setattr(existing, name, getattr(entry, name))
+            entry = existing
+        else:
+            entry.created_at = datetime.now(UTC)
+        entry.updated_at = datetime.now(UTC)
+        self.entries[key] = entry
+        return entry
