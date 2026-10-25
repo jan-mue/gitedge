@@ -1,9 +1,10 @@
+import json
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
-from qstash.errors import SignatureError
+from qstash.errors import QStashError, SignatureError
 
 from app.clients.qstash import QStashClient
 from app.config import settings
@@ -14,10 +15,12 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from pytest_mock import MockerFixture
+    from respx import Router
 
 
 @pytest.fixture
 async def queue(mocker: MockerFixture) -> AsyncGenerator[QStashClient]:
+    mocker.patch.object(settings, "QSTASH_URL", "https://qstash.test")
     mocker.patch.object(settings, "QSTASH_TOKEN", "unit-token")
     mocker.patch.object(settings, "QSTASH_CURRENT_SIGNING_KEY", "unit-current-key")
     mocker.patch.object(settings, "QSTASH_NEXT_SIGNING_KEY", "unit-next-key")
@@ -26,21 +29,24 @@ async def queue(mocker: MockerFixture) -> AsyncGenerator[QStashClient]:
     await client.close()
 
 
+@pytest.mark.httpx2(using="httpcore")
 async def test_publishing_delegates_deduplication_scheduling_and_retries_to_the_sdk(
-    queue: QStashClient, mocker: MockerFixture
+    queue: QStashClient, httpx2_mock: Router
 ) -> None:
-    publish = mocker.patch.object(queue.sdk.message, "publish_json", new_callable=mocker.AsyncMock)
     body, due = Delivery(id=uuid.uuid4()), datetime.now(UTC) + timedelta(seconds=10)
+    route = httpx2_mock.post(
+        f"https://qstash.test/v2/publish/{queue.destination('dispatch')}",
+        headers={
+            "Authorization": "Bearer unit-token",
+            "Upstash-Deduplication-Id": "stable-id",
+            "Upstash-Not-Before": str(int(due.timestamp())),
+            "Upstash-Retries": "5",
+            "Upstash-Retry-Delay": "1000",
+            "Upstash-Timeout": f"{settings.ACTIONS_PROVISION_LEASE + 30}s",
+        },
+    ).respond(json={"messageId": "unit-delivery"})
     await queue.publish("dispatch", body, "stable-id", due)
-    publish.assert_awaited_once_with(
-        url=queue.destination("dispatch"),
-        body=body.model_dump(mode="json"),
-        deduplication_id="stable-id",
-        not_before=int(due.timestamp()),
-        retries=5,
-        retry_delay="1000",
-        timeout=settings.ACTIONS_PROVISION_LEASE + 30,
-    )
+    assert json.loads(route.calls.last.request.content) == body.model_dump(mode="json")
 
 
 async def test_verification_passes_original_body_and_exact_url_to_the_sdk(
@@ -55,3 +61,10 @@ async def test_verification_passes_original_body_and_exact_url_to_the_sdk(
         queue.verify("dispatch", body.encode(), "forged")
     with pytest.raises(InvalidDeliveryError):
         queue.verify("dispatch", b"\xff", "forged")
+
+
+@pytest.mark.httpx2(using="httpcore")
+async def test_sdk_publication_errors_reach_the_global_retry_handler(queue: QStashClient, httpx2_mock: Router) -> None:
+    httpx2_mock.post(f"https://qstash.test/v2/publish/{queue.destination('dispatch')}").respond(503)
+    with pytest.raises(QStashError):
+        await queue.publish("dispatch", Delivery(id=uuid.uuid4()), "unavailable", datetime.now(UTC))

@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from contextlib import asynccontextmanager
+from abc import ABC, abstractmethod
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from sqlalchemy import exists, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -60,7 +61,51 @@ class RunState:
         )
 
 
-class ActionsStore(SQLStore[WorkflowRun]):
+class ActionsStore(ABC):
+    """Contract shared by PostgreSQL and in-memory Actions stores."""
+
+    @abstractmethod
+    async def add_run(self, run: WorkflowRun, initialize: Callable[[RunState], None] | None = None) -> WorkflowRun:
+        """Commit a run and its initial outbox commands atomically."""
+
+    @abstractmethod
+    async def list_runs(
+        self, repo_id: uuid.UUID, limit: int | None = 100, *, sha: str | None = None
+    ) -> list[WorkflowRun]:
+        """Read repository history or checks for a commit."""
+
+    @abstractmethod
+    async def active_runs(self, repo_id: uuid.UUID | None = None) -> list[uuid.UUID]:
+        """Find runs with execution or cleanup outstanding."""
+
+    @abstractmethod
+    def transaction(
+        self, run_id: uuid.UUID, repo_id: uuid.UUID | None = None
+    ) -> AbstractAsyncContextManager[RunState | None]:
+        """Serialize and commit a short state transition."""
+
+    @abstractmethod
+    async def message(self, message_id: uuid.UUID) -> WorkflowOutbox | None:
+        """Read a durable command."""
+
+    @abstractmethod
+    async def pending(self, limit: int = 50) -> list[WorkflowOutbox]:
+        """Find commands needing publication or recovery."""
+
+    @abstractmethod
+    async def published(self, message_id: uuid.UUID, when: datetime) -> None:
+        """Record broker acceptance."""
+
+    @abstractmethod
+    async def current(self, capability: Capability, allow_terminal: bool = False) -> bool:
+        """Check ownership of the current attempt generation."""
+
+    @abstractmethod
+    async def artifacts(self, run_id: uuid.UUID) -> list[str]:
+        """Read artifact references from completed attempts."""
+
+
+class SQLActionsStore(ActionsStore, SQLStore[WorkflowRun]):
     """Commit state transitions before any provider or queue I/O."""
 
     def __init__(self, db: AsyncSession) -> None:
@@ -93,6 +138,7 @@ class ActionsStore(SQLStore[WorkflowRun]):
                 .values(acknowledged_at=datetime.now(UTC))
             )
 
+    @override
     async def add_run(self, run: WorkflowRun, initialize: Callable[[RunState], None] | None = None) -> WorkflowRun:
         """Insert a run and initialize it through the normal atomic transition."""
         await self.db.execute(insert(WorkflowRun).values(**self._values(run)).on_conflict_do_nothing())
@@ -112,6 +158,7 @@ class ActionsStore(SQLStore[WorkflowRun]):
                 initialize(state)
             return state.run
 
+    @override
     @asynccontextmanager
     async def transaction(self, run_id: uuid.UUID, repo_id: uuid.UUID | None = None) -> AsyncGenerator[RunState | None]:
         """Serialize a short state transition and commit its outbox."""
@@ -147,6 +194,7 @@ class ActionsStore(SQLStore[WorkflowRun]):
         await self.db.commit()
         return result
 
+    @override
     async def list_runs(
         self, repo_id: uuid.UUID, limit: int | None = 100, *, sha: str | None = None
     ) -> list[WorkflowRun]:
@@ -156,6 +204,7 @@ class ActionsStore(SQLStore[WorkflowRun]):
             query = query.where(WorkflowRun.sha == sha)
         return await self._read(query.limit(limit))
 
+    @override
     async def active_runs(self, repo_id: uuid.UUID | None = None) -> list[uuid.UUID]:
         """Find runs with execution or cleanup still outstanding."""
         query = select(WorkflowRun.id).where(
@@ -173,12 +222,14 @@ class ActionsStore(SQLStore[WorkflowRun]):
         query = query.where(WorkflowRun.repo_id == repo_id) if repo_id else query.limit(50)
         return await self._read(query.order_by(WorkflowRun.updated_at))
 
+    @override
     async def message(self, message_id: uuid.UUID) -> WorkflowOutbox | None:
         """Read a durable command and release the read transaction."""
         result = await self.db.get(WorkflowOutbox, message_id, populate_existing=True)
         await self.db.commit()
         return result
 
+    @override
     async def pending(self, limit: int = 50) -> list[WorkflowOutbox]:
         """Find unpublished commands and deliveries needing recovery."""
         now = datetime.now(UTC)
@@ -192,11 +243,13 @@ class ActionsStore(SQLStore[WorkflowRun]):
             .limit(limit)
         )
 
+    @override
     async def published(self, message_id: uuid.UUID, when: datetime) -> None:
         """Record broker acceptance separately from command completion."""
         await self.db.execute(update(WorkflowOutbox).where(WorkflowOutbox.id == message_id).values(published_at=when))
         await self.db.commit()
 
+    @override
     async def current(self, capability: Capability, allow_terminal: bool = False) -> bool:
         """Check whether this capability still owns its job generation."""
         statuses = ["queued", "starting", "running"] + (["success", "failure", "skipped"] if allow_terminal else [])
@@ -218,6 +271,7 @@ class ActionsStore(SQLStore[WorkflowRun]):
             )
         )
 
+    @override
     async def artifacts(self, run_id: uuid.UUID) -> list[str]:
         """Read artifact references published by completed attempts."""
         result = await self._read(

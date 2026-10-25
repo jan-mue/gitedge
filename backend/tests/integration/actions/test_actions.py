@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import io
 import json
-import re
 import tarfile
 import time
 import uuid
@@ -21,14 +20,13 @@ from aiodocker import Docker
 from app.clients.blob_storage import S3Client
 from tests.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD
 from tests.git import run_git
-from tests.qstash import deliveries
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
     from qstash import QStash
-
-    from tests.qstash import ActionsNetwork
+    from testcontainers.core.container import DockerContainer
+    from xprocess import XProcess
 
 
 @pytest.fixture
@@ -81,6 +79,28 @@ def wait_for_run(client: httpx.Client, path: str, run_id: str | None = None, sec
             return selected
         time.sleep(0.25)
     pytest.fail(f"Workflow did not finish: {json.dumps(last, indent=2)}")
+
+
+def wait_for_started_job(client: httpx.Client, path: str, run_id: str) -> dict:
+    deadline = time.monotonic() + 180
+    while time.monotonic() < deadline:
+        response = client.get(f"{path}/runs")
+        response.raise_for_status()
+        run = next(run for run in response.json() if run["id"] == run_id)
+        if "Long job started" in run["jobs"][0]["log"]:
+            return run["jobs"][0]
+        time.sleep(0.25)
+    pytest.fail("The job did not start in Docker through QStash")
+
+
+def wait_for_access(log_file: Path, offset: int, operation: str, status: int, count: int = 1) -> None:
+    deadline = time.monotonic() + 20
+    expected = f'POST /api/v1/actions/internal/{operation} HTTP/1.1" {status}'
+    while time.monotonic() < deadline:
+        if log_file.read_bytes()[offset:].decode(errors="replace").count(expected) >= count:
+            return
+        time.sleep(0.1)
+    pytest.fail(f"QStash did not deliver {count} {operation} callbacks returning HTTP {status}")
 
 
 def test_push_runs_matrix_jobs_in_separate_sandboxes(
@@ -187,20 +207,11 @@ def test_cancellation_destroys_running_jobs_and_skips_queued_jobs(actions_repo: 
     dispatch = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cancellation.yaml"})
     dispatch.raise_for_status()
     run_id = dispatch.json()["id"]
-    deadline = time.monotonic() + 180
-    while time.monotonic() < deadline:
-        response = client.get(f"{path}/runs")
-        response.raise_for_status()
-        running = next(run for run in response.json() if run["id"] == run_id)
-        if "Long job started" in running["jobs"][0]["log"]:
-            break
-        time.sleep(0.25)
-    else:
-        pytest.fail("Cancellation fixture never started in Docker through QStash")
+    job = wait_for_started_job(client, path, run_id)
 
     async def completion_url() -> str:
         async with Docker() as docker:
-            container = await docker.containers.get(running["jobs"][0]["sandbox"])
+            container = await docker.containers.get(job["sandbox"])
             configuration = await container.show()
             descriptor = next(
                 value.removeprefix("GITEDGE_JOB=")
@@ -275,44 +286,75 @@ def test_invalid_parser_input_never_creates_a_sandbox(actions_repo: tuple[httpx.
 
 
 def test_real_qstash_retries_a_failed_signed_callback(
-    actions_repo: tuple[httpx.Client, Path, str], actions_network: ActionsNetwork
+    actions_repo: tuple[httpx.Client, Path, str],
+    infrastructure: dict[str, str],
+    backend_url: str,
+    xprocess: XProcess,
+    qstash: QStash,
 ) -> None:
+    backend_log_file = Path(str(xprocess.getinfo("backend").logpath))
     client, _, path = actions_repo
     wait_for_run(client, path)
-    callbacks = actions_network.callbacks
-    offset = len(deliveries(callbacks))
-    callbacks.expect_oneshot_request("/api/v1/actions/internal/dispatch").respond_with_data(status=503)
-    response = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cache-bystander.yaml"})
+    response = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cancellation.yaml"})
     response.raise_for_status()
-    run = wait_for_run(client, path, response.json()["id"])
-    assert run["status"] == "success", json.dumps(run, indent=2)
-    records = deliveries(callbacks)[offset:]
-    assert any(
-        response.status_code == 503 and request.headers.get("Upstash-Signature") for request, response in records
-    )
-    assert any(
-        response.status_code == 202 and request.headers.get("Upstash-Signature") for request, response in records
-    )
+    run_id = response.json()["id"]
+    wait_for_started_job(client, path, run_id)
+    db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
+    with psycopg.connect(db_url) as connection:
+        connection.execute("SELECT id FROM workflow_run WHERE id = %s FOR UPDATE", (run_id,))
+        message = connection.execute(
+            "SELECT id FROM workflow_outbox WHERE run_id = %s AND kind = 'inspect' "
+            "AND acknowledged_at IS NULL ORDER BY due_at DESC LIMIT 1",
+            (run_id,),
+        ).fetchone()
+        assert message is not None
+        offset = backend_log_file.stat().st_size
+        qstash.message.publish_json(
+            url=f"{backend_url.replace('127.0.0.1', 'host.docker.internal')}/api/v1/actions/internal/inspect",
+            body={"version": 1, "id": str(message[0])},
+            deduplication_id=str(uuid.uuid4()),
+            retries=5,
+            retry_delay="1000",
+        )
+        wait_for_access(backend_log_file, offset, "inspect", 503)
+    with psycopg.connect(db_url, autocommit=True) as connection:
+        connection.execute(
+            "UPDATE workflow_attempt SET claim = NULL, lease_until = NULL WHERE run_id = %s AND status = 'running'",
+            (run_id,),
+        )
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            row = connection.execute(
+                "SELECT acknowledged_at FROM workflow_outbox WHERE id = %s", (message[0],)
+            ).fetchone()
+            if row and row[0] is not None:
+                break
+            time.sleep(0.1)
+        else:
+            pytest.fail("QStash did not retry the command after the database lock was released")
+    client.post(f"{path}/runs/{run_id}/cancel").raise_for_status()
+    assert wait_for_run(client, path, run_id)["status"] == "cancelled"
 
 
 def test_committed_outbox_recovers_after_real_publish_failure(
-    actions_repo: tuple[httpx.Client, Path, str], actions_network: ActionsNetwork, infrastructure: dict[str, str]
+    actions_repo: tuple[httpx.Client, Path, str],
+    infrastructure: dict[str, str],
+    qstash_container: DockerContainer,
 ) -> None:
     client, _, path = actions_repo
     initial = wait_for_run(client, path)
-    publishing = actions_network.publishing
-    offset = len(deliveries(publishing))
-    publishing.expect_oneshot_request(re.compile(".*/actions/internal/dispatch")).respond_with_data(status=503)
-    response = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cache-bystander.yaml"})
-    assert response.status_code == 503
+    broker = qstash_container.get_wrapped_container()
+    broker.pause()
+    try:
+        response = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cache-bystander.yaml"})
+        assert response.status_code == 503
+    finally:
+        broker.unpause()
     response = client.get(f"{path}/runs")
     response.raise_for_status()
     run_id = next(run["id"] for run in response.json() if run["id"] != initial["id"])
     run = wait_for_run(client, path, run_id)
     assert run["status"] == "success", json.dumps(run, indent=2)
-    records = deliveries(publishing)[offset:]
-    assert any(response.status_code == 503 for _, response in records)
-    assert any(response.status_code == 200 for _, response in records)
     db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
     with psycopg.connect(db_url) as connection:
         row = connection.execute(
@@ -325,39 +367,29 @@ def test_committed_outbox_recovers_after_real_publish_failure(
 
 def test_real_duplicate_deliveries_do_not_create_another_attempt(
     actions_repo: tuple[httpx.Client, Path, str],
-    actions_network: ActionsNetwork,
     infrastructure: dict[str, str],
+    backend_url: str,
+    xprocess: XProcess,
     qstash: QStash,
 ) -> None:
+    backend_log_file = Path(str(xprocess.getinfo("backend").logpath))
     client, _, path = actions_repo
     run = wait_for_run(client, path)
-    callbacks = actions_network.callbacks
-    offset = len(deliveries(callbacks))
+    offset = backend_log_file.stat().st_size
     db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
     with psycopg.connect(db_url, autocommit=True) as connection:
         message = connection.execute(
-            "SELECT id FROM workflow_outbox WHERE run_id = %s AND kind = 'dispatch' LIMIT 1", (run["id"],)
+            "SELECT id FROM workflow_outbox WHERE run_id = %s AND kind = 'dispatch' LIMIT 1",
+            (run["id"],),
         ).fetchone()
         assert message is not None
         count = connection.execute("SELECT count(*) FROM workflow_attempt WHERE run_id = %s", (run["id"],)).fetchone()
-        destination = f"http://host.docker.internal:{callbacks.port}/api/v1/actions/internal/dispatch"
+        destination = f"{backend_url.replace('127.0.0.1', 'host.docker.internal')}/api/v1/actions/internal/dispatch"
         for _ in range(2):
             qstash.message.publish_json(
-                url=destination,
-                body={"version": 1, "id": str(message[0])},
-                deduplication_id=str(uuid.uuid4()),
+                url=destination, body={"version": 1, "id": str(message[0])}, deduplication_id=str(uuid.uuid4())
             )
-        deadline = time.monotonic() + 20
-        while time.monotonic() < deadline:
-            records = deliveries(callbacks)[offset:]
-            if len(records) >= 2:
-                break
-            time.sleep(0.1)
-        else:
-            pytest.fail("Real QStash did not deliver both duplicate commands")
-        assert all(
-            request.headers.get("Upstash-Signature") and response.status_code == 202 for request, response in records
-        )
+        wait_for_access(backend_log_file, offset, "dispatch", 202, count=2)
         assert (
             connection.execute("SELECT count(*) FROM workflow_attempt WHERE run_id = %s", (run["id"],)).fetchone()
             == count

@@ -19,7 +19,7 @@ from app.services.actions.scheduler import TERMINAL, RunScheduler
 if TYPE_CHECKING:
     from app.clients.actions import ActionsStore, RunState
     from app.clients.blob_storage import BlobStorageClient
-    from app.clients.qstash import QStashClient
+    from app.clients.qstash import ActionsQueue
     from app.entities.actions import WorkflowAttempt, WorkflowOutbox
     from app.schemas.actions import ActionJob
 
@@ -46,7 +46,7 @@ class ActionsDispatcher:
         store: ActionsStore,
         blobs: BlobStorageClient,
         sandbox: AbstractSandboxClient,
-        queue: QStashClient,
+        queue: ActionsQueue,
         scheduler: RunScheduler,
         secrets: dict[str, dict[str, str]],
     ) -> None:

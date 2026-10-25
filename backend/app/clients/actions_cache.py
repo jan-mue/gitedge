@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -17,13 +18,30 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-class ActionsCacheStore(SQLStore[WorkflowCacheEntry]):
+class ActionsCacheStore(ABC):
+    """Cache metadata contract for SQL and in-memory implementations."""
+
+    @abstractmethod
+    async def candidates(self, repo_id: UUID, prefix: str, version: str) -> list[WorkflowCacheEntry]:
+        """Find exact or prefix matches, newest first."""
+
+    @abstractmethod
+    async def payload(self, repo_id: UUID, payload_id: UUID) -> WorkflowCacheEntry | None:
+        """Find a live generation within one repository."""
+
+    @abstractmethod
+    async def publish(self, entry: WorkflowCacheEntry, previous: UUID | None) -> WorkflowCacheEntry:
+        """Publish an uploaded archive atomically."""
+
+
+class SQLActionsCacheStore(ActionsCacheStore, SQLStore[WorkflowCacheEntry]):
     """Keep prefix lookup out of cache providers that cannot enumerate keys."""
 
     def __init__(self, db: AsyncSession) -> None:
         """Use the request-scoped session."""
         super().__init__(db, WorkflowCacheEntry)
 
+    @override
     async def candidates(self, repo_id: UUID, prefix: str, version: str) -> list[WorkflowCacheEntry]:
         """Select escaped prefixes, bounded to 128 candidates per restore key."""
         return list(
@@ -39,6 +57,7 @@ class ActionsCacheStore(SQLStore[WorkflowCacheEntry]):
             )
         )
 
+    @override
     async def payload(self, repo_id: UUID, payload_id: UUID) -> WorkflowCacheEntry | None:
         """Never return expired metadata or another repository's entry."""
         return await self.db.scalar(
@@ -49,6 +68,7 @@ class ActionsCacheStore(SQLStore[WorkflowCacheEntry]):
             )
         )
 
+    @override
     async def publish(self, entry: WorkflowCacheEntry, previous: UUID | None) -> WorkflowCacheEntry:
         """Replace only the missing or expired generation observed before uploading."""
         statement = insert(WorkflowCacheEntry).values(

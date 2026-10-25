@@ -9,7 +9,7 @@ from redis_fastapi import redis_lifespan
 
 from app.clients.cache import uses_redis_cache
 from app.clients.database import create_db_engine, create_session_factory
-from app.clients.qstash import QStashClient
+from app.clients.qstash import ActionsQueue, QStashClient
 from app.config import settings
 
 if TYPE_CHECKING:
@@ -23,7 +23,7 @@ class LifespanState(TypedDict):
     """Shared resources created on startup and exposed via ``request.state``."""
 
     db_session_factory: async_sessionmaker[AsyncSession]
-    actions_queue: QStashClient
+    actions_queue: ActionsQueue
 
 
 @asynccontextmanager

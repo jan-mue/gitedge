@@ -46,14 +46,14 @@ dev = [
     "inline-snapshot[black]==0.36.1",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
-    "pytest-httpserver==1.2.0",
+    "pytest-httpx2==1.0.0",
     "pytest-mock==3.17.0",
     "pytest-playwright==0.10.0",
     "pytest-socket==0.8.1",
     "pytest-xprocess==1.0.2",
+    "respx==0.23.1",
     "testcontainers[mailpit,minio,postgres,redis]==4.15.0",
     "types-pygments==2.21.0.20260819",
-    "werkzeug==3.1.9",
 ]
 
 [tool.ruff]
@@ -194,6 +194,7 @@ analysis.allowed-unresolved-imports = [
 ]
 
 [tool.pytest]
+ini_options.markers = [ "httpx2(**options): configure pytest-httpx2's response router" ]
 ini_options.asyncio_default_fixture_loop_scope = "function"
 ini_options.asyncio_mode = "auto"
 
