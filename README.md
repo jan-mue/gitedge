@@ -310,6 +310,9 @@ Export the compiled HTML into the backend templates directory:
 bun run email:export
 ```
 
+The root `css-tree` development dependency lets the React Email CLI resolve its
+external CSS parser when rendering files in the backend templates directory.
+
 ## Deployment
 
 GitEdge is deployed on [Vercel](https://vercel.com/) as two projects (frontend
