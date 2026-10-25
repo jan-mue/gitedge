@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
+import type { z } from "zod"
 import { usersUpdatePasswordMeMutation } from "@/client/@tanstack/react-query.gen"
 import {
   Form,
@@ -14,24 +14,11 @@ import {
   PasswordInput,
 } from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
-import { handleError } from "@/utils"
+import { handleError, matchingPasswords, passwordConfirmationSchema, passwordMismatch, passwordSchema } from "@/utils"
 
-const formSchema = z
-  .object({
-    current_password: z
-      .string()
-      .min(1, { message: "Password is required" })
-      .min(8, { message: "Password must be at least 8 characters" }),
-    new_password: z
-      .string()
-      .min(1, { message: "Password is required" })
-      .min(8, { message: "Password must be at least 8 characters" }),
-    confirm_password: z.string().min(1, { message: "Password confirmation is required" }),
-  })
-  .refine((data) => data.new_password === data.confirm_password, {
-    message: "The passwords don't match",
-    path: ["confirm_password"],
-  })
+const formSchema = passwordConfirmationSchema
+  .extend({ current_password: passwordSchema })
+  .refine(matchingPasswords, passwordMismatch)
 
 type FormData = z.infer<typeof formSchema>
 

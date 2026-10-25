@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/fallow/schema.json",
+  "extends": "./.fallowrc.json",
+  "production": {
+    "deadCode": true,
+    "health": false,
+    "dupes": true
+  },
+  "ignoreExportsUsedInFile": true,
+  "ignoreDependencies": [
+    "@react-email/ui",
+    "@tailwindcss/vite",
+    "react-dom",
+    "react-email"
+  ]
+}

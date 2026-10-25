@@ -23,6 +23,7 @@ import {
   handleUtilsPreviewMarkdown,
 } from "@/client/msw.gen"
 import { repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
+import { storybookSession } from "@/components/Storybook/StoryRouter"
 import { comparisonFixture } from "./diff-fixtures"
 import { PullRequestDetailView } from "./PullRequestDetail"
 import { PullRequestFiles, ReviewTimeline } from "./PullRequestFiles"
@@ -289,12 +290,7 @@ export const ReviewDiscussion: Story = {
 
 export const MergeMethods = {
   beforeEach: () => {
-    const previous = localStorage.getItem("access_token")
-    localStorage.setItem("access_token", "storybook-session")
-    return () => {
-      if (previous === null) localStorage.removeItem("access_token")
-      else localStorage.setItem("access_token", previous)
-    }
+    return storybookSession()
   },
   parameters: {
     msw: {

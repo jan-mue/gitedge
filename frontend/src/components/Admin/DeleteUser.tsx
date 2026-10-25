@@ -3,17 +3,14 @@ import { Trash2 } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { usersDeleteUserMutation } from "@/client/@tanstack/react-query.gen"
+import { DialogActionFooter } from "@/components/Common/DialogActionFooter"
 import {
-  Button,
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DropdownMenuItem,
-  LoadingButton,
 } from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -62,16 +59,7 @@ const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter appearance="spaced">
-            <DialogClose asChild>
-              <Button variant="repository" disabled={mutation.isPending}>
-                Cancel
-              </Button>
-            </DialogClose>
-            <LoadingButton variant="destructive" type="submit" loading={mutation.isPending}>
-              Delete
-            </LoadingButton>
-          </DialogFooter>
+          <DialogActionFooter pending={mutation.isPending} destructive />
         </form>
       </DialogContent>
     </Dialog>
