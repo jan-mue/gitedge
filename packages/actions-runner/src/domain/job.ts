@@ -11,6 +11,7 @@ export const jobSchema = z.object({
   timeout_seconds: z.number().positive().default(1200),
   restore_url: z.string().url().optional(),
   complete_url: z.string().url().optional(),
+  cache_url: z.string().url().optional(),
   event_name: z.string().default(""),
   actor: z.string().default(""),
   event: z.record(z.string(), z.json()).default({}),

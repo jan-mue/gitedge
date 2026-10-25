@@ -4,6 +4,7 @@ import { errorMessage, type JobInput, type JobResult, jobSchema } from "./domain
 import { writeFile } from "./runtime/files.ts"
 import { FileLog } from "./runtime/logger.ts"
 import { ArtifactState } from "./storage/artifact-state.ts"
+import type { CacheClient } from "./storage/cache-client.ts"
 import { WorkflowRunner } from "./workflow-runner.ts"
 
 export interface LaunchOptions {
@@ -11,6 +12,7 @@ export interface LaunchOptions {
   actionRoot?: string
   restoreUrl?: string
   signal?: AbortSignal
+  cache?: CacheClient
 }
 export async function launch(
   descriptor: JobInput,
@@ -32,6 +34,7 @@ export async function launch(
       actions: options.actionRoot,
       signal,
       log,
+      cache: options.cache,
       restoreArtifacts: () => state.restore(),
     }).run()
     code = result.status === "success" || result.status === "skipped" ? 0 : 1

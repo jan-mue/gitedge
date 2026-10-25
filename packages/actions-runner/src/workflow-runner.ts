@@ -8,6 +8,7 @@ import { Workspace } from "./runtime/files.ts"
 import { JobLogger } from "./runtime/logger.ts"
 import { ProcessExecutor } from "./runtime/process.ts"
 import { StepExecutor } from "./runtime/steps.ts"
+import { type CacheClient, ControllerCacheClient } from "./storage/cache-client.ts"
 import { StorageServer } from "./storage/server.ts"
 
 export interface RunnerOptions {
@@ -15,6 +16,7 @@ export interface RunnerOptions {
   actions?: string
   signal: AbortSignal
   log: LogSink
+  cache?: CacheClient
   restoreArtifacts?: () => Promise<void>
 }
 /** One instance executes one expanded job and disposes all of its resources. */
@@ -33,6 +35,7 @@ export class WorkflowRunner {
       root: workspace.state,
       run: input.env.GITHUB_RUN_ID || "local",
       job: input.job.id,
+      cache: options.cache || new ControllerCacheClient(input.cache_url, options.signal),
       restoreArtifacts: options.restoreArtifacts,
     })
     const logger = new JobLogger(options.log, Object.values(input.secrets))

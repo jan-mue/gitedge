@@ -65,3 +65,10 @@ image or checked-out repository; JavaScript actions use real Node from that imag
 Workflow and job permissions are limited to `contents: read` (or an empty map);
 checkout credentials can only read the current repository. The runner check in
 `.gitedge/workflow` symlinks to its GitHub workflow so both forges use one definition.
+
+## Cache storage
+
+Repository-scoped cache metadata is stored in PostgreSQL, with immutable,
+checksummed archive generations in the existing Blob/S3 provider. The agent
+provides the v1/v2 Actions cache protocols locally and uses a scoped controller
+capability to transfer payloads. Cache archives remain bounded to 32 MiB.

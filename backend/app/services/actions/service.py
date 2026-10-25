@@ -42,6 +42,8 @@ if TYPE_CHECKING:
     from app.clients.workflow_compiler import WorkflowCompiler
     from app.entities.repositories import Repository as RepositoryEntity
     from app.entities.users import User
+    from app.schemas.actions_cache import CacheEntry, CacheIdentity
+    from app.services.actions.cache import ActionsCacheService
     from app.services.repositories import RepositoryService
 
 logger = logging.getLogger(__name__)
@@ -64,6 +66,7 @@ class ActionsService:
         max_parallel: int,
         secrets: dict[str, dict[str, str]] | None = None,
         pull_requests: PullRequestStore | None = None,
+        cache: ActionsCacheService | None = None,
     ) -> None:
         """Inject data access and sandbox clients; keep provider policy out of workflows."""
         self.compiler = compiler
@@ -74,6 +77,7 @@ class ActionsService:
         self.provider = provider
         self.max_timeout = max_timeout
         self.pull_requests = pull_requests
+        self.cache = cache
         self.scheduler = RunScheduler(store, blobs, sandbox, max_parallel, secrets or {})
 
     async def _repository(
@@ -342,6 +346,35 @@ class ActionsService:
         """Serve run-scoped artifacts on demand; cache data never enters this archive."""
         repo_id, run_id = self._token_ids(token, "actions:state")
         return await self.blobs.get_current(f"actions/{repo_id}/{run_id}/state.tar.gz") or gzip.compress(bytes(1024))
+
+    def cache_scope(self, token: str) -> uuid.UUID:
+        """Validate the cache capability before accepting a bounded upload."""
+        repo_id, _ = self._token_ids(token, "actions:cache")
+        self._cache_service()
+        return repo_id
+
+    def _cache_service(self) -> ActionsCacheService:
+        if self.cache is None:
+            raise HTTPException(status_code=503, detail="Actions cache is unavailable")
+        return self.cache
+
+    async def lookup_cache(self, token: str, identity: CacheIdentity, restore_keys: list[str]) -> CacheEntry | None:
+        """Find a repository cache without exposing provider credentials."""
+        repo_id = self.cache_scope(token)
+        return await self._cache_service().lookup(repo_id, identity, restore_keys)
+
+    async def save_cache(self, token: str, identity: CacheIdentity, payload: bytes) -> CacheEntry:
+        """Persist a bounded immutable cache entry."""
+        repo_id = self.cache_scope(token)
+        return await self._cache_service().save(repo_id, identity, payload)
+
+    async def download_cache(self, token: str, payload_id: uuid.UUID) -> bytes:
+        """Read only payload generations belonging to the capability's repository."""
+        repo_id = self.cache_scope(token)
+        payload = await self._cache_service().download(repo_id, payload_id)
+        if payload is None:
+            raise HTTPException(status_code=404, detail="Cache entry expired or was evicted")
+        return payload
 
     async def cancel_repository(self, owner: str, name: str, user: User) -> uuid.UUID:
         """Stop active sandboxes before their repository rows can be deleted."""

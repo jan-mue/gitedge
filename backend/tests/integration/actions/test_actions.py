@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import json
+import tarfile
 import time
+import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,6 +16,7 @@ import psycopg
 import pytest
 from aiodocker import Docker
 
+from app.clients.blob_storage import S3Client
 from tests.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD
 from tests.git import run_git
 
@@ -114,6 +118,52 @@ def test_failed_jobs_skip_dependents_but_run_always_cleanup(actions_repo: tuple[
     assert [job["status"] for job in run["jobs"]] == ["failure", "skipped", "success"]
     assert "Cleanup ran" in run["jobs"][0]["log"]
     assert "Failure reported" in run["jobs"][2]["log"]
+
+
+def test_tooling_actions_cache_and_artifacts(
+    actions_repo: tuple[httpx.Client, Path, str], infrastructure: dict[str, str]
+) -> None:
+    client, _, path = actions_repo
+    wait_for_run(client, path)
+
+    async def artifact_state(run_id: str) -> bytes | None:
+        blobs = S3Client(
+            endpoint=infrastructure["S3_ENDPOINT"],
+            access_key=infrastructure["S3_ACCESS_KEY"],
+            secret_key=infrastructure["S3_SECRET_KEY"],
+            bucket=infrastructure["S3_BUCKET"],
+        )
+        keys = await blobs.list_keys("actions/")
+        key = next(key for key in keys if key.endswith(f"/{run_id}/state.tar.gz"))
+        caches = [key for key in keys if "/cache/" in key]
+        assert caches, "Workflow cache archives must be persisted in S3"
+        for cache_key in caches:
+            assert await blobs.get(cache_key)
+        return await blobs.get(key)
+
+    for iteration in range(2):
+        if iteration:
+            bystander = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cache-bystander.yaml"})
+            bystander.raise_for_status()
+            assert wait_for_run(client, path, bystander.json()["id"])["status"] == "success"
+        dispatch = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/tooling.yaml"})
+        dispatch.raise_for_status()
+        run = wait_for_run(client, path, dispatch.json()["id"], seconds=600)
+        assert run["status"] == "success", json.dumps(run, indent=2)
+        for step in run["jobs"][0]["steps"]:
+            expected = "skipped" if step["name"] == "Verify restored cache" and not iteration else "success"
+            assert step["status"] == expected, json.dumps({"iteration": iteration, "run": run}, indent=2)
+        state = asyncio.run(artifact_state(run["id"]))
+        assert state is not None
+        with tarfile.open(fileobj=io.BytesIO(state), mode="r:gz") as archive:
+            member = next(member for member in archive if member.name.endswith("/example-results.zip"))
+            uploaded = archive.extractfile(member)
+            assert uploaded is not None
+            with zipfile.ZipFile(io.BytesIO(uploaded.read())) as artifact:
+                assert artifact.read("result.txt") == b"artifact contents\n"
+        if iteration:
+            assert "Portable cache restored" in run["jobs"][0]["log"]
+            assert "uv cache restored" in run["jobs"][0]["log"]
 
 
 def test_codeql_init_and_analyze_use_prepared_tools(actions_repo: tuple[httpx.Client, Path, str]) -> None:
