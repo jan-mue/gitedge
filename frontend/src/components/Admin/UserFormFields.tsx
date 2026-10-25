@@ -1,6 +1,6 @@
 import { useFormContext } from "react-hook-form"
+import { FormInputField } from "@/components/Common/FormInputField"
 import { Checkbox, FormControl, FormField, FormItem, FormLabel } from "@/components/design-system"
-import { FormInputField } from "@/components/design-system/form"
 
 type UserFields = {
   email: string

@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { loginRecoverPasswordMutation } from "@/client/@tanstack/react-query.gen"
 import { AuthLayout } from "@/components/Common/AuthLayout"
+import { FormInputField } from "@/components/Common/FormInputField"
 import {
   AuthFooter,
   AuthForm,
@@ -15,7 +16,6 @@ import {
   LoadingButton,
   Link as RouterLink,
 } from "@/components/design-system"
-import { FormInputField } from "@/components/design-system/form"
 import { isLoggedIn } from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"

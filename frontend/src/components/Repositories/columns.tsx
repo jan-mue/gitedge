@@ -51,14 +51,3 @@ export const columns: ColumnDef<DataTableFeatures, Repository>[] = [
     cell: ({ row }) => <CopyPath path={`${row.original.owner}/${row.original.name}.git`} />,
   },
 ]
-
-export const RepositorySummary = ({ repo }: { repo: Repository }) => {
-  return (
-    <div className="min-w-0 flex-1">
-      <RouterLink to="/$owner/$repo" params={{ owner: repo.owner, repo: repo.name }} appearance="repository">
-        {repo.owner}/{repo.name}
-      </RouterLink>
-      {repo.description && <p className="text-xs text-muted-foreground mt-1">{repo.description}</p>}
-    </div>
-  )
-}

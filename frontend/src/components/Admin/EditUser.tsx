@@ -7,6 +7,7 @@ import { z } from "zod"
 import type { UserPublic } from "@/client"
 import { usersReadUsersQueryKey, usersUpdateUserMutation } from "@/client/@tanstack/react-query.gen"
 import { UserFormFields } from "@/components/Admin/UserFormFields"
+import { DialogActionFooter } from "@/components/Common/DialogActionFooter"
 import {
   Dialog,
   DialogContent,
@@ -16,7 +17,6 @@ import {
   DropdownMenuItem,
   Form,
 } from "@/components/design-system"
-import { DialogActionFooter } from "@/components/design-system/dialog"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
