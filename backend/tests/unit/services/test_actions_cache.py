@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from app.schemas.actions_cache import CacheIdentity
+from app.schemas.actions import CacheIdentity
 from app.services.actions.cache import STATE_LIMIT, ActionsCacheService
 from app.services.actions.service import ActionsService
 from tests.unit.utils.actions import FakeActionsQueue, FakeActionsStore, FakeWorkflowCompiler

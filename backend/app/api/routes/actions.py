@@ -6,8 +6,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 
 from app.api.dependencies import ActionsServiceDep, CurrentUser, OptionalUser
-from app.schemas.actions import ActionRun, PullRequestChecks, WorkflowDispatch, WorkflowInfo
-from app.schemas.actions_cache import CacheEntry, CacheIdentity
+from app.schemas.actions import ActionRun, CacheEntry, CacheIdentity, PullRequestChecks, WorkflowDispatch, WorkflowInfo
 from app.services.actions.cache import STATE_LIMIT
 
 router = APIRouter(tags=["actions"])

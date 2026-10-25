@@ -1,6 +1,6 @@
 # Actions compiler and agent
 
-This Bun 1.4.3 workspace contains the on-demand compiler Function and the
+This Bun 1.4.4 workspace contains the on-demand compiler Function and the
 job-scoped sandbox agent. `@actions/workflow-parser` and `@actions/expressions`
 are pinned together at 0.3.61. FastAPI sends workflow source over HTTP and stores
 the returned IR; the agent executes that manifest without parsing workflow YAML.
@@ -11,7 +11,7 @@ Deploy this workspace as a Vercel project with root directory
 `packages/actions-runner` and access to source files outside that directory so
 the root Bun workspace and lockfile are available. The included `vercel.json`
 selects the provider-managed Bun 1.4.x runtime and caps Function duration at ten
-seconds. Local tests and sandbox bytecode builds pin Bun 1.4.3; Vercel may
+seconds. Local tests and sandbox bytecode builds pin Bun 1.4.4; Vercel may
 advance the compiler runtime patch version within 1.4.x. `api/compile.ts` and the local server use the same Web API handler.
 
 Set a dedicated `COMPILER_TOKEN` on the compiler project. Set
@@ -65,6 +65,17 @@ the supplied event, static matrix, strategy, and dispatch inputs. Other executio
 expressions are evaluated by the sandbox agent. Actions resolve from the prepared
 image or checked-out repository; JavaScript actions use real Node from that image.
 
+Workflow and job permissions are limited to `contents: read`;
+checkout credentials can only read the current repository. The runner check in
+`.gitedge/workflow` symlinks to its GitHub workflow so both forges use one definition.
+
+## Cache storage
+
+Repository-scoped cache metadata is stored in PostgreSQL, with immutable,
+checksummed archive generations in the existing Blob/S3 provider. The agent
+provides the v1/v2 Actions cache protocols locally and uses a scoped controller
+capability to transfer payloads. Cache archives remain bounded to 32 MiB.
+
 ## Durable dispatch
 
 FastAPI commits run transitions, fenced attempts, and outbox commands together
@@ -92,7 +103,3 @@ broker retries; pausing the real QStash container exercises outbox recovery.
 The durable log-segment archive, Redis tail, resumable SSE, and streaming large
 artifact/cache transfers belong to subsequent phases. This phase retains the
 existing bounded job log snapshots and Blob/S3 artifact and cache payloads.
-
-Workflow and job permissions are limited to `contents: read` (or an empty map).
-The GitEdge runner check symlinks to its GitHub workflow; workflow symlinks resolve
-inside the pinned repository with bounded depth and no filesystem or network access.
