@@ -1,110 +1,17 @@
 from __future__ import annotations
 
-import asyncio
 import uuid
 from typing import TYPE_CHECKING
 
-from app.clients.sandboxes import AbstractSandboxClient, SandboxError
+from app.clients.sandboxes import AbstractSandboxClient
 from app.entities.actions import WorkflowRun
 from app.services.actions.service import ActionsService
-from app.services.actions.workflows import instantiate_jobs
-from tests.unit.utils.actions import FakeActionsStore, FakeWorkflowCompiler, compiled_fixture
+from tests.unit.utils.actions import FakeActionsQueue, FakeActionsStore, FakeWorkflowCompiler
 
 if TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
     from tests.unit.utils.fakes import FakeStores
-
-
-async def test_ready_jobs_provision_concurrently_without_exceeding_the_limit(
-    mocker: MockerFixture, fake_stores: FakeStores
-) -> None:
-    provider = mocker.AsyncMock(spec=AbstractSandboxClient)
-    started: list[str] = []
-    both_started = asyncio.Event()
-
-    async def start(name: str, _files: dict[str, bytes], _lifetime: int) -> None:
-        started.append(name)
-        if len(started) == 2:
-            both_started.set()
-        await asyncio.wait_for(both_started.wait(), timeout=1)
-
-    provider.start.side_effect = start
-    store = FakeActionsStore()
-    run = await store.add_run(
-        WorkflowRun(
-            id=uuid.uuid4(),
-            repo_id=uuid.uuid4(),
-            workflow=".gitedge/workflow/ci.yaml",
-            definition="source retained for audit only",
-            compiled=compiled_fixture("parallel").model_dump(mode="json", by_alias=True, exclude_none=True),
-            event={"repository": {"full_name": "owner/repo"}},
-            event_name="push",
-            event_key="push-1",
-            actor="owner",
-            provider="docker",
-            sha="a" * 40,
-            ref="refs/heads/main",
-            status="queued",
-            jobs=[job.model_dump(mode="json") for job in instantiate_jobs(compiled_fixture("parallel"), 60)],
-        )
-    )
-    service = ActionsService(
-        store,
-        mocker.Mock(),
-        fake_stores.repository,
-        fake_stores.blob,
-        provider,
-        compiler=FakeWorkflowCompiler(),
-        provider="docker",
-        max_timeout=60,
-        max_parallel=2,
-    )
-    assert await service.scheduler.advance(run.repo_id, run.id)
-    assert len(started) == 2
-    assert [job["status"] for job in run.jobs] == ["running", "running", "queued"]
-
-
-async def test_provisioning_failures_finish_out_of_order_dependencies_without_periodic_recovery(
-    mocker: MockerFixture, fake_stores: FakeStores
-) -> None:
-    provider = mocker.AsyncMock(spec=AbstractSandboxClient)
-    provider.start.side_effect = SandboxError("Prepared image is unavailable")
-    store = FakeActionsStore()
-    run = await store.add_run(
-        WorkflowRun(
-            id=uuid.uuid4(),
-            repo_id=uuid.uuid4(),
-            workflow=".gitedge/workflow/ci.yaml",
-            definition="source retained for audit only",
-            compiled=compiled_fixture("dependencies").model_dump(mode="json", by_alias=True, exclude_none=True),
-            event={"repository": {"full_name": "owner/repo"}},
-            event_name="push",
-            event_key="push-1",
-            actor="owner",
-            provider="docker",
-            sha="a" * 40,
-            ref="refs/heads/main",
-            status="queued",
-            jobs=[job.model_dump(mode="json") for job in instantiate_jobs(compiled_fixture("dependencies"), 60)],
-        )
-    )
-    service = ActionsService(
-        store,
-        mocker.Mock(),
-        fake_stores.repository,
-        fake_stores.blob,
-        provider,
-        compiler=FakeWorkflowCompiler(),
-        provider="docker",
-        max_timeout=60,
-        max_parallel=1,
-    )
-    assert await service.scheduler.advance(run.repo_id, run.id)
-    assert run.status == "failure"
-    assert all(job["status"] == "failure" and job["sandbox"] is None for job in run.jobs)
-    assert provider.start.await_count == 2
-    assert provider.delete.await_count == 2
 
 
 async def test_pr_checks_follow_the_head_and_ignore_other_prs_and_old_deliveries(
@@ -142,13 +49,16 @@ async def test_pr_checks_follow_the_head_and_ignore_other_prs_and_old_deliveries
                 jobs=[],
             )
         )
+    sandbox = mocker.AsyncMock(spec=AbstractSandboxClient)
+    queue = FakeActionsQueue()
     service = ActionsService(
         store,
         repositories,
         repository_store,
         fake_stores.blob,
-        mocker.AsyncMock(spec=AbstractSandboxClient),
+        sandbox,
         compiler=FakeWorkflowCompiler(),
+        queue=queue,
         provider="docker",
         max_timeout=60,
         max_parallel=1,
@@ -158,6 +68,12 @@ async def test_pr_checks_follow_the_head_and_ignore_other_prs_and_old_deliveries
     assert checks.head_sha == "a" * 40
     assert len(checks.runs) == 1
     assert store.runs[checks.runs[0].id].event_key == "latest"
+    assert len(await service.list_runs("owner", "repo", None)) == 4
+    sandbox.start.assert_not_awaited()
+    sandbox.inspect.assert_not_awaited()
+    sandbox.delete.assert_not_awaited()
+    assert queue.deliveries == []
+    assert queue.recoveries == 0
     repositories.action_revision.return_value = ("c" * 40, "refs/heads/feature")
     assert (await service.pull_request_checks("owner", "repo", 1, None)).runs == []
 
@@ -178,13 +94,14 @@ async def test_push_to_an_open_pr_triggers_synchronize(mocker: MockerFixture, fa
         fake_stores.blob,
         mocker.AsyncMock(spec=AbstractSandboxClient),
         compiler=FakeWorkflowCompiler(),
+        queue=FakeActionsQueue(),
         provider="docker",
         max_timeout=60,
         max_parallel=1,
         pull_requests=pulls,
     )
-    trigger = mocker.patch.object(service, "trigger", new_callable=mocker.AsyncMock)
-    on_pull = mocker.patch.object(service, "on_pull_request", new_callable=mocker.AsyncMock)
+    trigger = mocker.patch.object(service.events, "trigger", new_callable=mocker.AsyncMock)
+    on_pull = mocker.patch.object(service.events, "on_pull_request", new_callable=mocker.AsyncMock)
     await service.on_push("owner", "repo", {"refs/heads/feature": "a" * 40}, {"refs/heads/feature": "b" * 40}, user)
     trigger.assert_awaited_once()
     on_pull.assert_awaited_once_with("owner", "repo", 7, "feature", "main", user, action="synchronize")

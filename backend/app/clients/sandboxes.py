@@ -140,6 +140,8 @@ class DockerSandboxClient(AbstractSandboxClient):
                             raise
                 return result
         except DockerError as exc:
+            if exc.status == HTTPStatus.NOT_FOUND:
+                return SandboxSnapshot(running=False)
             raise SandboxError(f"Docker sandbox inspection failed: {exc}") from exc
 
     @override
@@ -246,6 +248,10 @@ class VercelSandboxClient(AbstractSandboxClient):
             if marker is not None:
                 files["exit-code"] = marker
             return SandboxSnapshot(running=False, files=files)
+        except SandboxApiError as exc:
+            if exc.status_code == HTTPStatus.NOT_FOUND:
+                return SandboxSnapshot(running=False)
+            raise SandboxError(f"Vercel sandbox inspection failed: {exc}") from exc
         except VercelSandboxError as exc:
             raise SandboxError(f"Vercel sandbox inspection failed: {exc}") from exc
 

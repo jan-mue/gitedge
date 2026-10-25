@@ -21,7 +21,7 @@ export async function launch(
   const input = jobSchema.parse(descriptor),
     root = options.root || "/gitedge"
   await mkdir(root, { recursive: true })
-  const log = new FileLog(join(root, "log.jsonl"))
+  const log = new FileLog(join(root, "log.jsonl"), input.attempt)
   const timeout = new AbortController(),
     timer = setTimeout(() => timeout.abort(new Error("Job exceeded timeout-minutes")), input.timeout_seconds * 1000)
   const signal = options.signal ? AbortSignal.any([timeout.signal, options.signal]) : timeout.signal
@@ -58,7 +58,7 @@ export async function launch(
       result = { ...result, status: "failure", error: errorMessage(error) }
       log.write({ msg: result.error || "Artifact export failed" })
     }
-    await writeFile(join(root, "result.json"), JSON.stringify(result))
+    await writeFile(join(root, "result.json"), JSON.stringify({ ...result, attempt: input.attempt }))
     await log.flush()
     await writeFile(join(root, "exit-code"), String(code))
     if (input.complete_url) await deliverCompletion(input.complete_url, log)

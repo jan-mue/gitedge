@@ -1,5 +1,9 @@
 import json
+import uuid
 
+import pytest
+
+from app.schemas.action_dispatch import AttemptIdentity
 from app.schemas.actions import ActionJob, ActionStatus, ActionStep
 from app.services.actions.runtime import finish_job, update_logs
 
@@ -43,3 +47,35 @@ def test_timeout_is_failure_even_when_the_executor_reports_signal_cancellation()
     finish_job(job, {"result.json": b'{"status":"cancelled"}', "exit-code": b"124"}, {})
     assert job.status == ActionStatus.FAILURE
     assert job.error == "Job exceeded timeout-minutes"
+
+
+@pytest.mark.parametrize("field", ["id", "job_id", "generation", "fence"])
+def test_mismatched_attempts_cannot_publish_results_or_logs(field: str) -> None:
+    identity = AttemptIdentity(id=uuid.uuid4(), job_id="variant", generation=2, fence=uuid.uuid4())
+    other = identity.model_dump(mode="json")
+    other[field] = 1 if field == "generation" else str(uuid.uuid4())
+    job = ActionJob(id="variant", key="test", name="test")
+    finish_job(
+        job,
+        {"result.json": json.dumps({"status": "success", "attempt": other}).encode(), "exit-code": b"0"},
+        {},
+        identity,
+    )
+    assert job.status == ActionStatus.FAILURE
+    assert job.error is not None
+    assert "different attempt" in job.error
+    update_logs(
+        job,
+        json.dumps(
+            {
+                "msg": "stale output",
+                "jobID": other["job_id"],
+                "attemptID": other["id"],
+                "generation": other["generation"],
+                "fence": other["fence"],
+            }
+        ).encode(),
+        {},
+        identity,
+    )
+    assert job.log == ""

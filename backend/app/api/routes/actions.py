@@ -1,9 +1,9 @@
 """Actions history, dispatch, cancellation, and completion callbacks."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 
 from app.api.dependencies import ActionsServiceDep, CurrentUser, OptionalUser
 from app.schemas.actions import ActionRun, PullRequestChecks, WorkflowDispatch, WorkflowInfo
@@ -12,6 +12,7 @@ from app.services.actions.cache import STATE_LIMIT
 
 router = APIRouter(tags=["actions"])
 MAX_CACHE_KEY_LENGTH = 512
+MAX_DELIVERY_BYTES = 8192
 
 
 @router.get("/repositories/{owner}/{repo}/actions/workflows")
@@ -27,7 +28,7 @@ async def list_workflows(
 async def list_runs(
     owner: str, repo: str, service: ActionsServiceDep, user: OptionalUser, response: Response
 ) -> list[ActionRun]:
-    """Read recent runs and refresh their sandbox state."""
+    """Read persisted workflow history."""
     response.headers["Cache-Control"] = "private, no-store"
     return await service.list_runs(owner, repo, user)
 
@@ -67,7 +68,7 @@ async def restore_state(token: str, service: ActionsServiceDep) -> Response:
 
 @router.post("/actions/complete", status_code=202, include_in_schema=False)
 async def complete_job(token: str, service: ActionsServiceDep) -> dict[str, str]:
-    """Advance a completed sandbox using its short-lived, run-scoped capability."""
+    """Advance a completed sandbox using its short-lived, attempt-scoped capability."""
     await service.complete(token)
     return {"status": "accepted"}
 
@@ -98,7 +99,7 @@ async def save_cache(
     version: Annotated[str, Query(max_length=512)],
 ) -> CacheEntry:
     """Accept a bounded raw cache payload without multipart buffering."""
-    service.cache_scope(token)
+    await service.cache_scope(token)
     payload = bytearray()
     async for part in request.stream():
         if len(payload) + len(part) > STATE_LIMIT:
@@ -115,6 +116,23 @@ async def download_cache(token: str, payload_id: uuid.UUID, service: ActionsServ
         media_type="application/octet-stream",
         headers={"Cache-Control": "private, no-store"},
     )
+
+
+@router.post("/actions/internal/{operation}", status_code=202, include_in_schema=False)
+async def queue_delivery(
+    operation: Literal["dispatch", "inspect", "cleanup", "reconcile"],
+    request: Request,
+    service: ActionsServiceDep,
+    signature: Annotated[str, Header(alias="Upstash-Signature")] = "",
+) -> dict[str, str]:
+    """Authenticate original bytes before executing a durable command."""
+    body = bytearray()
+    async for part in request.stream():
+        if len(body) + len(part) > MAX_DELIVERY_BYTES:
+            raise HTTPException(status_code=413, detail="Actions delivery exceeds 8 KiB")
+        body.extend(part)
+    await service.delivery(operation, bytes(body), signature)
+    return {"status": "accepted"}
 
 
 @router.get("/meta", include_in_schema=False)

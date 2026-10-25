@@ -4,6 +4,7 @@ import { createServer } from "node:http"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "vitest"
+import type { LogEntry } from "./src/domain/job.ts"
 import { type LaunchOptions, launch as launchAgent } from "./src/job-lifecycle.ts"
 import { manifestFixture, type WorkflowFixture } from "./test-helpers.ts"
 
@@ -18,7 +19,20 @@ test("Bun launcher exports state and publishes its completion marker before call
   const server = createServer(async (_request, response) => {
     try {
       assert.equal(await readFile(join(root, "exit-code"), "utf8"), "0")
-      assert.equal(JSON.parse(await readFile(join(root, "result.json"), "utf8")).status, "success")
+      const result = JSON.parse(await readFile(join(root, "result.json"), "utf8"))
+      assert.equal(result.status, "success")
+      assert.equal(result.attempt.generation, 1)
+      const entries: LogEntry[] = (await readFile(join(root, "log.jsonl"), "utf8"))
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line))
+      assert.ok(entries.length > 0)
+      for (const entry of entries) {
+        assert.equal(entry.attemptID, result.attempt.id)
+        assert.equal(entry.jobID, result.attempt.job_id)
+        assert.equal(entry.generation, result.attempt.generation)
+        assert.equal(entry.fence, result.attempt.fence)
+      }
       delivered++
       response.end(JSON.stringify({ status: "accepted" }))
     } catch (error) {
