@@ -11,6 +11,7 @@ import {
 import type { EventsConfig, Job } from "@actions/workflow-parser/model/workflow-template"
 import type { TemplateContext } from "@actions/workflow-parser/templates/template-context"
 import type { MappingToken, TemplateToken } from "@actions/workflow-parser/templates/tokens/index"
+import { minimatch } from "minimatch"
 import { z } from "zod"
 import {
   type CompiledJob,
@@ -21,7 +22,7 @@ import {
   compiledWorkflowSchema,
   compileRequestSchema,
   type JsonValue,
-} from "../domain/compiled-workflow"
+} from "./domain/compiled-workflow"
 
 export interface CompileIssue {
   filename: string
@@ -29,16 +30,20 @@ export interface CompileIssue {
   line?: number
   column?: number
 }
+
 export class CompileError extends Error {
   constructor(readonly issues: CompileIssue[]) {
     super(issues.map((issue) => issue.message).join("\n"))
   }
 }
+
 const MAX_JOBS = 256
 export const MAX_IR_BYTES = 4 * 1024 * 1024
+
 function fail(filename: string, message: string, token?: TemplateToken): never {
   throw new CompileError([{ filename, message, line: token?.line, column: token?.col }])
 }
+
 function check(context: TemplateContext, filename: string): void {
   if (context.errors.count)
     throw new CompileError(
@@ -50,6 +55,7 @@ function check(context: TemplateContext, filename: string): void {
       })),
     )
 }
+
 function value(token: TemplateToken, filename = "workflow"): JsonValue {
   if (isBasicExpression(token)) return `\${{ ${token.expression} }}`
   if (isSequence(token)) return [...token].map((item) => value(item, filename))
@@ -62,6 +68,7 @@ function value(token: TemplateToken, filename = "workflow"): JsonValue {
     )
   return token.toJSON() as JsonValue
 }
+
 function record(token: MappingToken, allowed: string[], filename: string): Record<string, JsonValue> {
   const result: Record<string, JsonValue> = {}
   for (const pair of token) {
@@ -72,6 +79,7 @@ function record(token: MappingToken, allowed: string[], filename: string): Recor
   }
   return result
 }
+
 function checkPermissions(token: TemplateToken | undefined, filename: string): void {
   if (!token) return
   const permissions = value(token, filename)
@@ -83,6 +91,7 @@ function checkPermissions(token: TemplateToken | undefined, filename: string): v
   )
     fail(filename, "Only contents: read permissions are supported", token)
 }
+
 function expressionData(input: JsonValue): data.ExpressionData {
   if (input === null) return new data.Null()
   if (Array.isArray(input)) return new data.Array(...input.map(expressionData))
@@ -97,6 +106,7 @@ function expressionData(input: JsonValue): data.ExpressionData {
       return new data.Dictionary(...Object.entries(input).map(([key, item]) => ({ key, value: expressionData(item) })))
   }
 }
+
 function staticValue(
   input: JsonValue | undefined,
   context: Record<string, JsonValue>,
@@ -122,27 +132,19 @@ function staticValue(
     )
   }
 }
-function matchGlob(input: string, patterns: string[], filename: string): boolean {
+
+function matchGlob(input: string, patterns: string[]): boolean {
   let matched = false
   for (const pattern of patterns) {
-    if (/[[\]+{}\\]/.test(pattern)) fail(filename, `Unsupported filter pattern: ${pattern}`)
     const excluded = pattern.startsWith("!")
-    const glob = (excluded ? pattern.slice(1) : pattern)
-      .split(/(\*\*\/|\*\*|\*|\?)/)
-      .map((part) => {
-        if (part === "**/") return "(?:.*/)?"
-        if (part === "**") return ".*"
-        if (part === "*") return "[^/]*"
-        if (part === "?") return "[^/]"
-        return part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-      })
-      .join("")
-    if (new RegExp(`^${glob}$`).test(input)) matched = !excluded
+    if (minimatch(input, excluded ? pattern.slice(1) : pattern, { dot: true, nonegate: true, nocomment: true }))
+      matched = !excluded
   }
   return matched
 }
+
 function matches(events: EventsConfig, request: CompileRequest): boolean {
-  const { event, filename } = request
+  const { event } = request
   if (!(event.name in events)) return false
   const filters = z
     .object({
@@ -171,22 +173,19 @@ function matches(events: EventsConfig, request: CompileRequest): boolean {
     /^refs\/(heads|tags)\//,
     "",
   )
-  if (
-    (other && !included) ||
-    (included && !matchGlob(ref, included, filename)) ||
-    (ignored && matchGlob(ref, ignored, filename))
-  )
+  if ((other && !included) || (included && !matchGlob(ref, included)) || (ignored && matchGlob(ref, ignored)))
     return false
   const paths = event.changedPaths || []
   if (!tag && !paths.length && (filters.paths || filters["paths-ignore"])) return false
   return (
     tag ||
-    ((!filters.paths || paths.some((path) => matchGlob(path, filters.paths || [], filename))) &&
+    ((!filters.paths || paths.some((path) => matchGlob(path, filters.paths || []))) &&
       (!filters["paths-ignore"] ||
         !paths.length ||
-        !paths.every((path) => matchGlob(path, filters["paths-ignore"] || [], filename))))
+        !paths.every((path) => matchGlob(path, filters["paths-ignore"] || []))))
   )
 }
+
 function matrixVariants(token: TemplateToken | undefined, filename: string): Record<string, JsonValue>[] {
   if (!token) return [{}]
   if (!isMapping(token)) fail(filename, "Dynamic strategy.matrix is not supported", token)
@@ -215,8 +214,8 @@ function matrixVariants(token: TemplateToken | undefined, filename: string): Rec
         Object.entries(exclude).every(([key, value]) => isDeepStrictEqual(item[key], value)),
       ),
   )
-  const expanded = original.map((item) => ({ ...item })),
-    extra: Record<string, JsonValue>[] = []
+  const expanded = original.map((item) => ({ ...item }))
+  const extra: Record<string, JsonValue>[] = []
   for (const inclusion of inclusions.data) {
     let merged = false
     original.forEach((source, index) => {
@@ -232,6 +231,7 @@ function matrixVariants(token: TemplateToken | undefined, filename: string): Rec
   }
   return Object.keys(axes.data).length || inclusions.data.length ? [...expanded, ...extra] : [{}]
 }
+
 function inputs(events: EventsConfig, request: CompileRequest): Record<string, JsonValue> {
   if (request.event.name !== "workflow_dispatch") return {}
   const result: Record<string, JsonValue> = {}
@@ -323,6 +323,7 @@ function validateRunner(
   )
     fail(filename, "Only prepared x64 Linux runner labels are supported", token.find("runs-on"))
 }
+
 function jobTimeout(
   input: JsonValue | undefined,
   context: Record<string, JsonValue>,
@@ -336,8 +337,8 @@ function jobTimeout(
 }
 
 export async function compileWorkflow(input: CompileRequest): Promise<CompiledWorkflow> {
-  const request = compileRequestSchema.parse(input),
-    { filename } = request
+  const request = compileRequestSchema.parse(input)
+  const { filename } = request
   if (new TextEncoder().encode(request.source).byteLength > 1024 * 1024) fail(filename, "Workflow source exceeds 1 MiB")
   const parsed = parseWorkflow({ name: filename, content: request.source }, new NoOperationTraceWriter())
   check(parsed.context, filename)
@@ -362,8 +363,8 @@ export async function compileWorkflow(input: CompileRequest): Promise<CompiledWo
   )
   let bytes = 0
   for (const [jobIndex, pair] of [...jobMap].entries()) {
-    const key = pair.key.assertString("job id").value,
-      token = pair.value.assertMapping("job")
+    const key = pair.key.assertString("job id").value
+    const token = pair.value.assertMapping("job")
     const raw = record(
       token,
       [
@@ -438,9 +439,10 @@ export async function compileWorkflow(input: CompileRequest): Promise<CompiledWo
       jobs.push(compiledJobSchema.parse(job))
     }
   }
-  const visiting = new Set<string>(),
-    visited = new Set<string>()
+  const visiting = new Set<string>()
+  const visited = new Set<string>()
   const dependencies = new Map(jobs.map((job) => [job.key, job.needs]))
+
   function visit(key: string): void {
     if (visiting.has(key)) fail(filename, "Workflow dependency graph contains a cycle", jobMap)
     if (visited.has(key)) return
@@ -449,6 +451,7 @@ export async function compileWorkflow(input: CompileRequest): Promise<CompiledWo
     visiting.delete(key)
     visited.add(key)
   }
+
   for (const key of dependencies.keys()) visit(key)
   return compiledWorkflowSchema.parse({
     version: 1,

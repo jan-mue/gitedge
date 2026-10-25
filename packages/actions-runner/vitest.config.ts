@@ -1,5 +1,6 @@
-import { defineConfig } from "vitest/config"
+import { defineProject } from "vitest/config"
 
-export default defineConfig({
-  test: { environment: "node", testTimeout: 10000 },
+export default defineProject({
+  root: import.meta.dirname,
+  test: { name: "actions-runner", environment: "node", testTimeout: 10000 },
 })

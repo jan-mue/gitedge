@@ -5,15 +5,18 @@ import { inside, readResponse, TRANSFER_LIMIT, writeFile } from "../runtime/file
 /** Only artifacts cross job boundaries in an archive. Caches use the controller API. */
 export class ArtifactState {
   private restoration: Promise<void> | undefined
+
   constructor(
     private readonly root: string,
     private readonly restoreUrl: string | undefined,
     private readonly signal: AbortSignal,
   ) {}
+
   restore(): Promise<void> {
     this.restoration ??= this.restoreOnce()
     return this.restoration
   }
+
   private async restoreOnce(): Promise<void> {
     if (!this.restoreUrl) return
     const response = await fetch(this.restoreUrl, {
@@ -31,11 +34,12 @@ export class ArtifactState {
       await writeFile(inside(join(this.root, "state"), normalized), file)
     }
   }
+
   async export(): Promise<void> {
     // A cancelled action may still have initiated a restore; do not export partial state.
     await this.restoration
-    const directory = join(this.root, "state"),
-      files: Record<string, Uint8Array> = {}
+    const directory = join(this.root, "state")
+    const files: Record<string, Uint8Array> = {}
     let size = 0
     for await (const path of new Bun.Glob("artifacts/**/*").scan({
       cwd: directory,

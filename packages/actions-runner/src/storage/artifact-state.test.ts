@@ -8,8 +8,8 @@ import { ArtifactState } from "./artifact-state.ts"
 import { StorageServer } from "./server.ts"
 
 test("Bun archives hand artifacts between fresh jobs without transferring cache or source", async () => {
-  const first = await mkdtemp(join(tmpdir(), "gitedge-artifacts-first-")),
-    second = await mkdtemp(join(tmpdir(), "gitedge-artifacts-second-"))
+  const first = await mkdtemp(join(tmpdir(), "gitedge-artifacts-first-"))
+  const second = await mkdtemp(join(tmpdir(), "gitedge-artifacts-second-"))
   let server: Bun.Server<undefined> | undefined
   try {
     await writeFile(join(first, "state/artifacts/123/results/results.zip"), "artifact bytes")

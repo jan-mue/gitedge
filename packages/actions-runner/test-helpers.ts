@@ -1,7 +1,8 @@
-import { compileWorkflow } from "./src/compiler/compile.ts"
+import { compileWorkflow } from "@gitedge/actions-compiler"
 import type { JobInput } from "./src/domain/job.ts"
 
 export type WorkflowFixture = Omit<JobInput, "version" | "workflow" | "job"> & { workflow: string; job: string }
+
 export async function manifestFixture(input: WorkflowFixture): Promise<JobInput> {
   const { workflow: source, job: key, ...runtime } = input
   const compiled = await compileWorkflow({

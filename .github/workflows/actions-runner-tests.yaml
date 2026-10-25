@@ -1,4 +1,4 @@
-name: Check Actions runner
+name: Check Actions compiler and runner
 
 on:
   pull_request:
@@ -28,6 +28,6 @@ jobs:
       - name: Install workspace dependencies
         run: bun ci
       - name: Type check runner
-        run: bun run --filter @gitedge/actions-runner typecheck
+        run: bun run typecheck:actions
       - name: Run Vitest unit tests
-        run: bun run --filter @gitedge/actions-runner test
+        run: bun run test:actions
