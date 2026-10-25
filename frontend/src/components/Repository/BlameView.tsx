@@ -6,7 +6,7 @@ import RepoBreadcrumbs from "@/components/Repositories/RepoBreadcrumbs"
 import SourceLink from "@/components/Repositories/SourceLink"
 import RepositoryLoading, { RepositoryError } from "./RepositoryLoading"
 
-export const BlameView = ({
+const BlameView = ({
   owner,
   repo,
   revision,
@@ -121,3 +121,4 @@ export const BlameView = ({
     </div>
   )
 }
+export default BlameView

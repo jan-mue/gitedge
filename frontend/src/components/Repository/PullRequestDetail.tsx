@@ -63,11 +63,12 @@ const stateBadge = (state: string) => {
   )
 }
 
-export const PullRequestDetail = () => {
+const PullRequestDetail = () => {
   const { owner, repo, number } = useParams({ from: "/_layout/$owner/$repo/pulls/$number" })
   return <PullRequestDetailView owner={owner} repo={repo} prNumber={Number(number)} />
 }
-const usePullRequestDetail = ({ owner, repo, prNumber }: { owner: string; repo: string; prNumber: number }) => {
+
+export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string; repo: string; prNumber: number }) => {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const { showErrorToast } = useCustomToast()
@@ -143,197 +144,11 @@ const usePullRequestDetail = ({ owner, repo, prNumber }: { owner: string; repo: 
     onError: handleError.bind(showErrorToast),
   })
 
-  return {
-    user,
-    editing,
-    setEditing,
-    tab,
-    setTab,
-    editTitle,
-    setEditTitle,
-    editBody,
-    setEditBody,
-    pull,
-    isPending,
-    isError,
-    refetch,
-    changesQuery,
-    commitsQuery,
-    commentsQuery,
-    changes,
-    reviewsQuery,
-    mutation,
-    editMutation,
-  }
-}
-
-export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string; repo: string; prNumber: number }) => {
-  const {
-    user,
-    editing,
-    setEditing,
-    tab,
-    setTab,
-    editTitle,
-    setEditTitle,
-    editBody,
-    setEditBody,
-    pull,
-    isPending,
-    isError,
-    refetch,
-    changesQuery,
-    commitsQuery,
-    commentsQuery,
-    changes,
-    reviewsQuery,
-    mutation,
-    editMutation,
-  } = usePullRequestDetail({ owner, repo, prNumber })
   if (isPending) return <RepositoryLoading label="Loading pull request" />
   if (isError || !pull) return <RepositoryError message="Unable to load pull request." retry={() => refetch()} />
 
   const isOpen = pull.state === "open"
   const canEdit = pull.author_username === user?.name
-  const renderDescription = () =>
-    editing ? (
-      <div className="space-y-3">
-        <Input
-          value={editTitle}
-          onChange={(e) => setEditTitle(e.target.value)}
-          data-testid="edit-pr-title"
-          appearance="title"
-        />
-        <Textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={5} data-testid="edit-pr-body" />
-        <div className="flex justify-end gap-2">
-          <Button size="compact" variant="repository" onClick={() => setEditing(false)} data-testid="edit-pr-cancel">
-            Cancel
-          </Button>
-          <Button
-            size="compact"
-            disabled={!editTitle.trim() || editMutation.isPending}
-            onClick={() =>
-              editMutation.mutate({
-                path: { owner, repo, number: prNumber },
-                body: { title: editTitle, body: editBody },
-              })
-            }
-            data-testid="edit-pr-submit"
-          >
-            Save
-          </Button>
-        </div>
-      </div>
-    ) : (
-      <div className="space-y-3">
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="text-xl font-semibold text-foreground sm:text-2xl">
-            {pull.title} <span className="text-muted-foreground font-normal">#{pull.number}</span>
-          </h1>
-          <div className="flex items-center gap-2">
-            {canEdit && (
-              <Button
-                variant="repository"
-                size="compact"
-                onClick={() => {
-                  setEditTitle(pull.title)
-                  setEditBody(pull.body ?? "")
-                  setEditing(true)
-                }}
-                data-testid="edit-pr"
-              >
-                Edit
-              </Button>
-            )}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {stateBadge(pull.state)}
-          <p className="text-sm text-muted-foreground">
-            <strong className="font-medium text-foreground">{pull.author_username}</strong>{" "}
-            {pull.state === "merged" ? "merged" : "wants to merge"}{" "}
-            {commitsQuery.data ? `${commitsQuery.data.count} commits` : "changes"} from{" "}
-            <code className="rounded bg-primary/10 px-1 py-0.5 text-xs text-primary">{pull.head_branch}</code> into{" "}
-            <code className="rounded bg-primary/10 px-1 py-0.5 text-xs text-primary">{pull.base_branch}</code>
-          </p>
-        </div>
-      </div>
-    )
-  const renderChangedFiles = () =>
-    changesQuery.isPending ? (
-      <RepositoryLoading label="Loading changed files" />
-    ) : changesQuery.isError || !changes ? (
-      <RepositoryError message="Unable to load changed files." retry={() => changesQuery.refetch()} />
-    ) : (
-      <PullRequestFiles
-        key={`${owner}/${repo}/${prNumber}/${user?.name ?? "anonymous"}/${changes.base_commit}/${changes.head_commit}`}
-        owner={owner}
-        repo={repo}
-        number={prNumber}
-        changes={changes}
-        reviews={reviewsQuery.data ?? []}
-        username={user?.name}
-        author={pull.author_username}
-        isOpen={isOpen}
-      />
-    )
-  const renderConversation = () => (
-    <PullRequestConversation
-      owner={owner}
-      repo={repo}
-      pull={pull}
-      username={user?.name}
-      reviews={reviewsQuery.data ?? []}
-      changes={changes}
-      mergeActions={isOpen ? <PullRequestMergeButton owner={owner} repo={repo} pull={pull} /> : null}
-      closeActions={
-        pull.state !== "merged" ? (
-          <Button
-            variant="repository"
-            size="compact"
-            disabled={mutation.isPending}
-            onClick={() =>
-              mutation.mutate({
-                path: { owner, repo, number: prNumber },
-                body: { state: isOpen ? "closed" : "open" },
-              })
-            }
-            data-testid={isOpen ? "close-pr" : "reopen-pr"}
-          >
-            {isOpen ? "Close pull request" : "Reopen"}
-          </Button>
-        ) : null
-      }
-    />
-  )
-  const renderTabs = () => (
-    <TabsList appearance="pullRequest">
-      <TabsTrigger value="conversation" appearance="pullRequest" aria-label="Conversation">
-        <MessageSquare className="size-4" />
-        Conversation{" "}
-        <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs">{commentsQuery.data?.count ?? 0}</span>
-      </TabsTrigger>
-      <TabsTrigger value="commits" appearance="pullRequest">
-        <GitCommitHorizontal className="size-4" />
-        Commits{" "}
-        {commitsQuery.data && (
-          <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs">{commitsQuery.data.count}</span>
-        )}
-      </TabsTrigger>
-      <TabsTrigger value="files" appearance="pullRequest" aria-label="Files Changed">
-        <FileText className="size-4" />
-        <span className="hidden sm:inline">Files changed</span>
-        <span className="sm:hidden">Files</span>
-        {changes && <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs">{changes.files.length}</span>}
-      </TabsTrigger>
-      {tab === "files" && changes && (
-        <div className="ml-auto flex items-center gap-1 pr-2 text-sm" data-testid="pr-tab-diff-stats">
-          <span className="text-primary">+{changes.additions}</span>
-          <span className="text-destructive">-{changes.deletions}</span>
-        </div>
-      )}
-    </TabsList>
-  )
 
   return (
     <div className="space-y-6" data-testid="pull-detail">
@@ -342,23 +157,163 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
         Back to pull requests
       </RouterLink>
 
-      {renderDescription()}
+      {editing ? (
+        <div className="space-y-3">
+          <Input
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            data-testid="edit-pr-title"
+            appearance="title"
+          />
+          <Textarea
+            value={editBody}
+            onChange={(e) => setEditBody(e.target.value)}
+            rows={5}
+            data-testid="edit-pr-body"
+          />
+          <div className="flex justify-end gap-2">
+            <Button size="compact" variant="repository" onClick={() => setEditing(false)} data-testid="edit-pr-cancel">
+              Cancel
+            </Button>
+            <Button
+              size="compact"
+              disabled={!editTitle.trim() || editMutation.isPending}
+              onClick={() =>
+                editMutation.mutate({
+                  path: { owner, repo, number: prNumber },
+                  body: { title: editTitle, body: editBody },
+                })
+              }
+              data-testid="edit-pr-submit"
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="text-xl font-semibold text-foreground sm:text-2xl">
+              {pull.title} <span className="text-muted-foreground font-normal">#{pull.number}</span>
+            </h1>
+            <div className="flex items-center gap-2">
+              {canEdit && (
+                <Button
+                  variant="repository"
+                  size="compact"
+                  onClick={() => {
+                    setEditTitle(pull.title)
+                    setEditBody(pull.body ?? "")
+                    setEditing(true)
+                  }}
+                  data-testid="edit-pr"
+                >
+                  Edit
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {stateBadge(pull.state)}
+            <p className="text-sm text-muted-foreground">
+              <strong className="font-medium text-foreground">{pull.author_username}</strong>{" "}
+              {pull.state === "merged" ? "merged" : "wants to merge"}{" "}
+              {commitsQuery.data ? `${commitsQuery.data.count} commits` : "changes"} from{" "}
+              <code className="rounded bg-primary/10 px-1 py-0.5 text-xs text-primary">{pull.head_branch}</code> into{" "}
+              <code className="rounded bg-primary/10 px-1 py-0.5 text-xs text-primary">{pull.base_branch}</code>
+            </p>
+          </div>
+        </div>
+      )}
 
       <Tabs value={tab} onValueChange={setTab}>
-        <div>{renderTabs()}</div>
+        <div>
+          <TabsList appearance="pullRequest">
+            <TabsTrigger value="conversation" appearance="pullRequest" aria-label="Conversation">
+              <MessageSquare className="size-4" />
+              Conversation{" "}
+              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs">{commentsQuery.data?.count ?? 0}</span>
+            </TabsTrigger>
+            <TabsTrigger value="commits" appearance="pullRequest">
+              <GitCommitHorizontal className="size-4" />
+              Commits{" "}
+              {commitsQuery.data && (
+                <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs">{commitsQuery.data.count}</span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="files" appearance="pullRequest" aria-label="Files Changed">
+              <FileText className="size-4" />
+              <span className="hidden sm:inline">Files changed</span>
+              <span className="sm:hidden">Files</span>
+              {changes && (
+                <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs">{changes.files.length}</span>
+              )}
+            </TabsTrigger>
+            {tab === "files" && changes && (
+              <div className="ml-auto flex items-center gap-1 pr-2 text-sm" data-testid="pr-tab-diff-stats">
+                <span className="text-primary">+{changes.additions}</span>
+                <span className="text-destructive">-{changes.deletions}</span>
+              </div>
+            )}
+          </TabsList>
+        </div>
         <TabsContent value="conversation" appearance="pullRequest">
           {reviewsQuery.isError && (
             <RepositoryError message="Unable to load reviews." retry={() => reviewsQuery.refetch()} />
           )}
-          {renderConversation()}
+          <PullRequestConversation
+            owner={owner}
+            repo={repo}
+            pull={pull}
+            username={user?.name}
+            reviews={reviewsQuery.data ?? []}
+            changes={changes}
+            mergeActions={isOpen ? <PullRequestMergeButton owner={owner} repo={repo} pull={pull} /> : null}
+            closeActions={
+              pull.state !== "merged" ? (
+                <Button
+                  variant="repository"
+                  size="compact"
+                  disabled={mutation.isPending}
+                  onClick={() =>
+                    mutation.mutate({
+                      path: { owner, repo, number: prNumber },
+                      body: { state: isOpen ? "closed" : "open" },
+                    })
+                  }
+                  data-testid={isOpen ? "close-pr" : "reopen-pr"}
+                >
+                  {isOpen ? "Close pull request" : "Reopen"}
+                </Button>
+              ) : null
+            }
+          />
         </TabsContent>
         <TabsContent value="commits" appearance="pullRequest">
           <PullRequestCommits owner={owner} repo={repo} number={prNumber} />
         </TabsContent>
         <TabsContent value="files" appearance="pullRequest">
-          {renderChangedFiles()}
+          {changesQuery.isPending ? (
+            <RepositoryLoading label="Loading changed files" />
+          ) : changesQuery.isError || !changes ? (
+            <RepositoryError message="Unable to load changed files." retry={() => changesQuery.refetch()} />
+          ) : (
+            <PullRequestFiles
+              key={`${owner}/${repo}/${prNumber}/${user?.name ?? "anonymous"}/${changes.base_commit}/${changes.head_commit}`}
+              owner={owner}
+              repo={repo}
+              number={prNumber}
+              changes={changes}
+              reviews={reviewsQuery.data ?? []}
+              username={user?.name}
+              author={pull.author_username}
+              isOpen={isOpen}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </div>
   )
 }
+
+export default PullRequestDetail

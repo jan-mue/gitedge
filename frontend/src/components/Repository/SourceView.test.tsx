@@ -9,10 +9,10 @@ import {
 } from "@/client/msw.gen"
 import { server } from "@/test/server"
 import { render, screen, waitFor } from "@/test/test-utils"
-import { SourceView } from "./SourceView"
+import SourceView from "./SourceView"
 
 vi.mock("@/components/Repository/RepoStats", () => ({
-  RepoStats: ({ showStatistics }: { showStatistics: boolean }) => (
+  default: ({ showStatistics }: { showStatistics: boolean }) => (
     <div>{showStatistics ? "Repository statistics" : "Repository navigation"}</div>
   ),
 }))

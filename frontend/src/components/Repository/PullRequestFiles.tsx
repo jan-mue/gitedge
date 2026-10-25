@@ -36,7 +36,17 @@ interface PullRequestFilesProps {
   author: string
   isOpen: boolean
 }
-const usePullRequestReview = ({ owner, repo, number, changes, reviews, username, isOpen }: PullRequestFilesProps) => {
+
+export const PullRequestFiles = ({
+  owner,
+  repo,
+  number,
+  changes,
+  reviews,
+  username,
+  author,
+  isOpen,
+}: PullRequestFilesProps) => {
   const path = { owner, repo, number }
   const queryClient = useQueryClient()
   const { showErrorToast, showSuccessToast } = useCustomToast()
@@ -51,7 +61,7 @@ const usePullRequestReview = ({ owner, repo, number, changes, reviews, username,
   } = useQuery({ ...reviewsGetWorkspaceOptions({ path }), enabled: !!username })
   const draft = workspace?.draft
   const stale = !!draft && (draft.base_commit !== changes.base_commit || draft.head_commit !== changes.head_commit)
-  const canReview = [username, workspace, isOpen, changes.base_commit, changes.head_commit, !stale].every(Boolean)
+  const canReview = !!username && !!workspace && isOpen && !!changes.base_commit && !!changes.head_commit && !stale
   const draftBody = (comments: ReviewLineComment[], body = draft?.body ?? ""): ReviewDraft => ({
     base_commit: changes.base_commit!,
     head_commit: changes.head_commit!,
@@ -100,239 +110,9 @@ const usePullRequestReview = ({ owner, repo, number, changes, reviews, username,
       pending: true,
     })),
   )
-  const busy = [saveDraft, submitReview, markReviewed].some((mutation) => mutation.isPending)
+  const busy = saveDraft.isPending || submitReview.isPending || markReviewed.isPending
   const submit = (state: ReviewState) =>
     submitReview.mutate({ path, body: { ...draftBody(comments, reviewBody), state } })
-
-  return {
-    path,
-    reviewOpen,
-    setReviewOpen,
-    reviewBody,
-    setReviewBody,
-    reviewBodyTouched,
-    setReviewBodyTouched,
-    workspace,
-    isPending,
-    isError,
-    refetch,
-    draft,
-    stale,
-    canReview,
-    draftBody,
-    saveDraft,
-    markReviewed,
-    submitReview,
-    comments,
-    annotations,
-    busy,
-    submit,
-  }
-}
-
-export const PullRequestFiles = ({
-  owner,
-  repo,
-  number,
-  changes,
-  reviews,
-  username,
-  author,
-  isOpen,
-}: PullRequestFilesProps) => {
-  const {
-    path,
-    reviewOpen,
-    setReviewOpen,
-    reviewBody,
-    setReviewBody,
-    reviewBodyTouched,
-    setReviewBodyTouched,
-    workspace,
-    isPending,
-    isError,
-    refetch,
-    draft,
-    stale,
-    canReview,
-    draftBody,
-    saveDraft,
-    markReviewed,
-    submitReview,
-    comments,
-    annotations,
-    busy,
-    submit,
-  } = usePullRequestReview({ owner, repo, number, changes, reviews, username, author, isOpen })
-  const renderStaleReview = () =>
-    stale && (
-      <div className="rounded-lg border border-warning/40 bg-warning/5 p-4 text-sm">
-        <p className="font-medium">The branches changed since you started this review.</p>
-        <p className="mt-1 text-muted-foreground">
-          Your earlier draft is saved below. Start a new draft to comment on the current diff.
-        </p>
-        <details className="my-3">
-          <summary>Earlier draft ({draft?.comments?.length ?? 0} line comments)</summary>
-          <p className="mt-2 whitespace-pre-wrap">{draft?.body}</p>
-          {draft?.comments?.map((comment, index) => (
-            <p className="mt-2 whitespace-pre-wrap" key={index}>
-              <strong>
-                {comment.path}:{comment.line} ({comment.side})
-              </strong>
-              {"\n"}
-              {comment.body}
-            </p>
-          ))}
-        </details>
-        <Button
-          variant="repository"
-          size="compact"
-          disabled={busy}
-          onClick={() => saveDraft.mutate({ path, body: draftBody([], draft?.body ?? "") })}
-        >
-          Start review of current changes
-        </Button>
-      </div>
-    )
-  const renderReviewPopover = () => (
-    <Popover
-      open={reviewOpen}
-      onOpenChange={(open) => {
-        if (!open && submitReview.isPending) return
-        if (!open && reviewBody !== (draft?.body ?? ""))
-          saveDraft.mutate({ path, body: draftBody(comments, reviewBody) })
-        setReviewOpen(open)
-      }}
-    >
-      <PopoverTrigger asChild>
-        <Button
-          size="compact"
-          disabled={!canReview}
-          aria-disabled={busy}
-          onClick={(event) => {
-            if (busy) {
-              event.preventDefault()
-              return
-            }
-            if (!reviewBodyTouched) setReviewBody(draft?.body ?? "")
-            setReviewOpen(true)
-          }}
-        >
-          <MessageSquare className="size-4" />
-          Review{comments.length > 0 && ` (${comments.length})`}
-          <ChevronDown className="size-3" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent appearance="review" aria-label="Submit review">
-        <div className="mb-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <h2 className="font-medium">Submit review</h2>
-            <PopoverClose asChild>
-              <Button variant="ghost" size="icon-xs" aria-label="Close review">
-                <X className="size-4" />
-              </Button>
-            </PopoverClose>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {comments.length} pending line {comments.length === 1 ? "comment" : "comments"}. Add an overall comment and
-            choose your review outcome.
-          </p>
-        </div>
-        <Textarea
-          aria-label="Review comment"
-          placeholder="Leave an overall review comment…"
-          rows={6}
-          maxLength={20000}
-          value={reviewBody}
-          onChange={(event) => {
-            setReviewBody(event.target.value)
-            setReviewBodyTouched(true)
-          }}
-        />
-        {username === author && (
-          <p className="text-xs text-muted-foreground">You cannot approve your own pull request.</p>
-        )}
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button
-            size="compact"
-            variant="success"
-            disabled={username === author || busy}
-            onClick={() => submit("approved")}
-          >
-            <ShieldCheck className="size-4" />
-            Approve
-          </Button>
-          <Button
-            size="compact"
-            variant="repository"
-            disabled={busy || (!reviewBody.trim() && !comments.length)}
-            onClick={() => submit("comment")}
-          >
-            Comment
-          </Button>
-          <Button
-            size="compact"
-            variant="destructive"
-            disabled={busy || (!reviewBody.trim() && !comments.length)}
-            onClick={() => submit("changes_requested")}
-          >
-            Request changes
-          </Button>
-          <Button
-            size="compact"
-            variant="ghost"
-            disabled={busy}
-            onClick={() =>
-              saveDraft.mutate(
-                { path, body: draftBody(comments, reviewBody) },
-                { onSuccess: () => setReviewOpen(false) },
-              )
-            }
-          >
-            Save draft
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
-  )
-  const renderDiff = () => (
-    <DiffViewer
-      diffSource={{ owner, repo, base: changes.base_commit ?? "", head: changes.head_commit ?? "" }}
-      files={changes.files}
-      additions={changes.additions}
-      deletions={changes.deletions}
-      annotations={annotations}
-      reviewedPaths={workspace?.reviewed_paths ?? []}
-      reviewBusy={busy}
-      onReviewed={
-        [username, workspace, changes.base_commit, changes.head_commit].every(Boolean)
-          ? (filePath, reviewed) =>
-              markReviewed.mutate({
-                path,
-                body: {
-                  base_commit: changes.base_commit!,
-                  head_commit: changes.head_commit!,
-                  path: filePath,
-                  reviewed,
-                },
-              })
-          : undefined
-      }
-      onAddComment={
-        canReview
-          ? async (comment) => {
-              await saveDraft.mutateAsync({ path, body: draftBody([...comments, comment]) })
-            }
-          : undefined
-      }
-      onDeleteComment={
-        canReview && !busy
-          ? (id) => saveDraft.mutate({ path, body: draftBody(comments.filter((_, index) => `draft-${index}` !== id)) })
-          : undefined
-      }
-      toolbar={renderReviewPopover()}
-    />
-  )
 
   return (
     <div
@@ -355,8 +135,172 @@ export const PullRequestFiles = ({
           </Button>
         </div>
       )}
-      {renderStaleReview()}
-      {renderDiff()}
+      {stale && (
+        <div className="rounded-lg border border-warning/40 bg-warning/5 p-4 text-sm">
+          <p className="font-medium">The branches changed since you started this review.</p>
+          <p className="mt-1 text-muted-foreground">
+            Your earlier draft is saved below. Start a new draft to comment on the current diff.
+          </p>
+          <details className="my-3">
+            <summary>Earlier draft ({draft?.comments?.length ?? 0} line comments)</summary>
+            <p className="mt-2 whitespace-pre-wrap">{draft?.body}</p>
+            {draft?.comments?.map((comment, index) => (
+              <p className="mt-2 whitespace-pre-wrap" key={index}>
+                <strong>
+                  {comment.path}:{comment.line} ({comment.side})
+                </strong>
+                {"\n"}
+                {comment.body}
+              </p>
+            ))}
+          </details>
+          <Button
+            variant="repository"
+            size="compact"
+            disabled={busy}
+            onClick={() => saveDraft.mutate({ path, body: draftBody([], draft?.body ?? "") })}
+          >
+            Start review of current changes
+          </Button>
+        </div>
+      )}
+      <DiffViewer
+        diffSource={{ owner, repo, base: changes.base_commit ?? "", head: changes.head_commit ?? "" }}
+        files={changes.files}
+        additions={changes.additions}
+        deletions={changes.deletions}
+        annotations={annotations}
+        reviewedPaths={workspace?.reviewed_paths ?? []}
+        reviewBusy={busy}
+        onReviewed={
+          username && workspace && changes.base_commit && changes.head_commit
+            ? (filePath, reviewed) =>
+                markReviewed.mutate({
+                  path,
+                  body: {
+                    base_commit: changes.base_commit!,
+                    head_commit: changes.head_commit!,
+                    path: filePath,
+                    reviewed,
+                  },
+                })
+            : undefined
+        }
+        onAddComment={
+          canReview
+            ? async (comment) => {
+                await saveDraft.mutateAsync({ path, body: draftBody([...comments, comment]) })
+              }
+            : undefined
+        }
+        onDeleteComment={
+          canReview && !busy
+            ? (id) =>
+                saveDraft.mutate({ path, body: draftBody(comments.filter((_, index) => `draft-${index}` !== id)) })
+            : undefined
+        }
+        toolbar={
+          <Popover
+            open={reviewOpen}
+            onOpenChange={(open) => {
+              if (!open && submitReview.isPending) return
+              if (!open && reviewBody !== (draft?.body ?? ""))
+                saveDraft.mutate({ path, body: draftBody(comments, reviewBody) })
+              setReviewOpen(open)
+            }}
+          >
+            <PopoverTrigger asChild>
+              <Button
+                size="compact"
+                disabled={!canReview}
+                aria-disabled={busy}
+                onClick={(event) => {
+                  if (busy) {
+                    event.preventDefault()
+                    return
+                  }
+                  if (!reviewBodyTouched) setReviewBody(draft?.body ?? "")
+                  setReviewOpen(true)
+                }}
+              >
+                <MessageSquare className="size-4" />
+                Review{comments.length > 0 && ` (${comments.length})`}
+                <ChevronDown className="size-3" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent appearance="review" aria-label="Submit review">
+              <div className="mb-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-medium">Submit review</h2>
+                  <PopoverClose asChild>
+                    <Button variant="ghost" size="icon-xs" aria-label="Close review">
+                      <X className="size-4" />
+                    </Button>
+                  </PopoverClose>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {comments.length} pending line {comments.length === 1 ? "comment" : "comments"}. Add an overall
+                  comment and choose your review outcome.
+                </p>
+              </div>
+              <Textarea
+                aria-label="Review comment"
+                placeholder="Leave an overall review comment…"
+                rows={6}
+                maxLength={20000}
+                value={reviewBody}
+                onChange={(event) => {
+                  setReviewBody(event.target.value)
+                  setReviewBodyTouched(true)
+                }}
+              />
+              {username === author && (
+                <p className="text-xs text-muted-foreground">You cannot approve your own pull request.</p>
+              )}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  size="compact"
+                  variant="success"
+                  disabled={username === author || busy}
+                  onClick={() => submit("approved")}
+                >
+                  <ShieldCheck className="size-4" />
+                  Approve
+                </Button>
+                <Button
+                  size="compact"
+                  variant="repository"
+                  disabled={busy || (!reviewBody.trim() && !comments.length)}
+                  onClick={() => submit("comment")}
+                >
+                  Comment
+                </Button>
+                <Button
+                  size="compact"
+                  variant="destructive"
+                  disabled={busy || (!reviewBody.trim() && !comments.length)}
+                  onClick={() => submit("changes_requested")}
+                >
+                  Request changes
+                </Button>
+                <Button
+                  size="compact"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() =>
+                    saveDraft.mutate(
+                      { path, body: draftBody(comments, reviewBody) },
+                      { onSuccess: () => setReviewOpen(false) },
+                    )
+                  }
+                >
+                  Save draft
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        }
+      />
     </div>
   )
 }

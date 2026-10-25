@@ -25,14 +25,7 @@ interface RepoStatsProps {
   mode?: SourceMode
 }
 
-export const RepoStats = ({
-  owner,
-  repo,
-  gitRef,
-  revision,
-  showStatistics = true,
-  mode = "branch",
-}: RepoStatsProps) => {
+const RepoStats = ({ owner, repo, gitRef, revision, showStatistics = true, mode = "branch" }: RepoStatsProps) => {
   const ref = revision ?? gitRef
   const [copiedText, copy] = useCopyToClipboard()
   const navigate = useNavigate()
@@ -202,3 +195,5 @@ export const RepoStats = ({
     </div>
   )
 }
+
+export default RepoStats

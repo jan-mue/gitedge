@@ -9,7 +9,7 @@ interface BranchesListProps {
   repo: string
 }
 
-export const BranchesList = ({ owner, repo }: BranchesListProps) => {
+const BranchesList = ({ owner, repo }: BranchesListProps) => {
   const {
     data: branches,
     isPending,
@@ -104,3 +104,5 @@ export const BranchesList = ({ owner, repo }: BranchesListProps) => {
     </div>
   )
 }
+
+export default BranchesList

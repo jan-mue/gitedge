@@ -3,14 +3,14 @@ import { Filter, TrendingUp, X } from "lucide-react"
 import { useMemo, useState } from "react"
 import type { Repository } from "@/client"
 import { activityGetFeedInfiniteOptions, repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
-import { ActivityCard, activityActions as kindAction } from "@/components/Dashboard/ActivityCard"
+import ActivityCard, { activityActions as kindAction } from "@/components/Dashboard/ActivityCard"
 import FeedLoading, { FeedListLoading } from "@/components/Dashboard/FeedLoading"
 import { Button, LoadingButton, Link as RouterLink } from "@/components/design-system"
 import { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import StarButton from "@/components/Repository/StarButton"
 import useAuth from "@/hooks/useAuth"
 
-export const Feed = () => {
+const Feed = () => {
   const { user } = useAuth()
   const [showFilter, setShowFilter] = useState(false)
 
@@ -226,3 +226,5 @@ export const Feed = () => {
     </div>
   )
 }
+
+export default Feed

@@ -24,7 +24,7 @@ const RepoCard = ({ repo }: { repo: Repository }) => (
   </div>
 )
 
-export const UserProfile = ({ username }: UserProfileProps) => {
+const UserProfile = ({ username }: UserProfileProps) => {
   const [tab, setTab] = useState<"repositories" | "starred">("repositories")
 
   const { data: user } = useQuery({
@@ -94,3 +94,5 @@ export const UserProfile = ({ username }: UserProfileProps) => {
     </div>
   )
 }
+
+export default UserProfile

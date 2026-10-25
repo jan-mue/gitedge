@@ -211,7 +211,7 @@ const EditReleaseDialog = ({
   )
 }
 
-export const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
+const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const { showSuccessToast, showErrorToast } = useCustomToast()
@@ -412,3 +412,5 @@ export const ReleasesList = ({ owner, repo }: ReleasesListProps) => {
     </div>
   )
 }
+
+export default ReleasesList

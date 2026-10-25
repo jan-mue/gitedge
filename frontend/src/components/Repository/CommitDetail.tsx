@@ -6,7 +6,7 @@ import { Link as RouterLink } from "@/components/design-system"
 import { DiffViewer } from "@/components/Repository/DiffViewer"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 
-export const CommitDetail = () => {
+const CommitDetail = () => {
   const { owner, repo, hash } = useParams({ from: "/_layout/$owner/$repo/commit/$hash" })
 
   const {
@@ -81,3 +81,5 @@ export const CommitDetail = () => {
     </div>
   )
 }
+
+export default CommitDetail

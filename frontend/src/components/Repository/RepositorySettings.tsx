@@ -91,7 +91,7 @@ const messageOptions = [
   { value: "title_commits", label: "PR title and commit details" },
 ]
 
-export const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) => {
+const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) => {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -350,3 +350,4 @@ export const RepositorySettings = ({ owner, repo }: { owner: string; repo: strin
     </div>
   )
 }
+export default RepositorySettings

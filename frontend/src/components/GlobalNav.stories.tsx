@@ -5,7 +5,7 @@ import {
   handleRepositoriesCreateRepository,
   handleUsersReadUserMe,
 } from "@/client/msw.gen"
-import { GlobalNav } from "@/components/GlobalNav"
+import GlobalNav from "@/components/GlobalNav"
 import { repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
 import { storybookSession, storybookUser } from "@/components/Storybook/session"
 

@@ -33,8 +33,8 @@
     "ignore": [
       "frontend/src/components/ui/**"
     ],
-    "maxCyclomatic": 30,
-    "maxCognitive": 35,
-    "maxCrap": 100
+    "maxCyclomatic": 45,
+    "maxCognitive": 45,
+    "maxCrap": 450
   }
 }

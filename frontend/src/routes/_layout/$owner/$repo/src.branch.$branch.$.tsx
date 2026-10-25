@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { SourceView } from "@/components/Repository/SourceView"
+import SourceView from "@/components/Repository/SourceView"
 
 export const Route = createFileRoute("/_layout/$owner/$repo/src/branch/$branch/$")({
   component: BranchSourcePath,

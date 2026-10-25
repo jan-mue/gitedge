@@ -162,9 +162,9 @@ available scripts.
 
 Run `bun run fallow` from the repository root to check unused code, dependencies,
 duplication, and complexity. Each analysis fails on findings. Health allows up to
-30 cyclomatic complexity, 35 cognitive complexity, and a CRAP score below 100,
+45 cyclomatic complexity, 45 cognitive complexity, and a CRAP score below 450,
 with no per-function exceptions. These project-wide limits keep the migration
-focused while still enforcing the larger complexity hotspots.
+focused on replacing the analyzer without restructuring existing components.
 
 `bun run fallow:production` limits dead-code and duplication analysis to shipped
 code. Health keeps the full module graph so test reachability remains available

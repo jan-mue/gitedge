@@ -33,7 +33,7 @@ import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
-export const GlobalNav = () => {
+const GlobalNav = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user, logout } = useAuth()
@@ -291,3 +291,5 @@ export const GlobalNav = () => {
     </>
   )
 }
+
+export default GlobalNav

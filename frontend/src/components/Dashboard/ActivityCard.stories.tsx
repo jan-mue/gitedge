@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import type { ActivityPublic } from "@/client"
 import { StoryRouter } from "@/components/Storybook/StoryRouter"
-import { ActivityCard } from "./ActivityCard"
+import ActivityCard from "./ActivityCard"
 
 const activity: ActivityPublic = {
   id: "star-activity",
