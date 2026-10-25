@@ -165,8 +165,9 @@ duplication, and complexity. Each analysis fails on findings. Health allows up t
 45 cyclomatic complexity, 45 cognitive complexity, and a CRAP score below 450,
 with no per-function exceptions.
 
-Pre-commit runs the full Fallow suite across the entire project on every commit,
-including application code, tests, stories, and email templates. All checks use
+Pre-commit runs the full Fallow suite when JavaScript, TypeScript, CSS, MDX,
+package manifests, `bun.lock`, or `.fallowrc.json` change. Each run scans the full
+project, including application code, tests, stories, and email templates, using
 `.fallowrc.json`. Generated API client and route-tree files are excluded, and
 vendored shadcn components are excluded from health analysis.
 
