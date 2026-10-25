@@ -35,7 +35,7 @@ export class ActionsService {
     /**
      * List Runs
      *
-     * Read persisted workflow history.
+     * Read recent runs and refresh their sandbox state.
      */
     public static listRuns<ThrowOnError extends boolean = true>(options: Options<actionsListRunsData, ThrowOnError>): RequestResult<actionsListRunsResponses, actionsListRunsErrors, ThrowOnError> {
         return (options.client ?? client).get<actionsListRunsResponses, actionsListRunsErrors, ThrowOnError>({

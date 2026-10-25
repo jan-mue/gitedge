@@ -16,7 +16,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.actions import ActionsStore, SQLActionsStore
-from app.clients.actions_cache import ActionsCacheStore, SQLActionsCacheStore
 from app.clients.activity import ActivityStore, SQLActivityStore
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
 from app.clients.cache import (
@@ -35,7 +34,6 @@ from app.clients.git.storage import RepositoryStorage
 from app.clients.issues import IssueStore, SQLIssueStore
 from app.clients.organizations import OrganizationStore, SQLOrganizationStore
 from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
-from app.clients.qstash import ActionsQueue
 from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClient
 from app.clients.releases import ReleaseStore, SQLReleaseStore
 from app.clients.repositories import RepositoryStore, SQLRepositoryStore
@@ -48,7 +46,6 @@ from app.clients.workflow_compiler import HttpWorkflowCompiler, WorkflowCompiler
 from app.config import settings
 from app.entities.users import User
 from app.schemas.token import TokenPayload
-from app.services.actions.cache import ActionsCacheService
 from app.services.actions.service import ActionsService
 from app.services.activity import ActivityService
 from app.services.comments import CommentService
@@ -705,14 +702,6 @@ def get_actions_store(session: SessionDep) -> ActionsStore:
 ActionsStoreDep = Annotated[ActionsStore, Depends(get_actions_store)]
 
 
-def get_actions_cache_store(session: SessionDep) -> ActionsCacheStore:
-    """Get searchable cache metadata independently from cached payload bytes."""
-    return SQLActionsCacheStore(session)
-
-
-ActionsCacheStoreDep = Annotated[ActionsCacheStore, Depends(get_actions_cache_store)]
-
-
 def get_sandbox_client() -> AbstractSandboxClient:
     """Select the configured job sandbox provider."""
     if settings.ACTIONS_PROVIDER == "vercel":
@@ -733,24 +722,14 @@ def get_workflow_compiler() -> WorkflowCompiler:
 WorkflowCompilerDep = Annotated[WorkflowCompiler, Depends(get_workflow_compiler)]
 
 
-def get_actions_queue(request: Request) -> ActionsQueue:
-    """Inject the durable QStash HTTP client."""
-    return request.state.actions_queue
-
-
-ActionsQueueDep = Annotated[ActionsQueue, Depends(get_actions_queue)]
-
-
 def get_actions_service(
     store: ActionsStoreDep,
     repositories: RepositoryServiceDep,
     repository_store: RepositoryStoreDep,
     blobs: BlobStorageClientDep,
     pull_requests: PullRequestStoreDep,
-    cache_store: ActionsCacheStoreDep,
     sandbox: SandboxClientDep,
     compiler: WorkflowCompilerDep,
-    queue: ActionsQueueDep,
 ) -> ActionsService:
     """Inject one sandbox provider and durable workflow cache storage."""
     return ActionsService(
@@ -760,13 +739,11 @@ def get_actions_service(
         blobs,
         sandbox,
         compiler=compiler,
-        queue=queue,
         provider=settings.ACTIONS_PROVIDER,
         max_timeout=settings.ACTIONS_MAX_TIMEOUT,
         max_parallel=settings.ACTIONS_MAX_PARALLEL,
         secrets=settings.ACTIONS_SECRETS,
         pull_requests=pull_requests,
-        cache=ActionsCacheService(cache_store, blobs),
     )
 
 

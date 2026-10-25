@@ -1,26 +1,14 @@
-import type { JobSpec, JobStatus, LogEntry, LogSink } from "../domain/job.ts"
+import type { JobStatus, LogEntry, LogSink } from "../domain/job.ts"
 
 export class FileLog implements LogSink {
   private readonly writer: Bun.FileSink
   private pending = Promise.resolve()
-  constructor(
-    path: string,
-    private readonly attempt?: JobSpec["attempt"],
-  ) {
+  constructor(path: string) {
     this.writer = Bun.file(path).writer()
   }
   write(entry: LogEntry): void {
-    const record = this.attempt
-      ? {
-          ...entry,
-          jobID: this.attempt.job_id,
-          attemptID: this.attempt.id,
-          generation: this.attempt.generation,
-          fence: this.attempt.fence,
-        }
-      : entry
     this.pending = this.pending.then(async () => {
-      this.writer.write(`${JSON.stringify(record)}\n`)
+      this.writer.write(`${JSON.stringify(entry)}\n`)
       await this.writer.flush()
     })
   }
@@ -55,8 +43,5 @@ export class JobLogger {
       stepID: step ? [step] : [],
       ...(status ? { stepResult: status } : {}),
     })
-  }
-  close(): Promise<void> {
-    return this.sink.close()
   }
 }

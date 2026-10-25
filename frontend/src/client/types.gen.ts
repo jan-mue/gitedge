@@ -23,10 +23,6 @@ export type ActionJob = {
      */
     compiled_id?: string | null;
     /**
-     * Attempt Id
-     */
-    attempt_id?: string | null;
-    /**
      * Name
      */
     name: string;

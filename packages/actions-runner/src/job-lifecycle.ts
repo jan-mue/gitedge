@@ -4,7 +4,6 @@ import { errorMessage, type JobInput, type JobResult, jobSchema } from "./domain
 import { writeFile } from "./runtime/files.ts"
 import { FileLog } from "./runtime/logger.ts"
 import { ArtifactState } from "./storage/artifact-state.ts"
-import type { CacheClient } from "./storage/cache-client.ts"
 import { WorkflowRunner } from "./workflow-runner.ts"
 
 export interface LaunchOptions {
@@ -12,7 +11,6 @@ export interface LaunchOptions {
   actionRoot?: string
   restoreUrl?: string
   signal?: AbortSignal
-  cache?: CacheClient
 }
 export async function launch(
   descriptor: JobInput,
@@ -21,7 +19,7 @@ export async function launch(
   const input = jobSchema.parse(descriptor),
     root = options.root || "/gitedge"
   await mkdir(root, { recursive: true })
-  const log = new FileLog(join(root, "log.jsonl"), input.attempt)
+  const log = new FileLog(join(root, "log.jsonl"))
   const timeout = new AbortController(),
     timer = setTimeout(() => timeout.abort(new Error("Job exceeded timeout-minutes")), input.timeout_seconds * 1000)
   const signal = options.signal ? AbortSignal.any([timeout.signal, options.signal]) : timeout.signal
@@ -34,7 +32,6 @@ export async function launch(
       actions: options.actionRoot,
       signal,
       log,
-      cache: options.cache,
       restoreArtifacts: () => state.restore(),
     }).run()
     code = result.status === "success" || result.status === "skipped" ? 0 : 1
@@ -58,7 +55,7 @@ export async function launch(
       result = { ...result, status: "failure", error: errorMessage(error) }
       log.write({ msg: result.error || "Artifact export failed" })
     }
-    await writeFile(join(root, "result.json"), JSON.stringify({ ...result, attempt: input.attempt }))
+    await writeFile(join(root, "result.json"), JSON.stringify(result))
     await log.flush()
     await writeFile(join(root, "exit-code"), String(code))
     if (input.complete_url) await deliverCompletion(input.complete_url, log)

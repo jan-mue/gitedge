@@ -1,142 +1,140 @@
-"""Pure run transitions; provider and queue I/O belong to the dispatcher."""
+"""Advance locked workflow runs through sandbox completion callbacks."""
 
 from __future__ import annotations
 
-import uuid
-from datetime import UTC, datetime, timedelta
+import asyncio
+import logging
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from app.config import settings
-from app.entities.actions import WorkflowAttempt
+from app.clients.sandboxes import SandboxError
+from app.exceptions import WorkflowError
 from app.schemas.actions import ActionJob, ActionStatus
+from app.services.actions.inputs import JobInputBuilder
+from app.services.actions.runtime import finish_job, redact, update_logs
 
 if TYPE_CHECKING:
-    from app.clients.actions import RunState
+    import uuid
 
+    from app.clients.actions import ActionsStore
+    from app.clients.blob_storage import BlobStorageClient
+    from app.clients.sandboxes import AbstractSandboxClient
+    from app.entities.actions import WorkflowRun
+
+logger = logging.getLogger(__name__)
 TERMINAL = {ActionStatus.SUCCESS, ActionStatus.FAILURE, ActionStatus.SKIPPED, ActionStatus.CANCELLED}
 
 
 class RunScheduler:
-    """Choose state transitions without performing external I/O."""
+    """Collect finished jobs and launch ready matrix variants."""
 
-    def __init__(self, max_parallel: int) -> None:
-        """Limit the number of job reservations in each run."""
+    def __init__(
+        self,
+        store: ActionsStore,
+        blobs: BlobStorageClient,
+        sandbox: AbstractSandboxClient,
+        max_parallel: int,
+        secrets: dict[str, dict[str, str]],
+    ) -> None:
+        """Inject sandbox, persistence, and concurrency policies."""
+        self.store = store
+        self.blobs = blobs
+        self.sandbox = sandbox
         self.max_parallel = max_parallel
+        self.secrets = secrets
+        self.inputs = JobInputBuilder()
 
-    def advance(self, state: RunState) -> None:
-        """Reserve ready jobs and settle fully cleaned runs."""
-        if state.run.status in TERMINAL:
+    async def advance(self, repo_id: uuid.UUID, run_id: uuid.UUID) -> bool:
+        """Collect, clean up, and schedule under one run lock."""
+        async with self.store.locked(repo_id, run_id) as run:
+            if run is None:
+                return False
+            if run.status in TERMINAL:
+                return True
+            run.updated_at = datetime.now(UTC)
+            secrets = self.secrets.get(str(repo_id), {})
+            jobs = [ActionJob.model_validate(job) for job in run.jobs]
+            for job in jobs:
+                await self._collect(run, job, secrets)
+            while ready := self._ready(jobs):
+                await asyncio.gather(*(self._start(run, job, jobs, secrets) for job in ready))
+            run.jobs = [job.model_dump(mode="json") for job in jobs]
+            finished = all(job.status in TERMINAL and job.sandbox is None for job in jobs)
+            failed = any(job.status == ActionStatus.FAILURE and not job.continue_on_error for job in jobs)
+            run.status = ("failure" if failed else "success") if finished else "running"
+            if finished:
+                run.completed_at = datetime.now(UTC)
+        return True
+
+    def _ready(self, jobs: list[ActionJob]) -> list[ActionJob]:
+        available = max(0, self.max_parallel - sum(job.status == ActionStatus.RUNNING for job in jobs))
+        pending = {job.key for job in jobs if job.status not in TERMINAL}
+        return [job for job in jobs if job.status == ActionStatus.QUEUED and not pending.intersection(job.needs)][
+            :available
+        ]
+
+    async def _collect(self, run: WorkflowRun, job: ActionJob, secrets: dict[str, str]) -> None:
+        if not job.sandbox:
             return
-        pending = {job.key for job in state.jobs if job.status not in TERMINAL or job.sandbox}
-        available = self.max_parallel - sum(job.status == ActionStatus.RUNNING for job in state.jobs)
-        for job in state.jobs:
-            if available <= 0:
-                break
-            if job.status != ActionStatus.QUEUED or pending.intersection(job.needs):
-                continue
-            attempt_id = uuid.uuid4()
-            generation = max((item.generation for item in state.attempts if item.job_id == job.id), default=0) + 1
-            attempt = WorkflowAttempt(
-                id=attempt_id,
-                run_id=state.run.id,
-                job_id=job.id,
-                generation=generation,
-                fence=uuid.uuid4(),
-                sandbox=f"gitedge-attempt-{attempt_id.hex}",
-                status="queued",
-                deadline=datetime.now(UTC) + timedelta(seconds=job.timeout_seconds + settings.ACTIONS_PROVISION_LEASE),
-            )
-            state.attempts.append(attempt)
-            job.attempt_id, job.sandbox, job.status = attempt.id, attempt.sandbox, ActionStatus.RUNNING
-            job.error = None
-            state.enqueue("dispatch", attempt)
-            available -= 1
-        if all(job.status in TERMINAL and not job.sandbox for job in state.jobs):
-            state.run.status = (
-                "failure"
-                if any(job.status == ActionStatus.FAILURE and not job.continue_on_error for job in state.jobs)
-                else "success"
-            )
-            state.run.completed_at = datetime.now(UTC)
-        else:
-            state.run.status = "running"
+        try:
+            if job.status == ActionStatus.RUNNING:
+                snapshot = await self.sandbox.inspect(job.sandbox)
+                update_logs(job, snapshot.files.get("log.jsonl", b""), secrets)
+                if not snapshot.running or "exit-code" in snapshot.files:
+                    finish_job(job, snapshot.files, secrets)
+                    if state := snapshot.files.get("state.tar.gz"):
+                        prefix = f"actions/{run.repo_id}/{run.id}"
+                        await self.blobs.put(f"{prefix}/jobs/{job.id}.tar.gz", state)
+                        await self.blobs.put(f"{prefix}/state.tar.gz", state)
+            if job.status in TERMINAL:
+                await self.sandbox.delete(job.sandbox)
+                job.sandbox = None
+        except SandboxError as exc:
+            self._fail(job, exc, secrets)
 
-    def fail(self, state: RunState, attempt: WorkflowAttempt, error: str, retry: bool = True) -> None:
-        """Bound infrastructure retries and fence the previous generation."""
-        job = state.job(attempt)
-        if not job:
-            return
-        attempt.status, attempt.completed_at, attempt.error = "failure", datetime.now(UTC), error
-        state.enqueue("cleanup", attempt)
-        job.error = error
-        if retry and attempt.generation < settings.ACTIONS_MAX_ATTEMPTS:
-            job.status, job.sandbox, job.attempt_id = ActionStatus.QUEUED, None, None
-            job.started_at, job.completed_at = None, None
-            job.log, job.outputs = "", {}
-            for step in job.steps:
-                step.status, step.log = ActionStatus.QUEUED, ""
-        else:
-            job.status, job.completed_at = ActionStatus.FAILURE, datetime.now(UTC)
-        self.advance(state)
-
-    def finish(self, state: RunState, attempt: WorkflowAttempt, job: ActionJob, artifact_key: str | None) -> None:
-        """Publish one current result and queue sandbox cleanup."""
-        if state.job(attempt) is None:
-            return
-        attempt.status, attempt.completed_at = job.status.value, datetime.now(UTC)
-        attempt.artifact_key, attempt.error = artifact_key, job.error
-        state.jobs = [job if item.id == job.id else item for item in state.jobs]
-        state.enqueue("cleanup", attempt)
-        self.advance(state)
-
-    def cancelled(self, state: RunState) -> None:
-        """Revoke attempts and enqueue cleanup without provider calls."""
-        if state.run.status in TERMINAL:
-            return
-        state.run.status, state.run.completed_at = "cancelled", datetime.now(UTC)
-        for job in state.jobs:
-            if job.status not in TERMINAL:
-                job.status, job.completed_at = ActionStatus.CANCELLED, datetime.now(UTC)
-            if job.attempt_id and (attempt := state.attempt(job.attempt_id)):
-                attempt.status, attempt.completed_at = "cancelled", datetime.now(UTC)
-                state.enqueue("cleanup", attempt)
-
-    def recover(self, state: RunState) -> None:
-        """Recover expired provisioning leases and stalled collection."""
-        now = datetime.now(UTC)
-        for job in state.jobs:
-            if job.status != ActionStatus.RUNNING or job.attempt_id:
-                continue
-            job.status, job.completed_at = ActionStatus.FAILURE, now
-            job.error = "Legacy execution has no attempt identity; dispatch a new run"
-            if job.sandbox:
-                attempt = WorkflowAttempt(
-                    id=uuid.uuid4(),
-                    run_id=state.run.id,
-                    job_id=job.id,
-                    generation=1,
-                    fence=uuid.uuid4(),
-                    sandbox=job.sandbox,
-                    status="failure",
-                    deadline=now,
-                    completed_at=now,
-                )
-                state.attempts.append(attempt)
-                job.attempt_id = attempt.id
-                state.enqueue("cleanup", attempt)
-        for attempt in list(state.attempts):
-            if not state.job(attempt):
-                continue
-            if attempt.status == "starting" and attempt.lease_until and attempt.lease_until <= now:
-                self.fail(state, attempt, "Sandbox provisioning lease expired")
-            elif attempt.status == "running":
-                self.inspect_later(state, attempt, 0)
-        self.advance(state)
+    async def _start(
+        self,
+        run: WorkflowRun,
+        job: ActionJob,
+        jobs: list[ActionJob],
+        secrets: dict[str, str],
+    ) -> None:
+        job.started_at = datetime.now(UTC)
+        job.sandbox = f"gitedge-job-{job.id}"
+        job.status = ActionStatus.RUNNING
+        try:
+            await self.sandbox.start(job.sandbox, self.inputs.build(run, job, jobs, secrets), job.timeout_seconds)
+        except (SandboxError, WorkflowError) as exc:
+            self._fail(job, exc, secrets)
+            try:
+                await self.sandbox.delete(job.sandbox)
+                job.sandbox = None
+            except SandboxError:
+                logger.exception("Sandbox cleanup failed after launch for job %s", job.id)
 
     @staticmethod
-    def inspect_later(state: RunState, attempt: WorkflowAttempt, delay: int | None = None) -> None:
-        """Schedule a distinct collection command for its delivery window."""
-        interval = settings.ACTIONS_INSPECT_INTERVAL
-        wait = interval if delay is None else delay
-        slot = int(datetime.now(UTC).timestamp() + wait) // interval
-        state.enqueue("inspect", attempt, wait, key=str(slot))
+    def _fail(job: ActionJob, error: SandboxError | WorkflowError, secrets: dict[str, str]) -> None:
+        logger.warning("Sandbox operation failed for job %s: %s", job.id, redact(str(error), secrets))
+        job.status = ActionStatus.FAILURE
+        job.completed_at = datetime.now(UTC)
+        job.error = redact(str(error), secrets)
+
+    async def cancel(self, repo_id: uuid.UUID, run_id: uuid.UUID) -> bool:
+        """Cancel active jobs and release their sandbox handles."""
+        async with self.store.locked(repo_id, run_id) as run:
+            if run is None:
+                return False
+            if run.status in TERMINAL:
+                return True
+            jobs = [ActionJob.model_validate(job) for job in run.jobs]
+            for job in jobs:
+                if job.status not in TERMINAL:
+                    job.status = ActionStatus.CANCELLED
+                    job.completed_at = datetime.now(UTC)
+                if job.sandbox:
+                    await self.sandbox.delete(job.sandbox)
+                    job.sandbox = None
+            run.status = "cancelled"
+            run.completed_at = datetime.now(UTC)
+            run.jobs = [job.model_dump(mode="json") for job in jobs]
+        return True

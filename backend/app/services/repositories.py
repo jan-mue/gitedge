@@ -315,9 +315,9 @@ class RepositoryService:
         """Delegate get blame to the configured Git engine."""
         return await self.git.get_blame(owner, name, ref, file_path)
 
-    async def get_raw(self, owner: str, name: str, ref: str, file_path: str) -> bytes:
+    async def get_raw(self, owner: str, name: str, ref: str, file_path: str, *, follow_symlinks: bool = False) -> bytes:
         """Delegate get raw to the configured Git engine."""
-        return await self.git.get_raw(owner, name, ref, file_path)
+        return await self.git.get_raw(owner, name, ref, file_path, follow_symlinks=follow_symlinks)
 
     async def get_source(self, owner: str, name: str, ref: str, path: str) -> TreeListing | FileContent:
         """Delegate get source to the configured Git engine."""

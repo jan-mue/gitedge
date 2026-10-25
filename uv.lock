@@ -789,7 +789,6 @@ dependencies = [
     { name = "pygments" },
     { name = "pyjwt" },
     { name = "python-multipart" },
-    { name = "qstash" },
     { name = "redis", extra = ["hiredis"] },
     { name = "sentry-sdk" },
     { name = "sqlalchemy", extra = ["asyncio"] },
@@ -838,7 +837,6 @@ requires-dist = [
     { name = "pygments", specifier = "==2.21.0" },
     { name = "pyjwt", specifier = "==2.15.1" },
     { name = "python-multipart", specifier = "==0.0.32" },
-    { name = "qstash", specifier = "==3.4.0" },
     { name = "redis", extras = ["hiredis"], specifier = "==8.1.0" },
     { name = "sentry-sdk", specifier = "==2.72.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = "==2.1.5" },
@@ -1785,19 +1783,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/fc/2b/1f3cded5822fd49c02f40544cbb5f58c7cfd6b1694869fd476cb6170ee97/pywin32-312-cp314-cp314-win32.whl", hash = "sha256:a77a90fbb6881238d2ca9c6fd797b25817f3768fe78d214a90137ff055a75f5b", size = 6468928, upload-time = "2026-06-04T07:49:43.188Z" },
     { url = "https://files.pythonhosted.org/packages/21/82/3bf86d2e2808902013132e1ce905a7da0da53790f3836c64bf44d55e24f3/pywin32-312-cp314-cp314-win_amd64.whl", hash = "sha256:a4dd3a848290ef724347b19f301045831d8e802fa4464f491b98b1e0a081432e", size = 7024157, upload-time = "2026-06-04T07:49:45.34Z" },
     { url = "https://files.pythonhosted.org/packages/a4/0e/73f6d6800b4f27655abd9e9f6aaeaefcddb2b946e4674efa2bab184a7f7b/pywin32-312-cp314-cp314-win_arm64.whl", hash = "sha256:9fce94568364e0155e6dfb781ac5d95903be8baf28670632beab1b523f300daa", size = 6839598, upload-time = "2026-06-04T07:49:47.613Z" },
-]
-
-[[package]]
-name = "qstash"
-version = "3.4.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "httpx" },
-    { name = "pyjwt" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/83/0d/42c12ee57d48f8b1399e026d750c39497ba5c3a4e87ad1b8c4898e91d335/qstash-3.4.0.tar.gz", hash = "sha256:883744276820788986bd5c4386c2f244c89f10ad3720210efa65e776b11a6dea", size = 29198, upload-time = "2026-03-18T14:13:00.735Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5b/63/98dcf66ed3a9d55eba3d4dadb4876be167409fb3f74c6a9443f0b55558c8/qstash-3.4.0-py3-none-any.whl", hash = "sha256:a023737aa824b274057a34bb822c5ba3c45b1001831ff97421fbfefcfe5ff860", size = 40680, upload-time = "2026-03-18T14:12:59.885Z" },
 ]
 
 [[package]]

@@ -31,14 +31,11 @@ The local server binds only `127.0.0.1`, defaults to port 8765, and supports
 Pytest starts and stops this server through its session-owned xprocess fixture
 after infrastructure startup. Production FastAPI never spawns Bun.
 
-## Versioned contracts
+## Version-one contracts
 
 `src/domain/compiled-workflow.ts` defines compiler requests and IR; `job.ts`
 defines agent intake. FastAPI validates the matching Pydantic contracts in
-`backend/app/schemas/workflows.py`. Compiler requests and IR require version 1;
-agent intake requires version 2 with a job UUID, attempt UUID, generation, and
-fence. Rebuild prepared Docker images and Vercel snapshots when upgrading the
-agent contract. Golden
+`backend/app/schemas/workflows.py`. Both boundaries require version 1. Golden
 JSON fixtures under `src/compiler/fixtures` are checked by Bun and Python tests.
 
 The compiler checks parser errors before and after template conversion. It
@@ -58,37 +55,13 @@ explicitly. Supported triggers are push, pull request, and manual dispatch. Stat
 support include/exclude, a maximum of 256 expanded jobs, and require
 `fail-fast: false` when there are multiple variants. Branch/path filters support
 `*`, `**`, `?`, and ordered negation. Advanced filter patterns, dynamic matrices,
-reusable workflows, containers/services, concurrency, permissions, deployment
+reusable workflows, containers/services, concurrency, deployment
 environments, and whole-object `with` expressions fail explicitly. Individual
 action input expressions remain supported. Job metadata expressions must be resolvable using
 the supplied event, static matrix, strategy, and dispatch inputs. Other execution
 expressions are evaluated by the sandbox agent. Actions resolve from the prepared
 image or checked-out repository; JavaScript actions use real Node from that image.
 
-## Durable dispatch
-
-FastAPI commits run transitions, fenced attempts, and outbox commands together
-in PostgreSQL. QStash delivers signed dispatch, inspection, and cleanup requests
-to `/api/v1/actions/internal/`. Provider I/O happens after transaction commit;
-results are accepted only for the current claim and attempt. History and PR
-check reads have no scheduling side effects. Cancellation revokes attempt
-capabilities before resource cleanup.
-
-Configure `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, and
-`QSTASH_NEXT_SIGNING_KEY` on FastAPI. `QSTASH_URL` defaults to the hosted broker.
-`ACTIONS_SERVER_URL` must be the exact externally reachable backend URL used
-for publishing callbacks and verifying their signed destination. Keep provider
-and broker credentials out of job manifests. Startup arms a delayed QStash
-recovery callback; each callback arms its successor before recovering outbox
-commands and expired leases. There is no resident scheduler or cron job.
-
-Integration and browser tests use the official QStash image pinned by digest
-in `backend/tests/conftest.py`; no image configuration is required. Pytest starts the real `qstash dev` container with its documented
-local-only credentials alongside PostgreSQL, Redis, and MinIO. The broker calls
-back through `host.docker.internal`; Linux Docker must support `host-gateway`.
-Tests deliver signed requests directly to FastAPI. Database locks exercise native
-broker retries; pausing the real QStash container exercises outbox recovery.
-
-The durable log-segment archive, Redis tail, resumable SSE, and streaming large
-artifact/cache transfers belong to subsequent phases. This phase retains the
-existing bounded job log snapshots and Blob/S3 artifact and cache payloads.
+Workflow and job permissions are limited to `contents: read` (or an empty map);
+checkout credentials can only read the current repository. The runner check in
+`.gitedge/workflow` symlinks to its GitHub workflow so both forges use one definition.

@@ -20,9 +20,6 @@ import redis
 from alembic.command import upgrade
 from alembic.config import Config
 from pydantic import PostgresDsn, TypeAdapter
-from qstash import QStash
-from testcontainers.core.container import DockerContainer
-from testcontainers.core.wait_strategies import HttpWaitStrategy
 from testcontainers.mailpit import MailpitContainer
 from testcontainers.minio import MinioContainer
 from testcontainers.postgres import PostgresContainer
@@ -42,41 +39,6 @@ if TYPE_CHECKING:
 
 FIRST_SUPERUSER = os.environ.get("FIRST_SUPERUSER", "admin@example.com")
 FIRST_SUPERUSER_PASSWORD = os.environ.get("FIRST_SUPERUSER_PASSWORD", "changethis_admin_password_secure")
-
-QSTASH_TOKEN = "eyJVc2VySUQiOiJkZWZhdWx0VXNlciIsIlBhc3N3b3JkIjoiZGVmYXVsdFBhc3N3b3JkIn0="
-QSTASH_CURRENT_KEY = "sig_7kYjw48mhY7kAjqNGcy6cr29RJ6r"
-QSTASH_NEXT_KEY = "sig_5ZB6DVzB1wjE8S6rZ7eenA8Pdnhs"
-
-
-@pytest.fixture(scope="session")
-def qstash_container() -> Generator[DockerContainer]:
-    """Require an official digest-pinned broker; never substitute a fake scheduler."""
-    container = (
-        DockerContainer(
-            "public.ecr.aws/upstash/qstash@sha256:a49ffd1cb967800e2b5e2bfab7375282c6c269ef5bf8d9f0f8e115560b1b5597"
-        )
-        .with_command("qstash dev")
-        .with_exposed_ports(8080, 8081)
-        .with_env("NO_PROXY", f"{os.environ.get('NO_PROXY', '')},host.docker.internal")
-        .with_kwargs(extra_hosts={"host.docker.internal": "host-gateway"})
-        .waiting_for(
-            HttpWaitStrategy(8080, "/v2/queues")
-            .with_header("Authorization", f"Bearer {QSTASH_TOKEN}")
-            .for_status_code(200)
-        )
-    )
-    with container:
-        yield container
-
-
-@pytest.fixture(scope="session")
-def qstash(infrastructure: dict[str, str]) -> Generator[QStash]:
-    """Publish test deliveries to the real broker through its official SDK."""
-    client = QStash(QSTASH_TOKEN, base_url=infrastructure["QSTASH_URL"], retry=False)
-    try:
-        yield client
-    finally:
-        client.http._client.close()  # noqa: SLF001 — SDK has no public close method
 
 
 @pytest.fixture(scope="session")
@@ -105,9 +67,7 @@ def mailpit_smtp_port(mailpit_container: MailpitContainer) -> int:
 
 
 @pytest.fixture(scope="session")
-def infrastructure(
-    mailpit_smtp_host: str, mailpit_smtp_port: int, qstash_container: DockerContainer
-) -> Generator[dict[str, str]]:
+def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[dict[str, str]]:
     """Start infrastructure containers (DB, Redis, MinIO)."""
     with (
         PostgresContainer("postgres:18.2", driver="psycopg") as postgres,
@@ -123,10 +83,6 @@ def infrastructure(
 
         env = {
             "DATABASE_URL": db_url,
-            "QSTASH_URL": f"http://{qstash_container.get_container_host_ip()}:{qstash_container.get_exposed_port(8080)}",
-            "QSTASH_TOKEN": QSTASH_TOKEN,
-            "QSTASH_CURRENT_SIGNING_KEY": QSTASH_CURRENT_KEY,
-            "QSTASH_NEXT_SIGNING_KEY": QSTASH_NEXT_KEY,
             "ACTIONS_COMPILER_TOKEN": "integration-test-token",
             "REDIS_URL": redis_url,
             "BLOB_STORAGE_KIND": "s3",
@@ -302,32 +258,36 @@ def actions_compiler_url(infrastructure: dict[str, str], xprocess: XProcess) -> 
 
 @pytest.fixture(scope="session")
 def backend_url(infrastructure: dict[str, str], actions_compiler_url: str, xprocess: XProcess) -> Generator[str]:
-    """Start the real backend, reachable directly from QStash and job containers."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
-        listener.bind(("127.0.0.1", 0))
-        port = listener.getsockname()[1]
-    backend_env = {
-        **os.environ,
-        **infrastructure,
-        "ACTIONS_SERVER_URL": f"http://host.docker.internal:{port}",
-        "ACTIONS_COMPILER_URL": actions_compiler_url,
-        "ACTIONS_INSPECT_INTERVAL": "1",
-        "ACTIONS_RECONCILE_INTERVAL": "2",
-    }
+    """Start the backend server for integration and browser tests."""
 
-    class BackendStarter(ProcessStarter):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        backend_port = s.getsockname()[1]
+
+    backend_env = os.environ.copy()
+    backend_env.update(infrastructure)
+    backend_env.update(
+        {
+            "ACTIONS_SERVER_URL": f"http://host.docker.internal:{backend_port}",
+            "ACTIONS_COMPILER_URL": actions_compiler_url,
+        }
+    )
+    backend_cwd = BACKEND_DIR
+
+    class BackendStarter(ProcessStarter):  # type: ignore[misc]
         terminate_on_interrupt = True
         pattern = "Application startup complete"
         env = backend_env
-        args = [sys.executable, "-m", "uvicorn", "app.index:app", "--host", "0.0.0.0", "--port", str(port)]
-        popen_kwargs = {"cwd": BACKEND_DIR}
+        args = [sys.executable, "-m", "uvicorn", "app.index:app", "--host", "0.0.0.0", "--port", str(backend_port)]
+        popen_kwargs = {"cwd": backend_cwd}
         max_read_lines = 1000
 
+    backend_base_url = f"http://127.0.0.1:{backend_port}"
     xprocess.ensure("backend", BackendStarter, restart=True)
-    try:
-        yield f"http://127.0.0.1:{port}"
-    finally:
-        xprocess.getinfo("backend").terminate()
+
+    yield backend_base_url
+
+    xprocess.getinfo("backend").terminate()
 
 
 @pytest.fixture
