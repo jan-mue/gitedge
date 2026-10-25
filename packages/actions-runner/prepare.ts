@@ -101,7 +101,7 @@ async function prepareTools() {
   }
   await writeFile(`${uv}.complete`, "")
   await mkdir("/root/.bun/bin", { recursive: true })
-  await download("https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-linux-x64.zip", "/tmp/bun.zip")
+  await download("https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-linux-x64.zip", "/tmp/bun.zip")
   await run("unzip", "-qo", "/tmp/bun.zip", "-d", "/tmp/gitedge-bun")
   // Rename replaces the executable without modifying the mapped running binary.
   await run("cp", "/tmp/gitedge-bun/bun-linux-x64/bun", "/usr/local/bin/gitedge-bun-prepared")

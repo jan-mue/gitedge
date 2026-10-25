@@ -42,7 +42,7 @@ if TYPE_CHECKING:
     from app.clients.workflow_compiler import WorkflowCompiler
     from app.entities.repositories import Repository as RepositoryEntity
     from app.entities.users import User
-    from app.schemas.actions_cache import CacheEntry, CacheIdentity
+    from app.schemas.actions import CacheEntry, CacheIdentity
     from app.services.actions.cache import ActionsCacheService
     from app.services.repositories import RepositoryService
 

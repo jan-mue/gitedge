@@ -8,12 +8,12 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from app.entities.actions import WorkflowCacheEntry
-from app.schemas.actions_cache import CacheEntry
+from app.schemas.actions import CacheEntry
 
 if TYPE_CHECKING:
     from app.clients.actions_cache import ActionsCacheStore
     from app.clients.blob_storage import BlobStorageClient
-    from app.schemas.actions_cache import CacheIdentity
+    from app.schemas.actions import CacheIdentity
 
 STATE_LIMIT = 32 * 1024 * 1024
 CACHE_TTL = 7 * 24 * 60 * 60

@@ -77,7 +77,10 @@ function checkPermissions(token: TemplateToken | undefined, filename: string): v
   const permissions = value(token, filename)
   if (permissions === null || typeof permissions !== "object" || Array.isArray(permissions))
     fail(filename, "Only contents: read permissions are supported", token)
-  if (Object.entries(permissions).some(([key, access]) => key !== "contents" || access !== "read"))
+  if (
+    Object.keys(permissions).length !== 1 ||
+    Object.entries(permissions).some(([key, access]) => key !== "contents" || access !== "read")
+  )
     fail(filename, "Only contents: read permissions are supported", token)
 }
 function expressionData(input: JsonValue): data.ExpressionData {
