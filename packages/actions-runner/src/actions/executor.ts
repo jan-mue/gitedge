@@ -17,6 +17,7 @@ interface PostAction {
   step: string
   state: Environment
 }
+
 export interface ActionRequest {
   step: ActionStep
   scope: ExecutionScope
@@ -37,6 +38,7 @@ export interface ActionRequest {
 export class ActionExecutor {
   private readonly posts: PostAction[] = []
   private readonly node = nodeBinary()
+
   constructor(
     private readonly resolver: ActionResolver,
     private readonly expressions: ExpressionEngine,
@@ -150,6 +152,7 @@ export class ActionExecutor {
     return result
   }
 }
+
 function stateEnvironment(state: Environment): Environment {
   return Object.fromEntries(Object.entries(state).map(([key, value]) => [`STATE_${key}`, value]))
 }

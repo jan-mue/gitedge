@@ -21,6 +21,7 @@ export class StorageServer {
   private readonly transfers: BlobTransfers
   private readonly server: Bun.Server<undefined>
   readonly environment: Environment
+
   private constructor(options: StorageOptions) {
     const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url")
     const payload = Buffer.from(
@@ -49,24 +50,28 @@ export class StorageServer {
       ACTIONS_CACHE_SERVICE_V2: "true",
     }
   }
+
   static async start(options: StorageOptions): Promise<StorageServer> {
     await mkdir(join(options.root, "artifacts", options.run), { recursive: true })
     return new StorageServer(options)
   }
+
   get origin(): string {
     return `http://127.0.0.1:${this.server.port}/`
   }
+
   async close(): Promise<void> {
     await this.server.stop(true)
   }
+
   private async handle(request: Request): Promise<Response> {
     try {
       const url = new URL(request.url)
       let response: Response
       if (url.pathname.startsWith("/blob/")) response = await this.transfers.handle(request, url)
       else {
-        const supplied = Buffer.from(request.headers.get("authorization") || ""),
-          expected = Buffer.from(`Bearer ${this.token}`)
+        const supplied = Buffer.from(request.headers.get("authorization") || "")
+        const expected = Buffer.from(`Bearer ${this.token}`)
         if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected))
           return Response.json({ error: "Unauthorized" }, { status: 403 })
         {
@@ -91,6 +96,7 @@ export class StorageServer {
       return Response.json({ error: errorMessage(error) }, { status: 400 })
     }
   }
+
   private async artifact(method: string, input: Record<string, unknown>): Promise<Response> {
     const fields = z
       .object({

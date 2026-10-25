@@ -51,8 +51,8 @@ export class StepExecutor {
     generatedId: string,
     parent?: string,
   ): Promise<StepResult> {
-    const id = step.id || generatedId,
-      displayId = parent || id
+    const id = step.id || generatedId
+    const displayId = parent || id
     const result: StepResult = { outcome: "skipped", conclusion: "skipped", outputs: {} }
     const label = step.name || (step.kind === "action" ? step.uses : id)
     try {

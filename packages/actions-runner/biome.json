@@ -1,20 +1,3 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.6.2/schema.json",
-  "extends": ["../../frontend/biome.json"],
-  "linter": { "rules": { "suspicious": { "noExplicitAny": "error" } } },
-  "files": {
-    "includes": ["!**/dist", "!**/node_modules"]
-  },
-  "overrides": [
-    {
-      "includes": ["**/*.test.ts"],
-      "linter": {
-        "rules": {
-          "suspicious": {
-            "noTemplateCurlyInString": "off"
-          }
-        }
-      }
-    }
-  ]
+  "extends": ["../../frontend/biome.json"]
 }

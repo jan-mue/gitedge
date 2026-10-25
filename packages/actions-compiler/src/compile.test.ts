@@ -1,12 +1,12 @@
-import { afterEach, describe, expect, test, vi } from "vitest"
-import adapter from "../../api/compile.ts"
-import { type CompileRequest, compiledWorkflowSchema } from "../domain/compiled-workflow.ts"
+import { describe, expect, test } from "vitest"
 import { CompileError, compileWorkflow } from "./compile.ts"
+import { type CompileRequest, compiledWorkflowSchema } from "./domain/compiled-workflow.ts"
 import { handleCompile } from "./handler.ts"
 
 const event = { name: "push" as const, ref: "refs/heads/main" }
 const compile = (source: string, context: CompileRequest["event"] = event) =>
   compileWorkflow({ version: 1, filename: "test.yaml", source, event: context })
+
 function workflow(job: string, trigger = "push"): string {
   return `on: ${trigger}\njobs:\n  test:\n    runs-on: ubuntu-latest\n${job}`
 }
@@ -28,9 +28,9 @@ describe("official parser compiler", () => {
       shell: "bash",
       "working-directory": ".",
       "timeout-minutes": 1,
-      env: { FLAG: "${{ github.event_name }}" },
+      env: { FLAG: `\${{ github.event_name }}` },
     })
-    expect(checkout).toMatchObject({ with: { ref: "${{ github.sha }}", "fetch-depth": "0" } })
+    expect(checkout).toMatchObject({ with: { ref: `\${{ github.sha }}`, "fetch-depth": "0" } })
     expect(output.defaults).toEqual({ run: { shell: "bash" } })
     expect(output.jobs[0].config.defaults).toEqual({ run: { "working-directory": "." } })
   })
@@ -38,16 +38,16 @@ describe("official parser compiler", () => {
     workflow("    steps:\n      - run: true\n").replace("runs-on: ubuntu-latest", "runs-on: [linux, ARM64]"),
     "on: [push\njobs: {}",
     "on: push\non: pull_request\njobs: {}",
-    workflow("    steps:\n      - run: echo '${{ not_a_context.value }}'\n"),
+    workflow(`    steps:\n      - run: echo '\${{ not_a_context.value }}'\n`),
     workflow("    needs: absent\n    steps:\n      - run: true\n"),
     workflow("    needs: test\n    steps:\n      - run: true\n"),
     workflow("    steps:\n      - id: duplicate\n        run: true\n      - id: duplicate\n        run: false\n"),
     workflow("    steps:\n      - uses: docker://alpine:latest\n"),
-    workflow("    steps:\n      - uses: actions/checkout@v4\n        with: ${{ fromJSON('{}') }}\n"),
+    workflow(`    steps:\n      - uses: actions/checkout@v4\n        with: \${{ fromJSON('{}') }}\n`),
     workflow("    services:\n      db:\n        image: postgres\n    steps:\n      - run: true\n"),
     workflow("    concurrency: shared\n    steps:\n      - run: true\n"),
     workflow(
-      "    strategy:\n      matrix: ${{ fromJSON(needs.parent.outputs.matrix) }}\n    steps:\n      - run: true\n",
+      `    strategy:\n      matrix: \${{ fromJSON(needs.parent.outputs.matrix) }}\n    steps:\n      - run: true\n`,
     ),
     "on: push\njobs:\n  call:\n    uses: owner/repo/.github/workflows/build.yml@main\n",
   ])("rejects invalid or unsupported source visibly", async (source) => {
@@ -56,7 +56,7 @@ describe("official parser compiler", () => {
   test("expands static include/exclude matrices and exposes strategy context", async () => {
     const output = await compile(
       workflow(
-        "    strategy:\n      fail-fast: false\n      matrix:\n        node: [20, 24]\n        exclude: [{node: 20}]\n        include: [{node: 20, extra: true}]\n    timeout-minutes: ${{ matrix.node }}\n    steps:\n      - run: echo '${{ strategy.job-index }}'\n",
+        `    strategy:\n      fail-fast: false\n      matrix:\n        node: [20, 24]\n        exclude: [{node: 20}]\n        include: [{node: 20, extra: true}]\n    timeout-minutes: \${{ matrix.node }}\n    steps:\n      - run: echo '\${{ strategy.job-index }}'\n`,
       ),
     )
     expect(output.jobs.map((job) => job.matrix)).toEqual([{ node: 24 }, { node: 20, extra: true }])
@@ -112,10 +112,24 @@ describe("official parser compiler", () => {
     const paths = workflow("    steps:\n      - run: true\n", "\n  push:\n    paths-ignore: ['docs/**']")
     expect((await compile(paths, { ...event, changedPaths: [] })).matched).toBe(false)
   })
+
+  test("minimatch filters support braces, character classes and ordered re-inclusion", async () => {
+    const source = workflow(
+      "    steps:\n      - run: true\n",
+      "\n  push:\n    branches: ['release/{v1,v2}', '!release/v2']\n    paths: ['src/**/[ab].ts', '!src/**/b.ts', 'src/generated/b.ts']",
+    )
+    const context = { ...event, ref: "refs/heads/release/v1" }
+    expect((await compile(source, { ...context, changedPaths: ["src/a.ts"] })).matched).toBe(true)
+    expect((await compile(source, { ...context, changedPaths: ["src/b.ts"] })).matched).toBe(false)
+    expect((await compile(source, { ...context, changedPaths: ["src/generated/b.ts"] })).matched).toBe(true)
+    expect(
+      (await compile(source, { ...context, ref: "refs/heads/release/v2", changedPaths: ["src/a.ts"] })).matched,
+    ).toBe(false)
+  })
   test("resolves expressions in runner label arrays and rejects empty expanded matrices", async () => {
     const source = workflow("    strategy:\n      matrix: {os: [linux]}\n    steps:\n      - run: true\n").replace(
       "runs-on: ubuntu-latest",
-      "runs-on: [self-hosted, '${{ matrix.os }}']",
+      `runs-on: [self-hosted, '\${{ matrix.os }}']`,
     )
     expect((await compile(source)).jobs[0].matrix).toEqual({ os: "linux" })
     await expect(
@@ -132,7 +146,7 @@ describe("official parser compiler", () => {
   })
   test("keeps typed dispatch defaults and quoted expression delimiters", async () => {
     const source = workflow(
-      "    steps:\n      - run: echo \"${{ format('a}}b-{0}', inputs.enabled) }}\"\n",
+      `    steps:\n      - run: echo "\${{ format('a}}b-{0}', inputs.enabled) }}"\n`,
       "\n  workflow_dispatch:\n    inputs:\n      enabled:\n        type: boolean\n        default: true",
     )
     const result = await compile(source, { name: "workflow_dispatch", ref: "refs/heads/main" })
@@ -141,38 +155,32 @@ describe("official parser compiler", () => {
   })
 })
 
-afterEach(() => vi.unstubAllEnvs())
-const request = (body: unknown, token = "compiler-test") =>
+const request = (body: unknown) =>
   new Request("http://compiler/api/compile", {
     method: "POST",
-    headers: { authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   })
 test("production adapter and local server share authenticated bounded HTTP behavior", async () => {
-  vi.stubEnv("COMPILER_TOKEN", "compiler-test")
-  expect(adapter.fetch).toBe(handleCompile)
-  expect((await handleCompile(new Request("http://compiler/healthz"))).status).toBe(200)
+  expect((await handleCompile(new Request("http://compiler/healthz"), async () => true)).status).toBe(200)
   const input = { version: 1, filename: "test.yaml", source: workflow("    steps:\n      - run: true\n"), event }
-  expect((await handleCompile(request(input, "wrong"))).status).toBe(401)
-  const response = await handleCompile(request(input))
+  expect((await handleCompile(request(input))).status).toBe(401)
+  const response = await handleCompile(request(input), async () => true)
   expect(response.status).toBe(200)
   expect(compiledWorkflowSchema.parse(await response.json()).version).toBe(1)
-  expect((await handleCompile(request({ ...input, version: 2 }))).status).toBe(422)
-  expect((await handleCompile(request({ ...input, filename: "../../other.yaml" }))).status).toBe(422)
-  const invalid = await handleCompile(request({ ...input, source: "on: [push\n" }))
+  expect((await handleCompile(request({ ...input, version: 2 }), async () => true)).status).toBe(422)
+  expect((await handleCompile(request({ ...input, filename: "../../other.yaml" }), async () => true)).status).toBe(422)
+  const invalid = await handleCompile(request({ ...input, source: "on: [push\n" }), async () => true)
   expect(invalid.status).toBe(422)
   expect(await invalid.json()).toMatchObject({
     error: "invalid_workflow",
     issues: [{ filename: "test.yaml", line: expect.any(Number) }],
   })
-  expect((await handleCompile(request("x".repeat(2 * 1024 * 1024)))).status).toBe(413)
+  expect((await handleCompile(request("x".repeat(2 * 1024 * 1024)), async () => true)).status).toBe(413)
 })
 
 test("unexpected HTTP handler faults stay internal errors", async () => {
-  vi.stubEnv("COMPILER_TOKEN", "compiler-test")
   const request = new Request("http://compiler/api/compile", {
     method: "POST",
-    headers: { authorization: "Bearer compiler-test" },
     body: "{}",
   })
   Object.defineProperty(request, "body", {
@@ -180,15 +188,13 @@ test("unexpected HTTP handler faults stay internal errors", async () => {
       throw new Error("Simulated internal transport failure")
     },
   })
-  const response = await handleCompile(request)
+  const response = await handleCompile(request, async () => true)
   expect(response.status).toBe(500)
   expect(await response.json()).toEqual({ error: "internal_error" })
 })
 
 test("the GitEdge runner workflow shares the GitHub definition through a symlink", async () => {
-  const source = await Bun.file(
-    new URL("../../../../.gitedge/workflow/actions-runner-tests.yaml", import.meta.url),
-  ).text()
+  const source = await Bun.file(new URL("../../../.gitedge/workflow/actions-runner-tests.yaml", import.meta.url)).text()
   const compiled = await compile(source, { name: "pull_request", ref: "refs/heads/feature", action: "opened" })
   expect(compiled.matched).toBe(true)
   expect(compiled.jobs[0].config.steps.some((step) => step.kind === "run" && step.run.includes("typecheck"))).toBe(true)

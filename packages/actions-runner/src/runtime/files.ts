@@ -1,18 +1,23 @@
 import { mkdir, realpath } from "node:fs/promises"
-import { join, resolve } from "node:path"
+import { join, relative, resolve } from "node:path"
+import { Minimatch } from "minimatch"
 import type { z } from "zod"
 import type { JsonValue } from "../domain/workflow.ts"
 
 export const TRANSFER_LIMIT = 32 * 1024 * 1024
+
 export async function writeFile(path: string, data: string | Uint8Array | Blob): Promise<void> {
   await Bun.write(path, data, { createPath: true })
 }
+
 export async function readText(path: string): Promise<string> {
   return (await Bun.file(path).exists()) ? Bun.file(path).text() : ""
 }
+
 export async function readJson<T extends z.ZodType>(path: string, schema: T): Promise<z.output<T>> {
   return schema.parse(await Bun.file(path).json())
 }
+
 export async function readResponse(response: Response, limit = TRANSFER_LIMIT): Promise<Uint8Array> {
   if (!response.ok) throw new Error(`Storage request failed: HTTP ${response.status}`)
   const parts: Uint8Array[] = []
@@ -31,20 +36,24 @@ export async function readResponse(response: Response, limit = TRANSFER_LIMIT): 
   }
   return result
 }
+
 export function inside(root: string, path: string): string {
   const target = resolve(root, path)
   if (target !== resolve(root) && !target.startsWith(`${resolve(root)}/`)) throw new Error("Path escapes its workspace")
   return target
 }
+
 export class Workspace {
   readonly source: string
   readonly temporary: string
   readonly state: string
+
   constructor(readonly root: string) {
     this.source = join(root, "source")
     this.temporary = join(root, "temp")
     this.state = join(root, "state")
   }
+
   async prepare(event: JsonValue): Promise<void> {
     await Promise.all([
       mkdir(this.source, { recursive: true }),
@@ -53,21 +62,26 @@ export class Workspace {
     ])
     await writeFile(join(this.root, "event.json"), JSON.stringify(event))
   }
+
   async hashFiles(patterns: readonly string[]): Promise<string> {
     const selected = new Set<string>()
-    for (const pattern of patterns) {
+    const rules = patterns.map((pattern) => {
       const exclude = pattern.startsWith("!")
-      for await (const path of new Bun.Glob(pattern.replace(/^!/, "")).scan({
-        cwd: this.source,
-        onlyFiles: true,
-        dot: true,
-        followSymlinks: false,
-      })) {
-        const absolute = inside(this.source, path)
-        inside(this.source, await realpath(absolute))
-        if (exclude) selected.delete(absolute)
-        else selected.add(absolute)
-      }
+      const glob = relative(this.source, inside(this.source, exclude ? pattern.slice(1) : pattern))
+      return { exclude, matcher: new Minimatch(glob, { dot: true, nonegate: true, nocomment: true }) }
+    })
+    for await (const path of new Bun.Glob("**/*").scan({
+      cwd: this.source,
+      onlyFiles: true,
+      dot: true,
+      followSymlinks: false,
+    })) {
+      let included = false
+      for (const rule of rules) if (rule.matcher.match(path)) included = !rule.exclude
+      if (!included) continue
+      const absolute = inside(this.source, path)
+      inside(this.source, await realpath(absolute))
+      selected.add(absolute)
     }
     if (!selected.size) return ""
     const combined = new Bun.CryptoHasher("sha256")

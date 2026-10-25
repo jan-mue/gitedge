@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "bunVersion": "1.4.x",
   "buildCommand": "",
-  "installCommand": "npx --yes bun@1.4.3 install --frozen-lockfile",
+  "installCommand": "npx --yes bun@1.4.4 install --frozen-lockfile",
   "functions": { "api/compile.ts": { "maxDuration": 10 } }
 }

@@ -23,10 +23,11 @@ export class WorkflowRunner {
     private readonly input: JobSpec,
     private readonly options: RunnerOptions,
   ) {}
+
   async run(): Promise<JobResult> {
     const { input, options } = this
-    const workflow = input.workflow,
-      job = input.job.config
+    const workflow = input.workflow
+    const job = input.job.config
     const workspace = new Workspace(options.root)
     await workspace.prepare(input.event)
     const storage: StorageServer = await StorageServer.start({
