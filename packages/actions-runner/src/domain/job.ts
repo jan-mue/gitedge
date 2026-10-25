@@ -1,5 +1,5 @@
+import { compiledJobSchema, expressionsSchema, workflowContextSchema } from "@gitedge/actions-compiler/workflow"
 import { z } from "zod"
-import { compiledJobSchema, expressionsSchema, workflowContextSchema } from "./compiled-workflow.ts"
 
 const statusSchema = z.enum(["success", "failure", "cancelled", "skipped"])
 const strings = z.record(z.string(), z.string())
@@ -26,17 +26,20 @@ export const jobSchema = z.object({
 export type JobInput = z.input<typeof jobSchema>
 export type JobSpec = z.output<typeof jobSchema>
 export type JobStatus = z.infer<typeof statusSchema>
+
 export interface StepResult {
   outcome: JobStatus
   conclusion: JobStatus
   outputs: Record<string, string>
 }
+
 export interface JobResult {
   status: JobStatus
   steps: Record<string, StepResult>
   outputs: Record<string, string>
   error?: string
 }
+
 export interface LogEntry {
   jobID?: string
   attemptID?: string
@@ -46,10 +49,12 @@ export interface LogEntry {
   stepID?: string[]
   stepResult?: JobStatus
 }
+
 export interface LogSink {
   write(entry: LogEntry): void
   close(): Promise<void>
 }
+
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }

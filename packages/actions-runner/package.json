@@ -4,18 +4,17 @@
   "type": "module",
   "scripts": {
     "build": "bun build.ts",
-    "test": "bun --bun vitest run",
+    "test": "bun --bun vitest run --config ../../vitest.config.ts --project actions-runner",
     "lint": "biome check --write --unsafe .",
     "check": "biome check .",
     "prepare:sandbox": "bun prepare.ts",
-    "typecheck": "tsc --noEmit",
-    "compiler:dev": "bun src/compiler/dev-server.ts"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@actions/expressions": "0.3.61",
-    "@actions/workflow-parser": "0.3.61",
     "yaml": "2.9.1",
-    "zod": "4.6.7"
-  },
-  "devDependencies": {}
+    "zod": "4.6.7",
+    "@gitedge/actions-compiler": "workspace:*",
+    "minimatch": "10.2.4"
+  }
 }

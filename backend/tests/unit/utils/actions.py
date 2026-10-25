@@ -185,7 +185,7 @@ class FakeActionsQueue(ActionsQueue):
 
 
 def compiled_fixture(name: str = "basic") -> CompiledWorkflow:
-    path = BACKEND_DIR.parent / "packages/actions-runner/src/compiler/fixtures" / f"{name}.json"
+    path = BACKEND_DIR.parent / "packages/actions-compiler/src/fixtures" / f"{name}.json"
     return CompiledWorkflow.model_validate_json(path.read_text())
 
 

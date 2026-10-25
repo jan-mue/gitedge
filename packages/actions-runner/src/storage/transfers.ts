@@ -7,25 +7,30 @@ export class BlobTransfers {
   private readonly secret = crypto.randomUUID()
   private readonly transfers = new Map<string, Transfer>()
   private readonly pending = new Map<string, Map<string, Uint8Array>>()
+
   constructor(private readonly origin: () => string) {}
+
   upload(path: string): string {
     return this.issue({ mode: "write", path })
   }
+
   download(load: () => Promise<Blob>): string {
     return this.issue({ mode: "read", load })
   }
+
   private issue(transfer: Transfer): string {
     const id = crypto.randomUUID()
     this.transfers.set(id, transfer)
     return `${this.origin()}blob/${id}?sig=${this.secret}`
   }
+
   async handle(request: Request, url: URL): Promise<Response> {
-    const supplied = Buffer.from(url.searchParams.get("sig") || ""),
-      expected = Buffer.from(this.secret)
+    const supplied = Buffer.from(url.searchParams.get("sig") || "")
+    const expected = Buffer.from(this.secret)
     if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected))
       return Response.json({ error: "Unauthorized" }, { status: 403 })
-    const id = url.pathname.slice("/blob/".length),
-      transfer = this.transfers.get(id)
+    const id = url.pathname.slice("/blob/".length)
+    const transfer = this.transfers.get(id)
     if (!transfer) return new Response(null, { status: 404 })
     if (transfer.mode === "read" && (request.method === "GET" || request.method === "HEAD")) {
       const blob = await transfer.load()
@@ -34,8 +39,8 @@ export class BlobTransfers {
       })
     }
     if (transfer.mode !== "write" || request.method !== "PUT") return new Response(null, { status: 405 })
-    const raw = await readResponse(new Response(request.body)),
-      operation = url.searchParams.get("comp")?.toLowerCase()
+    const raw = await readResponse(new Response(request.body))
+    const operation = url.searchParams.get("comp")?.toLowerCase()
     const blocks = this.pending.get(id) || new Map<string, Uint8Array>()
     if (operation === "block") {
       blocks.set(url.searchParams.get("blockid") || "", raw)

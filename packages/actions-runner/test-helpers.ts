@@ -1,4 +1,4 @@
-import { compileWorkflow } from "./src/compiler/compile.ts"
+import { compileWorkflow } from "@gitedge/actions-compiler"
 import type { JobInput } from "./src/domain/job.ts"
 
 export type WorkflowFixture = Omit<JobInput, "version" | "attempt" | "workflow" | "job"> & {

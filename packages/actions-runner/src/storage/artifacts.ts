@@ -12,9 +12,11 @@ const metadataSchema = z.object({
   createdAt: z.string(),
 })
 export type ArtifactMetadata = z.infer<typeof metadataSchema>
+
 export class ArtifactStore {
   private restoration: Promise<void> | undefined
   private readonly directory: string
+
   constructor(
     root: string,
     private readonly run: string,
@@ -24,25 +26,29 @@ export class ArtifactStore {
   ) {
     this.directory = inside(root, run)
   }
+
   private async ready(): Promise<void> {
     this.restoration ??= this.restore()
     await this.restoration
   }
+
   private paths(name: string): { file: string; metadata: string } {
     if (!name || name === "." || name === ".." || /[/\\\0]/.test(name)) throw new Error("Unsafe artifact name")
     const directory = inside(this.directory, name)
     return { file: join(directory, `${name}.zip`), metadata: join(directory, "metadata.json") }
   }
+
   async create(name: string): Promise<string> {
     await this.ready()
     const paths = this.paths(name)
     if (await Bun.file(paths.metadata).exists()) throw new Error(`Artifact ${name} already exists`)
     return this.transfers.upload(paths.file)
   }
+
   async finalize(name: string): Promise<string> {
     await this.ready()
-    const paths = this.paths(name),
-      file = Bun.file(paths.file)
+    const paths = this.paths(name)
+    const file = Bun.file(paths.file)
     if (!(await file.exists())) throw new Error("Artifact upload is missing")
     const id = String(
       new DataView(new Bun.CryptoHasher("sha256").update(`${this.run}:${name}`).digest().buffer).getUint32(0),
@@ -58,6 +64,7 @@ export class ArtifactStore {
     await writeFile(paths.metadata, JSON.stringify(metadata))
     return id
   }
+
   async list(name?: string, id?: string): Promise<ArtifactMetadata[]> {
     await this.ready()
     const artifacts: ArtifactMetadata[] = []
@@ -71,6 +78,7 @@ export class ArtifactStore {
     }
     return artifacts
   }
+
   async download(name: string): Promise<string> {
     await this.ready()
     const paths = this.paths(name)
@@ -80,10 +88,11 @@ export class ArtifactStore {
       return file
     })
   }
+
   async delete(name: string): Promise<string> {
     await this.ready()
-    const paths = this.paths(name),
-      metadata = await readJson(paths.metadata, metadataSchema)
+    const paths = this.paths(name)
+    const metadata = await readJson(paths.metadata, metadataSchema)
     await Promise.all([Bun.file(paths.file).delete(), Bun.file(paths.metadata).delete()])
     return metadata.databaseId
   }

@@ -26,14 +26,26 @@ describe("asynchronous workflow expressions", () => {
       .digest("hex")
     expect(
       await engine.interpolate(
-        "${{ hashFiles(inputs.pattern, '!ignored.txt') }}",
+        `\${{ hashFiles(inputs.pattern, '!ignored.txt') }}`,
         { inputs: { pattern: "*.txt" } },
         "success",
       ),
     ).toBe(expected)
-    expect(await engine.interpolate("${{ hashFiles('a.txt') != hashFiles('b.txt') }}", {}, "success")).toBe(true)
-    expect(await engine.interpolate("${{ false && hashFiles('../outside') }}", {}, "success")).toBe(false)
-    expect(await engine.interpolate("${{ hashFiles('missing.*') }}", {}, "success")).toBe("")
+    expect(await engine.interpolate(`\${{ hashFiles('a.txt') != hashFiles('b.txt') }}`, {}, "success")).toBe(true)
+    expect(await engine.interpolate(`\${{ false && hashFiles('../outside') }}`, {}, "success")).toBe(false)
+    expect(await engine.interpolate(`\${{ hashFiles('missing.*') }}`, {}, "success")).toBe("")
+    expect(await workspace.hashFiles(["[ab].txt"])).toBe(expected)
+    expect(await workspace.hashFiles(["@(a|b).txt"])).toBe(expected)
+    expect(await workspace.hashFiles(["{a,b}.txt", "!b.txt", "b.txt"])).toBe(expected)
+  })
+
+  test("hashFiles includes dotfiles with minimatch patterns", async () => {
+    await writeFile(join(workspace.source, ".config/input.txt"), "hidden")
+    const expected = new Bun.CryptoHasher("sha256")
+      .update(new Bun.CryptoHasher("sha256").update("hidden").digest())
+      .digest("hex")
+    expect(await workspace.hashFiles(["**/*.txt"])).toBe(expected)
+    expect(await workspace.hashFiles(["**/*.txt", "!.config/**"])).toBe("")
   })
 
   test("hashFiles cannot read outside the checked-out workspace", async () => {

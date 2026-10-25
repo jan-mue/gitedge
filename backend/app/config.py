@@ -132,7 +132,6 @@ class Settings(BaseSettings):
     # Actions jobs use a fixed operator image; workflows cannot select host privileges.
     ACTIONS_PROVIDER: Literal["docker", "vercel"] = "docker"
     ACTIONS_COMPILER_URL: str | None = None
-    ACTIONS_COMPILER_TOKEN: str | None = None
     QSTASH_URL: str = "https://qstash.upstash.io"
     QSTASH_TOKEN: str | None = None
     QSTASH_CURRENT_SIGNING_KEY: str | None = None

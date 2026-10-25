@@ -6,6 +6,7 @@ export class JobEnvironment {
   private readonly exported: Environment = {}
   readonly base: Environment = {}
   readonly protected: Environment
+
   constructor(
     readonly input: JobSpec,
     workspace: Workspace,
@@ -35,18 +36,22 @@ export class JobEnvironment {
       GITHUB_TOKEN: input.secrets.GITHUB_TOKEN || "",
     }
   }
+
   snapshot(...layers: Environment[]): Environment {
     const environment = { ...this.base }
     for (const layer of layers) Object.assign(environment, layer)
     return { ...environment, ...this.exported, ...this.protected }
   }
+
   export(values: Environment): void {
     for (const [key, value] of Object.entries(values))
       if (!/^(GITHUB_|RUNNER_|ACTIONS_|GITEDGE_)/i.test(key) && key !== "NODE_OPTIONS") this.exported[key] = value
   }
+
   prependPaths(paths: string[]): void {
     if (paths.length) this.exported.PATH = `${paths.reverse().join(":")}:${this.snapshot().PATH || ""}`
   }
+
   github(): JsonObject {
     const env = this.protected
     return {
@@ -77,16 +82,20 @@ export class JobEnvironment {
     }
   }
 }
+
 export class ExecutionScope {
   readonly steps: Record<string, StepResult> = {}
   environment: Environment = {}
+
   constructor(readonly context: JsonObject) {}
+
   expressionContext(): JsonObject {
     const steps: Record<string, JsonValue> = {}
     for (const [key, value] of Object.entries(this.steps))
       steps[key] = { outcome: value.outcome, conclusion: value.conclusion, outputs: value.outputs }
     return { ...this.context, steps, env: this.environment }
   }
+
   child(context: JsonObject): ExecutionScope {
     return new ExecutionScope({ ...this.context, ...context })
   }

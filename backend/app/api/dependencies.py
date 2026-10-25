@@ -727,7 +727,7 @@ SandboxClientDep = Annotated[AbstractSandboxClient, Depends(get_sandbox_client)]
 
 def get_workflow_compiler() -> WorkflowCompiler:
     """Select the configured on-demand compiler HTTP endpoint."""
-    return HttpWorkflowCompiler(settings.ACTIONS_COMPILER_URL, settings.ACTIONS_COMPILER_TOKEN)
+    return HttpWorkflowCompiler(settings.ACTIONS_COMPILER_URL)
 
 
 WorkflowCompilerDep = Annotated[WorkflowCompiler, Depends(get_workflow_compiler)]
