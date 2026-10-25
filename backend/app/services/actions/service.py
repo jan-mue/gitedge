@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from app.clients.actions import ActionsStore
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.pull_requests import PullRequestStore
-    from app.clients.qstash import QStashClient
+    from app.clients.qstash import ActionsQueue
     from app.clients.repositories import RepositoryStore
     from app.clients.sandboxes import AbstractSandboxClient
     from app.clients.workflow_compiler import WorkflowCompiler
@@ -53,7 +53,7 @@ class ActionsService:
         sandbox: AbstractSandboxClient,
         *,
         compiler: WorkflowCompiler,
-        queue: QStashClient,
+        queue: ActionsQueue,
         provider: str,
         max_timeout: int,
         max_parallel: int,

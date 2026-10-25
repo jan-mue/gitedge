@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, override
 
 import httpx2 as httpx
 from pydantic import ValidationError
@@ -19,15 +20,15 @@ MAX_COMPILER_REQUEST = 2 * 1024 * 1024
 MAX_WORKFLOW_SOURCE = 1024 * 1024
 
 
-class WorkflowCompiler(Protocol):
+class WorkflowCompiler(ABC):
     """Compile source without implementing the workflow language in Python."""
 
+    @abstractmethod
     async def compile(self, request: CompileRequest) -> CompiledWorkflow:
         """Return the validated compiler IR or a classified error."""
-        ...
 
 
-class HttpWorkflowCompiler:
+class HttpWorkflowCompiler(WorkflowCompiler):
     """Use the same HTTP contract for local Bun and the Vercel Function."""
 
     def __init__(self, url: str | None, token: str | None) -> None:
@@ -35,6 +36,7 @@ class HttpWorkflowCompiler:
         self.url = url
         self.token = token
 
+    @override
     async def compile(self, request: CompileRequest) -> CompiledWorkflow:
         """Bound response size and distinguish workflow rejection from outages."""
         if not self.url or not self.token:

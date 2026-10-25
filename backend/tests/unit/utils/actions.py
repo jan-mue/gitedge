@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, override
 
 from app.clients.actions import ActionsStore, RunState
 from app.clients.actions_cache import ActionsCacheStore
-from app.clients.qstash import QStashClient
+from app.clients.qstash import ActionsQueue
+from app.clients.workflow_compiler import WorkflowCompiler
 from app.constants import BACKEND_DIR
 from app.exceptions import InvalidDeliveryError
 from app.schemas.workflows import CompiledWorkflow
@@ -162,7 +163,7 @@ class FakeActionsStore(ActionsStore):
         ]
 
 
-class FakeActionsQueue(QStashClient):
+class FakeActionsQueue(ActionsQueue):
     def __init__(self) -> None:
         self.deliveries: list[tuple[str, BaseModel, str, datetime]] = []
         self.verified: list[tuple[str, bytes]] = []
@@ -233,6 +234,7 @@ def compiled_fixture(name: str = "basic") -> CompiledWorkflow:
     return CompiledWorkflow.model_validate_json(path.read_text())
 
 
-class FakeWorkflowCompiler:
+class FakeWorkflowCompiler(WorkflowCompiler):
+    @override
     async def compile(self, request: CompileRequest) -> CompiledWorkflow:
         return compiled_fixture().model_copy(update={"workflow_name": request.filename})

@@ -1,6 +1,6 @@
+import json
 from typing import TYPE_CHECKING
 
-import httpx2 as httpx
 import pytest
 
 from app.clients.workflow_compiler import MAX_COMPILER_RESPONSE, HttpWorkflowCompiler
@@ -9,8 +9,9 @@ from app.schemas.workflows import CompileEvent, CompileRequest
 from tests.unit.utils.actions import compiled_fixture
 
 if TYPE_CHECKING:
-    from pytest_mock import MockerFixture
+    from respx import Router
 
+URL = "https://compiler.test/api/compile"
 REQUEST = CompileRequest(
     filename=".gitedge/workflow/basic.yaml",
     source="source is never parsed by Python",
@@ -18,18 +19,15 @@ REQUEST = CompileRequest(
 )
 
 
-async def test_compiler_http_contract_uses_auth_and_checks_version(mocker: MockerFixture) -> None:
-    def respond(request: httpx.Request) -> httpx.Response:
-        assert request.headers["authorization"] == "Bearer dedicated-compiler-token"
-        assert b'"version":1' in request.content
-        return httpx.Response(200, json=compiled_fixture().model_dump(mode="json", by_alias=True, exclude_none=True))
-
-    client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
-    mocker.patch("app.clients.workflow_compiler.httpx.AsyncClient", return_value=client)
-    result = await HttpWorkflowCompiler("https://compiler.test/api/compile", "dedicated-compiler-token").compile(
-        REQUEST
+async def test_compiler_http_contract_uses_auth_and_checks_version(httpx2_mock: Router) -> None:
+    route = httpx2_mock.post(URL, headers={"Authorization": "Bearer dedicated-compiler-token"}).respond(
+        json=compiled_fixture().model_dump(mode="json", by_alias=True, exclude_none=True)
     )
+    result = await HttpWorkflowCompiler(URL, "dedicated-compiler-token").compile(REQUEST)
     assert result == compiled_fixture()
+    assert json.loads(route.calls.last.request.content) == REQUEST.model_dump(
+        mode="json", by_alias=True, exclude_none=True
+    )
 
 
 @pytest.mark.parametrize(
@@ -50,35 +48,30 @@ async def test_compiler_http_contract_uses_auth_and_checks_version(mocker: Mocke
     ],
 )
 async def test_compiler_validation_is_distinct_from_internal_failures(
-    mocker: MockerFixture, status: int, payload: dict, expected: type[Exception]
+    httpx2_mock: Router, status: int, payload: dict, expected: type[Exception]
 ) -> None:
-    client = httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: httpx.Response(status, json=payload)))
-    mocker.patch("app.clients.workflow_compiler.httpx.AsyncClient", return_value=client)
+    httpx2_mock.post(URL).respond(status, json=payload)
     with pytest.raises(expected):
-        await HttpWorkflowCompiler("https://compiler.test/api/compile", "test-token").compile(REQUEST)
+        await HttpWorkflowCompiler(URL, "test-token").compile(REQUEST)
 
 
-async def test_compiler_response_size_and_missing_configuration_are_bounded(mocker: MockerFixture) -> None:
+async def test_compiler_response_size_and_missing_configuration_are_bounded(httpx2_mock: Router) -> None:
     with pytest.raises(CompilerUnavailableError, match="must be configured"):
         await HttpWorkflowCompiler(None, None).compile(REQUEST)
-    client = httpx.AsyncClient(
-        transport=httpx.MockTransport(lambda _request: httpx.Response(200, content=b"x" * (MAX_COMPILER_RESPONSE + 1)))
-    )
-    mocker.patch("app.clients.workflow_compiler.httpx.AsyncClient", return_value=client)
+    httpx2_mock.post(URL).respond(content=b"x" * (MAX_COMPILER_RESPONSE + 1))
     with pytest.raises(CompilerUnavailableError, match="4 MiB"):
-        await HttpWorkflowCompiler("https://compiler.test/api/compile", "test-token").compile(REQUEST)
+        await HttpWorkflowCompiler(URL, "test-token").compile(REQUEST)
 
 
 @pytest.mark.parametrize("oversized_source", [True, False])
 async def test_compiler_bounds_outbound_source_and_request_before_http(
-    mocker: MockerFixture, oversized_source: bool
+    httpx2_mock: Router, oversized_source: bool
 ) -> None:
-    client = mocker.patch("app.clients.workflow_compiler.httpx.AsyncClient")
     request = REQUEST.model_copy(
         update={"source": "é" * (1024 * 1024 // 2 + 1)}
         if oversized_source
         else {"event": REQUEST.event.model_copy(update={"changed_paths": ["file"] * 400000})}
     )
     with pytest.raises(WorkflowError, match="exceeds"):
-        await HttpWorkflowCompiler("https://compiler.test/api/compile", "test-token").compile(request)
-    client.assert_not_called()
+        await HttpWorkflowCompiler(URL, "test-token").compile(request)
+    assert not httpx2_mock.calls

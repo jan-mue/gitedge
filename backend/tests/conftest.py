@@ -20,7 +20,6 @@ import redis
 from alembic.command import upgrade
 from alembic.config import Config
 from pydantic import PostgresDsn, TypeAdapter
-from pytest_httpserver import HTTPServer
 from qstash import QStash
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.wait_strategies import HttpWaitStrategy
@@ -34,7 +33,6 @@ from app.clients.blob_storage import S3Client
 from app.config import settings
 from app.constants import BACKEND_DIR
 from app.utils.security import get_password_hash
-from tests.qstash import QSTASH_CURRENT_KEY, QSTASH_NEXT_KEY, QSTASH_TOKEN, ActionsNetwork, proxy_to
 
 if TYPE_CHECKING:
     from collections.abc import Coroutine, Generator
@@ -44,6 +42,10 @@ if TYPE_CHECKING:
 
 FIRST_SUPERUSER = os.environ.get("FIRST_SUPERUSER", "admin@example.com")
 FIRST_SUPERUSER_PASSWORD = os.environ.get("FIRST_SUPERUSER_PASSWORD", "changethis_admin_password_secure")
+
+QSTASH_TOKEN = "eyJVc2VySUQiOiJkZWZhdWx0VXNlciIsIlBhc3N3b3JkIjoiZGVmYXVsdFBhc3N3b3JkIn0="
+QSTASH_CURRENT_KEY = "sig_7kYjw48mhY7kAjqNGcy6cr29RJ6r"
+QSTASH_NEXT_KEY = "sig_5ZB6DVzB1wjE8S6rZ7eenA8Pdnhs"
 
 
 @pytest.fixture(scope="session")
@@ -299,54 +301,33 @@ def actions_compiler_url(infrastructure: dict[str, str], xprocess: XProcess) -> 
 
 
 @pytest.fixture(scope="session")
-def actions_network() -> ActionsNetwork:
-    """Expose fault controls without replacing QStash or application dispatch."""
-    return ActionsNetwork(HTTPServer(host="0.0.0.0", threaded=True), HTTPServer(host="0.0.0.0", threaded=True))
+def backend_url(infrastructure: dict[str, str], actions_compiler_url: str, xprocess: XProcess) -> Generator[str]:
+    """Start the real backend, reachable directly from QStash and job containers."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.bind(("127.0.0.1", 0))
+        port = listener.getsockname()[1]
+    backend_env = {
+        **os.environ,
+        **infrastructure,
+        "ACTIONS_SERVER_URL": f"http://host.docker.internal:{port}",
+        "ACTIONS_COMPILER_URL": actions_compiler_url,
+        "ACTIONS_INSPECT_INTERVAL": "1",
+        "ACTIONS_RECONCILE_INTERVAL": "2",
+    }
 
-
-@pytest.fixture(scope="session")
-def backend_url(
-    infrastructure: dict[str, str], actions_compiler_url: str, actions_network: ActionsNetwork, xprocess: XProcess
-) -> Generator[str]:
-    """Start the backend server for integration and browser tests."""
-
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        backend_port = s.getsockname()[1]
-
-    backend_env = os.environ.copy()
-    backend_env.update(infrastructure)
-    backend_cwd = BACKEND_DIR
-
-    class BackendStarter(ProcessStarter):  # type: ignore[misc]
+    class BackendStarter(ProcessStarter):
         terminate_on_interrupt = True
         pattern = "Application startup complete"
         env = backend_env
-        args = [sys.executable, "-m", "uvicorn", "app.index:app", "--host", "0.0.0.0", "--port", str(backend_port)]
-        popen_kwargs = {"cwd": backend_cwd}
+        args = [sys.executable, "-m", "uvicorn", "app.index:app", "--host", "0.0.0.0", "--port", str(port)]
+        popen_kwargs = {"cwd": BACKEND_DIR}
         max_read_lines = 1000
 
-    backend_base_url = f"http://127.0.0.1:{backend_port}"
-    with (
-        actions_network.publishing as publishing,
-        actions_network.callbacks as callbacks,
-    ):
-        proxy_to(publishing, infrastructure["QSTASH_URL"])
-        proxy_to(callbacks, backend_base_url)
-        backend_env.update(
-            {
-                "QSTASH_URL": f"http://127.0.0.1:{publishing.port}",
-                "ACTIONS_SERVER_URL": f"http://host.docker.internal:{callbacks.port}",
-                "ACTIONS_COMPILER_URL": actions_compiler_url,
-                "ACTIONS_INSPECT_INTERVAL": "1",
-                "ACTIONS_RECONCILE_INTERVAL": "2",
-            }
-        )
-        xprocess.ensure("backend", BackendStarter, restart=True)
-        try:
-            yield backend_base_url
-        finally:
-            xprocess.getinfo("backend").terminate()
+    xprocess.ensure("backend", BackendStarter, restart=True)
+    try:
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        xprocess.getinfo("backend").terminate()
 
 
 @pytest.fixture

@@ -86,8 +86,8 @@ Integration and browser tests use the official QStash image pinned by digest
 in `backend/tests/conftest.py`; no image configuration is required. Pytest starts the real `qstash dev` container with its documented
 local-only credentials alongside PostgreSQL, Redis, and MinIO. The broker calls
 back through `host.docker.internal`; Linux Docker must support `host-gateway`.
-Test-owned HTTP fault proxies preserve signed URLs and original request bytes
-while exercising native broker retries and recovery after failed publishing.
+Tests deliver signed requests directly to FastAPI. Database locks exercise native
+broker retries; pausing the real QStash container exercises outbox recovery.
 
 The durable log-segment archive, Redis tail, resumable SSE, and streaming large
 artifact/cache transfers belong to subsequent phases. This phase retains the

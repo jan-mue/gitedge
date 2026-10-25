@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import time
+from abc import ABC, abstractmethod
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from qstash import AsyncQStash, Receiver
 from qstash.errors import SignatureError
@@ -18,7 +19,23 @@ if TYPE_CHECKING:
     from pydantic import BaseModel
 
 
-class QStashClient:
+class ActionsQueue(ABC):
+    """Durable delivery contract shared by QStash and unit-test fakes."""
+
+    @abstractmethod
+    async def publish(self, operation: str, body: BaseModel, key: str, due_at: datetime) -> None:
+        """Publish an idempotent command for delivery at the requested time."""
+
+    @abstractmethod
+    def verify(self, operation: str, body: bytes, signature: str) -> None:
+        """Authenticate the original delivery bytes and destination."""
+
+    @abstractmethod
+    async def recover_later(self) -> None:
+        """Arm the next short recovery callback."""
+
+
+class QStashClient(ActionsQueue):
     """Publish through the official SDK and verify the exact callback URL."""
 
     def __init__(self) -> None:
@@ -30,6 +47,7 @@ class QStashClient:
         """Build the canonical destination used for publishing and verification."""
         return f"{settings.ACTIONS_SERVER_URL.rstrip('/')}/api/v1/actions/internal/{operation}"
 
+    @override
     async def publish(self, operation: str, body: BaseModel, key: str, due_at: datetime) -> None:
         """Bound SDK requests; the durable broker owns delivery retries."""
         if not all((settings.QSTASH_TOKEN, settings.QSTASH_CURRENT_SIGNING_KEY, settings.QSTASH_NEXT_SIGNING_KEY)):
@@ -45,6 +63,7 @@ class QStashClient:
                 timeout=settings.ACTIONS_PROVISION_LEASE + 30,
             )
 
+    @override
     async def recover_later(self) -> None:
         """Arm the next short-lived recovery callback without a cron schedule."""
         interval = settings.ACTIONS_RECONCILE_INTERVAL
@@ -56,6 +75,7 @@ class QStashClient:
             datetime.fromtimestamp(slot, UTC),
         )
 
+    @override
     def verify(self, operation: str, body: bytes, signature: str) -> None:
         """Pass original UTF-8 bytes and the canonical URL to the SDK receiver."""
         try:
