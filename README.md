@@ -193,7 +193,9 @@ Workflows in `.gitedge/workflow/` use GitHub/Gitea Actions syntax. The Bun
 compiler in `packages/actions-compiler` validates them with the official
 `@actions/workflow-parser` and emits version-one JSON IR. The independent
 `packages/actions-runner` agent validates its execution schema and evaluates
-runtime expressions using `@actions/expressions`. Each job gets its own Docker
+runtime expressions using `@actions/expressions`. Agent manifests use version 2
+with a job UUID, attempt UUID, generation and fence; rebuild prepared images and
+snapshots when upgrading the manifest. Each job gets its own Docker
 container or Vercel Sandbox. Prepared images contain actions and toolchains;
 checkout transfers source at the immutable commit. JavaScript actions run under
 Node, while the agent runs under Bun.
@@ -265,8 +267,8 @@ uv run coverage report
 
 ### Backend integration tests
 
-Integration tests use Docker (testcontainers for Postgres, Redis, MinIO, and
-Mailpit), without starting the frontend or a browser:
+Integration tests use Docker (testcontainers for Postgres, Redis, MinIO, Mailpit,
+and the official QStash dev server), without starting the frontend or a browser:
 
 ```shell
 cd backend
@@ -388,6 +390,26 @@ endpoint. The Python SDK obtains the backend's current OIDC identity and
 forwards `x-vercel-trusted-oidc-idp-token`. The compiler verifies its signature,
 expiry, project and matching environment with `@vercel/oidc`; missing identity
 or configuration fails closed. No shared compiler secret is used.
+
+### Actions dispatch
+
+PostgreSQL owns run state, fenced job attempts and outbox commands. QStash
+performs signed HTTP dispatch, inspection, cleanup and recovery. Provider calls
+run outside database transactions; history and PR check reads never schedule
+jobs. Cancellation revokes attempt capabilities before destroying sandboxes.
+There is no resident scheduler or cron job.
+
+Set `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY` and `QSTASH_NEXT_SIGNING_KEY` on
+the backend. `QSTASH_URL` defaults to the hosted broker. Set `ACTIONS_SERVER_URL`
+to the exact externally reachable backend URL used to publish callbacks and
+verify their signed destination. Provider and broker credentials stay outside
+sandbox manifests.
+
+Integration/E2E fixtures start the official QStash image pinned by digest in
+`backend/tests/conftest.py` with local test credentials and signature verification
+enabled. Container callbacks use `host.docker.internal`; Linux Docker must
+support `host-gateway`. Database locks exercise real delivery retries, and
+pausing the broker exercises outbox recovery.
 
 ## License
 

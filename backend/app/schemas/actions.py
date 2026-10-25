@@ -35,6 +35,7 @@ class ActionJob(GitEdgeBaseModel):
     id: str
     key: str
     compiled_id: str | None = None
+    attempt_id: uuid.UUID | None = None
     name: str
     matrix: dict[str, JsonValue] = Field(default_factory=dict)
     needs: list[str] = Field(default_factory=list)

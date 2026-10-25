@@ -64,7 +64,7 @@ export const actionsListRunsQueryKey = (options: Options<actionsListRunsData>) =
 /**
  * List Runs
  *
- * Read recent runs and refresh their sandbox state.
+ * Read persisted workflow history.
  */
 export const actionsListRunsOptions = (options: Options<actionsListRunsData>) => queryOptions<actionsListRunsResponse, actionsListRunsError, actionsListRunsResponse, ReturnType<typeof actionsListRunsQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {
