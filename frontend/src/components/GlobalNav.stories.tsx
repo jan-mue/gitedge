@@ -7,6 +7,7 @@ import {
 } from "@/client/msw.gen"
 import GlobalNav from "@/components/GlobalNav"
 import { repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
+import { storybookSession, storybookUser } from "@/components/Storybook/StoryRouter"
 
 const meta = { ...repositoryStoryMeta, title: "Patterns/Navigation" } satisfies Meta
 export default meta
@@ -20,23 +21,13 @@ export const GlobalNavigation: Story = {
 export const RepositoryOwner: Story = {
   render: () => <GlobalNav />,
   beforeEach: () => {
-    const previous = localStorage.getItem("access_token")
-    localStorage.setItem("access_token", "storybook-session")
-    return () => {
-      if (previous === null) localStorage.removeItem("access_token")
-      else localStorage.setItem("access_token", previous)
-    }
+    return storybookSession()
   },
   parameters: {
     msw: {
       handlers: [
         handleUsersReadUserMe({
-          body: {
-            id: "00000000-0000-0000-0000-000000000001",
-            name: "jan-mue",
-            email: "jan@example.com",
-            is_active: true,
-          },
+          body: storybookUser,
         }),
         handleOrganizationsListOrganizations({
           body: {

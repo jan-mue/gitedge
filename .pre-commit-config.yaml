@@ -35,7 +35,7 @@ repos:
       - id: codespell
         additional_dependencies:
           - tomli
-        args: [--write-changes]
+        args: [--write-changes, --ignore-words-list=fallow]
         exclude: frontend/|^backend/resources/linguist/
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0494aa7fa1314e98913a41227d8f0a515b2c1049 # frozen: 0.38.2
@@ -127,11 +127,11 @@ repos:
         files: ^frontend/
         pass_filenames: false
 
-      - id: knip
-        name: knip
-        entry: bun run knip
+      - id: fallow
+        name: fallow
+        entry: bun run fallow
         language: system
-        files: \.(ts|js|tsx|jsx|mjs)$
+        files: \.(ts|js|tsx|jsx|mjs|css|mdx)$|(^|/)package\.json$|^bun\.lock$|^\.fallowrc(?:\.production)?\.json$
         pass_filenames: false
 
       - id: generate-frontend-sdk

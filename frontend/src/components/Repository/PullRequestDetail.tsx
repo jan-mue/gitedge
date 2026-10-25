@@ -113,14 +113,15 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
     staleTime: 10_000,
   })
 
+  const updatePullRequest = (response: NonNullable<typeof pull>) => {
+    queryClient.setQueryData(repositoriesGetPullRequestQueryKey({ path: { owner, repo, number: prNumber } }), response)
+    queryClient.invalidateQueries({ queryKey: repositoriesListPullRequestsQueryKey({ path: { owner, repo } }) })
+  }
+
   const mutation = useMutation({
     ...repositoriesUpdatePullRequestMutation(),
     onSuccess: (response) => {
-      queryClient.setQueryData(
-        repositoriesGetPullRequestQueryKey({ path: { owner, repo, number: prNumber } }),
-        response,
-      )
-      queryClient.invalidateQueries({ queryKey: repositoriesListPullRequestsQueryKey({ path: { owner, repo } }) })
+      updatePullRequest(response)
       queryClient.invalidateQueries({
         queryKey: repositoriesGetPullRequestEventsQueryKey({ path: { owner, repo, number: prNumber } }),
       })
@@ -137,11 +138,7 @@ export const PullRequestDetailView = ({ owner, repo, prNumber }: { owner: string
   const editMutation = useMutation({
     ...repositoriesUpdatePullRequestMutation(),
     onSuccess: (response) => {
-      queryClient.setQueryData(
-        repositoriesGetPullRequestQueryKey({ path: { owner, repo, number: prNumber } }),
-        response,
-      )
-      queryClient.invalidateQueries({ queryKey: repositoriesListPullRequestsQueryKey({ path: { owner, repo } }) })
+      updatePullRequest(response)
       setEditing(false)
     },
     onError: handleError.bind(showErrorToast),
