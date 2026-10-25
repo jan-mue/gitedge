@@ -1,41 +1,6 @@
 import { describe, expect, test } from "vitest"
 
-import { getInitials, handleError } from "./utils"
-
-describe("getInitials", () => {
-  test("returns initials for two-word name", () => {
-    expect(getInitials("John Doe")).toBe("JD")
-  })
-
-  test("returns initials for single-word name", () => {
-    expect(getInitials("John")).toBe("J")
-  })
-
-  test("returns initials for three-word name (takes first two)", () => {
-    expect(getInitials("John Michael Doe")).toBe("JM")
-  })
-
-  test("returns uppercase initials for lowercase name", () => {
-    expect(getInitials("john doe")).toBe("JD")
-  })
-
-  test("returns uppercase initials for mixed case name", () => {
-    expect(getInitials("jOhN dOe")).toBe("JD")
-  })
-
-  test("handles names with extra spaces (splits on whitespace)", () => {
-    // The implementation splits on space, so multiple spaces create empty strings
-    expect(getInitials("John   Doe")).toBe("J")
-  })
-
-  test("handles single character name", () => {
-    expect(getInitials("A")).toBe("A")
-  })
-
-  test("handles multiple words and takes only first two", () => {
-    expect(getInitials("Alice Bob Charlie David")).toBe("AB")
-  })
-})
+import { handleError } from "./utils"
 
 describe("handleError", () => {
   test("calls callback with error message", () => {

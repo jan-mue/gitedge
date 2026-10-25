@@ -12,13 +12,14 @@
     "test:ui": "bun run --filter frontend test:ui",
     "email:dev": "bun run --filter emails dev",
     "email:export": "bun run --filter emails export",
-    "knip": "knip"
+    "fallow": "fallow --fail-on-issues",
+    "fallow:production": "fallow --fail-on-issues --config .fallowrc.production.json"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
     "@types/bun": "1.4.3",
     "@types/node": "26.6.5",
-    "knip": "6.42.1",
+    "fallow": "3.35.0",
     "typescript": "6.0.3",
     "vitest": "5.0.5"
   },

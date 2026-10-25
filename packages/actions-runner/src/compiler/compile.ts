@@ -8,7 +8,7 @@ import {
   NoOperationTraceWriter,
   parseWorkflow,
 } from "@actions/workflow-parser"
-import type { EventsConfig } from "@actions/workflow-parser/model/workflow-template"
+import type { EventsConfig, Job } from "@actions/workflow-parser/model/workflow-template"
 import type { TemplateContext } from "@actions/workflow-parser/templates/template-context"
 import type { MappingToken, TemplateToken } from "@actions/workflow-parser/templates/tokens/index"
 import { z } from "zod"
@@ -17,6 +17,7 @@ import {
   type CompiledWorkflow,
   type CompileRequest,
   compiledJobSchema,
+  compiledStepSchema,
   compiledWorkflowSchema,
   compileRequestSchema,
   type JsonValue,
@@ -252,6 +253,85 @@ function inputs(events: EventsConfig, request: CompileRequest): Record<string, J
   return result
 }
 
+function compileSteps(token: MappingToken, converted: Job, filename: string): CompiledJob["config"]["steps"] {
+  const stepTokens = token.find("steps")?.assertSequence("steps")
+  if (!stepTokens) fail(filename, "Job must contain steps", token)
+  return [...stepTokens].map((stepToken, index) => {
+    const fields = record(
+      stepToken.assertMapping("step"),
+      [
+        "id",
+        "name",
+        "if",
+        "env",
+        "continue-on-error",
+        "timeout-minutes",
+        "run",
+        "uses",
+        "with",
+        "shell",
+        "working-directory",
+      ],
+      filename,
+    )
+    if (
+      fields.with !== undefined &&
+      (fields.with === null || typeof fields.with !== "object" || Array.isArray(fields.with))
+    )
+      fail(
+        filename,
+        "Dynamic action input mappings are not supported; use expressions for individual inputs",
+        stepToken,
+      )
+    const timeout = fields["timeout-minutes"]
+    if (
+      timeout !== undefined &&
+      !(typeof timeout === "string" && timeout.startsWith("${{")) &&
+      (!Number.isFinite(Number(timeout)) || Number(timeout) <= 0)
+    )
+      fail(filename, "Step timeout-minutes must be positive and finite", stepToken)
+    const step = converted.steps[index]
+    if (!step) fail(filename, "Invalid step", stepToken)
+    if (typeof fields.uses === "string" && fields.uses.startsWith("docker://"))
+      fail(filename, "Docker actions are not supported", stepToken)
+    return compiledStepSchema.parse({
+      ...fields,
+      id: step.id,
+      if: step.if ? value(step.if) : undefined,
+      kind: "run" in fields ? "run" : "action",
+    })
+  })
+}
+
+function validateRunner(
+  input: JsonValue | undefined,
+  context: Record<string, JsonValue>,
+  filename: string,
+  token: MappingToken,
+): void {
+  const runner = staticValue(input, context, filename, token)
+  const labels = (Array.isArray(runner) ? runner : [runner]).map((label) =>
+    staticValue(label, context, filename, token),
+  )
+  if (
+    labels.some(
+      (label) => typeof label !== "string" || !/^(ubuntu-(latest|22\.04|24\.04)|linux|self-hosted|x64)$/.test(label),
+    )
+  )
+    fail(filename, "Only prepared x64 Linux runner labels are supported", token.find("runs-on"))
+}
+function jobTimeout(
+  input: JsonValue | undefined,
+  context: Record<string, JsonValue>,
+  filename: string,
+  token: MappingToken,
+): number {
+  const timeout = Number(staticValue(input ?? 20, context, filename, token))
+  if (!Number.isFinite(timeout) || timeout <= 0)
+    fail(filename, "timeout-minutes must be positive and finite", token.find("timeout-minutes"))
+  return timeout
+}
+
 export async function compileWorkflow(input: CompileRequest): Promise<CompiledWorkflow> {
   const request = compileRequestSchema.parse(input),
     { filename } = request
@@ -314,53 +394,7 @@ export async function compileWorkflow(input: CompileRequest): Promise<CompiledWo
       (!strategy?.find("fail-fast") || value(strategy.find("fail-fast") as TemplateToken) !== false)
     )
       fail(filename, "Static matrices currently require strategy.fail-fast: false", strategy)
-    const stepTokens = token.find("steps")?.assertSequence("steps")
-    if (!stepTokens) fail(filename, "Job must contain steps", token)
-    const steps = [...stepTokens].map((stepToken, index) => {
-      const fields = record(
-        stepToken.assertMapping("step"),
-        [
-          "id",
-          "name",
-          "if",
-          "env",
-          "continue-on-error",
-          "timeout-minutes",
-          "run",
-          "uses",
-          "with",
-          "shell",
-          "working-directory",
-        ],
-        filename,
-      )
-      if (
-        fields.with !== undefined &&
-        (fields.with === null || typeof fields.with !== "object" || Array.isArray(fields.with))
-      )
-        fail(
-          filename,
-          "Dynamic action input mappings are not supported; use expressions for individual inputs",
-          stepToken,
-        )
-      const timeout = fields["timeout-minutes"]
-      if (
-        timeout !== undefined &&
-        !(typeof timeout === "string" && timeout.startsWith("${{")) &&
-        (!Number.isFinite(Number(timeout)) || Number(timeout) <= 0)
-      )
-        fail(filename, "Step timeout-minutes must be positive and finite", stepToken)
-      const step = converted.steps[index]
-      if (!step) fail(filename, "Invalid step", stepToken)
-      if (typeof fields.uses === "string" && fields.uses.startsWith("docker://"))
-        fail(filename, "Docker actions are not supported", stepToken)
-      return {
-        ...fields,
-        id: step.id,
-        if: step.if ? value(step.if) : undefined,
-        kind: "run" in fields ? "run" : "action",
-      }
-    })
+    const steps = compileSteps(token, converted, filename)
     for (const [index, matrix] of variants.entries()) {
       const strategyContext = { "job-index": index, "job-total": variants.length }
       const context = {
@@ -369,20 +403,8 @@ export async function compileWorkflow(input: CompileRequest): Promise<CompiledWo
         inputs: resolvedInputs,
         github: { ref: request.event.ref, event_name: request.event.name, repository: request.event.repository || "" },
       }
-      const runner = staticValue(raw["runs-on"], context, filename, token)
-      const labels = (Array.isArray(runner) ? runner : [runner]).map((label) =>
-        staticValue(label, context, filename, token),
-      )
-      if (
-        labels.some(
-          (label) =>
-            typeof label !== "string" || !/^(ubuntu-(latest|22\.04|24\.04)|linux|self-hosted|x64)$/.test(label),
-        )
-      )
-        fail(filename, "Only prepared x64 Linux runner labels are supported", token.find("runs-on"))
-      const timeout = Number(staticValue(raw["timeout-minutes"] ?? 20, context, filename, token))
-      if (!Number.isFinite(timeout) || timeout <= 0)
-        fail(filename, "timeout-minutes must be positive and finite", token.find("timeout-minutes"))
+      validateRunner(raw["runs-on"], context, filename, token)
+      const timeout = jobTimeout(raw["timeout-minutes"], context, filename, token)
       const ignored = staticValue(raw["continue-on-error"] ?? false, context, filename, token)
       if (typeof ignored !== "boolean") fail(filename, "continue-on-error must resolve to a boolean", token)
       const suffix = Object.keys(matrix).length ? ` (${Object.values(matrix).join(", ")})` : ""

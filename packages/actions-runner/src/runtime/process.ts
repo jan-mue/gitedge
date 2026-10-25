@@ -25,9 +25,17 @@ export class ProcessExecutor {
     request.signal.throwIfAborted()
     const commands = new CommandFiles(join(this.workspace.temporary, crypto.randomUUID()))
     await commands.prepare()
+    const environment = { ...request.environment, ...commands.paths }
+    // The artifact toolkit requires a GitHub hostname even with a custom results service.
+    if (
+      ["actions/upload-artifact", "actions/download-artifact"].includes(environment.GITHUB_ACTION_REPOSITORY || "") &&
+      environment.ACTIONS_RESULTS_URL &&
+      new URL(environment.ACTIONS_RESULTS_URL).hostname === "127.0.0.1"
+    )
+      environment.GITHUB_SERVER_URL = "https://github.com"
     const child = Bun.spawn([request.command, ...request.args], {
       cwd: request.cwd,
-      env: { ...request.environment, ...commands.paths },
+      env: environment,
       stdin: "ignore",
       stdout: "pipe",
       stderr: "pipe",

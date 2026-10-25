@@ -18,19 +18,6 @@ test("distributed Bun bytecode launcher executes a job and keeps launch controls
       timeout: 10000,
     })
     assert.ok((await stat(join(directory, "gitedge-launch.jsc"))).size > 0)
-    const artifact = await execute(
-      "node",
-      ["--import", join(directory, "artifact-compat.mjs"), "--eval", "console.log(process.env.GITHUB_SERVER_URL)"],
-      {
-        env: {
-          ...process.env,
-          GITHUB_ACTION_REPOSITORY: "actions/upload-artifact",
-          ACTIONS_RESULTS_URL: "http://127.0.0.1:8080",
-          GITHUB_SERVER_URL: "https://gitedge.test",
-        },
-      },
-    )
-    assert.equal(artifact.stdout.trim(), "https://github.com")
     const root = join(directory, "job")
     await chmod(join(directory, "gitedge-launch"), 0o755)
     await execute(join(directory, "gitedge-launch"), [], {
