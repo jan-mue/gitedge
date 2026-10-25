@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import UUID, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import UUID, DateTime, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -35,59 +35,3 @@ class WorkflowRun(Base):
     jobs: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error: Mapped[str | None] = mapped_column(Text)
-
-
-class WorkflowCacheEntry(Base):
-    """Repository cache metadata; archive payloads live in Blob or S3."""
-
-    __tablename__ = "workflow_cache_entry"
-    __table_args__ = (UniqueConstraint("repo_id", "key", "version"),)
-
-    repo_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("repository.id", ondelete="CASCADE"), index=True
-    )
-    key: Mapped[str] = mapped_column(String(512))
-    version: Mapped[str] = mapped_column(String(512))
-    payload_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True)
-    size: Mapped[int] = mapped_column(Integer)
-    checksum: Mapped[str] = mapped_column(String(64))
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-
-
-class WorkflowAttempt(Base):
-    """One fenced execution generation with a stable sandbox handle."""
-
-    __tablename__ = "workflow_attempt"
-    __table_args__ = (UniqueConstraint("run_id", "job_id", "generation"),)
-
-    run_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("workflow_run.id", ondelete="CASCADE"), index=True
-    )
-    job_id: Mapped[str] = mapped_column(String(32))
-    generation: Mapped[int] = mapped_column(Integer)
-    fence: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True)
-    sandbox: Mapped[str] = mapped_column(String(128), unique=True)
-    status: Mapped[str] = mapped_column(String(32), index=True)
-    claim: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    deadline: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    error: Mapped[str | None] = mapped_column(Text)
-    artifact_key: Mapped[str | None] = mapped_column(String(512))
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-
-class WorkflowOutbox(Base):
-    """A durable command committed atomically with its run transition."""
-
-    __tablename__ = "workflow_outbox"
-
-    run_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("workflow_run.id", ondelete="CASCADE"), index=True
-    )
-    attempt_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("workflow_attempt.id", ondelete="CASCADE")
-    )
-    kind: Mapped[str] = mapped_column(String(16))
-    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
-    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)

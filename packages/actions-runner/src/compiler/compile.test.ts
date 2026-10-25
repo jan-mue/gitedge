@@ -184,3 +184,21 @@ test("unexpected HTTP handler faults stay internal errors", async () => {
   expect(response.status).toBe(500)
   expect(await response.json()).toEqual({ error: "internal_error" })
 })
+
+test("the GitEdge runner workflow shares the GitHub definition through a symlink", async () => {
+  const source = await Bun.file(
+    new URL("../../../../.gitedge/workflow/actions-runner-tests.yaml", import.meta.url),
+  ).text()
+  const compiled = await compile(source, { name: "pull_request", ref: "refs/heads/feature", action: "opened" })
+  expect(compiled.matched).toBe(true)
+  expect(compiled.jobs[0].config.steps.some((step) => step.kind === "run" && step.run.includes("typecheck"))).toBe(true)
+})
+
+test.each(["write-all", "{contents: write}", "{issues: read}"])(
+  "rejects unsupported token permissions %s",
+  async (access) => {
+    await expect(
+      compile(workflow(`    permissions: ${access}\n    steps:\n      - run: true\n`)),
+    ).rejects.toBeInstanceOf(CompileError)
+  },
+)

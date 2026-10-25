@@ -1,8 +1,8 @@
-"""Add workflow run state
+"""add compiled workflow runs
 
-Revision ID: 084d6e4246d8
+Revision ID: 4e443e0e9a40
 Revises: c1e7092e3487
-Create Date: 2026-10-18 11:53:04.014749
+Create Date: 2026-10-25 10:14:58.369821
 
 """
 
@@ -13,8 +13,8 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "084d6e4246d8"
-down_revision: str | Sequence[str] | None = "c1e7092e3487"
+revision: str = "4e443e0e9a40"
+down_revision: str | None = "c1e7092e3487"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -26,6 +26,7 @@ def upgrade() -> None:
         sa.Column("repo_id", sa.UUID(), nullable=False),
         sa.Column("workflow", sa.String(length=512), nullable=False),
         sa.Column("definition", sa.Text(), nullable=False),
+        sa.Column("compiled", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("name", sa.String(length=512), nullable=False),
         sa.Column("sha", sa.String(length=40), nullable=False),
         sa.Column("ref", sa.String(length=512), nullable=False),

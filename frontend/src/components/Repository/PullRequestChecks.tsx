@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { GitBranch } from "lucide-react"
 import { actionsGetPullRequestChecksOptions } from "@/client/@tanstack/react-query.gen"
 import { PullRequestChecks as Checks, ConversationItem, Link } from "@/components/design-system"
-import { duration } from "../Actions/StatusIcon"
+import { formatDuration } from "@/utils"
 
 export const PullRequestChecks = ({
   owner,
@@ -27,7 +27,7 @@ export const PullRequestChecks = ({
             id: `${run.id}:${job.id}`,
             name: `${run.name} / ${job.name}`,
             status: job.status ?? ("queued" as const),
-            duration: duration(job.started_at, job.completed_at),
+            duration: formatDuration(job.started_at, job.completed_at),
             details: (
               <Link
                 to="/$owner/$repo/actions"

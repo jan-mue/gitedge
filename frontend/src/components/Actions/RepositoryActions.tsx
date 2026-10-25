@@ -9,13 +9,12 @@ import {
   actionsListRunsQueryKey,
   actionsListWorkflowsOptions,
 } from "@/client/@tanstack/react-query.gen"
-import { Badge, Button, FilterDropdown, Input, Label } from "@/components/design-system"
+import { Badge, Button, CheckStatusIcon, FilterDropdown, Input, Label } from "@/components/design-system"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
-import { handleError } from "@/utils"
+import { formatDuration, handleError } from "@/utils"
 import { RunDetail } from "./RunDetail"
-import { duration, StatusIcon } from "./StatusIcon"
 
 export const RepositoryActions = ({
   owner,
@@ -181,7 +180,7 @@ export const RepositoryActions = ({
         <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
           {filtered.map((run) => (
             <Button key={run.id} variant="actionRun" size="file-row" onClick={() => onSelectRun(run.id)}>
-              <StatusIcon status={run.status} />
+              <CheckStatusIcon status={run.status} />
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold">{run.name}</div>
                 <div className="mt-0.5 text-xs text-muted-foreground">
@@ -193,7 +192,7 @@ export const RepositoryActions = ({
                 <div>{new Date(run.created_at).toLocaleString()}</div>
                 <div className="mt-1 flex items-center justify-end gap-1">
                   <Clock className="size-3" />
-                  {duration(run.created_at, run.completed_at)}
+                  {formatDuration(run.created_at, run.completed_at)}
                 </div>
               </div>
             </Button>
