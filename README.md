@@ -26,7 +26,7 @@ Tailwind CSS v4, and shadcn/ui, built with Bun.
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/) for Python packages and environments
-- [Bun](https://bun.sh/) for JavaScript/TypeScript packages
+- [Bun](https://bun.sh/) for JavaScript/TypeScript packages (version in `.bun-version`)
 - [Docker](https://www.docker.com/) for local Postgres, Redis, and MinIO (also
   required by the integration tests)
 
@@ -187,6 +187,44 @@ configuration. Component manifests are enabled for the documentation tools.
 Build the static Storybook with `bun run --filter frontend build-storybook`.
 Both scripts disable all Storybook telemetry, including the startup event.
 
+### GitEdge Actions
+
+Workflows in `.gitedge/workflow/` use GitHub/Gitea Actions syntax. The Bun
+compiler in `packages/actions-compiler` validates them with the official
+`@actions/workflow-parser` and emits version-one JSON IR. The independent
+`packages/actions-runner` agent validates its execution schema and evaluates
+runtime expressions using `@actions/expressions`. Agent manifests use version 2
+with a job UUID, attempt UUID, generation and fence; rebuild prepared images and
+snapshots when upgrading the manifest. Each job gets its own Docker
+container or Vercel Sandbox. Prepared images contain actions and toolchains;
+checkout transfers source at the immutable commit. JavaScript actions run under
+Node, while the agent runs under Bun.
+
+Start the local compiler from the repository root:
+
+```shell
+bun run --filter @gitedge/actions-compiler dev
+```
+
+Set `ACTIONS_COMPILER_URL=http://127.0.0.1:8765/api/compile` on the backend.
+`COMPILER_PORT` changes the default port. Local unauthenticated access is limited
+to loopback in development; production uses an on-demand Function and never
+starts a compiler subprocess. Build the agent with
+`bun run --filter @gitedge/actions-runner build` before preparing an image or
+snapshot. Prepared runner labels support x64 Linux.
+
+Cache metadata is repository-scoped in PostgreSQL. Immutable, checksummed cache
+archives use the existing Blob/S3 provider; sandbox agents transfer them through
+scoped controller capabilities. Cache archives are bounded to 32 MiB.
+
+Supported events are push, pull request and manual dispatch. Static matrices
+support include/exclude and require `fail-fast: false` for multiple variants.
+Filters use minimatch with ordered exclusion and re-inclusion. Dynamic matrices,
+reusable workflows, containers/services, concurrency and deployment environments
+fail explicitly. Permissions are limited to `contents: read`. Compiler requests,
+source and IR are bounded to 2, 1 and 4 MiB respectively; invalid workflows
+return structured 422 diagnostics.
+
 ### Disabling sign-ups
 
 Self-service registration can be turned off by setting the matching variables on
@@ -229,8 +267,8 @@ uv run coverage report
 
 ### Backend integration tests
 
-Integration tests use Docker (testcontainers for Postgres, Redis, MinIO, and
-Mailpit), without starting the frontend or a browser:
+Integration tests use Docker (testcontainers for Postgres, Redis, MinIO, Mailpit,
+and the official QStash dev server), without starting the frontend or a browser:
 
 ```shell
 cd backend
@@ -257,7 +295,7 @@ For more information on writing and running Playwright tests, see the official
 ### Frontend tests
 
 ```shell
-bun run test
+bun run test:frontend
 ```
 
 API requests are intercepted by MSW. Import `server` from `@/test/server` and
@@ -267,6 +305,20 @@ the client. Handlers are reset after each test, and unhandled requests are error
 Use `vi.mock()` for non-API dependencies such as navigation.
 The ast-grep pre-commit hook rejects API client and TanStack Query module mocks,
 direct API client spies or replacements, and global fetch stubs in frontend tests.
+
+### Actions compiler and runner tests
+
+```shell
+bun run typecheck:actions
+bun run test:actions
+```
+
+The root Vitest projects configuration runs compiler and agent tests together
+under Bun, including compilation-to-execution integration tests. Frontend tests
+and V8 coverage run under Node. `bun run test` runs both groups. The workflow in
+`.gitedge/workflow/` symlinks to its GitHub definition. CI reads `.bun-version`;
+Renovate groups updates with the root `packageManager` and Docker Bun image.
+Snapshot preparation restores the executing Bun version.
 
 ## Linting and formatting
 
@@ -315,11 +367,49 @@ external CSS parser when rendering files in the backend templates directory.
 
 ## Deployment
 
-GitEdge is deployed on [Vercel](https://vercel.com/) as two projects (frontend
-and backend), each configured by its own `vercel.json`. The backend build runs
+GitEdge deploys its frontend and backend to separate
+[Vercel](https://vercel.com/) projects, each with its own configuration. The backend build runs
 `backend/scripts/prestart.sh` to apply migrations and seed initial data. Preview
 deployments discover each other's URLs through Vercel's related projects, which
 also feeds the dynamic CORS allowlist described above.
+
+### Actions compiler Function
+
+Deploy the compiler with project root `packages/actions-compiler` and source
+files outside that root enabled for the workspace lockfile. Its `vercel.json`
+selects Vercel's managed Bun 1.4.x runtime and a ten-second duration limit;
+`api/compile.ts` uses the native `Bun.serve()` entrypoint described in the
+[Bun runtime documentation](https://vercel.com/docs/functions/runtimes/bun).
+
+Enable Vercel Authentication on the compiler and OIDC on the backend. Configure
+[Trusted Sources](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/trusted-sources)
+to allow backend preview → compiler preview and backend production → compiler
+production. Set `COMPILER_CALLER_PROJECT_ID` on the compiler to the backend's
+project ID, and `ACTIONS_COMPILER_URL` on the backend to the HTTPS `/api/compile`
+endpoint. The Python SDK obtains the backend's current OIDC identity and
+forwards `x-vercel-trusted-oidc-idp-token`. The compiler verifies its signature,
+expiry, project and matching environment with `@vercel/oidc`; missing identity
+or configuration fails closed. No shared compiler secret is used.
+
+### Actions dispatch
+
+PostgreSQL owns run state, fenced job attempts and outbox commands. QStash
+performs signed HTTP dispatch, inspection, cleanup and recovery. Provider calls
+run outside database transactions; history and PR check reads never schedule
+jobs. Cancellation revokes attempt capabilities before destroying sandboxes.
+There is no resident scheduler or cron job.
+
+Set `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY` and `QSTASH_NEXT_SIGNING_KEY` on
+the backend. `QSTASH_URL` defaults to the hosted broker. Set `ACTIONS_SERVER_URL`
+to the exact externally reachable backend URL used to publish callbacks and
+verify their signed destination. Provider and broker credentials stay outside
+sandbox manifests.
+
+Integration/E2E fixtures start the official QStash image pinned by digest in
+`backend/tests/conftest.py` with local test credentials and signature verification
+enabled. Container callbacks use `host.docker.internal`; Linux Docker must
+support `host-gateway`. Database locks exercise real delivery retries, and
+pausing the broker exercises outbox recovery.
 
 ## License
 

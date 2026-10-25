@@ -19,7 +19,6 @@ export interface RunnerOptions {
   cache?: CacheClient
   restoreArtifacts?: () => Promise<void>
 }
-/** One instance executes one expanded job and disposes all of its resources. */
 export class WorkflowRunner {
   constructor(
     private readonly input: JobSpec,

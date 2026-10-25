@@ -4,8 +4,8 @@ import { createServer } from "node:http"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "vitest"
-import type { LogEntry } from "./src/domain/job.ts"
-import { type LaunchOptions, launch as launchAgent } from "./src/job-lifecycle.ts"
+import type { LogEntry } from "../../../actions-runner/src/domain/job.ts"
+import { type LaunchOptions, launch as launchAgent } from "../../../actions-runner/src/job-lifecycle.ts"
 import { manifestFixture, type WorkflowFixture } from "./test-helpers.ts"
 
 async function launch(input: WorkflowFixture, options: LaunchOptions) {

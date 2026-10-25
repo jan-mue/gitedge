@@ -1,6 +1,6 @@
 import { exportJWK, generateKeyPair, SignJWT } from "jose"
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest"
-import adapter from "../api/compile.ts"
+import { handleCompile } from "./handler.ts"
 
 let keys: Awaited<ReturnType<typeof generateKeyPair>>
 let jwk: Awaited<ReturnType<typeof exportJWK>>
@@ -58,8 +58,8 @@ function request(identity?: string): Request {
   })
 }
 
-test("the production adapter verifies a signed backend identity through Vercel's SDK", async () => {
-  const response = await adapter.fetch(request(await token()))
+test("the production handler verifies a signed backend identity through Vercel's SDK", async () => {
+  const response = await handleCompile(request(await token()))
   expect(response.status).toBe(200)
   expect(await response.json()).toMatchObject({ version: 1, matched: true })
 })
@@ -71,13 +71,13 @@ test.each([
   { exp: 1 },
   { sub: undefined },
 ])("rejects invalid identity claims %j", async (claims) => {
-  expect((await adapter.fetch(request(await token(claims)))).status).toBe(401)
+  expect((await handleCompile(request(await token(claims)))).status).toBe(401)
 })
 
 test("rejects absent, malformed and forged tokens", async () => {
   const signed = await token()
   for (const identity of [undefined, "malformed", `${signed.slice(0, signed.lastIndexOf("."))}.AA`]) {
-    expect((await adapter.fetch(request(identity))).status).toBe(401)
+    expect((await handleCompile(request(identity))).status).toBe(401)
   }
 })
 
@@ -85,6 +85,6 @@ test("fails closed when the caller project configuration is missing or broad", a
   const identity = await token()
   for (const caller of ["", "*"]) {
     vi.stubEnv("COMPILER_CALLER_PROJECT_ID", caller)
-    expect((await adapter.fetch(request(identity))).status).toBe(500)
+    expect((await handleCompile(request(identity))).status).toBe(500)
   }
 })

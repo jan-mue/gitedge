@@ -5,8 +5,8 @@ COPY package.json bun.lock ./
 COPY frontend/package.json frontend/package.json
 COPY packages/react-email/package.json packages/react-email/package.json
 COPY packages/actions-runner packages/actions-runner
-COPY packages/actions-compiler packages/actions-compiler
-RUN bun install --frozen-lockfile --ignore-scripts --filter @gitedge/actions-runner && bun run --filter @gitedge/actions-runner build
+COPY packages/actions-compiler/package.json packages/actions-compiler/package.json
+RUN bun install --frozen-lockfile --ignore-scripts --production --filter @gitedge/actions-runner && bun run --filter @gitedge/actions-runner build
 
 FROM node:24-bookworm-slim
 COPY --from=runner-build /usr/local/bin/bun /usr/local/bin/bun
