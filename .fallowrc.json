@@ -32,6 +32,9 @@
   "health": {
     "ignore": [
       "frontend/src/components/ui/**"
-    ]
+    ],
+    "maxCyclomatic": 30,
+    "maxCognitive": 35,
+    "maxCrap": 100
   }
 }

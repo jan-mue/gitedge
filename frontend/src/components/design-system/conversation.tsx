@@ -61,22 +61,6 @@ export const ConversationCard = ({
   thread?: boolean
 }) => {
   const compact = reply || thread
-  const renderAuthor = () => (
-    <div className="flex min-w-0 items-center gap-2">
-      <span
-        aria-hidden="true"
-        className={`flex shrink-0 items-center justify-center rounded-full bg-accent font-medium text-accent-foreground ${thread && !reply ? "size-6 text-xs" : "size-5 text-[10px]"}`}
-      >
-        {author.charAt(0).toUpperCase()}
-      </span>
-      <strong className="truncate text-sm font-medium">{author}</strong>
-      {!compact && <span className="hidden text-xs text-muted-foreground sm:inline">commented</span>}
-      <time dateTime={date} title={new Date(date).toLocaleString()} className="text-xs text-muted-foreground">
-        {formatRelativeTime(new Date(date).getTime() / 1000)}
-      </time>
-    </div>
-  )
-
   return (
     <article
       data-compact={compact || undefined}
@@ -89,7 +73,19 @@ export const ConversationCard = ({
       <header
         className={`flex flex-wrap items-center justify-between gap-x-2 gap-y-1 ${compact ? "" : "border-b border-border bg-secondary/40 px-3 py-2"}`}
       >
-        {renderAuthor()}
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            aria-hidden="true"
+            className={`flex shrink-0 items-center justify-center rounded-full bg-accent font-medium text-accent-foreground ${thread && !reply ? "size-6 text-xs" : "size-5 text-[10px]"}`}
+          >
+            {author.charAt(0).toUpperCase()}
+          </span>
+          <strong className="truncate text-sm font-medium">{author}</strong>
+          {!compact && <span className="hidden text-xs text-muted-foreground sm:inline">commented</span>}
+          <time dateTime={date} title={new Date(date).toLocaleString()} className="text-xs text-muted-foreground">
+            {formatRelativeTime(new Date(date).getTime() / 1000)}
+          </time>
+        </div>
         <div className="flex items-center gap-2">
           {badge && (
             <span className="rounded border border-border px-1.5 text-[10px] leading-4 text-muted-foreground">

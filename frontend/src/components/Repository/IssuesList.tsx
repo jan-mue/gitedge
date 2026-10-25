@@ -10,7 +10,7 @@ interface IssuesListProps {
   repo: string
 }
 
-export const IssuesList = ({ owner, repo }: IssuesListProps) => {
+const IssuesList = ({ owner, repo }: IssuesListProps) => {
   const {
     data: issuesData,
     isPending,
@@ -90,3 +90,5 @@ export const IssuesList = ({ owner, repo }: IssuesListProps) => {
     </div>
   )
 }
+
+export default IssuesList

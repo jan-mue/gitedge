@@ -8,7 +8,7 @@ import { render, screen, waitFor } from "@/test/test-utils"
 import { Feed } from "./Feed"
 
 vi.mock("@/hooks/useAuth", () => ({ default: () => ({ user: { name: "owner" } }) }))
-vi.mock("@/components/Repository/StarButton", () => ({ StarButton: () => null }))
+vi.mock("@/components/Repository/StarButton", () => ({ default: () => null }))
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <a href="/">{children}</a>,
 }))

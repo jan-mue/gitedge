@@ -10,15 +10,7 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-const setupPointerEvents = () => {
-  HTMLElement.prototype.hasPointerCapture ??= vi.fn(() => false)
-  HTMLElement.prototype.setPointerCapture ??= vi.fn()
-}
-const setupScrolling = () => {
-  HTMLElement.prototype.releasePointerCapture ??= vi.fn()
-  HTMLElement.prototype.scrollIntoView ??= vi.fn()
-}
-beforeAll(function setupBrowserMocks() {
+beforeAll(() => {
   // Node's fetch requires an absolute URL; use the same origin as jsdom.
   client.setConfig({ baseUrl: window.location.origin })
   server.listen({ onUnhandledFrame: "error" })
@@ -42,8 +34,10 @@ beforeAll(function setupBrowserMocks() {
     disconnect = vi.fn()
   }
 
-  setupPointerEvents()
-  setupScrolling()
+  HTMLElement.prototype.hasPointerCapture ??= vi.fn(() => false)
+  HTMLElement.prototype.setPointerCapture ??= vi.fn()
+  HTMLElement.prototype.releasePointerCapture ??= vi.fn()
+  HTMLElement.prototype.scrollIntoView ??= vi.fn()
 
   global.IntersectionObserver = class {
     observe = vi.fn()

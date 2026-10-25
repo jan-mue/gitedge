@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import type { ActivitySeriesPoint, ContributorActivity } from "@/client"
 import { SelectField } from "@/components/design-system"
-import { ActivityChart, type ActivityMetric } from "@/components/Repository/ActivityChart"
+import ActivityChart, { type ActivityMetric } from "@/components/Repository/ActivityChart"
 
 interface ActivityContributorsProps {
   contributors: ContributorActivity[]

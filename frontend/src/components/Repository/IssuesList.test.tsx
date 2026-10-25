@@ -5,7 +5,7 @@ import { handleRepositoriesListIssues } from "@/client/msw.gen"
 import { issue } from "@/test/fixtures"
 import { server } from "@/test/server"
 import { render, screen } from "@/test/test-utils"
-import { IssuesList } from "./IssuesList"
+import IssuesList from "./IssuesList"
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, "data-testid": testId }: { children: ReactNode; "data-testid"?: string }) => (

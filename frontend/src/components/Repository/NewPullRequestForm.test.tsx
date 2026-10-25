@@ -7,7 +7,7 @@ import { handleRepositoriesCreatePullRequest, handleRepositoriesListBranches } f
 import { branches, pullRequest } from "@/test/fixtures"
 import { server } from "@/test/server"
 import { render, screen } from "@/test/test-utils"
-import { NewPullRequestForm } from "./NewPullRequestForm"
+import NewPullRequestForm from "./NewPullRequestForm"
 
 const navigate = vi.hoisted(() => vi.fn())
 

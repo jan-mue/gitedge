@@ -1,7 +1,7 @@
 import { Slot, Slottable } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Loader2 } from "lucide-react"
-import type { ComponentProps, MouseEvent } from "react"
+import type { ComponentProps } from "react"
 import { cn } from "@/lib/utils"
 
 export const buttonVariants = cva(
@@ -76,19 +76,6 @@ type ButtonProps = Omit<ComponentProps<"button">, "className" | "style"> &
     loading?: boolean
   }
 
-const buttonBehavior = ({ asChild, loading, disabled, ...props }: ButtonProps) => {
-  const isDisabled = loading || disabled
-  const slotDisabled = asChild && isDisabled
-  return {
-    type: asChild ? undefined : (props.type ?? "button"),
-    "aria-busy": loading || undefined,
-    disabled: isDisabled,
-    "aria-disabled": slotDisabled ? true : undefined,
-    tabIndex: slotDisabled ? -1 : props.tabIndex,
-    onClick: slotDisabled ? (event: MouseEvent<HTMLButtonElement>) => event.preventDefault() : props.onClick,
-  }
-}
-
 export const Button = ({
   variant,
   size,
@@ -106,8 +93,13 @@ export const Button = ({
   return (
     <Comp
       {...props}
-      {...buttonBehavior({ asChild, loading, disabled, ...props })}
+      type={asChild ? undefined : (props.type ?? "button")}
       data-slot="button"
+      aria-busy={loading || undefined}
+      disabled={loading || disabled}
+      aria-disabled={asChild && (loading || disabled) ? true : undefined}
+      tabIndex={asChild && (loading || disabled) ? -1 : props.tabIndex}
+      onClick={asChild && (loading || disabled) ? (event) => event.preventDefault() : props.onClick}
       className={cn(buttonVariants({ variant, size, shape, fullWidth, reveal, visibility }))}
     >
       {loading && <Loader2 aria-hidden="true" className="size-4 animate-spin" />}

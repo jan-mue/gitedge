@@ -9,7 +9,7 @@ import {
 } from "@/client/@tanstack/react-query.gen"
 import { Avatar, AvatarFallback, Button } from "@/components/design-system"
 import { RepositorySummary } from "@/components/Repositories/RepositorySummary"
-import { StarButton } from "@/components/Repository/StarButton"
+import StarButton from "@/components/Repository/StarButton"
 
 interface UserProfileProps {
   username: string
@@ -43,35 +43,20 @@ export const UserProfile = ({ username }: UserProfileProps) => {
   })
 
   const list = tab === "repositories" ? (repos?.data ?? []) : (starred?.data ?? [])
-  const renderProfileHeader = () => (
-    <div className="flex items-center gap-4">
-      <Avatar appearance="profile">
-        <AvatarFallback appearance="profile">
-          {(user?.display_name || username).slice(0, 1).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{user?.display_name || username}</h1>
-        <p className="text-muted-foreground">@{user?.name ?? username}</p>
-      </div>
-    </div>
-  )
-  const renderRepositories = () =>
-    list.length > 0 ? (
-      <div className="space-y-3">
-        {list.map((repo) => (
-          <RepoCard key={`${repo.owner}/${repo.name}`} repo={repo} />
-        ))}
-      </div>
-    ) : (
-      <div className="py-12 text-center text-sm text-muted-foreground">
-        {tab === "repositories" ? "No repositories yet." : "No starred repositories yet."}
-      </div>
-    )
 
   return (
     <div className="container mx-auto max-w-7xl space-y-6 px-4 py-6" data-testid="user-profile">
-      {renderProfileHeader()}
+      <div className="flex items-center gap-4">
+        <Avatar appearance="profile">
+          <AvatarFallback appearance="profile">
+            {(user?.display_name || username).slice(0, 1).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{user?.display_name || username}</h1>
+          <p className="text-muted-foreground">@{user?.name ?? username}</p>
+        </div>
+      </div>
 
       <div className="flex items-center gap-2 border-b border-border">
         <Button
@@ -95,7 +80,17 @@ export const UserProfile = ({ username }: UserProfileProps) => {
         )}
       </div>
 
-      {renderRepositories()}
+      {list.length > 0 ? (
+        <div className="space-y-3">
+          {list.map((repo) => (
+            <RepoCard key={`${repo.owner}/${repo.name}`} repo={repo} />
+          ))}
+        </div>
+      ) : (
+        <div className="py-12 text-center text-sm text-muted-foreground">
+          {tab === "repositories" ? "No repositories yet." : "No starred repositories yet."}
+        </div>
+      )}
     </div>
   )
 }

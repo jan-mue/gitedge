@@ -16,7 +16,7 @@ interface StarButtonProps {
   repo: string
 }
 
-export const StarButton = ({ owner, repo }: StarButtonProps) => {
+const StarButton = ({ owner, repo }: StarButtonProps) => {
   const queryClient = useQueryClient()
   const [animating, setAnimating] = useState(false)
 
@@ -69,3 +69,5 @@ export const StarButton = ({ owner, repo }: StarButtonProps) => {
     </div>
   )
 }
+
+export default StarButton

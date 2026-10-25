@@ -13,7 +13,8 @@ interface NewPullRequestFormProps {
   owner: string
   repo: string
 }
-const useNewPullRequest = ({ owner, repo }: NewPullRequestFormProps) => {
+
+const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -50,41 +51,6 @@ const useNewPullRequest = ({ owner, repo }: NewPullRequestFormProps) => {
     })
   }
 
-  return {
-    title,
-    setTitle,
-    body,
-    setBody,
-    headBranch,
-    setHeadBranch,
-    baseBranch,
-    setBaseBranch,
-    branches,
-    branchesPending,
-    branchesError,
-    refetchBranches,
-    createPRMutation,
-    handleSubmit,
-  }
-}
-
-export const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => {
-  const {
-    title,
-    setTitle,
-    body,
-    setBody,
-    headBranch,
-    setHeadBranch,
-    baseBranch,
-    setBaseBranch,
-    branches,
-    branchesPending,
-    branchesError,
-    refetchBranches,
-    createPRMutation,
-    handleSubmit,
-  } = useNewPullRequest({ owner, repo })
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
@@ -196,3 +162,5 @@ export const NewPullRequestForm = ({ owner, repo }: NewPullRequestFormProps) => 
     </div>
   )
 }
+
+export default NewPullRequestForm

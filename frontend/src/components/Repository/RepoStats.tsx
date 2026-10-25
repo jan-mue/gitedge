@@ -10,7 +10,7 @@ import {
 } from "@/client/@tanstack/react-query.gen"
 import { Button, Input, LanguageBar, Link as RouterLink, Skeleton } from "@/components/design-system"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
-import { BranchSelector } from "@/components/Repository/BranchSelector"
+import BranchSelector from "@/components/Repository/BranchSelector"
 import FileFinder from "@/components/Repository/FileFinder"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import { formatSize } from "@/utils"
@@ -79,35 +79,38 @@ export const RepoStats = ({
         params: { owner, repo, branch: branchName },
       })
   }
-  const renderStatistics = () => {
-    const renderTagCommits = () => (
-      <RouterLink to="/$owner/$repo/commits/tag/$tag" params={{ owner, repo, tag: gitRef }} appearance="stat">
-        <GitCommitHorizontal className="size-4" />
-        {statisticsPending ? (
-          <Skeleton appearance="short" />
-        ) : (
-          <span className="font-medium text-foreground">{statistics?.commit_count ?? "—"}</span>
-        )}{" "}
-        commits
-      </RouterLink>
-    )
-    const renderBranchCommits = () => (
-      <RouterLink to="/$owner/$repo/commits/branch/$branch" params={{ owner, repo, branch: ref }} appearance="stat">
-        <GitCommitHorizontal className="size-4" />
-        {statisticsPending ? (
-          <Skeleton appearance="short" />
-        ) : (
-          <span className="font-medium text-foreground">{statistics?.commit_count ?? "—"}</span>
-        )}{" "}
-        commits
-      </RouterLink>
-    )
 
-    return (
-      showStatistics &&
-      repoInfo && (
+  return (
+    <div className="space-y-3" data-testid="repo-stats">
+      {repoInfo?.description && <div className="text-foreground">{repoInfo.description}</div>}
+
+      {showStatistics && repoInfo && (
         <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
-          {mode === "tag" ? renderTagCommits() : renderBranchCommits()}
+          {mode === "tag" ? (
+            <RouterLink to="/$owner/$repo/commits/tag/$tag" params={{ owner, repo, tag: gitRef }} appearance="stat">
+              <GitCommitHorizontal className="size-4" />
+              {statisticsPending ? (
+                <Skeleton appearance="short" />
+              ) : (
+                <span className="font-medium text-foreground">{statistics?.commit_count ?? "—"}</span>
+              )}{" "}
+              commits
+            </RouterLink>
+          ) : (
+            <RouterLink
+              to="/$owner/$repo/commits/branch/$branch"
+              params={{ owner, repo, branch: ref }}
+              appearance="stat"
+            >
+              <GitCommitHorizontal className="size-4" />
+              {statisticsPending ? (
+                <Skeleton appearance="short" />
+              ) : (
+                <span className="font-medium text-foreground">{statistics?.commit_count ?? "—"}</span>
+              )}{" "}
+              commits
+            </RouterLink>
+          )}
 
           <RouterLink to="/$owner/$repo/branches" params={{ owner, repo }} appearance="stat">
             <GitBranch className="h-4 w-4" />
@@ -126,51 +129,14 @@ export const RepoStats = ({
             </span>
           )}
         </div>
-      )
-    )
-  }
-  const renderLanguageBar = () =>
-    showStatistics &&
-    (statisticsPending ? (
-      <Skeleton appearance="bar" />
-    ) : (
-      statistics && <LanguageBar languages={statistics.languages ?? []} />
-    ))
-  const renderCloneUrl = () => (
-    <div className="relative flex">
-      <Button
-        type="button"
-        onClick={() => copy(cloneUrl)}
-        aria-label="Copy clone URL"
-        data-testid="copy-clone-url"
-        variant="repository"
-        size="icon-sm"
-        shape="end"
-      >
-        {isCopied ? (
-          <Check className="h-3.5 w-3.5 text-success" />
-        ) : (
-          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-        )}
-      </Button>
-      {isCopied && (
-        <span
-          role="status"
-          className="absolute bottom-full right-0 mb-2 whitespace-nowrap rounded border border-border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
-        >
-          Copied to clipboard
-        </span>
       )}
-    </div>
-  )
 
-  return (
-    <div className="space-y-3" data-testid="repo-stats">
-      {repoInfo?.description && <div className="text-foreground">{repoInfo.description}</div>}
-
-      {renderStatistics()}
-
-      {renderLanguageBar()}
+      {showStatistics &&
+        (statisticsPending ? (
+          <Skeleton appearance="bar" />
+        ) : (
+          statistics && <LanguageBar languages={statistics.languages ?? []} />
+        ))}
       <div className="flex flex-wrap items-center gap-2">
         <BranchSelector
           branches={branches ?? []}
@@ -178,11 +144,14 @@ export const RepoStats = ({
           kind={mode === "tag" ? "tag" : "branch"}
           value={gitRef}
           onValueChange={handleBranchSelect}
-          disclosure={{ open: branchDropdownOpen, onOpenChange: setBranchDropdownOpen }}
-          status={{
-            branch: { loading: branchesPending, error: branchesError, onRetry: () => refetchBranches() },
-            tag: { loading: tagsPending, error: tagsError, onRetry: () => refetchTags() },
-          }}
+          open={branchDropdownOpen}
+          onOpenChange={setBranchDropdownOpen}
+          loading={branchesPending}
+          error={branchesError}
+          onRetry={() => refetchBranches()}
+          tagsLoading={tagsPending}
+          tagsError={tagsError}
+          onRetryTags={() => refetchTags()}
           data-testid="branch-selector"
         />
 
@@ -202,7 +171,31 @@ export const RepoStats = ({
               aria-label="HTTPS clone URL"
               appearance="clone"
             />
-            {renderCloneUrl()}
+            <div className="relative flex">
+              <Button
+                type="button"
+                onClick={() => copy(cloneUrl)}
+                aria-label="Copy clone URL"
+                data-testid="copy-clone-url"
+                variant="repository"
+                size="icon-sm"
+                shape="end"
+              >
+                {isCopied ? (
+                  <Check className="h-3.5 w-3.5 text-success" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                )}
+              </Button>
+              {isCopied && (
+                <span
+                  role="status"
+                  className="absolute bottom-full right-0 mb-2 whitespace-nowrap rounded border border-border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
+                >
+                  Copied to clipboard
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { CircleDot, GitPullRequest } from "lucide-react"
 import type { RepositoryActivityStatistics } from "@/client"
 import { Link, SelectField } from "@/components/design-system"
-import { ActivityChart } from "@/components/Repository/ActivityChart"
+import ActivityChart from "@/components/Repository/ActivityChart"
 
 const formatDate = (value: string) =>
   new Date(value).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })

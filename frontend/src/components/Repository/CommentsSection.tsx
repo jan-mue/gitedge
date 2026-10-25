@@ -40,7 +40,18 @@ interface ConversationEntry {
   content: ReactNode
   icon?: ReactNode
 }
-const useConversationComments = ({ owner, repo, number }: CommentsSectionProps) => {
+
+const CommentsSection = ({
+  owner,
+  repo,
+  number,
+  timeline = false,
+  author,
+  intro,
+  events = [],
+  beforeComposer,
+  actions,
+}: CommentsSectionProps) => {
   const queryClient = useQueryClient()
   const { showErrorToast } = useCustomToast()
   const { user } = useAuth()
@@ -84,51 +95,6 @@ const useConversationComments = ({ owner, repo, number }: CommentsSectionProps) 
     onError: handleError.bind(showErrorToast),
   })
 
-  return {
-    user,
-    body,
-    setBody,
-    editingId,
-    setEditingId,
-    editBody,
-    setEditBody,
-    data,
-    isError,
-    isPending,
-    refetch,
-    mutation,
-    editMutation,
-    deleteMutation,
-  }
-}
-
-export const CommentsSection = ({
-  owner,
-  repo,
-  number,
-  timeline = false,
-  author,
-  intro,
-  events = [],
-  beforeComposer,
-  actions,
-}: CommentsSectionProps) => {
-  const {
-    user,
-    body,
-    setBody,
-    editingId,
-    setEditingId,
-    editBody,
-    setEditBody,
-    data,
-    isError,
-    isPending,
-    refetch,
-    mutation,
-    editMutation,
-    deleteMutation,
-  } = useConversationComments({ owner, repo, number, timeline, author, intro, events, beforeComposer, actions })
   const comments = data?.data ?? []
   const entries: ConversationEntry[] = [
     ...comments.map((comment) => ({
@@ -249,18 +215,17 @@ export const CommentsSection = ({
       {timeline ? <ConversationItem terminal>{composer}</ConversationItem> : composer}
     </>
   )
-  const renderHeading = () =>
-    !timeline && (
-      <h2 className="flex items-center gap-1.5 text-sm font-semibold">
-        <MessageSquare className="size-4" />
-        {data?.count ?? 0} {data?.count === 1 ? "comment" : "comments"}
-      </h2>
-    )
-
   return (
     <div className={timeline ? "min-w-0" : "space-y-4"} data-testid="comments-section">
-      {renderHeading()}
+      {!timeline && (
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+          <MessageSquare className="size-4" />
+          {data?.count ?? 0} {data?.count === 1 ? "comment" : "comments"}
+        </h2>
+      )}
       {timeline ? <ConversationTimeline>{content}</ConversationTimeline> : content}
     </div>
   )
 }
+
+export default CommentsSection

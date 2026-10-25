@@ -1,5 +1,5 @@
 import type { ActivitySeriesPoint } from "@/client"
-import { ActivityChart } from "@/components/Repository/ActivityChart"
+import ActivityChart from "@/components/Repository/ActivityChart"
 
 interface ActivityRecentCommitsProps {
   series: ActivitySeriesPoint[]

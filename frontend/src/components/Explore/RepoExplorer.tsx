@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
 import { Input } from "@/components/design-system"
 import { RepositorySummary } from "@/components/Repositories/RepositorySummary"
-import { StarButton } from "@/components/Repository/StarButton"
+import StarButton from "@/components/Repository/StarButton"
 
 const RepoExplorer = () => {
   const [query, setQuery] = useState("")

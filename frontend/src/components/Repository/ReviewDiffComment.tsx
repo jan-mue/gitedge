@@ -1,17 +1,11 @@
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
-import type { DiffHunk, ReviewCommentPublic, ReviewPublic } from "@/client"
+import type { ReviewCommentPublic, ReviewPublic } from "@/client"
 import { reviewsGetCommentContextOptions } from "@/client/@tanstack/react-query.gen"
 import { Button, CodeSkeleton, ConversationCard, ExternalLink, MarkdownContent } from "@/components/design-system"
 import { DiffCodeRow } from "./DiffCodeRow"
 import { ReviewReplies } from "./ReviewReplies"
 import "./diff-viewer.css"
-
-const contextLines = (context: DiffHunk | null | undefined, comment: ReviewCommentPublic) => {
-  const anchor =
-    context?.lines.findIndex((line) => (comment.side === "old" ? line.old_line : line.new_line) === comment.line) ?? -1
-  return anchor >= 0 ? context?.lines.slice(Math.max(0, anchor - 3), anchor + 1) : undefined
-}
 
 export const ReviewDiffComment = ({
   owner,
@@ -56,36 +50,10 @@ export const ReviewDiffComment = ({
     staleTime: Infinity,
   })
   const context = comment.context ?? data
-  const lines = contextLines(context, comment)
+  const anchor =
+    context?.lines.findIndex((line) => (comment.side === "old" ? line.old_line : line.new_line) === comment.line) ?? -1
+  const lines = anchor >= 0 ? context?.lines.slice(Math.max(0, anchor - 3), anchor + 1) : undefined
   const revision = comment.side === "old" ? review.base_commit : review.head_commit
-  const renderDiffContext = () =>
-    isError ? (
-      <p role="alert" className="p-3 font-sans text-sm">
-        Unable to load diff context.{" "}
-        <Button variant="text" size="text" onClick={() => refetch()}>
-          Retry
-        </Button>
-      </p>
-    ) : !context ? (
-      <CodeSkeleton lineCount={4} />
-    ) : lines?.length ? (
-      <>
-        <div className="diff-hunk">{context.header}</div>
-        {lines.map((line, index) => (
-          <div
-            key={index}
-            className="diff-cell"
-            data-kind={line.kind}
-            data-comment-anchor={index === lines.length - 1 ? "true" : undefined}
-          >
-            <DiffCodeRow line={line} />
-          </div>
-        ))}
-      </>
-    ) : (
-      <p className="p-3 font-sans text-sm text-muted-foreground">Diff context is unavailable for this line.</p>
-    )
-
   return (
     <section
       ref={ref}
@@ -107,7 +75,32 @@ export const ReviewDiffComment = ({
         </span>
       </header>
       <section className="review-diff-context diff-scroll border-b border-border" aria-label="Diff context">
-        {renderDiffContext()}
+        {isError ? (
+          <p role="alert" className="p-3 font-sans text-sm">
+            Unable to load diff context.{" "}
+            <Button variant="text" size="text" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </p>
+        ) : !context ? (
+          <CodeSkeleton lineCount={4} />
+        ) : lines?.length ? (
+          <>
+            <div className="diff-hunk">{context.header}</div>
+            {lines.map((line, index) => (
+              <div
+                key={index}
+                className="diff-cell"
+                data-kind={line.kind}
+                data-comment-anchor={index === lines.length - 1 ? "true" : undefined}
+              >
+                <DiffCodeRow line={line} />
+              </div>
+            ))}
+          </>
+        ) : (
+          <p className="p-3 font-sans text-sm text-muted-foreground">Diff context is unavailable for this line.</p>
+        )}
       </section>
       <ConversationCard author={review.author_username} date={review.created_at} badge="Reviewer" embedded thread>
         {comment.body_html ? (

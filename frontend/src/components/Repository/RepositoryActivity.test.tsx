@@ -6,7 +6,7 @@ import type { RepositoryActivityStatistics } from "@/client"
 import { handleActivityGetRepositoryActivityStatistics } from "@/client/msw.gen"
 import { server } from "@/test/server"
 import { render, screen, waitFor } from "@/test/test-utils"
-import { RepositoryActivity } from "./RepositoryActivity"
+import RepositoryActivity from "./RepositoryActivity"
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to, params }: { children: ReactNode; to: string; params: Record<string, string> }) => (
@@ -14,7 +14,7 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }))
 vi.mock("./ActivityChart", () => ({
-  ActivityChart: ({ label, metric = "commits" }: { label: string; metric?: string }) => (
+  default: ({ label, metric = "commits" }: { label: string; metric?: string }) => (
     <fieldset aria-label={label} data-metric={metric} />
   ),
 }))

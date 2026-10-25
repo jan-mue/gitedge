@@ -9,13 +9,13 @@ import {
   repositoriesUpdateIssueMutation,
 } from "@/client/@tanstack/react-query.gen"
 import { Badge, Button, Input, MarkdownContent, Link as RouterLink, Textarea } from "@/components/design-system"
-import { CommentsSection } from "@/components/Repository/CommentsSection"
+import CommentsSection from "@/components/Repository/CommentsSection"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
-export const IssueDetail = () => {
+const IssueDetail = () => {
   const { owner, repo, number } = useParams({ from: "/_layout/$owner/$repo/issues/$number" })
   const issueNumber = Number(number)
   const queryClient = useQueryClient()
@@ -60,88 +60,6 @@ export const IssueDetail = () => {
 
   const isOpen = issue.state === "open"
   const canEdit = issue.author_username === user?.name
-  const renderDescription = () =>
-    editing ? (
-      <div className="space-y-3">
-        <Input
-          value={editTitle}
-          onChange={(e) => setEditTitle(e.target.value)}
-          data-testid="edit-issue-title"
-          appearance="title"
-        />
-        <Textarea
-          value={editBody}
-          onChange={(e) => setEditBody(e.target.value)}
-          rows={5}
-          data-testid="edit-issue-body"
-        />
-        <div className="flex justify-end gap-2">
-          <Button size="compact" variant="repository" onClick={() => setEditing(false)} data-testid="edit-issue-cancel">
-            Cancel
-          </Button>
-          <Button
-            size="compact"
-            disabled={!editTitle.trim() || editMutation.isPending}
-            onClick={() =>
-              editMutation.mutate({
-                path: { owner, repo, number: issueNumber },
-                body: { title: editTitle, body: editBody },
-              })
-            }
-            data-testid="edit-issue-submit"
-          >
-            Save
-          </Button>
-        </div>
-      </div>
-    ) : (
-      <>
-        <div className="space-y-3">
-          <div className="flex items-start justify-between gap-4">
-            <h1 className="text-xl font-bold text-foreground">
-              {issue.title} <span className="text-muted-foreground font-normal">#{issue.number}</span>
-            </h1>
-            <div className="flex items-center gap-2">
-              {canEdit && (
-                <Button
-                  variant="repository"
-                  size="compact"
-                  onClick={() => {
-                    setEditTitle(issue.title)
-                    setEditBody(issue.body ?? "")
-                    setEditing(true)
-                  }}
-                  data-testid="edit-issue"
-                >
-                  Edit
-                </Button>
-              )}
-              <Badge variant={isOpen ? "default" : "secondary"} data-testid="issue-state">
-                {isOpen ? (
-                  <>
-                    <CircleDot className="w-3 h-3" /> Open
-                  </>
-                ) : (
-                  <>
-                    <CircleCheck className="w-3 h-3" /> Closed
-                  </>
-                )}
-              </Badge>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">{issue.author_username ?? "unknown"}</span>
-            {issue.created_at && ` opened ${new Date(issue.created_at).toLocaleString()}`}
-          </p>
-        </div>
-
-        {issue.body && (
-          <div className="border border-border rounded-lg bg-card px-4 py-3">
-            <MarkdownContent html={issue.body_html} />
-          </div>
-        )}
-      </>
-    )
 
   return (
     <div className="max-w-4xl mx-auto space-y-6" data-testid="issue-detail">
@@ -150,7 +68,92 @@ export const IssueDetail = () => {
         Back to issues
       </RouterLink>
 
-      {renderDescription()}
+      {editing ? (
+        <div className="space-y-3">
+          <Input
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            data-testid="edit-issue-title"
+            appearance="title"
+          />
+          <Textarea
+            value={editBody}
+            onChange={(e) => setEditBody(e.target.value)}
+            rows={5}
+            data-testid="edit-issue-body"
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              size="compact"
+              variant="repository"
+              onClick={() => setEditing(false)}
+              data-testid="edit-issue-cancel"
+            >
+              Cancel
+            </Button>
+            <Button
+              size="compact"
+              disabled={!editTitle.trim() || editMutation.isPending}
+              onClick={() =>
+                editMutation.mutate({
+                  path: { owner, repo, number: issueNumber },
+                  body: { title: editTitle, body: editBody },
+                })
+              }
+              data-testid="edit-issue-submit"
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="text-xl font-bold text-foreground">
+                {issue.title} <span className="text-muted-foreground font-normal">#{issue.number}</span>
+              </h1>
+              <div className="flex items-center gap-2">
+                {canEdit && (
+                  <Button
+                    variant="repository"
+                    size="compact"
+                    onClick={() => {
+                      setEditTitle(issue.title)
+                      setEditBody(issue.body ?? "")
+                      setEditing(true)
+                    }}
+                    data-testid="edit-issue"
+                  >
+                    Edit
+                  </Button>
+                )}
+                <Badge variant={isOpen ? "default" : "secondary"} data-testid="issue-state">
+                  {isOpen ? (
+                    <>
+                      <CircleDot className="w-3 h-3" /> Open
+                    </>
+                  ) : (
+                    <>
+                      <CircleCheck className="w-3 h-3" /> Closed
+                    </>
+                  )}
+                </Badge>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{issue.author_username ?? "unknown"}</span>
+              {issue.created_at && ` opened ${new Date(issue.created_at).toLocaleString()}`}
+            </p>
+          </div>
+
+          {issue.body && (
+            <div className="border border-border rounded-lg bg-card px-4 py-3">
+              <MarkdownContent html={issue.body_html} />
+            </div>
+          )}
+        </>
+      )}
 
       <CommentsSection owner={owner} repo={repo} number={issueNumber} />
 
@@ -170,3 +173,5 @@ export const IssueDetail = () => {
     </div>
   )
 }
+
+export default IssueDetail

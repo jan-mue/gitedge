@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
 import { activityGetRepositoryActivityStatisticsOptions } from "@/client/@tanstack/react-query.gen"
 import { Button } from "@/components/design-system"
-import { ActivityChart } from "@/components/Repository/ActivityChart"
+import ActivityChart from "@/components/Repository/ActivityChart"
 import ActivityContributors from "@/components/Repository/ActivityContributors"
 import ActivityLoading, { type ActivityView } from "@/components/Repository/ActivityLoading"
 import ActivityPulse from "@/components/Repository/ActivityPulse"
@@ -20,7 +20,7 @@ const views = [
   { key: "recent-commits", label: "Recent commits" },
 ] as const
 
-export const RepositoryActivity = ({ owner, repo }: RepositoryActivityProps) => {
+const RepositoryActivity = ({ owner, repo }: RepositoryActivityProps) => {
   const [view, setView] = useState<ActivityView>("pulse")
   const [days, setDays] = useState(7)
   const { data, isPending, isError, refetch } = useQuery({
@@ -87,3 +87,5 @@ export const RepositoryActivity = ({ owner, repo }: RepositoryActivityProps) => 
     </div>
   )
 }
+
+export default RepositoryActivity

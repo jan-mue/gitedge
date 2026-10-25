@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { handleRepositoriesListPullRequests } from "@/client/msw.gen"
-import { PullRequestsList } from "@/components/Repository/PullRequestsList"
+import PullRequestsList from "@/components/Repository/PullRequestsList"
 import { repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
 import { trackerPulls } from "./tracker-story-fixtures"
 

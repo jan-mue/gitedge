@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { HttpResponse } from "msw"
 import { handleRepositoriesCreatePullRequest } from "@/client/msw.gen"
 import { handlers, repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
-import { NewPullRequestForm } from "./NewPullRequestForm"
+import NewPullRequestForm from "./NewPullRequestForm"
 import { trackerPulls } from "./tracker-story-fixtures"
 
 const meta = {

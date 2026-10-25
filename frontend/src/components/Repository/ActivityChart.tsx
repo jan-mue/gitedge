@@ -32,7 +32,7 @@ const formatTick = (value: string, daily: boolean) =>
     timeZone: "UTC",
   })
 
-export const ActivityChart = ({
+const ActivityChart = ({
   series,
   metric = "commits",
   variant = "bar",
@@ -50,51 +50,6 @@ export const ActivityChart = ({
   }))
   const Chart = variant === "area" ? AreaChart : BarChart
   const reset = () => setRange(null)
-  const renderChart = () => (
-    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-      <Chart
-        data={visible}
-        stackOffset={variant === "frequency" ? "sign" : "none"}
-        margin={{ top: 5, right: 16, bottom: 0, left: 0 }}
-        accessibilityLayer
-      >
-        <CartesianGrid vertical={false} stroke="var(--border)" />
-        <XAxis
-          dataKey="date"
-          tickFormatter={(value: string) => formatTick(value, daily)}
-          tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-          minTickGap={daily ? 20 : 40}
-        />
-        <YAxis
-          width={60}
-          allowDecimals={false}
-          domain={variant === "frequency" ? ["dataMin", "dataMax"] : [0, "auto"]}
-          tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-        />
-        <Tooltip
-          contentStyle={{
-            background: "var(--popover)",
-            border: "1px solid var(--border)",
-            color: "var(--foreground)",
-          }}
-          labelFormatter={(value) => `${daily ? "Date" : "Week of"} ${value}`}
-          formatter={(value, name) => [Math.abs(Number(value)).toLocaleString(), name]}
-          cursor={variant === "area" ? undefined : { fill: "var(--accent)", opacity: 0.4 }}
-        />
-        {variant === "area" ? (
-          <Area type="monotone" dataKey={metric} stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.3} />
-        ) : variant === "frequency" ? (
-          <>
-            <ReferenceLine y={0} stroke="var(--border)" />
-            <Bar dataKey="additions" fill="var(--success)" stackId="changes" />
-            <Bar dataKey="deletions" fill="var(--destructive)" stackId="changes" />
-          </>
-        ) : (
-          <Bar dataKey={metric} name={metric === "commits" ? "Commits" : metric} fill="var(--primary)" />
-        )}
-      </Chart>
-    </ResponsiveContainer>
-  )
 
   return (
     <fieldset
@@ -152,7 +107,51 @@ export const ActivityChart = ({
           : undefined
       }
     >
-      {renderChart()}
+      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <Chart
+          data={visible}
+          stackOffset={variant === "frequency" ? "sign" : "none"}
+          margin={{ top: 5, right: 16, bottom: 0, left: 0 }}
+          accessibilityLayer
+        >
+          <CartesianGrid vertical={false} stroke="var(--border)" />
+          <XAxis
+            dataKey="date"
+            tickFormatter={(value: string) => formatTick(value, daily)}
+            tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+            minTickGap={daily ? 20 : 40}
+          />
+          <YAxis
+            width={60}
+            allowDecimals={false}
+            domain={variant === "frequency" ? ["dataMin", "dataMax"] : [0, "auto"]}
+            tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+          />
+          <Tooltip
+            contentStyle={{
+              background: "var(--popover)",
+              border: "1px solid var(--border)",
+              color: "var(--foreground)",
+            }}
+            labelFormatter={(value) => `${daily ? "Date" : "Week of"} ${value}`}
+            formatter={(value, name) => [Math.abs(Number(value)).toLocaleString(), name]}
+            cursor={variant === "area" ? undefined : { fill: "var(--accent)", opacity: 0.4 }}
+          />
+          {variant === "area" ? (
+            <Area type="monotone" dataKey={metric} stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.3} />
+          ) : variant === "frequency" ? (
+            <>
+              <ReferenceLine y={0} stroke="var(--border)" />
+              <Bar dataKey="additions" fill="var(--success)" stackId="changes" />
+              <Bar dataKey="deletions" fill="var(--destructive)" stackId="changes" />
+            </>
+          ) : (
+            <Bar dataKey={metric} name={metric === "commits" ? "Commits" : metric} fill="var(--primary)" />
+          )}
+        </Chart>
+      </ResponsiveContainer>
     </fieldset>
   )
 }
+
+export default ActivityChart

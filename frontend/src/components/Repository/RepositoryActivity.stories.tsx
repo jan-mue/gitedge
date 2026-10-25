@@ -3,7 +3,7 @@ import { delay, HttpResponse } from "msw"
 import type { RepositoryActivityStatistics } from "@/client"
 import { handleActivityGetRepositoryActivityStatistics } from "@/client/msw.gen"
 import { repositoryStoryMeta, series } from "@/components/Storybook/repository-fixtures"
-import { RepositoryActivity } from "./RepositoryActivity"
+import RepositoryActivity from "./RepositoryActivity"
 
 const statistics: RepositoryActivityStatistics = {
   start: "2026-10-05T12:00:00Z",
