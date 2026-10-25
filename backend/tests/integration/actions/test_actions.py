@@ -47,6 +47,7 @@ def actions_repo(app_url: str, tmp_path: Path) -> Generator[tuple[httpx.Client, 
                 (workflows / fixture.name).symlink_to("../../.github/workflows/smoke.yaml")
             else:
                 (workflows / fixture.name).write_text(fixture.read_text())
+        (source / ".bun-version").write_text((BACKEND_DIR.parent / ".bun-version").read_text())
         (source / "README.md").write_text("# Actions fixture\n")
         (source / "example.py").write_text('print("hello actions")\n')
         (source / ".pre-commit-config.yaml").write_text("repos: []\n")
