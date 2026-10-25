@@ -1,0 +1,40 @@
+{
+  "$schema": "./node_modules/fallow/schema.json",
+  "entry": [
+    "frontend/src/**/*.test.{js,ts,jsx,tsx}",
+    "frontend/src/test/**/*.{js,ts,jsx,tsx}",
+    "frontend/src/components/ui/**/*.{js,jsx,ts,tsx}",
+    "frontend/src/components/design-system/**/*.{ts,tsx}",
+    "frontend/src/components/**/*.mdx",
+    "frontend/src/components/**/*.stories.tsx",
+    "frontend/src/components/Storybook/**/*.{ts,tsx}",
+    "frontend/.storybook/**/*.{ts,tsx}",
+    "frontend/storybook-tests/**/*.ts",
+    "frontend/openapi-ts.config.ts",
+    "frontend/src/components/Repository/diff-fixtures.ts",
+    "frontend/src/components/Repository/tracker-story-fixtures.ts",
+    "packages/react-email/emails/**/*.tsx"
+  ],
+  "ignorePatterns": [
+    "frontend/src/client/**",
+    "frontend/src/routeTree.gen.ts"
+  ],
+  "ignoreDependencies": [
+    "@react-email/ui"
+  ],
+  "rules": {
+    "unused-enum-members": "off",
+    "unused-dev-dependencies": "error",
+    "unused-optional-dependencies": "error",
+    "unused-class-members": "warn",
+    "dev-dependencies-in-production": "warn"
+  },
+  "health": {
+    "ignore": [
+      "frontend/src/components/ui/**"
+    ],
+    "maxCyclomatic": 45,
+    "maxCognitive": 45,
+    "maxCrap": 450
+  }
+}

@@ -12,9 +12,9 @@
     "test:ui": "bun run --filter frontend test:ui",
     "email:dev": "bun run --filter emails dev",
     "email:export": "bun run --filter emails export",
-    "knip": "knip"
+    "fallow": "fallow --fail-on-issues"
   },
   "devDependencies": {
-    "knip": "6.42.1"
+    "fallow": "3.35.0"
   }
 }
