@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { loginResetPasswordMutation } from "@/client/@tanstack/react-query.gen"
 import { AuthLayout } from "@/components/Common/AuthLayout"
+import { FormInputField } from "@/components/Common/FormInputField"
 import {
   AuthFooter,
   AuthForm,
@@ -12,35 +13,18 @@ import {
   AuthTitle,
   FieldStack,
   Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
   LoadingButton,
-  PasswordInput,
   Link as RouterLink,
 } from "@/components/design-system"
 import { isLoggedIn } from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
-import { handleError } from "@/utils"
+import { handleError, matchingPasswords, passwordConfirmationSchema, passwordMismatch } from "@/utils"
 
 const searchSchema = z.object({
   token: z.string().catch(""),
 })
 
-const formSchema = z
-  .object({
-    new_password: z
-      .string()
-      .min(1, { message: "Password is required" })
-      .min(8, { message: "Password must be at least 8 characters" }),
-    confirm_password: z.string().min(1, { message: "Password confirmation is required" }),
-  })
-  .refine((data) => data.new_password === data.confirm_password, {
-    message: "The passwords don't match",
-    path: ["confirm_password"],
-  })
+const formSchema = passwordConfirmationSchema.refine(matchingPasswords, passwordMismatch)
 
 type FormData = z.infer<typeof formSchema>
 
@@ -102,32 +86,24 @@ function ResetPassword() {
           </AuthHeading>
 
           <FieldStack>
-            <FormField
+            <FormInputField
               control={form.control}
               name="new_password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>New Password</FormLabel>
-                  <FormControl>
-                    <PasswordInput data-testid="new-password-input" placeholder="New Password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="New Password"
+              testId="new-password-input"
+              placeholder="New Password"
+              passwordToggle
+              type="password"
             />
 
-            <FormField
+            <FormInputField
               control={form.control}
               name="confirm_password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
-                  <FormControl>
-                    <PasswordInput data-testid="confirm-password-input" placeholder="Confirm Password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Confirm Password"
+              testId="confirm-password-input"
+              placeholder="Confirm Password"
+              passwordToggle
+              type="password"
             />
 
             <LoadingButton type="submit" fullWidth loading={mutation.isPending}>
