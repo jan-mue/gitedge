@@ -165,11 +165,11 @@ duplication, and complexity. Each analysis fails on findings. Health allows up t
 45 cyclomatic complexity, 45 cognitive complexity, and a CRAP score below 450,
 with no per-function exceptions.
 
-`bun run fallow:production` limits dead-code and duplication analysis to shipped
-code. Health keeps the full module graph so test reachability remains available
-for coverage-based risk estimates. Shared UI, Storybook, and email template
-exports remain entry points. Generated API client and route-tree files are
-excluded, and vendored shadcn components are excluded from health analysis.
+Pre-commit runs the full Fallow suite when JavaScript, TypeScript, CSS, MDX,
+package manifests, `bun.lock`, or `.fallowrc.json` change. Each run scans the full
+project, including application code, tests, stories, and email templates, using
+`.fallowrc.json`. Generated API client and route-tree files are excluded, and
+vendored shadcn components are excluded from health analysis.
 
 #### Storybook
 
