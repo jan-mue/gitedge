@@ -2,7 +2,6 @@ import { timingSafeEqual } from "node:crypto"
 import { readResponse, TRANSFER_LIMIT, writeFile } from "../runtime/files.ts"
 
 type Transfer = { mode: "write"; path: string } | { mode: "read"; load: () => Promise<Blob> }
-/** Job-local signed URLs implement the block upload protocol used by the official SDKs. */
 export class BlobTransfers {
   private readonly secret = crypto.randomUUID()
   private readonly transfers = new Map<string, Transfer>()

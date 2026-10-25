@@ -1,3 +1,3 @@
-import { handleCompile } from "../src/handler"
+import { handleCompile } from "../src/handler.ts"
 
-export default { fetch: (request: Request) => handleCompile(request) }
+Bun.serve({ fetch: (request: Request) => handleCompile(request) })

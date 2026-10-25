@@ -34,7 +34,6 @@ export interface ActionRequest {
   ) => Promise<JobStatus>
 }
 
-/** Resolves immutable prepared actions; each invocation owns its inputs and state. */
 export class ActionExecutor {
   private readonly posts: PostAction[] = []
   private readonly node = nodeBinary()

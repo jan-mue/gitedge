@@ -52,7 +52,6 @@ describe("asynchronous workflow expressions", () => {
     await writeFile(join(workspace.root, "outside"), "private")
     await symlink(join(workspace.root, "outside"), join(workspace.source, "link"))
     await expect(workspace.hashFiles(["../outside"])).rejects.toThrow("escapes")
-    // Symlinks are either excluded by Bun.Glob or rejected by the realpath boundary.
     const result = workspace.hashFiles(["link"])
     await expect(result.catch(() => "")).resolves.toBe("")
   })

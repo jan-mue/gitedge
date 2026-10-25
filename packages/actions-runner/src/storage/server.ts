@@ -14,7 +14,6 @@ export interface StorageOptions {
   job: string
   restoreArtifacts?: () => Promise<void>
 }
-/** A loopback SDK adapter lives only for this job; it is not a resident runner. */
 export class StorageServer {
   private readonly token: string
   private readonly artifacts: ArtifactStore
