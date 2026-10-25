@@ -62,6 +62,6 @@ the supplied event, static matrix, strategy, and dispatch inputs. Other executio
 expressions are evaluated by the sandbox agent. Actions resolve from the prepared
 image or checked-out repository; JavaScript actions use real Node from that image.
 
-Workflow and job permissions are limited to `contents: read` (or an empty map);
+Workflow and job permissions are limited to `contents: read`;
 checkout credentials can only read the current repository. The runner check in
 `.gitedge/workflow` symlinks to its GitHub workflow so both forges use one definition.
