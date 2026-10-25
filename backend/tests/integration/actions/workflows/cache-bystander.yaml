@@ -1,0 +1,7 @@
+name: Cache-free bystander
+on: workflow_dispatch
+jobs:
+  bystander:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'A job without cache writes must not erase saved entries'
