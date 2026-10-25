@@ -1,3 +1,5 @@
+import { z } from "zod"
+
 export const signupsEnabled = import.meta.env.VITE_SIGNUPS_ENABLED !== "false"
 
 export function extractErrorMessage(err: unknown): string {
@@ -20,15 +22,6 @@ export function extractErrorMessage(err: unknown): string {
 export const handleError = function (this: (msg: string) => void, err: unknown) {
   const errorMessage = extractErrorMessage(err)
   this(errorMessage)
-}
-
-export const getInitials = (name: string): string => {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase()
 }
 
 export const formatSize = (bytes: number): string => {
@@ -62,3 +55,18 @@ export const formatDuration = (start?: string | null, end?: string | null) => {
   )
   return seconds >= 60 ? `${Math.floor(seconds / 60)}m${seconds % 60}s` : `${seconds}s`
 }
+
+export const passwordSchema = z
+  .string()
+  .min(1, { message: "Password is required" })
+  .min(8, { message: "Password must be at least 8 characters" })
+
+export const passwordConfirmationSchema = z.object({
+  new_password: passwordSchema,
+  confirm_password: z.string().min(1, { message: "Password confirmation is required" }),
+})
+
+export const matchingPasswords = (data: { new_password: string; confirm_password: string }) =>
+  data.new_password === data.confirm_password
+
+export const passwordMismatch = { message: "The passwords don't match", path: ["confirm_password"] }

@@ -31,7 +31,7 @@ export class WorkflowRunner {
       job = input.job.config
     const workspace = new Workspace(options.root)
     await workspace.prepare(input.event)
-    const storage = await StorageServer.start({
+    const storage: StorageServer = await StorageServer.start({
       root: workspace.state,
       run: input.env.GITHUB_RUN_ID || "local",
       job: input.job.id,

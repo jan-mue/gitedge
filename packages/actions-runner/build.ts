@@ -12,7 +12,6 @@ const builds: Bun.BuildConfig[] = [
     define: { "import.meta.main": "true" },
   },
   { entrypoints: ["prepare.ts"], naming: "prepare.mjs", target: "bun", format: "esm" },
-  { entrypoints: ["artifact-compat.ts"], naming: "artifact-compat.mjs", target: "node", format: "esm" },
 ]
 
 for (const config of builds) {
