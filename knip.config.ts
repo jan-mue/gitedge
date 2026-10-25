@@ -43,7 +43,7 @@ const config: KnipConfig = {
         : [],
     },
     "packages/react-email": {
-      entry: ["emails/**/*.tsx!"],
+      entry: ["emails/**/*.tsx!", "esbuild-plugins.mjs"],
       project: ["**/*.{js,jsx,ts,tsx}!"],
       // The plugin registers non-production entries that collide with the
       // production entry above; entries are declared explicitly instead.
@@ -52,7 +52,6 @@ const config: KnipConfig = {
         ? [
             // Used by the react-email build/preview tooling, not imported by emails.
             "react-dom",
-            "react-email",
           ]
         : [],
     },
