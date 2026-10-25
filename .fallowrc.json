@@ -20,7 +20,8 @@
     "frontend/src/routeTree.gen.ts"
   ],
   "ignoreDependencies": [
-    "@react-email/ui"
+    "@react-email/ui",
+    "css-tree"
   ],
   "rules": {
     "unused-enum-members": "off",
