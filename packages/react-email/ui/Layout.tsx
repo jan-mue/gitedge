@@ -1,4 +1,4 @@
-import { Body, Head, Hr, Html, Preview, Section, Tailwind, Text } from "@react-email/components"
+import { Body, Head, Hr, Html, Preview, Section, Tailwind, Text } from "react-email"
 
 type LayoutProps = React.PropsWithChildren & {
   title: string
