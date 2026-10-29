@@ -28,7 +28,7 @@ dependencies = [
     "pyjwt==2.15.1",
     "python-multipart==0.0.32",
     "redis[hiredis]==8.1.0",
-    "sentry-sdk==2.72.0",
+    "sentry-sdk==2.73.0",
     "sqlalchemy[asyncio]==2.1.6",
     "tenacity==9.2.1",
     "upstash-redis==1.8.0",
