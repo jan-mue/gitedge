@@ -15,7 +15,7 @@
     "fallow": "fallow --fail-on-issues"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.2",
+    "@biomejs/biome": "2.6.3",
     "css-tree": "3.2.1",
     "fallow": "3.35.0"
   }
