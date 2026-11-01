@@ -1,12 +1,15 @@
 """Actions history, dispatch, cancellation, and completion callbacks."""
 
+from app.exceptions import PayloadTooLargeError, WorkflowError
+
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Header, Query, Request, Response
+from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
+from fastapi.responses import StreamingResponse
 
-from app.api.dependencies import ActionsServiceDep, CurrentUser, OptionalUser
-from app.exceptions import PayloadTooLargeError, WorkflowError
+from app.api.dependencies import ActionsLogServiceDep, ActionsServiceDep, CurrentUser, OptionalUser
+from app.schemas.action_logs import LOG_CHUNK_BYTES, LogPage
 from app.schemas.actions import ActionRun, CacheEntry, CacheIdentity, PullRequestChecks, WorkflowDispatch, WorkflowInfo
 from app.services.actions.cache import STATE_LIMIT
 
@@ -66,11 +69,137 @@ async def restore_state(token: str, service: ActionsServiceDep) -> Response:
     )
 
 
-@router.post("/actions/complete", status_code=202, include_in_schema=False)
-async def complete_job(token: str, service: ActionsServiceDep) -> dict[str, str]:
-    """Advance a completed sandbox using its short-lived, attempt-scoped capability."""
-    await service.complete(token)
+async def bounded_body(request: Request, limit: int) -> bytes:
+    """Reject oversized agent uploads while reading the request."""
+    body = bytearray()
+    async for part in request.stream():
+        if len(body) + len(part) > limit:
+            raise PayloadTooLargeError("Actions upload exceeds its size limit")
+        body.extend(part)
+    return bytes(body)
+
+
+@router.post("/actions/attempts/{attempt_id}/logs", include_in_schema=False)
+async def upload_logs(
+    attempt_id: uuid.UUID,
+    request: Request,
+    logs: ActionsLogServiceDep,
+    authorization: Annotated[str, Header()] = "",
+) -> dict[str, int]:
+    """Acknowledge a chunk only after durable archival."""
+    return {"acked_seq": await logs.upload(attempt_id, authorization, await bounded_body(request, LOG_CHUNK_BYTES))}
+
+
+@router.post("/actions/attempts/{attempt_id}/artifacts", status_code=204, include_in_schema=False)
+async def publish_artifacts(
+    attempt_id: uuid.UUID,
+    request: Request,
+    service: ActionsServiceDep,
+    authorization: Annotated[str, Header()] = "",
+) -> None:
+    """Publish this attempt's immutable artifact archive."""
+    await service.publish_state(attempt_id, authorization, await bounded_body(request, STATE_LIMIT))
+
+
+@router.post("/actions/attempts/{attempt_id}/complete", status_code=202, include_in_schema=False)
+async def complete_job(
+    attempt_id: uuid.UUID,
+    request: Request,
+    service: ActionsServiceDep,
+    authorization: Annotated[str, Header()] = "",
+) -> dict[str, str]:
+    """Apply a fenced result after its final log acknowledgement."""
+    await service.complete(attempt_id, authorization, await bounded_body(request, 1024 * 1024))
     return {"status": "accepted"}
+
+
+@router.get("/repositories/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_id}/logs")
+async def log_history(
+    response: Response,
+    owner: str,
+    repo: str,
+    run_id: uuid.UUID,
+    attempt_id: uuid.UUID,
+    service: ActionsServiceDep,
+    logs: ActionsLogServiceDep,
+    user: OptionalUser,
+    after: Annotated[int, Query(ge=0)] = 0,
+) -> LogPage:
+    """Read a bounded page after the supplied sequence."""
+    response.headers["Cache-Control"] = "private, no-store"
+    repository = await service.repository(owner, repo, user)
+    return await logs.page(repository.id, run_id, attempt_id, after)
+
+
+@router.get(
+    "/repositories/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_id}/logs/events",
+    response_class=StreamingResponse,
+    responses={
+        200: {
+            "content": {
+                "text/event-stream": {
+                    "schema": {
+                        "anyOf": [
+                            {"$ref": "#/components/schemas/LogRecord"},
+                            {
+                                "type": "object",
+                                "properties": {"last_seq": {"type": "integer"}},
+                                "required": ["last_seq"],
+                            },
+                        ]
+                    }
+                }
+            }
+        }
+    },
+)
+async def log_events(
+    owner: str,
+    repo: str,
+    run_id: uuid.UUID,
+    attempt_id: uuid.UUID,
+    service: ActionsServiceDep,
+    logs: ActionsLogServiceDep,
+    user: OptionalUser,
+    after: Annotated[int, Query(ge=0)] = 0,
+    last_event_id: Annotated[int | None, Header(alias="Last-Event-ID", ge=0)] = None,
+) -> StreamingResponse:
+    """Stream authenticated output from a resumable cursor."""
+    repository = await service.repository(owner, repo, user)
+    cursor = last_event_id if last_event_id is not None else after
+    await logs.page(repository.id, run_id, attempt_id, cursor)
+    return StreamingResponse(
+        logs.stream(repository.id, run_id, attempt_id, cursor),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "private, no-store", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.get(
+    "/repositories/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_id}/logs/download",
+    response_class=StreamingResponse,
+    responses={200: {"content": {"text/plain": {"schema": {"type": "string"}}}}},
+)
+async def download_log(
+    owner: str,
+    repo: str,
+    run_id: uuid.UUID,
+    attempt_id: uuid.UUID,
+    service: ActionsServiceDep,
+    logs: ActionsLogServiceDep,
+    user: OptionalUser,
+) -> StreamingResponse:
+    """Download archived text without buffering the entire history."""
+    repository = await service.repository(owner, repo, user)
+    await logs.page(repository.id, run_id, attempt_id, 0)
+    return StreamingResponse(
+        logs.download(repository.id, run_id, attempt_id),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "private, no-store",
+            "Content-Disposition": f'attachment; filename="{attempt_id}.log"',
+        },
+    )
 
 
 @router.get("/actions/cache/lookup", include_in_schema=False)

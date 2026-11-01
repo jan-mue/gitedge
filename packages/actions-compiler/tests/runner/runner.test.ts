@@ -5,8 +5,10 @@ import { join } from "node:path"
 import { test } from "vitest"
 import { jobSchema, type LogEntry } from "../../../actions-runner/src/domain/job.ts"
 import { ExpressionEngine } from "../../../actions-runner/src/expressions/evaluator.ts"
-import { parseFileCommands as commands } from "../../../actions-runner/src/runtime/commands.ts"
+import { parseFileCommands as commands, OutputCommands } from "../../../actions-runner/src/runtime/commands.ts"
+import { JobEnvironment } from "../../../actions-runner/src/runtime/environment.ts"
 import { Workspace } from "../../../actions-runner/src/runtime/files.ts"
+import { JobLogger } from "../../../actions-runner/src/runtime/logger.ts"
 import { WorkflowRunner } from "../../../actions-runner/src/workflow-runner.ts"
 import { manifestFixture, type WorkflowFixture } from "./test-helpers.ts"
 
@@ -221,4 +223,34 @@ jobs:
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+test("stdout byte boundaries preserve Unicode and mask secrets before log segmentation", async () => {
+  const manifest = jobSchema.parse(
+    await manifestFixture({
+      workflow:
+        "on: workflow_dispatch\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n",
+      job: "test",
+    }),
+  )
+  const entries: LogEntry[] = []
+  const logger = new JobLogger(
+    {
+      write: (entry) => {
+        entries.push(entry)
+      },
+      close: async () => {},
+    },
+    ["secret-value"],
+  )
+  const output = new OutputCommands(new JobEnvironment(manifest, new Workspace("/tmp"), {}), logger, "test", {}, {})
+  const bytes = new TextEncoder().encode("prefix secret-value 🔑\n")
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (let offset = 0; offset < bytes.length; offset += 3) controller.enqueue(bytes.slice(offset, offset + 3))
+      controller.close()
+    },
+  })
+  await output.consume(stream)
+  assert.deepEqual(entries, [{ msg: "prefix *** 🔑", stepID: ["test"] }])
 })

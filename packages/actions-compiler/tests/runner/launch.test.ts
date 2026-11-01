@@ -4,7 +4,6 @@ import { createServer } from "node:http"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "vitest"
-import type { LogEntry } from "../../../actions-runner/src/domain/job.ts"
 import { type LaunchOptions, launch as launchAgent } from "../../../actions-runner/src/job-lifecycle.ts"
 import { manifestFixture, type WorkflowFixture } from "./test-helpers.ts"
 
@@ -12,38 +11,28 @@ async function launch(input: WorkflowFixture, options: LaunchOptions) {
   return launchAgent(await manifestFixture(input), options)
 }
 
-test("Bun launcher exports state and publishes its completion marker before callback", async () => {
+test("agent pushes ordered logs and artifacts before completing, without sandbox file inspection", async () => {
   const root = await mkdtemp(join(tmpdir(), "gitedge-launch-"))
-  let delivered = 0
-  let callbackError: unknown
-  const server = createServer(async (_request, response) => {
-    try {
-      assert.equal(await readFile(join(root, "exit-code"), "utf8"), "0")
-      const result = JSON.parse(await readFile(join(root, "result.json"), "utf8"))
-      assert.equal(result.status, "success")
-      assert.equal(result.attempt.generation, 1)
-      const entries: LogEntry[] = (await readFile(join(root, "log.jsonl"), "utf8"))
-        .trim()
-        .split("\n")
-        .map((line) => JSON.parse(line))
-      assert.ok(entries.length > 0)
-      for (const entry of entries) {
-        assert.equal(entry.attemptID, result.attempt.id)
-        assert.equal(entry.jobID, result.attempt.job_id)
-        assert.equal(entry.generation, result.attempt.generation)
-        assert.equal(entry.fence, result.attempt.fence)
+  const operations: string[] = []
+  let cursor = 0
+  let report: { last_seq: number; result: { status: string } } | undefined
+  const server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    async fetch(request) {
+      assert.equal(request.headers.get("authorization"), "Bearer job-report-token")
+      const operation = new URL(request.url).pathname.split("/").pop() || ""
+      operations.push(operation)
+      if (operation === "logs") {
+        const data = await request.json()
+        assert.equal(data.from_seq, cursor + 1)
+        cursor = data.to_seq
+        return Response.json({ acked_seq: cursor })
       }
-      delivered++
-      response.end(JSON.stringify({ status: "accepted" }))
-    } catch (error) {
-      callbackError = error
-      response.statusCode = 500
-      response.end()
-    }
+      if (operation === "complete") report = await request.json()
+      return new Response(null, { status: 204 })
+    },
   })
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()))
-  const address = server.address()
-  assert.ok(address && typeof address !== "string")
   try {
     const { code } = await launch(
       {
@@ -52,16 +41,21 @@ test("Bun launcher exports state and publishes its completion marker before call
         job: "test",
         timeout_seconds: 10,
         env: { GITHUB_RUN_ID: "1" },
-        complete_url: `http://127.0.0.1:${address.port}`,
+        report_url: `http://127.0.0.1:${server.port}/attempt`,
+        report_token: "job-report-token",
       },
       { root },
     )
     assert.equal(code, 0)
-    assert.equal(delivered, 1)
-    assert.equal(callbackError, undefined)
-    assert.ok((await readFile(join(root, "state.tar.gz"))).length > 0)
+    assert.equal(operations[operations.length - 1], "complete")
+    assert.ok(operations.includes("artifacts") && operations.includes("logs"))
+    assert.equal(report?.last_seq, cursor)
+    assert.equal(report?.result.status, "success")
+    assert.equal(await Bun.file(join(root, "result.json")).exists(), false)
+    assert.equal(await Bun.file(join(root, "exit-code")).exists(), false)
+    assert.equal(await Bun.file(join(root, "log.jsonl")).exists(), false)
   } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()))
+    await server.stop(true)
     await rm(root, { recursive: true, force: true })
   }
 })

@@ -15,6 +15,7 @@ from redis_fastapi import get_async_redis
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clients.action_logs import ActionsLogStore, SQLActionsLogStore
 from app.clients.actions import ActionsStore, SQLActionsStore
 from app.clients.actions_cache import ActionsCacheStore, SQLActionsCacheStore
 from app.clients.activity import ActivityStore, SQLActivityStore
@@ -49,6 +50,7 @@ from app.config import settings
 from app.entities.users import User
 from app.schemas.token import TokenPayload
 from app.services.actions.cache import ActionsCacheService
+from app.services.actions.logs import ActionsLogService
 from app.services.actions.service import ActionsService
 from app.services.activity import ActivityService
 from app.services.comments import CommentService
@@ -771,3 +773,24 @@ def get_actions_service(
 
 
 ActionsServiceDep = Annotated[ActionsService, Depends(get_actions_service)]
+
+
+def get_actions_log_store(db: SessionDep) -> ActionsLogStore:
+    """Share the request session for atomic log indexes."""
+    return SQLActionsLogStore(db)
+
+
+ActionsLogStoreDep = Annotated[ActionsLogStore, Depends(get_actions_log_store)]
+
+
+def get_actions_log_service(
+    store: ActionsStoreDep,
+    indexes: ActionsLogStoreDep,
+    blobs: BlobStorageClientDep,
+    redis: RedisClientDep,
+) -> ActionsLogService:
+    """Wire durable log storage and optional recent delivery."""
+    return ActionsLogService(store, indexes, blobs, redis, settings.ACTIONS_SECRETS)
+
+
+ActionsLogServiceDep = Annotated[ActionsLogService, Depends(get_actions_log_service)]

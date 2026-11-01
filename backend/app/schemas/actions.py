@@ -21,12 +21,11 @@ class ActionStatus(StrEnum):
 
 
 class ActionStep(GitEdgeBaseModel):
-    """One step and its masked, plain-text log."""
+    """One step and its execution status."""
 
     id: str
     name: str
     status: ActionStatus = ActionStatus.QUEUED
-    log: str = ""
 
 
 class ActionJob(GitEdgeBaseModel):
@@ -46,7 +45,6 @@ class ActionJob(GitEdgeBaseModel):
     timeout_seconds: int = 1200
     outputs: dict[str, str] = Field(default_factory=dict)
     steps: list[ActionStep] = Field(default_factory=list)
-    log: str = ""
     error: str | None = None
     continue_on_error: bool = False
 

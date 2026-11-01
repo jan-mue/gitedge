@@ -53,7 +53,8 @@ def build_job_input(
         },
         secrets={**secrets, "GITHUB_TOKEN": issue_capability(run, job, attempt, "git:read")},
         restore_url=_callback(run, job, attempt, "state"),
-        complete_url=_callback(run, job, attempt, "complete"),
+        report_url=f"{server}/api/v1/actions/attempts/{attempt.id}",
+        report_token=issue_capability(run, job, attempt, "actions:report"),
         cache_url=_callback(run, job, attempt, "cache"),
     )
     return {"input.json": payload.model_dump_json(by_alias=True, exclude_none=True).encode()}

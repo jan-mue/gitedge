@@ -132,7 +132,7 @@ export class ActionExecutor {
       try {
         post.scope.context.job = { status: result }
         if (!(await this.expressions.condition(post.condition, post.scope.expressionContext(), result))) continue
-        this.logger.emit("Post action cleanup", post.step)
+        await this.logger.emit("Post action cleanup", post.step)
         await this.process.run({
           command: this.node,
           args: [post.file],
@@ -144,7 +144,7 @@ export class ActionExecutor {
           signal,
         })
       } catch (error) {
-        this.logger.emit(error instanceof Error ? error.message : String(error), post.step, "failure")
+        await this.logger.emit(error instanceof Error ? error.message : String(error), post.step, "failure")
         if (result !== "cancelled") result = "failure"
       }
     }

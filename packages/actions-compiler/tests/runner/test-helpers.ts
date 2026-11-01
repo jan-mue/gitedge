@@ -17,7 +17,7 @@ export async function manifestFixture(input: WorkflowFixture): Promise<JobInput>
   if (!job) throw new Error(`Missing test job: ${key}`)
   return {
     ...runtime,
-    version: 2,
+    version: 3,
     attempt: {
       id: "11111111-1111-4111-8111-111111111111",
       job_id: input.job,

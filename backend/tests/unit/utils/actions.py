@@ -8,6 +8,7 @@ from contextvars import ContextVar
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, override
 
+from app.clients.action_logs import ActionsLogStore, LogContext
 from app.clients.actions import ActionsStore, RunState
 from app.clients.qstash import ActionsQueue
 from app.clients.workflow_compiler import WorkflowCompiler
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 
     from pydantic import BaseModel
 
-    from app.entities.actions import WorkflowAttempt, WorkflowOutbox, WorkflowRun
+    from app.entities.actions import WorkflowAttempt, WorkflowLogChunk, WorkflowOutbox, WorkflowRun
     from app.schemas.action_dispatch import Capability
     from app.schemas.workflows import CompileRequest
 
@@ -193,3 +194,32 @@ class FakeWorkflowCompiler(WorkflowCompiler):
     @override
     async def compile(self, request: CompileRequest) -> CompiledWorkflow:
         return compiled_fixture().model_copy(update={"workflow_name": request.filename})
+
+
+class FakeActionsLogStore(ActionsLogStore):
+    def __init__(self, runs: FakeActionsStore) -> None:
+        self.runs = runs
+        self.indexes: dict[UUID, WorkflowLogChunk] = {}
+
+    @override
+    async def context(self, repo_id: UUID, run_id: UUID, attempt_id: UUID) -> LogContext | None:
+        run, attempt = self.runs.runs.get(run_id), self.runs.attempts.get(attempt_id)
+        if not run or not attempt or attempt.run_id != run_id or run.repo_id != repo_id:
+            return None
+        return LogContext(attempt_id, attempt.job_id, attempt.log_seq or 0, attempt.status)
+
+    @override
+    async def chunks(self, attempt_id: UUID, after: int) -> list[WorkflowLogChunk]:
+        return sorted(
+            (chunk for chunk in self.indexes.values() if chunk.attempt_id == attempt_id and chunk.to_seq > after),
+            key=lambda chunk: chunk.from_seq,
+        )[:2]
+
+    @override
+    async def chunk(self, chunk_id: UUID) -> WorkflowLogChunk | None:
+        return self.indexes.get(chunk_id)
+
+    @override
+    def stage(self, chunk: WorkflowLogChunk) -> None:
+        assert self.runs.in_transaction
+        self.indexes[chunk.id] = chunk

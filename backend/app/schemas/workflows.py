@@ -136,7 +136,7 @@ class JobDependency(BaseModel):
 class JobInput(BaseModel):
     """Versioned manifest consumed directly by the sandbox agent."""
 
-    version: Literal[2] = 2
+    version: Literal[3] = 3
     attempt: AttemptIdentity
     workflow: WorkflowContext
     job: CompiledJob
@@ -149,7 +149,8 @@ class JobInput(BaseModel):
     env: dict[str, str]
     secrets: dict[str, str]
     restore_url: str
-    complete_url: str
+    report_url: str
+    report_token: str
     cache_url: str
 
 

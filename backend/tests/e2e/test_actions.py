@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import httpx2 as httpx
 import pytest
+import redis
 from playwright.sync_api import expect
 
 from tests.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD
@@ -18,7 +19,9 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.usefixtures("logged_in_superuser")
-def test_actions_dispatch_checkout_and_live_logs(page: Page, app_url: str, backend_url: str, tmp_path: Path) -> None:
+def test_actions_dispatch_checkout_and_live_logs(
+    page: Page, app_url: str, backend_url: str, tmp_path: Path, infrastructure: dict[str, str]
+) -> None:
     source = tmp_path / "source"
     source.mkdir()
     run_git(source, ["init", "-b", "main"])
@@ -35,9 +38,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Say hello
+        shell: bun {0}
         run: |
-          test -f README.md
-          echo "Hello from the sandbox"
+          if (!await Bun.file("README.md").exists()) throw new Error("Checkout did not transfer source")
+          console.log("Hello from the sandbox")
+          await Bun.sleep(6000)
+          console.log("Live step finished")
 """)
     run_git(source, ["add", "."])
     run_git(source, ["commit", "-m", "Browser CI fixture"])
@@ -54,9 +60,16 @@ jobs:
             page.get_by_role("button", name="browser.yaml", exact=True).click()
             page.get_by_role("button", name="Run workflow", exact=True).click()
             expect(page.get_by_role("heading", name="Browser CI", exact=True)).to_be_visible(timeout=180000)
+            expect(page.get_by_text("Hello from the sandbox", exact=False).first).to_be_visible(timeout=180000)
+            expect(page.get_by_role("img", name="running", exact=True).first).to_be_visible()
+            active = api.get("/api/v1/repositories/admin/browser-actions/actions/runs").json()[0]
+            with redis.Redis.from_url(infrastructure["REDIS_URL"]) as cache:
+                cache.delete(f"actions:logs:{active['jobs'][0]['attempt_id']}")
+            page.reload()
+            expect(page.get_by_text("Hello from the sandbox", exact=False).first).to_be_visible(timeout=180000)
             expect(page.get_by_role("img", name="success", exact=True).first).to_be_visible(timeout=180000)
             page.get_by_role("button", name="success Say hello").click()
-            expect(page.get_by_text("Hello from the sandbox", exact=False).first).to_be_visible()
+            expect(page.get_by_text("Live step finished", exact=False).first).to_be_visible()
             assert "?run=" in page.url
             page.reload()
             expect(page.get_by_role("heading", name="Browser CI", exact=True)).to_be_visible()

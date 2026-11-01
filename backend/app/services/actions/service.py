@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from app.exceptions import ConflictError
+
 import asyncio
+import hashlib
 import logging
 import uuid
 from datetime import UTC, datetime
@@ -19,12 +22,14 @@ from app.exceptions import (
     WorkflowError,
 )
 from app.schemas.action_dispatch import Delivery, RecoveryDelivery
+from app.schemas.action_logs import JobCompletion
 from app.schemas.actions import ActionJob, ActionRun, PullRequestChecks, WorkflowInfo
 from app.schemas.workflow_events import DispatchEvent, PullRequestEvent, WorkflowEvent, workflow_event_adapter
 from app.schemas.workflows import CompileEvent, CompileRequest
-from app.services.actions.capabilities import authorize_capability
+from app.services.actions.capabilities import authorize_capability, authorize_report, report_payload
 from app.services.actions.dispatcher import ActionsDispatcher
 from app.services.actions.events import WorkflowEvents, compile_event, snapshot_event
+from app.services.actions.logs import current_attempt
 from app.services.actions.runtime import merge_artifacts
 from app.services.actions.scheduler import RunScheduler
 from app.services.actions.workflows import instantiate_jobs, workflow_paths
@@ -79,11 +84,12 @@ class ActionsService:
         self.scheduler = RunScheduler(max_parallel)
         self.queue = queue
         self.events = WorkflowEvents(repositories, repository_store, pull_requests, self.trigger)
-        self.dispatcher = ActionsDispatcher(store, blobs, sandbox, queue, self.scheduler, secrets or {})
+        self.dispatcher = ActionsDispatcher(store, sandbox, queue, self.scheduler, secrets or {})
 
-    async def _repository(
+    async def repository(
         self, owner: str, name: str, user: User | None = None, *, write: bool = False
     ) -> RepositoryEntity:
+        """Authorize repository reads or owner-only workflow mutations."""
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
         allowed = user is not None and (user.id == repository.owner_id or user.is_superuser)
         if repository.is_private and not allowed:
@@ -94,7 +100,7 @@ class ActionsService:
 
     async def workflows(self, owner: str, name: str, ref: str, user: User | None) -> list[WorkflowInfo]:
         """Discover workflow files at a requested revision."""
-        await self._repository(owner, name, user)
+        await self.repository(owner, name, user)
         index = await self.repositories.get_file_index(owner, name, ref)
         if not index.paths:
             return []
@@ -112,7 +118,7 @@ class ActionsService:
         self, owner: str, name: str, workflow: str, ref: str, inputs: dict[str, str], user: User
     ) -> ActionRun:
         """Authorize a manual dispatch before provisioning any job resources."""
-        await self._repository(owner, name, user, write=True)
+        await self.repository(owner, name, user, write=True)
         runs = await self.trigger(owner, name, ref, DispatchEvent(inputs=inputs), actor=user.name, workflow=workflow)
         if not runs:
             raise WorkflowError("Workflow does not enable workflow_dispatch")
@@ -186,12 +192,12 @@ class ActionsService:
 
     async def list_runs(self, owner: str, name: str, user: User | None) -> list[ActionRun]:
         """Return persisted history without scheduling side effects."""
-        repository = await self._repository(owner, name, user)
+        repository = await self.repository(owner, name, user)
         return [self.public(run) for run in await self.store.list_runs(repository.id)]
 
     async def pull_request_checks(self, owner: str, name: str, number: int, user: User | None) -> PullRequestChecks:
         """Pin checks to the current head and retain the latest delivery per workflow/event."""
-        repository = await self._repository(owner, name, user)
+        repository = await self.repository(owner, name, user)
         if self.pull_requests is None:
             raise RuntimeError("Pull request store is not configured")
         pull = await self.pull_requests.get_by_number(repository.id, number)
@@ -209,13 +215,13 @@ class ActionsService:
 
     async def cancel(self, owner: str, name: str, run_id: uuid.UUID, user: User) -> None:
         """Authorize cancellation and release job resources."""
-        repository = await self._repository(owner, name, user, write=True)
+        repository = await self.repository(owner, name, user, write=True)
         if not await self.dispatcher.cancel(repository.id, run_id):
             raise NotFoundError("Workflow run not found or busy")
 
     async def on_push(self, owner: str, name: str, before: dict[str, str], after: dict[str, str], user: User) -> None:
         """Compile and enqueue workflows affected by updated Git refs."""
-        await self._repository(owner, name, user, write=True)
+        await self.repository(owner, name, user, write=True)
         await self.events.on_push(owner, name, before, after, user)
 
     async def on_pull_request(
@@ -250,10 +256,23 @@ class ActionsService:
             if message and message.kind == operation:
                 await self.dispatcher.deliver(message)
 
-    async def complete(self, token: str) -> None:
-        """Collect only a completion capability for the current attempt."""
-        capability = await authorize_capability(self.store, token, "actions:complete", allow_terminal=True)
-        await self.dispatcher.notify(capability)
+    async def complete(self, attempt_id: uuid.UUID, authorization: str, body: bytes) -> None:
+        """Validate a pushed result and delegate its durable transition."""
+        capability = await authorize_report(self.store, attempt_id, authorization, terminal=True)
+        completion = report_payload(JobCompletion, body, capability)
+        await self.dispatcher.complete(capability, completion)
+
+    async def publish_state(self, attempt_id: uuid.UUID, authorization: str, payload: bytes) -> None:
+        """Publish artifacts outside the lock and commit a fenced reference."""
+        capability = await authorize_report(self.store, attempt_id, authorization)
+        checksum = hashlib.sha256(payload).hexdigest()
+        key = f"actions/{capability.repo}/{capability.run}/attempts/{attempt_id}/state-{checksum}.tar.gz"
+        await self.blobs.put(key, payload)
+        async with self.store.transaction(capability.run, capability.repo) as state:
+            attempt = current_attempt(state, capability)
+            if attempt.artifact_key and attempt.artifact_key != key:
+                raise ConflictError("Attempt artifacts already published")
+            attempt.artifact_key = key
 
     async def restore_state(self, token: str) -> bytes:
         """Restore committed artifacts without accepting stale capabilities."""
@@ -292,7 +311,7 @@ class ActionsService:
 
     async def cancel_repository(self, owner: str, name: str, user: User) -> uuid.UUID:
         """Stop active sandboxes before their repository rows can be deleted."""
-        repository = await self._repository(owner, name, user, write=True)
+        repository = await self.repository(owner, name, user, write=True)
         for run_id in await self.store.active_runs(repository.id):
             await self.dispatcher.cancel(repository.id, run_id)
         try:

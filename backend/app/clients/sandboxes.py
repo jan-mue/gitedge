@@ -1,13 +1,9 @@
 """Provider-independent sandbox clients for one isolated, short-lived job each."""
 
-import asyncio
 import base64
-import io
 import json
-import tarfile
 import zlib
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from http import HTTPStatus
 from typing import override
 
@@ -15,7 +11,6 @@ from aiodocker import Docker
 from aiodocker.exceptions import DockerError
 from vercel.sandbox import (
     SandboxApiError,
-    SandboxPathNotFoundError,
     SandboxResources,
     SandboxStatus,
     SnapshotSource,
@@ -29,14 +24,6 @@ class SandboxError(RuntimeError):
     """A provider could not create, inspect, or clean up a job sandbox."""
 
 
-@dataclass
-class SandboxSnapshot:
-    """Bounded data read from a job sandbox."""
-
-    running: bool
-    files: dict[str, bytes] = field(default_factory=dict)
-
-
 class AbstractSandboxClient(ABC):
     """Implement this contract to add another sandbox provider."""
 
@@ -46,8 +33,8 @@ class AbstractSandboxClient(ABC):
         ...
 
     @abstractmethod
-    async def inspect(self, name: str) -> SandboxSnapshot:
-        """Read logs/result and portable state without resuming stopped sandboxes."""
+    async def is_running(self, name: str) -> bool:
+        """Check liveness without reading sandbox files or resuming it."""
         ...
 
     @abstractmethod
@@ -57,10 +44,7 @@ class AbstractSandboxClient(ABC):
 
 
 MAX_VERCEL_ENV_BYTES = 4096
-MAX_FILE_BYTES = 32 * 1024 * 1024
 CLEANUP_GRACE_SECONDS = 30
-# Read the marker first: if it exists, subsequent result/state reads are complete.
-READ_FILES = ("exit-code", "result.json", "log.jsonl", "state.tar.gz")
 
 
 class DockerSandboxClient(AbstractSandboxClient):
@@ -107,42 +91,15 @@ class DockerSandboxClient(AbstractSandboxClient):
             raise SandboxError(f"Docker sandbox start failed: {exc}") from exc
 
     @override
-    async def inspect(self, name: str) -> SandboxSnapshot:
-        """Stream bounded job files instead of buffering an unbounded SDK archive."""
+    async def is_running(self, name: str) -> bool:
         try:
             async with Docker(api_version="v1.45") as client:
                 container = await client.containers.get(name)
-                state = await container.show()
-                result = SandboxSnapshot(running=state["State"]["Status"] in {"running", "created"})
-                for path in READ_FILES:
-                    try:
-                        # get_archive buffers its complete response; use aiodocker's
-                        # streaming transport so workflow-created files remain bounded.
-                        async with client._query(  # noqa: SLF001 — public get_archive buffers the entire response
-                            f"containers/{container.id}/archive", method="GET", params={"path": f"/gitedge/{path}"}
-                        ) as response:
-                            raw = io.BytesIO()
-                            async for chunk in response.content.iter_chunked(65536):
-                                raw.write(chunk)
-                                if raw.tell() > MAX_FILE_BYTES + 16384:
-                                    raise SandboxError("Sandbox response exceeds the transfer limit")
-                        raw.seek(0)
-                        with tarfile.open(fileobj=raw) as archive:
-                            member = archive.next()
-                            if member is not None and member.isfile():
-                                if member.size > MAX_FILE_BYTES:
-                                    raise SandboxError(f"Sandbox file exceeds the transfer limit: {path}")
-                                handle = archive.extractfile(member)
-                                if handle is not None:
-                                    result.files[path] = handle.read(MAX_FILE_BYTES)
-                    except DockerError as exc:
-                        if exc.status != HTTPStatus.NOT_FOUND:
-                            raise
-                return result
+                return (await container.show())["State"]["Status"] in {"running", "created"}
         except DockerError as exc:
             if exc.status == HTTPStatus.NOT_FOUND:
-                return SandboxSnapshot(running=False)
-            raise SandboxError(f"Docker sandbox inspection failed: {exc}") from exc
+                return False
+            raise SandboxError(f"Docker sandbox status failed: {exc}") from exc
 
     @override
     async def delete(self, name: str) -> None:
@@ -218,42 +175,18 @@ class VercelSandboxClient(AbstractSandboxClient):
             raise SandboxError(f"Vercel sandbox start failed: {exc}") from exc
 
     @override
-    async def inspect(self, name: str) -> SandboxSnapshot:
-        """Read an active job without auto-resuming an expired session."""
+    async def is_running(self, name: str) -> bool:
         try:
             box = await get_sandbox(name=name)
             if box.status != SandboxStatus.RUNNING:
-                return SandboxSnapshot(running=False)
-
-            async def read(path: str) -> bytes | None:
-                try:
-                    data = await box.fs.read_bytes(f"/gitedge/{path}")
-                except SandboxPathNotFoundError:
-                    return None
-                if len(data) > MAX_FILE_BYTES:
-                    raise SandboxError(f"Sandbox file too large: {path}")
-                return data
-
-            marker = await read("exit-code")
-            if marker is None:
-                processes = await box.query_processes()
-                if any(process.returncode is None for process in processes):
-                    log = await read("log.jsonl")
-                    return SandboxSnapshot(running=True, files={"log.jsonl": log} if log is not None else {})
-                # A process can finish after the first marker read. Its result is
-                # complete once the marker is observed, without per-process refresh calls.
-                marker = await read("exit-code")
-            values = await asyncio.gather(*(read(path) for path in READ_FILES[1:]))
-            files = {path: data for path, data in zip(READ_FILES[1:], values, strict=True) if data is not None}
-            if marker is not None:
-                files["exit-code"] = marker
-            return SandboxSnapshot(running=False, files=files)
+                return False
+            return any(process.returncode is None for process in await box.query_processes())
         except SandboxApiError as exc:
             if exc.status_code == HTTPStatus.NOT_FOUND:
-                return SandboxSnapshot(running=False)
-            raise SandboxError(f"Vercel sandbox inspection failed: {exc}") from exc
+                return False
+            raise SandboxError(f"Vercel sandbox status failed: {exc}") from exc
         except VercelSandboxError as exc:
-            raise SandboxError(f"Vercel sandbox inspection failed: {exc}") from exc
+            raise SandboxError(f"Vercel sandbox status failed: {exc}") from exc
 
     @override
     async def delete(self, name: str) -> None:

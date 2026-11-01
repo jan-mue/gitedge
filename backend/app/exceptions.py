@@ -86,3 +86,7 @@ class ServiceUnavailableError(RuntimeError):
 
 class PayloadTooLargeError(ValueError):
     """An upload exceeds its allowed transfer size."""
+
+
+class ConflictError(Exception):
+    """The request conflicts with already committed state."""

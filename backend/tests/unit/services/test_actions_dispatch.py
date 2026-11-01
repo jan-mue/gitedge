@@ -5,13 +5,13 @@ import json
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
-from urllib.parse import parse_qs, urlparse
 
 import pytest
+from app.exceptions import PermissionDeniedError, ConflictError
 
-from app.clients.sandboxes import AbstractSandboxClient, SandboxError, SandboxSnapshot
+from app.clients.sandboxes import AbstractSandboxClient, SandboxError
 from app.entities.actions import WorkflowRun
-from app.exceptions import ActionsUnavailableError, PermissionDeniedError
+from app.exceptions import ActionsUnavailableError
 from app.services.actions.service import ActionsService
 from app.services.actions.workflows import instantiate_jobs
 from tests.unit.utils.actions import FakeActionsQueue, FakeActionsStore, FakeWorkflowCompiler, compiled_fixture
@@ -29,7 +29,7 @@ type Execution = tuple[ActionsService, FakeActionsStore, AsyncMockType, FakeActi
 def execution(mocker: MockerFixture, fake_stores: FakeStores) -> Execution:
     store, queue = FakeActionsStore(), FakeActionsQueue()
     sandbox = mocker.AsyncMock(spec=AbstractSandboxClient)
-    sandbox.inspect.return_value = SandboxSnapshot(running=True)
+    sandbox.is_running.return_value = True
     service = ActionsService(
         store,
         mocker.Mock(),
@@ -73,9 +73,17 @@ def pending(store: FakeActionsStore, kind: str) -> list[WorkflowOutbox]:
     return [item for item in store.messages.values() if item.kind == kind and item.acknowledged_at is None]
 
 
-def completion(sandbox: AsyncMockType) -> str:
+def completion(sandbox: AsyncMockType) -> tuple[uuid.UUID, str, bytes]:
     descriptor = json.loads(sandbox.start.call_args.args[1]["input.json"])
-    return parse_qs(urlparse(descriptor["complete_url"]).query)["token"][0]
+    identity = descriptor["attempt"]
+    payload = {
+        "version": 1,
+        **identity,
+        "exit_code": 0,
+        "last_seq": 0,
+        "result": {"status": "success", "steps": {}, "outputs": {"value": "ready"}},
+    }
+    return uuid.UUID(identity["id"]), f"Bearer {descriptor['report_token']}", json.dumps(payload).encode()
 
 
 async def test_dispatch_claim_commits_before_provider_io_and_duplicate_deliveries_do_not_launch_again(
@@ -89,7 +97,7 @@ async def test_dispatch_claim_commits_before_provider_io_and_duplicate_deliverie
         assert lifetime == 60
         assert not store.in_transaction
         payload = json.loads(files["input.json"])
-        assert payload["version"] == 2
+        assert payload["version"] == 3
         assert name.endswith(payload["attempt"]["id"].replace("-", ""))
         started.append(name)
         if len(started) == 2:
@@ -137,7 +145,7 @@ async def test_cancel_during_provisioning_revokes_callbacks_and_destroys_a_late_
     await started.wait()
     await service.dispatcher.cancel(run.repo_id, run.id)
     with pytest.raises(PermissionDeniedError):
-        await service.complete(completion(sandbox))
+        await service.complete(*completion(sandbox))
     finish.set()
     await delivery
     assert run.status == "cancelled"
@@ -158,7 +166,7 @@ async def test_expired_provisioning_is_retried_with_a_new_attempt_and_fence(exec
     assert newest.fence != old.fence
     assert newest.sandbox != old.sandbox
     with pytest.raises(PermissionDeniedError):
-        await service.complete(token)
+        await service.complete(*token)
 
 
 async def test_provisioning_retries_are_bounded_and_resources_are_cleaned(execution: Execution) -> None:
@@ -175,31 +183,14 @@ async def test_provisioning_retries_are_bounded_and_resources_are_cleaned(execut
     assert [attempt.generation for attempt in store.attempts.values()] == [1, 2, 3]
 
 
-async def test_collection_is_outside_transactions_and_duplicate_completion_is_idempotent(execution: Execution) -> None:
+async def test_completion_push_is_idempotent_and_never_inspects_files(execution: Execution) -> None:
     service, store, sandbox, _ = execution
     run = await add_run(execution)
     await service.dispatcher.deliver(pending(store, "dispatch")[0])
-    descriptor = json.loads(sandbox.start.call_args.args[1]["input.json"])
-
-    async def inspect(_name: str) -> SandboxSnapshot:
-        assert not store.in_transaction
-        return SandboxSnapshot(
-            running=False,
-            files={
-                "exit-code": b"0",
-                "result.json": json.dumps(
-                    {"attempt": descriptor["attempt"], "status": "success", "steps": {}, "outputs": {"value": "ready"}}
-                ).encode(),
-                "log.jsonl": b"",
-            },
-        )
-
-    sandbox.inspect.side_effect = inspect
-    command = next(item for item in pending(store, "inspect") if item.due_at < datetime.now(UTC) + timedelta(seconds=1))
-    await service.dispatcher.deliver(command)
-    await service.dispatcher.deliver(command)
+    await service.complete(*completion(sandbox))
+    await service.complete(*completion(sandbox))
     await service.dispatcher.deliver(pending(store, "cleanup")[0])
-    assert sandbox.inspect.await_count == 1
+    sandbox.is_running.assert_not_awaited()
     assert run.status == "success"
     assert run.jobs[0]["outputs"] == {"value": "ready"}
 
@@ -208,23 +199,15 @@ async def test_late_collection_cannot_resurrect_a_cancelled_attempt(execution: E
     service, store, sandbox, _ = execution
     run = await add_run(execution)
     await service.dispatcher.deliver(pending(store, "dispatch")[0])
-    descriptor = json.loads(sandbox.start.call_args.args[1]["input.json"])
     started, finish = asyncio.Event(), asyncio.Event()
 
-    async def inspect(_name: str) -> SandboxSnapshot:
+    async def is_running(_name: str) -> bool:
+        assert not store.in_transaction
         started.set()
         await finish.wait()
-        return SandboxSnapshot(
-            running=False,
-            files={
-                "exit-code": b"0",
-                "result.json": json.dumps(
-                    {"attempt": descriptor["attempt"], "status": "success", "outputs": {"late": "value"}}
-                ).encode(),
-            },
-        )
+        return False
 
-    sandbox.inspect.side_effect = inspect
+    sandbox.is_running.side_effect = is_running
     command = next(item for item in pending(store, "inspect") if item.due_at < datetime.now(UTC) + timedelta(seconds=1))
     delivery = asyncio.create_task(service.dispatcher.deliver(command))
     await started.wait()
@@ -263,3 +246,31 @@ async def test_recovery_fails_legacy_execution_visibly_and_cleans_its_handle(exe
     assert "Legacy execution" in run.jobs[0]["error"]
     sandbox.delete.assert_awaited_once_with("legacy-job")
     sandbox.start.assert_not_awaited()
+
+
+async def test_artifact_upload_commits_a_fenced_reference_before_completion(
+    execution: Execution,
+    fake_stores: FakeStores,
+    mocker: MockerFixture,
+) -> None:
+    service, store, sandbox, _ = execution
+    run = await add_run(execution)
+    await service.dispatcher.deliver(pending(store, "dispatch")[0])
+    attempt_id, authorization, result = completion(sandbox)
+    original = fake_stores.blob.put
+
+    async def put(key: str, payload: bytes) -> None:
+        assert not store.in_transaction
+        await original(key, payload)
+
+    mocker.patch.object(fake_stores.blob, "put", side_effect=put)
+    await service.publish_state(attempt_id, authorization, b"archive")
+    await service.publish_state(attempt_id, authorization, b"archive")
+    with pytest.raises(PermissionDeniedError) as changed:
+        await service.publish_state(attempt_id, authorization, b"changed archive")
+    assert changed.value.status_code == 409
+    await service.complete(attempt_id, authorization, result)
+    key = store.attempts[attempt_id].artifact_key
+    assert key is not None
+    assert fake_stores.blob.objects[key] == b"archive"
+    assert await store.artifacts(run.id) == [key]

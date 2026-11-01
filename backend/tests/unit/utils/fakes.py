@@ -103,6 +103,7 @@ class FakeRedisClient(AbstractRedisClient):
     def __init__(self) -> None:
         """Initialize the client."""
         self.values: dict[str, bytes] = {}
+        self.streams: dict[str, dict[int, bytes]] = {}
 
     @override
     async def compare_and_set(self, expected: dict[str, str | None], updates: dict[str, str | None]) -> bool:
@@ -132,11 +133,24 @@ class FakeRedisClient(AbstractRedisClient):
     async def delete(self, key: str) -> None:
         """Delete a key from Redis."""
         self.values.pop(key, None)
+        self.streams.pop(key, None)
 
     @override
     async def scan_keys(self, pattern: str) -> list[str]:
         """Scan for keys matching a pattern."""
         return fnmatch.filter(self.values, pattern)
+
+    @override
+    async def stream_add(self, key: str, seq: int, value: str) -> None:
+        stream = self.streams.setdefault(key, {})
+        stream[seq] = value.encode()
+        for oldest in sorted(stream)[:-64]:
+            del stream[oldest]
+
+    @override
+    async def stream_read(self, key: str, after: int) -> list[bytes]:
+        stream = self.streams.get(key, {})
+        return [stream[seq] for seq in sorted(stream) if seq > after][:2]
 
 
 class FakeCacheClient(AbstractCacheClient):

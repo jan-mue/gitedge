@@ -70,7 +70,7 @@ async def test_pr_checks_follow_the_head_and_ignore_other_prs_and_old_deliveries
     assert store.runs[checks.runs[0].id].event_key == "latest"
     assert len(await service.list_runs("owner", "repo", None)) == 4
     sandbox.start.assert_not_awaited()
-    sandbox.inspect.assert_not_awaited()
+    sandbox.is_running.assert_not_awaited()
     sandbox.delete.assert_not_awaited()
     assert queue.deliveries == []
     assert queue.recoveries == 0

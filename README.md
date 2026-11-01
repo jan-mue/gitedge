@@ -193,7 +193,7 @@ Workflows in `.gitedge/workflow/` use GitHub/Gitea Actions syntax. The Bun
 compiler in `packages/actions-compiler` validates them with the official
 `@actions/workflow-parser` and emits version-one JSON IR. The independent
 `packages/actions-runner` agent validates its execution schema and evaluates
-runtime expressions using `@actions/expressions`. Agent manifests use version 2
+runtime expressions using `@actions/expressions`. Agent manifests use version 3
 with a job UUID, attempt UUID, generation and fence; rebuild prepared images and
 snapshots when upgrading the manifest. Each job gets its own Docker
 container or Vercel Sandbox. Prepared images contain actions and toolchains;
@@ -394,7 +394,7 @@ or configuration fails closed. No shared compiler secret is used.
 ### Actions dispatch
 
 PostgreSQL owns run state, fenced job attempts and outbox commands. QStash
-performs signed HTTP dispatch, inspection, cleanup and recovery. Provider calls
+performs signed HTTP dispatch, liveness checks, cleanup and recovery. Provider calls
 run outside database transactions; history and PR check reads never schedule
 jobs. Cancellation revokes attempt capabilities before destroying sandboxes.
 There is no resident scheduler or cron job.
@@ -410,6 +410,25 @@ Integration/E2E fixtures start the official QStash image pinned by digest in
 enabled. Container callbacks use `host.docker.internal`; Linux Docker must
 support `host-gateway`. Database locks exercise real delivery retries, and
 pausing the broker exercises outbox recovery.
+
+### Actions logs and completion
+
+Agents push sequenced log chunks (64 KiB or every 500 ms) using fenced,
+attempt-scoped Bearer capabilities. Unacknowledged chunks remain in a bounded
+16 MiB local spool. Blob/S3 stores immutable, checksummed chunks; PostgreSQL
+indexes and commits them before ACK. Redis Streams holds an expiring recent
+tail and is optional for correctness. Run and PR-check rows contain metadata,
+not complete log strings.
+
+The Actions UI loads log history separately, follows authenticated SSE with
+`Last-Event-ID`, and reconnects after bounded sessions. Lost Redis data replays
+from Blob/S3. The viewer keeps a bounded recent window and offers a full log
+download. Secret masking happens before segment boundaries.
+
+Artifacts and structured completion results are pushed directly by the agent.
+Completion waits for the final log ACK and releases dependent jobs through the
+outbox. Sandbox clients only check liveness; they never fetch log, result or
+artifact files. Rebuild prepared images/snapshots for version-three manifests.
 
 ## License
 

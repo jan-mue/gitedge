@@ -62,7 +62,7 @@ export class StepExecutor {
       const job = await this.expressions.environment(this.job.env, scope.expressionContext(), status)
       scope.environment = this.environment.snapshot(base, workflow, job)
       if (this.signal.aborted || !(await this.expressions.condition(step.if, scope.expressionContext(), status))) {
-        this.logger.emit(`Skipped ${label}`, displayId, "skipped")
+        await this.logger.emit(`Skipped ${label}`, displayId, "skipped")
         return result
       }
       const values = await this.expressions.environment(step.env, scope.expressionContext(), status)
@@ -71,7 +71,7 @@ export class StepExecutor {
         ...values,
         ...this.environment.protected,
       }
-      this.logger.emit(`Run ${label}`, displayId)
+      await this.logger.emit(`Run ${label}`, displayId)
       const minutes = Number(
         await this.expressions.interpolate(step["timeout-minutes"], scope.expressionContext(), status),
       )
@@ -100,7 +100,7 @@ export class StepExecutor {
     } catch (error) {
       result.outcome = this.signal.aborted ? "cancelled" : "failure"
       result.conclusion = result.outcome
-      this.logger.emit(errorMessage(error), displayId)
+      await this.logger.emit(errorMessage(error), displayId)
       if (
         !this.signal.aborted &&
         (await this.expressions.interpolate(step["continue-on-error"] ?? false, scope.expressionContext(), status)) ===
@@ -110,7 +110,7 @@ export class StepExecutor {
     } finally {
       scope.steps[id] = result
     }
-    this.logger.emit(`${label}: ${result.conclusion}`, displayId, result.conclusion)
+    await this.logger.emit(`${label}: ${result.conclusion}`, displayId, result.conclusion)
     return result
   }
 

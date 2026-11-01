@@ -70,3 +70,7 @@ export const LongOutput: Story = {
   },
 }
 export const Empty: Story = { args: { sections: [], log: "" } }
+
+export const RecentOutput: Story = {
+  args: { truncated: true, sections: [{ id: "test", name: "Tests", status: "running", log: "Latest test output…" }] },
+}

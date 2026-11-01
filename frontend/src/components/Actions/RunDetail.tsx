@@ -1,16 +1,21 @@
 // Adapted from jan-mue/gitea-clone's ActionsPage: job sidebar and expandable step logs.
 import { useState } from "react"
 import type { ActionRun } from "@/client"
-import { Badge, Button, CheckStatusIcon, LogViewer } from "@/components/design-system"
+import { Badge, Button, CheckStatusIcon } from "@/components/design-system"
 import { formatDuration } from "@/utils"
+import { JobLogs } from "./JobLogs"
 
 export const RunDetail = ({
   run,
+  owner,
+  repo,
   initialJob,
   canManage,
   cancelling,
   onCancel,
 }: {
+  owner: string
+  repo: string
   initialJob?: string
   run: ActionRun
   canManage: boolean
@@ -78,11 +83,7 @@ export const RunDetail = ({
                 {job.error}
               </p>
             )}
-            <LogViewer
-              key={job.id}
-              sections={(job.steps ?? []).map((step) => ({ ...step, status: step.status ?? "queued" }))}
-              log={job.log ?? undefined}
-            />
+            <JobLogs key={job.id} owner={owner} repo={repo} runId={run.id} job={job} />
           </div>
         )}
       </div>
