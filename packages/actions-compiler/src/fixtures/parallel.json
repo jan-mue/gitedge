@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "matched": true,
+  "workflowName": "Parallel jobs",
+  "dispatch": false,
+  "inputs": {},
+  "jobs": [
+    {
+      "id": "a:0",
+      "key": "a",
+      "name": "a",
+      "needs": [],
+      "matrix": {},
+      "strategy": {
+        "job-index": 0,
+        "job-total": 1
+      },
+      "timeoutSeconds": 1200,
+      "continueOnError": false,
+      "config": {
+        "if": "${{ success() }}",
+        "steps": [
+          {
+            "id": "__run",
+            "if": "${{ success() }}",
+            "kind": "run",
+            "run": "echo ready"
+          }
+        ]
+      }
+    },
+    {
+      "id": "b:0",
+      "key": "b",
+      "name": "b",
+      "needs": [],
+      "matrix": {},
+      "strategy": {
+        "job-index": 0,
+        "job-total": 1
+      },
+      "timeoutSeconds": 1200,
+      "continueOnError": false,
+      "config": {
+        "if": "${{ success() }}",
+        "steps": [
+          {
+            "id": "__run",
+            "if": "${{ success() }}",
+            "kind": "run",
+            "run": "echo ready"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c:0",
+      "key": "c",
+      "name": "c",
+      "needs": [],
+      "matrix": {},
+      "strategy": {
+        "job-index": 0,
+        "job-total": 1
+      },
+      "timeoutSeconds": 1200,
+      "continueOnError": false,
+      "config": {
+        "if": "${{ success() }}",
+        "steps": [
+          {
+            "id": "__run",
+            "if": "${{ success() }}",
+            "kind": "run",
+            "run": "echo ready"
+          }
+        ]
+      }
+    }
+  ]
+}

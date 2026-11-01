@@ -1,0 +1,20 @@
+{
+  "name": "@gitedge/actions-compiler",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun src/dev-server.ts",
+    "test": "bun --bun vitest run --config ../../vitest.config.ts --project actions-compiler",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check --write --unsafe .",
+    "check": "biome check ."
+  },
+  "dependencies": {
+    "@actions/expressions": "0.3.61",
+    "@actions/workflow-parser": "0.3.61",
+    "minimatch": "10.2.4",
+    "zod": "4.6.7",
+    "@vercel/oidc": "4.0.3",
+    "@gitedge/actions-runner": "workspace:*"
+  }
+}

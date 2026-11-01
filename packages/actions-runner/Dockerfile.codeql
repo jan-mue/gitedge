@@ -1,0 +1,6 @@
+# syntax=docker/dockerfile:1
+ARG BASE_IMAGE=gitedge-actions:local
+FROM ${BASE_IMAGE}
+RUN --mount=type=secret,id=proxy_ca,target=/run/proxy-ca.pem \
+    if [ -f /run/proxy-ca.pem ]; then export NODE_EXTRA_CA_CERTS=/run/proxy-ca.pem; fi; \
+    bun /build/prepare.mjs --codeql
