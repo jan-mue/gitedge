@@ -176,7 +176,7 @@ def test_tooling_actions_cache_and_artifacts(
     client, _, path = actions_repo
     wait_for_run(client, path)
 
-    async def artifact_state(run_id: str) -> bytes | None:
+    async def artifact_state(run: dict) -> bytes | None:
         blobs = S3Client(
             endpoint=infrastructure["S3_ENDPOINT"],
             access_key=infrastructure["S3_ACCESS_KEY"],
@@ -184,7 +184,15 @@ def test_tooling_actions_cache_and_artifacts(
             bucket=infrastructure["S3_BUCKET"],
         )
         keys = await blobs.list_keys("actions/")
-        key = next(key for key in keys if f"/{run_id}/attempts/" in key and key.endswith("/state.tar.gz"))
+        db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
+        with psycopg.connect(db_url) as connection:
+            row = connection.execute(
+                "SELECT artifact_key FROM workflow_attempt WHERE run_id = %s AND id = %s",
+                (run["id"], run["jobs"][0]["attempt_id"]),
+            ).fetchone()
+        assert row is not None
+        key = row[0]
+        assert key in keys, "The committed artifact archive must be persisted in S3"
         caches = [key for key in keys if "/cache/" in key]
         assert caches, "Workflow cache archives must be persisted in S3"
         for cache_key in caches:
@@ -203,7 +211,7 @@ def test_tooling_actions_cache_and_artifacts(
         for step in run["jobs"][0]["steps"]:
             expected = "skipped" if step["name"] == "Verify restored cache" and not iteration else "success"
             assert step["status"] == expected, json.dumps({"iteration": iteration, "run": run}, indent=2)
-        state = asyncio.run(artifact_state(run["id"]))
+        state = asyncio.run(artifact_state(run))
         assert state is not None
         with tarfile.open(fileobj=io.BytesIO(state), mode="r:gz") as archive:
             member = next(member for member in archive if member.name.endswith("/example-results.zip"))
