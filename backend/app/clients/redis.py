@@ -6,13 +6,16 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, override
 
 import redis.asyncio as aioredis
-from redis.exceptions import WatchError
+from httpx import HTTPError
+from redis.exceptions import RedisError, WatchError
 from upstash_redis.asyncio import Redis
+from upstash_redis.errors import UpstashError
 
 from app.config import settings
+from app.exceptions import RedisUnavailableError
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Awaitable, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -48,19 +51,23 @@ return 1
 """
 
 
+async def _log_request[T](request: Awaitable[T]) -> T:
+    try:
+        return await request
+    except (RedisError, UpstashError, HTTPError, json.JSONDecodeError) as error:
+        raise RedisUnavailableError("Recent log transport is unavailable") from error
+
+
 def _log_values(rows: Sequence[Sequence[object]] | None) -> list[bytes]:
     values: list[bytes] = []
     for row in rows or []:
-        fields = row[1]
-        if isinstance(fields, dict):
-            value = fields.get(b"data", fields.get("data"))
-        elif isinstance(fields, list) and fields[::2] == ["data"]:
-            value = fields[1]
-        else:
-            raise ValueError("Malformed Redis log stream")
-        if not isinstance(value, (str, bytes)):
-            raise ValueError("Malformed Redis log entry")
-        values.append(value.encode() if isinstance(value, str) else value)
+        match row:
+            case [_, {b"data": value}] | [_, {"data": value}] | [_, ["data", value]]:
+                if not isinstance(value, (str, bytes)):
+                    raise RedisUnavailableError("Malformed Redis log value")
+                values.append(value.encode() if isinstance(value, str) else value)
+            case _:
+                raise RedisUnavailableError("Malformed Redis log entry")
     return values
 
 
@@ -158,11 +165,11 @@ class RedisClient(AbstractRedisClient):
 
     @override
     async def stream_add(self, key: str, seq: int, value: str) -> None:
-        await self._client.eval(_LOG_APPEND, 1, key, f"{seq}-0", value)
+        await _log_request(self._client.eval(_LOG_APPEND, 1, key, f"{seq}-0", value))
 
     @override
     async def stream_read(self, key: str, after: int) -> list[bytes]:
-        return _log_values(await self._client.xrange(key, min=f"({after}-0", max="+", count=2))
+        return _log_values(await _log_request(self._client.xrange(key, min=f"({after}-0", max="+", count=2)))
 
 
 class UpstashRedisClient(AbstractRedisClient):
@@ -222,8 +229,8 @@ class UpstashRedisClient(AbstractRedisClient):
 
     @override
     async def stream_add(self, key: str, seq: int, value: str) -> None:
-        await self._client.eval(_LOG_APPEND, keys=[key], args=[f"{seq}-0", value])
+        await _log_request(self._client.eval(_LOG_APPEND, keys=[key], args=[f"{seq}-0", value]))
 
     @override
     async def stream_read(self, key: str, after: int) -> list[bytes]:
-        return _log_values(await self._client.xrange(key, start=f"({after}-0", end="+", count=2))
+        return _log_values(await _log_request(self._client.xrange(key, start=f"({after}-0", end="+", count=2)))

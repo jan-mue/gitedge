@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-from app.exceptions import PermissionDeniedError
-
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import jwt
-from fastapi import HTTPException
 from pydantic import ValidationError
 
 from app.config import settings
-from app.exceptions import WorkflowError
+from app.exceptions import PermissionDeniedError, WorkflowError
 from app.schemas.action_dispatch import AttemptIdentity, Capability
 from app.utils import security
 

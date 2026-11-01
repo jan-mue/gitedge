@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from app.exceptions import ConflictError, NotFoundError, PermissionDeniedError
-
 import asyncio
 import hashlib
 import logging
@@ -11,11 +9,17 @@ import time
 import uuid
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
+from pydantic import ValidationError
 
 from app.entities.actions import WorkflowLogChunk
-from app.exceptions import ActionsUnavailableError
-from app.schemas.action_logs import LOG_PAGE_BYTES, LOG_STREAM_SECONDS, LogChunk, LogPage, LogRecord
+from app.exceptions import (
+    ActionsUnavailableError,
+    ConflictError,
+    NotFoundError,
+    PermissionDeniedError,
+    RedisUnavailableError,
+)
+from app.schemas.action_logs import LOG_PAGE_BYTES, LOG_STREAM_SECONDS, LogChunk, LogEnd, LogPage, LogRecord
 from app.services.actions.capabilities import authorize_report, report_payload
 from app.services.actions.runtime import redact
 from app.services.actions.scheduler import TERMINAL
@@ -103,8 +107,8 @@ class ActionsLogService:
         try:
             async with asyncio.timeout(0.25):
                 await self.redis.stream_add(self._tail(attempt_id), chunk.to_seq, payload.decode())
-        except Exception:
-            logger.warning("Recent Actions log delivery unavailable", exc_info=True)
+        except (RedisUnavailableError, TimeoutError) as error:
+            logger.warning("Recent Actions log delivery unavailable: %s", error)
         return chunk.to_seq
 
     async def page(self, repo_id: uuid.UUID, run_id: uuid.UUID, attempt_id: uuid.UUID, after: int) -> LogPage:
@@ -123,8 +127,8 @@ class ActionsLogService:
                 if record.seq != after + len(records) + 1 or record.seq > context.log_seq:
                     break
                 records.append(record)
-        except Exception:
-            logger.warning("Replaying archived Actions logs", exc_info=True)
+        except (RedisUnavailableError, TimeoutError, ValidationError) as error:
+            logger.warning("Replaying archived Actions logs after %s", type(error).__name__)
         if not records and after < context.log_seq:
             for index in await self.indexes.chunks(attempt_id, after):
                 payload = await self.blobs.get_current(index.object_key)
@@ -155,22 +159,21 @@ class ActionsLogService:
         run_id: uuid.UUID,
         attempt_id: uuid.UUID,
         after: int,
-    ) -> AsyncIterator[str]:
-        """Yield resumable SSE records within a bounded connection lifetime."""
+    ) -> AsyncIterator[LogRecord | LogEnd]:
+        """Yield typed events within a bounded subscription lifetime."""
         deadline = time.monotonic() + LOG_STREAM_SECONDS
         delay = 0.1
         while time.monotonic() < deadline:
             page = await self.page(repo_id, run_id, attempt_id, after)
             for record in page.records:
-                yield f"id: {record.seq}\nevent: log\ndata: {record.model_dump_json()}\n\n"
+                yield record
             after = page.next_seq
             if page.complete:
-                yield f'event: end\ndata: {{"last_seq":{after}}}\n\n'
+                yield LogEnd(last_seq=after)
                 return
             if page.records:
                 delay = 0.1
             else:
-                yield ": keepalive\n\n"
                 await asyncio.sleep(delay)
                 delay = min(1, delay * 2)
 
