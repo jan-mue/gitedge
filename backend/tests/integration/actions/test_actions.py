@@ -337,8 +337,19 @@ def test_real_qstash_retries_a_failed_signed_callback(
     response = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cancellation.yaml"})
     response.raise_for_status()
     run_id = response.json()["id"]
-    wait_for_started_job(client, path, run_id)
+    job = wait_for_started_job(client, path, run_id)
     db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
+    with psycopg.connect(db_url, autocommit=True) as connection:
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            row = connection.execute(
+                "SELECT status FROM workflow_attempt WHERE id = %s", (job["attempt_id"],)
+            ).fetchone()
+            if row and row[0] == "running":
+                break
+            time.sleep(0.1)
+        else:
+            pytest.fail("Sandbox provisioning did not commit before the retry test")
     with psycopg.connect(db_url) as connection:
         connection.execute("SELECT id FROM workflow_run WHERE id = %s FOR UPDATE", (run_id,))
         message = connection.execute(
@@ -356,12 +367,12 @@ def test_real_qstash_retries_a_failed_signed_callback(
             retry_delay="1000",
         )
         wait_for_access(backend_log_file, offset, "inspect", 503)
-    with psycopg.connect(db_url, autocommit=True) as connection:
         connection.execute(
             "UPDATE workflow_attempt SET claim = NULL, lease_until = NULL WHERE run_id = %s AND status = 'running'",
             (run_id,),
         )
-        deadline = time.monotonic() + 10
+    with psycopg.connect(db_url, autocommit=True) as connection:
+        deadline = time.monotonic() + 20
         while time.monotonic() < deadline:
             row = connection.execute(
                 "SELECT acknowledged_at FROM workflow_outbox WHERE id = %s", (message[0],)
@@ -370,7 +381,10 @@ def test_real_qstash_retries_a_failed_signed_callback(
                 break
             time.sleep(0.1)
         else:
-            pytest.fail("QStash did not retry the command after the database lock was released")
+            attempt = connection.execute(
+                "SELECT status, lease_until FROM workflow_attempt WHERE id = %s", (job["attempt_id"],)
+            ).fetchone()
+            pytest.fail(f"QStash did not retry after the database lock was released; attempt={attempt}")
     client.post(f"{path}/runs/{run_id}/cancel").raise_for_status()
     assert wait_for_run(client, path, run_id)["status"] == "cancelled"
 
