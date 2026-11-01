@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import time
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
@@ -52,11 +53,13 @@ class QStashClient(ActionsQueue):
         """Bound SDK requests; the durable broker owns delivery retries."""
         if not all((settings.QSTASH_TOKEN, settings.QSTASH_CURRENT_SIGNING_KEY, settings.QSTASH_NEXT_SIGNING_KEY)):
             raise ActionsUnavailableError("QStash credentials must be configured")
+        destination = self.destination(operation)
+        deduplication_id = hashlib.sha256(f"{destination}\n{key}".encode()).hexdigest()
         async with asyncio.timeout(10):
             await self.sdk.message.publish_json(
-                url=self.destination(operation),
+                url=destination,
                 body=body.model_dump(mode="json"),
-                deduplication_id=key,
+                deduplication_id=deduplication_id,
                 not_before=int(due_at.timestamp()),
                 retries=5,
                 retry_delay="1000",

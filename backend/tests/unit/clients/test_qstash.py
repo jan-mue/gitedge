@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
@@ -38,7 +39,6 @@ async def test_publishing_delegates_deduplication_scheduling_and_retries_to_the_
         f"https://qstash.test/v2/publish/{queue.destination('dispatch')}",
         headers={
             "Authorization": "Bearer unit-token",
-            "Upstash-Deduplication-Id": "stable-id",
             "Upstash-Not-Before": str(int(due.timestamp())),
             "Upstash-Retries": "5",
             "Upstash-Retry-Delay": "1000",
@@ -47,6 +47,40 @@ async def test_publishing_delegates_deduplication_scheduling_and_retries_to_the_
     ).respond(json={"messageId": "unit-delivery"})
     await queue.publish("dispatch", body, "stable-id", due)
     assert json.loads(route.calls.last.request.content) == body.model_dump(mode="json")
+    assert re.fullmatch(r"[a-f0-9]{64}", route.calls.last.request.headers["Upstash-Deduplication-Id"])
+
+
+@pytest.mark.httpx2(using="httpcore")
+async def test_deduplication_keys_are_safe_stable_and_scoped_to_the_destination(
+    queue: QStashClient, httpx2_mock: Router, mocker: MockerFixture
+) -> None:
+    route = httpx2_mock.post().respond(json={"messageId": "unit-delivery"})
+    body, due = Delivery(id=uuid.uuid4()), datetime.now(UTC)
+    key = f"{body.id}:123"
+    for operation in ("dispatch", "dispatch", "inspect"):
+        await queue.publish(operation, body, key, due)
+    mocker.patch.object(settings, "ACTIONS_SERVER_URL", "https://another-backend.test")
+    await queue.publish("dispatch", body, key, due)
+    keys = [call.request.headers["Upstash-Deduplication-Id"] for call in route.calls]
+    assert all(re.fullmatch(r"[a-f0-9]{64}", item) for item in keys)
+    assert keys[0] == keys[1]
+    assert len(set(keys)) == 3
+
+
+@pytest.mark.httpx2(using="httpcore")
+async def test_recovery_uses_a_valid_deduplication_key_and_the_next_time_slot(
+    queue: QStashClient, httpx2_mock: Router, mocker: MockerFixture
+) -> None:
+    mocker.patch("app.clients.qstash.time.time", return_value=120)
+    mocker.patch.object(settings, "ACTIONS_RECONCILE_INTERVAL", 60)
+    route = httpx2_mock.post(f"https://qstash.test/v2/publish/{queue.destination('reconcile')}").respond(
+        json={"messageId": "unit-recovery"}
+    )
+    await queue.recover_later()
+    request = route.calls.last.request
+    assert re.fullmatch(r"[a-f0-9]{64}", request.headers["Upstash-Deduplication-Id"])
+    assert request.headers["Upstash-Not-Before"] == "180"
+    assert json.loads(request.content) == {"version": 1, "slot": 180}
 
 
 async def test_verification_passes_original_body_and_exact_url_to_the_sdk(
