@@ -66,3 +66,11 @@ class WorkflowError(ValueError):
 
 class CompilerUnavailableError(RuntimeError):
     """The workflow compiler is unconfigured, unavailable, or incompatible."""
+
+
+class PermissionDeniedError(Exception):
+    """The caller cannot perform the requested operation."""
+
+
+class ServiceUnavailableError(RuntimeError):
+    """A required service cannot currently process the request."""

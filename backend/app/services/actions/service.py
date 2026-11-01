@@ -9,13 +9,12 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import jwt
-from fastapi import HTTPException
 
 from app.config import settings
 from app.entities.actions import WorkflowRun
 from app.entities.issues import IssueState
 from app.entities.principals import PrincipalType
-from app.exceptions import WorkflowError
+from app.exceptions import NotFoundError, PermissionDeniedError, ServiceUnavailableError, WorkflowError
 from app.schemas.actions import ActionJob, ActionRun, ActionStatus, PullRequestChecks, WorkflowInfo
 from app.schemas.workflow_events import (
     DispatchEvent,
@@ -82,9 +81,9 @@ class ActionsService:
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
         allowed = user is not None and (user.id == repository.owner_id or user.is_superuser)
         if repository.is_private and not allowed:
-            raise HTTPException(status_code=404, detail="Repository not found")
+            raise NotFoundError("Repository not found")
         if write and not allowed:
-            raise HTTPException(status_code=403, detail="Only the repository owner can dispatch or cancel workflows")
+            raise PermissionDeniedError("Only the repository owner can dispatch or cancel workflows")
         return repository
 
     async def workflows(self, owner: str, name: str, ref: str, user: User | None) -> list[WorkflowInfo]:
@@ -110,7 +109,7 @@ class ActionsService:
         await self._repository(owner, name, user, write=True)
         runs = await self.trigger(owner, name, ref, DispatchEvent(inputs=inputs), actor=user.name, workflow=workflow)
         if not runs:
-            raise HTTPException(status_code=422, detail="Workflow does not enable workflow_dispatch")
+            raise WorkflowError("Workflow does not enable workflow_dispatch")
         return runs[0]
 
     async def trigger(
@@ -202,7 +201,7 @@ class ActionsService:
             run = await self.store.add_run(run)
             run_ids.append(run.id)
         if workflow and not run_ids:
-            raise HTTPException(status_code=422, detail="Workflow not found or event is not enabled")
+            raise WorkflowError("Workflow not found or event is not enabled")
         for run_id in run_ids:
             await self.scheduler.advance(repository.id, run_id)
         return [self.public(run) for run in await self.store.list_runs(repository.id) if run.id in run_ids]
@@ -258,7 +257,7 @@ class ActionsService:
         """Authorize cancellation and release job resources."""
         repository = await self._repository(owner, name, user, write=True)
         if not await self.scheduler.cancel(repository.id, run_id):
-            raise HTTPException(status_code=404, detail="Workflow run not found or busy")
+            raise NotFoundError("Workflow run not found or busy")
 
     async def on_push(self, owner: str, name: str, before: dict[str, str], after: dict[str, str], user: User) -> None:
         """Accept CI events only from an authenticated repository owner or administrator."""
@@ -327,16 +326,16 @@ class ActionsService:
         try:
             claims = jwt.decode(token, settings.SECRET_KEY, algorithms=[security.ALGORITHM])
             if claims.get("scope") != scope:
-                raise HTTPException(status_code=403, detail="Invalid sandbox token scope")
+                raise PermissionDeniedError("Invalid sandbox token scope")
             return uuid.UUID(claims["repo"]), uuid.UUID(claims["run"])
         except (jwt.InvalidTokenError, ValueError, KeyError) as exc:
-            raise HTTPException(status_code=403, detail="Invalid sandbox token") from exc
+            raise PermissionDeniedError("Invalid sandbox token") from exc
 
     async def complete(self, token: str) -> None:
         """Advance dependent jobs immediately after a sandbox writes its exit marker."""
         repo_id, run_id = self._token_ids(token, "actions:complete")
         if not await self.scheduler.advance(repo_id, run_id):
-            raise HTTPException(status_code=503, detail="Workflow is busy; retry completion callback")
+            raise ServiceUnavailableError("Workflow is busy; retry completion callback")
 
     async def restore_state(self, token: str) -> bytes:
         """Serve run-scoped artifacts on demand; cache data never enters this archive."""

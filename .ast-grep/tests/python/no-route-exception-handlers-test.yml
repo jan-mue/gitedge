@@ -1,0 +1,35 @@
+id: no-route-exception-handlers
+valid:
+  - |
+    async def route(service):
+        return await service.execute()
+  - |
+    async def route(service):
+        if not service.enabled:
+            raise FeatureUnavailableError()
+        return await service.execute()
+invalid:
+  - |
+    async def route(service):
+        try:
+            return await service.execute()
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+  - |
+    async def route(service):
+        try:
+            return await service.execute()
+        except (NotFoundError, ConflictError):
+            return Response(status_code=404)
+  - |
+    def route():
+        try:
+            execute()
+        except:
+            raise HTTPException(status_code=500)
+  - |
+    def route():
+        try:
+            execute()
+        except* ValueError:
+            raise RequestError()
