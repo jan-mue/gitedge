@@ -14,6 +14,7 @@ from app.config import settings
 from app.exceptions import (
     CompilerUnavailableError,
     NotFoundError,
+    PayloadTooLargeError,
     PermissionDeniedError,
     ServiceUnavailableError,
     WorkflowError,
@@ -77,6 +78,12 @@ async def service_unavailable_handler(_request: Request, exc: ServiceUnavailable
     """Return a retryable response for a temporarily unavailable service."""
     logger.warning("Service unavailable: %s", exc)
     return JSONResponse(status_code=503, content={"detail": str(exc)}, headers={"Retry-After": "1"})
+
+
+@app.exception_handler(PayloadTooLargeError)
+async def payload_too_large_handler(_request: Request, exc: PayloadTooLargeError) -> JSONResponse:
+    """Map transfer limits to an HTTP response at the application boundary."""
+    return JSONResponse(status_code=413, content={"detail": str(exc)})
 
 
 @app.exception_handler(CompilerUnavailableError)

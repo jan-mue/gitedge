@@ -74,3 +74,7 @@ class PermissionDeniedError(Exception):
 
 class ServiceUnavailableError(RuntimeError):
     """A required service cannot currently process the request."""
+
+
+class PayloadTooLargeError(ValueError):
+    """An upload exceeds its allowed transfer size."""

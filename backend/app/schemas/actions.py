@@ -88,3 +88,17 @@ class WorkflowDispatch(GitEdgeBaseModel):
     workflow: str = Field(pattern=r"^\.gitedge/workflow/[^/]+\.ya?ml$")
     ref: str = Field(default="HEAD", min_length=1, max_length=255)
     inputs: dict[str, str] = Field(default_factory=dict)
+
+
+class CacheIdentity(GitEdgeBaseModel):
+    """Validate protocol keys before querying or storing payloads."""
+
+    key: str = Field(min_length=1, max_length=512)
+    version: str = Field(max_length=512)
+
+
+class CacheEntry(CacheIdentity):
+    """Public metadata identifies an immutable payload generation."""
+
+    id: uuid.UUID
+    size: int

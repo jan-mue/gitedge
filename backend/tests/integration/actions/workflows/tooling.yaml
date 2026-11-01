@@ -1,0 +1,74 @@
+name: Repository tooling actions
+on: workflow_dispatch
+jobs:
+  tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.14.0'
+      - id: uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e
+        with:
+          version: '0.13.0'
+          enable-cache: true
+          cache-dependency-glob: README.md
+          cache-local-path: .cache/uv
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version-file: .bun-version
+      - name: Verify uv cache
+        shell: bun {0}
+        env:
+          UV_CACHE_HIT: ${{ steps.uv.outputs.cache-hit }}
+        run: |
+          const directory = process.env.UV_CACHE_DIR
+          if (!directory) throw new Error('setup-uv did not expose its cache directory')
+          const marker = `${directory}/gitedge-test-marker`
+          if (process.env.UV_CACHE_HIT === 'true') {
+            if (await Bun.file(marker).text() !== 'portable uv cache') throw new Error('uv cache contents changed')
+            console.log('uv cache restored')
+          }
+          await (await import('node:fs/promises')).mkdir(directory, { recursive: true })
+          await Bun.write(marker, 'portable uv cache')
+      - id: cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .cache/example
+          key: smoke-${{ hashFiles('README.md') }}
+      - name: Verify restored cache
+        if: steps.cache.outputs.cache-hit == 'true'
+        run: |
+          test "$(cat .cache/example/value.txt)" = 'portable cache'
+          echo 'Portable cache restored'
+      - name: Verify tools and write cache
+        run: |
+          node --version
+          python --version
+          uv --version
+          bun --version
+          mkdir -p .cache/example results
+          echo 'portable cache' > .cache/example/value.txt
+          echo 'artifact contents' > results/result.txt
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd
+      - name: Generate coverage
+        run: |
+          python -m coverage run example.py
+          python -m coverage xml
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5
+        with:
+          binary: /opt/hostedtoolcache/Python/3.14.0/x64/bin/codecovcli
+          dry_run: true
+          disable_telem: true
+          fail_ci_if_error: true
+          files: coverage.xml
+          run_command: upload-coverage
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: example-results
+          path: results/
