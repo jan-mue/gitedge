@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import json
+import logging
 import os
 import random
 import socket
@@ -19,8 +20,10 @@ import pytest
 import redis
 from alembic.command import upgrade
 from alembic.config import Config
+from docker.errors import ImageNotFound
 from pydantic import PostgresDsn, TypeAdapter
 from qstash import QStash
+from tenacity import Retrying, before_sleep_log, retry_if_exception_type, stop_after_attempt, wait_exponential
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.wait_strategies import HttpWaitStrategy
 from testcontainers.mailpit import MailpitContainer
@@ -51,10 +54,9 @@ QSTASH_NEXT_KEY = "sig_5ZB6DVzB1wjE8S6rZ7eenA8Pdnhs"
 @pytest.fixture(scope="session")
 def qstash_container() -> Generator[DockerContainer]:
     """Require an official digest-pinned broker; never substitute a fake scheduler."""
+    image = "public.ecr.aws/upstash/qstash@sha256:a49ffd1cb967800e2b5e2bfab7375282c6c269ef5bf8d9f0f8e115560b1b5597"
     container = (
-        DockerContainer(
-            "public.ecr.aws/upstash/qstash@sha256:a49ffd1cb967800e2b5e2bfab7375282c6c269ef5bf8d9f0f8e115560b1b5597"
-        )
+        DockerContainer(image)
         .with_command("qstash dev")
         .with_exposed_ports(8080, 8081)
         .with_env("NO_PROXY", f"{os.environ.get('NO_PROXY', '')},host.docker.internal")
@@ -65,6 +67,19 @@ def qstash_container() -> Generator[DockerContainer]:
             .for_status_code(200)
         )
     )
+    client = container.get_docker_client().client
+    try:
+        client.images.get(image)
+    except ImageNotFound:
+        for attempt in Retrying(
+            stop=stop_after_attempt(4),
+            wait=wait_exponential(min=1, max=8),
+            retry=retry_if_exception_type(ImageNotFound),
+            before_sleep=before_sleep_log(logging.getLogger(__name__), logging.WARNING),
+            reraise=True,
+        ):
+            with attempt:
+                client.images.pull(image)
     with container:
         yield container
 
