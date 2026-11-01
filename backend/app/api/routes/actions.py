@@ -3,9 +3,10 @@
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Header, Query, Request, Response
 
 from app.api.dependencies import ActionsServiceDep, CurrentUser, OptionalUser
+from app.exceptions import PayloadTooLargeError, WorkflowError
 from app.schemas.actions import ActionRun, CacheEntry, CacheIdentity, PullRequestChecks, WorkflowDispatch, WorkflowInfo
 from app.services.actions.cache import STATE_LIMIT
 
@@ -85,7 +86,7 @@ async def lookup_cache(
     response.headers["Cache-Control"] = "private, no-store"
     prefixes = restore_keys or []
     if any(len(prefix) > MAX_CACHE_KEY_LENGTH for prefix in prefixes):
-        raise HTTPException(status_code=422, detail="Cache restore key exceeds 512 characters")
+        raise WorkflowError("Cache restore key exceeds 512 characters")
     return await service.lookup_cache(token, CacheIdentity(key=key, version=version), prefixes)
 
 
@@ -102,7 +103,7 @@ async def save_cache(
     payload = bytearray()
     async for part in request.stream():
         if len(payload) + len(part) > STATE_LIMIT:
-            raise HTTPException(status_code=413, detail="Cache exceeds 32 MiB")
+            raise PayloadTooLargeError("Cache exceeds 32 MiB")
         payload.extend(part)
     return await service.save_cache(token, CacheIdentity(key=key, version=version), bytes(payload))
 
@@ -128,7 +129,7 @@ async def queue_delivery(
     body = bytearray()
     async for part in request.stream():
         if len(body) + len(part) > MAX_DELIVERY_BYTES:
-            raise HTTPException(status_code=413, detail="Actions delivery exceeds 8 KiB")
+            raise PayloadTooLargeError("Actions delivery exceeds 8 KiB")
         body.extend(part)
     await service.delivery(operation, bytes(body), signature)
     return {"status": "accepted"}

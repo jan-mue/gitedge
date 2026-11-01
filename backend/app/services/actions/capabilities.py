@@ -6,9 +6,9 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import jwt
-from fastapi import HTTPException
 
 from app.config import settings
+from app.exceptions import PermissionDeniedError
 from app.schemas.action_dispatch import Capability
 from app.utils import security
 
@@ -45,7 +45,7 @@ async def authorize_capability(
         claims = jwt.decode(token, settings.SECRET_KEY, algorithms=[security.ALGORITHM])
         capability = Capability.model_validate(claims)
     except (jwt.InvalidTokenError, ValueError) as error:
-        raise HTTPException(status_code=403, detail="Invalid sandbox token") from error
+        raise PermissionDeniedError("Invalid sandbox token") from error
     if capability.scope != scope or not await store.current(capability, allow_terminal):
-        raise HTTPException(status_code=403, detail="Sandbox capability is stale or has the wrong scope")
+        raise PermissionDeniedError("Sandbox capability is stale or has the wrong scope")
     return capability

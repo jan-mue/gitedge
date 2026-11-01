@@ -8,11 +8,16 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
 from pydantic import ValidationError
 
 from app.entities.actions import WorkflowRun
-from app.exceptions import ActionsUnavailableError, WorkflowError
+from app.exceptions import (
+    ActionsUnavailableError,
+    NotFoundError,
+    PermissionDeniedError,
+    ServiceUnavailableError,
+    WorkflowError,
+)
 from app.schemas.action_dispatch import Delivery, RecoveryDelivery
 from app.schemas.actions import ActionJob, ActionRun, PullRequestChecks, WorkflowInfo
 from app.schemas.workflow_events import DispatchEvent, PullRequestEvent, WorkflowEvent, workflow_event_adapter
@@ -82,9 +87,9 @@ class ActionsService:
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
         allowed = user is not None and (user.id == repository.owner_id or user.is_superuser)
         if repository.is_private and not allowed:
-            raise HTTPException(status_code=404, detail="Repository not found")
+            raise NotFoundError("Repository not found")
         if write and not allowed:
-            raise HTTPException(status_code=403, detail="Only the repository owner can dispatch or cancel workflows")
+            raise PermissionDeniedError("Only the repository owner can dispatch or cancel workflows")
         return repository
 
     async def workflows(self, owner: str, name: str, ref: str, user: User | None) -> list[WorkflowInfo]:
@@ -110,7 +115,7 @@ class ActionsService:
         await self._repository(owner, name, user, write=True)
         runs = await self.trigger(owner, name, ref, DispatchEvent(inputs=inputs), actor=user.name, workflow=workflow)
         if not runs:
-            raise HTTPException(status_code=422, detail="Workflow does not enable workflow_dispatch")
+            raise WorkflowError("Workflow does not enable workflow_dispatch")
         return runs[0]
 
     async def trigger(
@@ -169,7 +174,7 @@ class ActionsService:
             run = await self.store.add_run(run, self.scheduler.advance)
             run_ids.append(run.id)
         if workflow and not run_ids:
-            raise HTTPException(status_code=422, detail="Workflow not found or event is not enabled")
+            raise WorkflowError("Workflow not found or event is not enabled")
         if run_ids:
             await self.dispatcher.flush()
         return [self.public(run) for run in await self.store.list_runs(repository.id) if run.id in run_ids]
@@ -206,7 +211,7 @@ class ActionsService:
         """Authorize cancellation and release job resources."""
         repository = await self._repository(owner, name, user, write=True)
         if not await self.dispatcher.cancel(repository.id, run_id):
-            raise HTTPException(status_code=404, detail="Workflow run not found or busy")
+            raise NotFoundError("Workflow run not found or busy")
 
     async def on_push(self, owner: str, name: str, before: dict[str, str], after: dict[str, str], user: User) -> None:
         """Compile and enqueue workflows affected by updated Git refs."""
@@ -237,7 +242,7 @@ class ActionsService:
                 else Delivery.model_validate_json(body)
             )
         except ValidationError as error:
-            raise HTTPException(status_code=422, detail="Invalid Actions delivery") from error
+            raise WorkflowError("Invalid Actions delivery") from error
         if isinstance(parsed, RecoveryDelivery):
             await self.dispatcher.reconcile()
         else:
@@ -264,7 +269,7 @@ class ActionsService:
 
     def _cache_service(self) -> ActionsCacheService:
         if self.cache is None:
-            raise HTTPException(status_code=503, detail="Actions cache is unavailable")
+            raise ServiceUnavailableError("Actions cache is unavailable")
         return self.cache
 
     async def lookup_cache(self, token: str, identity: CacheIdentity, restore_keys: list[str]) -> CacheEntry | None:
@@ -282,7 +287,7 @@ class ActionsService:
         repo_id = await self.cache_scope(token)
         payload = await self._cache_service().download(repo_id, payload_id)
         if payload is None:
-            raise HTTPException(status_code=404, detail="Cache entry expired or was evicted")
+            raise NotFoundError("Cache entry expired or was evicted")
         return payload
 
     async def cancel_repository(self, owner: str, name: str, user: User) -> uuid.UUID:

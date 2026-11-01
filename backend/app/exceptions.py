@@ -74,3 +74,15 @@ class ActionsUnavailableError(RuntimeError):
 
 class InvalidDeliveryError(ValueError):
     """A queue delivery failed authentication."""
+
+
+class PermissionDeniedError(Exception):
+    """The caller cannot perform the requested operation."""
+
+
+class ServiceUnavailableError(RuntimeError):
+    """A required service cannot currently process the request."""
+
+
+class PayloadTooLargeError(ValueError):
+    """An upload exceeds its allowed transfer size."""

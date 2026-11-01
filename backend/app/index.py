@@ -17,6 +17,9 @@ from app.exceptions import (
     CompilerUnavailableError,
     InvalidDeliveryError,
     NotFoundError,
+    PayloadTooLargeError,
+    PermissionDeniedError,
+    ServiceUnavailableError,
     WorkflowError,
 )
 from app.lifespan import lifespan
@@ -88,6 +91,25 @@ async def actions_unavailable_handler(_request: Request, exc: ActionsUnavailable
 async def invalid_delivery_handler(_request: Request, _exc: InvalidDeliveryError) -> JSONResponse:
     """Reject unauthenticated queue callbacks."""
     return JSONResponse(status_code=403, content={"detail": "Invalid QStash signature"})
+
+
+@app.exception_handler(PermissionDeniedError)
+async def permission_denied_handler(_request: Request, exc: PermissionDeniedError) -> JSONResponse:
+    """Map domain authorization failures without coupling services to HTTP."""
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(ServiceUnavailableError)
+async def service_unavailable_handler(_request: Request, exc: ServiceUnavailableError) -> JSONResponse:
+    """Return a retryable response for a temporarily unavailable service."""
+    logger.warning("Service unavailable: %s", exc)
+    return JSONResponse(status_code=503, content={"detail": str(exc)}, headers={"Retry-After": "1"})
+
+
+@app.exception_handler(PayloadTooLargeError)
+async def payload_too_large_handler(_request: Request, exc: PayloadTooLargeError) -> JSONResponse:
+    """Map transfer limits to an HTTP response at the application boundary."""
+    return JSONResponse(status_code=413, content={"detail": str(exc)})
 
 
 app.add_middleware(

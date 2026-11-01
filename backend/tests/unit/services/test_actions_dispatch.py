@@ -8,11 +8,10 @@ from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlparse
 
 import pytest
-from fastapi import HTTPException
 
 from app.clients.sandboxes import AbstractSandboxClient, SandboxError, SandboxSnapshot
 from app.entities.actions import WorkflowRun
-from app.exceptions import ActionsUnavailableError
+from app.exceptions import ActionsUnavailableError, PermissionDeniedError
 from app.services.actions.service import ActionsService
 from app.services.actions.workflows import instantiate_jobs
 from tests.unit.utils.actions import FakeActionsQueue, FakeActionsStore, FakeWorkflowCompiler, compiled_fixture
@@ -137,9 +136,8 @@ async def test_cancel_during_provisioning_revokes_callbacks_and_destroys_a_late_
     delivery = asyncio.create_task(service.dispatcher.deliver(pending(store, "dispatch")[0]))
     await started.wait()
     await service.dispatcher.cancel(run.repo_id, run.id)
-    with pytest.raises(HTTPException) as rejected:
+    with pytest.raises(PermissionDeniedError):
         await service.complete(completion(sandbox))
-    assert rejected.value.status_code == 403
     finish.set()
     await delivery
     assert run.status == "cancelled"
@@ -159,9 +157,8 @@ async def test_expired_provisioning_is_retried_with_a_new_attempt_and_fence(exec
     assert newest.generation == 2
     assert newest.fence != old.fence
     assert newest.sandbox != old.sandbox
-    with pytest.raises(HTTPException) as rejected:
+    with pytest.raises(PermissionDeniedError):
         await service.complete(token)
-    assert rejected.value.status_code == 403
 
 
 async def test_provisioning_retries_are_bounded_and_resources_are_cleaned(execution: Execution) -> None:
