@@ -5,7 +5,12 @@ import json
 import zlib
 from abc import ABC, abstractmethod
 from http import HTTPStatus
-from typing import override
+from typing import TYPE_CHECKING, override
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from app.schemas.runners import LinuxRunner, RunnerImage
 
 from aiodocker import Docker
 from aiodocker.exceptions import DockerError
@@ -27,8 +32,20 @@ class SandboxError(RuntimeError):
 class AbstractSandboxClient(ABC):
     """Implement this contract to add another sandbox provider."""
 
+    def __init__(self, images: Mapping[LinuxRunner, RunnerImage]) -> None:
+        """Use only operator-configured, prebuilt runner images."""
+        self.images = images
+
+    def _image(self, runner: LinuxRunner) -> RunnerImage:
+        image = self.images.get(runner)
+        if image is None:
+            raise SandboxError(f"Runner {runner} has no configured image")
+        return image
+
     @abstractmethod
-    async def start(self, name: str, files: dict[str, bytes], lifetime: int) -> None:
+    async def start(
+        self, name: str, files: dict[str, bytes], lifetime: int, *, runner: LinuxRunner = "ubuntu-24.04"
+    ) -> None:
         """Idempotently start one isolated job under a stable name."""
         ...
 
@@ -50,14 +67,12 @@ CLEANUP_GRACE_SECONDS = 30
 class DockerSandboxClient(AbstractSandboxClient):
     """Run jobs without privileged mode, host source mounts, or a Docker socket."""
 
-    def __init__(self, image: str) -> None:
-        """Use a locally prepared image."""
-        self.image = image
-
     @override
-    async def start(self, name: str, files: dict[str, bytes], lifetime: int) -> None:
+    async def start(
+        self, name: str, files: dict[str, bytes], lifetime: int, *, runner: LinuxRunner = "ubuntu-24.04"
+    ) -> None:
         config = {
-            "Image": self.image,
+            "Image": self._image(runner).image,
             "Cmd": [
                 "timeout",
                 "--signal=TERM",
@@ -119,20 +134,19 @@ class DockerSandboxClient(AbstractSandboxClient):
 class VercelSandboxClient(AbstractSandboxClient):
     """Launch detached one-shot jobs; provider credentials never enter the VM."""
 
-    def __init__(self, image: str, snapshot_id: str | None = None, region: str | None = None) -> None:
-        """Use an operator-provisioned image containing the JavaScript executor and toolchains."""
-        self.image = image
-        self.snapshot_id = snapshot_id
+    def __init__(self, images: Mapping[LinuxRunner, RunnerImage], region: str | None = None) -> None:
+        """Use prebuilt VCR images or matching snapshots for each Linux release."""
+        super().__init__(images)
         self.region = region
 
     @override
-    async def start(self, name: str, files: dict[str, bytes], lifetime: int) -> None:
-        """Boot a prepared snapshot and pass only a small job descriptor."""
-        if not self.snapshot_id:
-            raise SandboxError("Vercel jobs require ACTIONS_VERCEL_SNAPSHOT prepared before dispatch")
+    async def start(
+        self, name: str, files: dict[str, bytes], lifetime: int, *, runner: LinuxRunner = "ubuntu-24.04"
+    ) -> None:
+        """Boot a prepared image and pass only a small job descriptor."""
+        image = self._image(runner)
         descriptor = files["input.json"]
         environment = {
-            "NODE_OPTIONS": "--import=/opt/gitedge/artifact-compat.mjs",
             "RUNNER_TOOL_CACHE": "/opt/hostedtoolcache",
             "AGENT_TOOLSDIRECTORY": "/opt/hostedtoolcache",
         }
@@ -150,8 +164,8 @@ class VercelSandboxClient(AbstractSandboxClient):
             try:
                 box = await create_sandbox(
                     name=name,
-                    image=None,
-                    source=SnapshotSource(snapshot_id=self.snapshot_id),
+                    image=None if image.snapshot_id else image.image,
+                    source=SnapshotSource(snapshot_id=image.snapshot_id) if image.snapshot_id else None,
                     region=self.region,
                     persistent=False,
                     execution_time_limit=lifetime + CLEANUP_GRACE_SECONDS,

@@ -30,6 +30,7 @@ def instantiate_jobs(compiled: CompiledWorkflow, max_timeout: int) -> list[Actio
             id=uuid.uuid4().hex,
             key=item.key,
             compiled_id=item.id,
+            runner=item.runner,
             name=item.name,
             needs=item.needs,
             matrix=item.matrix,

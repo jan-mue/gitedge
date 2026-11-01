@@ -61,7 +61,7 @@ function request(identity?: string): Request {
 test("the production handler verifies a signed backend identity through Vercel's SDK", async () => {
   const response = await handleCompile(request(await token()))
   expect(response.status).toBe(200)
-  expect(await response.json()).toMatchObject({ version: 1, matched: true })
+  expect(await response.json()).toMatchObject({ version: 2, matched: true })
 })
 
 test.each([

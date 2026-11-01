@@ -1,0 +1,20 @@
+name: Linux runner versions
+on: workflow_dispatch
+jobs:
+  release:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04]
+    steps:
+      - name: Verify the selected operating system
+        shell: python3 {0}
+        env:
+          EXPECTED_RUNNER: ${{ matrix.os }}
+        run: |
+          import os
+          import platform
+          actual = "ubuntu-" + platform.freedesktop_os_release()["VERSION_ID"]
+          assert actual == os.environ["EXPECTED_RUNNER"], actual
+          print(actual)

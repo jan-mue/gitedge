@@ -19,6 +19,8 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.schemas.runners import LinuxRunner, RunnerImage
+
 logger = logging.getLogger(__name__)
 
 # Origin(s) allowed for local development (Vite dev server).
@@ -129,7 +131,7 @@ class Settings(BaseSettings):
     S3_BUCKET: str | None = "gitedge"
     S3_SECURE: bool = False
 
-    # Actions jobs use a fixed operator image; workflows cannot select host privileges.
+    # Workflows select labels from an operator-managed image catalog.
     ACTIONS_PROVIDER: Literal["docker", "vercel"] = "docker"
     ACTIONS_COMPILER_URL: str | None = None
     QSTASH_URL: str = "https://qstash.upstash.io"
@@ -140,11 +142,14 @@ class Settings(BaseSettings):
     ACTIONS_RECONCILE_INTERVAL: int = Field(default=30, ge=1)
     ACTIONS_PROVISION_LEASE: int = Field(default=45, ge=1, le=240)
     ACTIONS_MAX_ATTEMPTS: int = Field(default=3, ge=1, le=10)
-    ACTIONS_IMAGE: str = "gitedge-actions:local"
+    ACTIONS_RUNNERS: dict[LinuxRunner, RunnerImage] = {
+        "ubuntu-22.04": RunnerImage(image="gitedge-actions:ubuntu-22.04"),
+        "ubuntu-24.04": RunnerImage(image="gitedge-actions:ubuntu-24.04"),
+        "ubuntu-26.04": RunnerImage(image="gitedge-actions:ubuntu-26.04"),
+    }
     ACTIONS_MAX_TIMEOUT: int = 1200
     ACTIONS_MAX_PARALLEL: int = 2
     ACTIONS_SERVER_URL: str = "http://host.docker.internal:8000"
-    ACTIONS_VERCEL_SNAPSHOT: str | None = None
     ACTIONS_VERCEL_REGION: str | None = None
     # Explicitly scoped by repository UUID. Values are never stored in workflow rows.
     ACTIONS_SECRETS: dict[str, dict[str, str]] = {}

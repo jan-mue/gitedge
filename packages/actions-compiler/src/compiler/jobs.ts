@@ -8,6 +8,8 @@ import {
   compiledJobSchema,
   compiledStepSchema,
   type JsonValue,
+  type LinuxRunner,
+  linuxRunnerSchema,
 } from "@gitedge/actions-runner/workflow"
 import { z } from "zod"
 import { CompileError, type WorkflowDocument } from "./document"
@@ -168,22 +170,28 @@ function compileSteps(token: MappingToken, converted: Job, document: WorkflowDoc
   })
 }
 
-function validateRunner(
+function resolveRunner(
   input: JsonValue | undefined,
   context: Record<string, JsonValue>,
   document: WorkflowDocument,
   token: MappingToken,
-): void {
+): LinuxRunner {
   const runner = staticValue(input, context, document, token)
   const labels = (Array.isArray(runner) ? runner : [runner]).map((label) =>
     staticValue(label, context, document, token),
   )
-  if (
-    labels.some(
-      (label) => typeof label !== "string" || !/^(ubuntu-(latest|22\.04|24\.04)|linux|self-hosted|x64)$/.test(label),
-    )
-  )
-    document.fail("Only prepared x64 Linux runner labels are supported", token.find("runs-on"))
+  if (!labels.length) document.fail("Runner labels must not be empty", token.find("runs-on"))
+  const images = new Set<LinuxRunner>()
+  for (const label of labels) {
+    if (typeof label !== "string") document.fail("Runner labels must be strings", token.find("runs-on"))
+    const normalized = label.toLowerCase()
+    if (["linux", "self-hosted", "x64"].includes(normalized)) continue
+    const image = linuxRunnerSchema.safeParse(normalized === "ubuntu-latest" ? "ubuntu-24.04" : normalized)
+    if (!image.success) document.fail(`Unsupported Linux runner label: ${label}`, token.find("runs-on"))
+    images.add(image.data)
+  }
+  if (images.size > 1) document.fail("Runner labels select conflicting Ubuntu versions", token.find("runs-on"))
+  return images.values().next().value ?? "ubuntu-24.04"
 }
 
 function jobTimeout(
@@ -266,7 +274,7 @@ export class JobCompiler {
         ...(event.repository === undefined ? {} : { repository: event.repository }),
       },
     }
-    validateRunner(fields["runs-on"], context, document, token)
+    const runner = resolveRunner(fields["runs-on"], context, document, token)
     const timeout = jobTimeout(fields["timeout-minutes"], context, document, token)
     const ignored = staticValue(fields["continue-on-error"] ?? false, context, document, token)
     if (typeof ignored !== "boolean") document.fail("continue-on-error must resolve to a boolean", token)
@@ -277,6 +285,7 @@ export class JobCompiler {
         : String(staticValue(fields.name, context, document, token.find("name") ?? token))
     return compiledJobSchema.parse({
       id: `${key}:${index}`,
+      runner,
       key,
       name,
       needs: this.needs,
