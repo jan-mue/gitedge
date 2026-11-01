@@ -1,4 +1,4 @@
-"""Version-one compiler IR and sandbox manifest boundary contracts."""
+"""Version-two compiler IR and sandbox manifest boundary contracts."""
 
 from typing import Annotated, Literal
 
@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from pydantic.alias_generators import to_camel
 
 from app.schemas.action_dispatch import AttemptIdentity
+from app.schemas.runners import LinuxRunner
 
 
 class CompilerModel(BaseModel):
@@ -74,6 +75,7 @@ class CompiledJob(CompilerModel):
     """One statically expanded variant, before sandbox resource assignment."""
 
     id: str = Field(min_length=1)
+    runner: LinuxRunner = "ubuntu-24.04"
     key: str = Field(min_length=1)
     name: str
     needs: list[str]
@@ -95,7 +97,7 @@ class WorkflowContext(CompilerModel):
 class CompiledWorkflow(CompilerModel):
     """The compiler's immutable, versioned, JSON-serializable result."""
 
-    version: Literal[1]
+    version: Literal[2]
     matched: bool
     workflow_name: str
     dispatch: bool
@@ -136,7 +138,7 @@ class JobDependency(BaseModel):
 class JobInput(BaseModel):
     """Versioned manifest consumed directly by the sandbox agent."""
 
-    version: Literal[3] = 3
+    version: Literal[4] = 4
     attempt: AttemptIdentity
     workflow: WorkflowContext
     job: CompiledJob

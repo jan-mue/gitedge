@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "matched": true,
   "workflowName": "Compiler contract",
   "dispatch": true,
@@ -15,6 +15,7 @@
   "jobs": [
     {
       "id": "check:0",
+      "runner": "ubuntu-24.04",
       "key": "check",
       "name": "check",
       "needs": [],

@@ -6,8 +6,89 @@ on:
     branches:
       - main
 
+env:
+  VCR_IMAGE: vcr.vercel.com/jan-mue-projects/gitedge-backend/gitedge-actions
+
 jobs:
+  images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ['22.04', '24.04', '26.04']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build preinstalled runner
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: packages/actions-runner/Dockerfile
+          platforms: linux/amd64
+          build-args: UBUNTU_IMAGE=ubuntu:${{ matrix.ubuntu }}
+          tags: gitedge-actions:ubuntu-${{ matrix.ubuntu }}
+          outputs: type=docker,dest=${{ runner.temp }}/ubuntu-${{ matrix.ubuntu }}.tar
+          cache-from: type=gha,scope=actions-ubuntu-${{ matrix.ubuntu }}
+          cache-to: type=gha,scope=actions-ubuntu-${{ matrix.ubuntu }},mode=max
+          provenance: false
+
+      - name: Share image with integration and browser tests
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: actions-ubuntu-${{ matrix.ubuntu }}
+          path: ${{ runner.temp }}/ubuntu-${{ matrix.ubuntu }}.tar
+          compression-level: 0
+          retention-days: 1
+
+  publish-images:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'jan-mue/gitedge'
+    needs: [integration-test, e2e-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ['22.04', '24.04', '26.04']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to VCR with OIDC
+        uses: vercel/vcr-action/login@6888f841cb0d2255ef9dab40f068cba07234ef47 # v1
+        with:
+          team: team_Om6hF4AKCRyc9pi43EigjPkt
+
+      - name: Publish prebuilt runner
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: packages/actions-runner/Dockerfile
+          platforms: linux/amd64
+          build-args: UBUNTU_IMAGE=ubuntu:${{ matrix.ubuntu }}
+          tags: |
+            ${{ env.VCR_IMAGE }}:ubuntu-${{ matrix.ubuntu }}-${{ github.sha }}
+            ${{ env.VCR_IMAGE }}:ubuntu-${{ matrix.ubuntu }}
+          outputs: type=image,push=true,oci-mediatypes=true,compression=zstd,compression-level=3,force-compression=true
+          cache-from: type=gha,scope=actions-ubuntu-${{ matrix.ubuntu }}
+          provenance: false
+
   integration-test:
+    needs: images
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -40,18 +121,25 @@ jobs:
       - name: Install workspace dependencies
         run: bun ci
 
-      - name: Prepare Actions runtime
+      - name: Download prebuilt runner images
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: actions-ubuntu-*
+          path: ${{ runner.temp }}/actions-images
+          merge-multiple: true
+
+      - name: Load prebuilt runner images
         run: |
-          docker build -f packages/actions-runner/Dockerfile -t gitedge-actions:local .
-          docker build -f packages/actions-runner/Dockerfile.codeql -t gitedge-actions:integration .
+          docker load --input "$RUNNER_TEMP/actions-images/ubuntu-22.04.tar"
+          docker load --input "$RUNNER_TEMP/actions-images/ubuntu-24.04.tar"
+          docker load --input "$RUNNER_TEMP/actions-images/ubuntu-26.04.tar"
 
       - name: Run integration tests
         working-directory: backend
-        env:
-          ACTIONS_IMAGE: gitedge-actions:integration
         run: uv run --no-sync pytest tests/integration
 
   e2e-test:
+    needs: images
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -105,8 +193,14 @@ jobs:
       - name: Install Playwright browsers
         run: uv run --no-sync playwright install chromium --with-deps
 
-      - name: Prepare Actions runtime
-        run: docker build -f packages/actions-runner/Dockerfile -t gitedge-actions:local .
+      - name: Download prebuilt runner image
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: actions-ubuntu-24.04
+          path: ${{ runner.temp }}/actions-images
+
+      - name: Load prebuilt runner image
+        run: docker load --input "$RUNNER_TEMP/actions-images/ubuntu-24.04.tar"
 
       - name: Run E2E tests
         working-directory: backend

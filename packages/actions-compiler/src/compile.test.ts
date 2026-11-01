@@ -12,7 +12,7 @@ function workflow(job: string, trigger = "push"): string {
 }
 
 describe("official parser compiler", () => {
-  test.each(["basic", "parallel", "dependencies"])("matches the %s golden contract", async (name) => {
+  test.each(["basic", "parallel", "dependencies", "linux"])("matches the %s golden contract", async (name) => {
     const root = new URL(`./fixtures/${name}`, import.meta.url)
     const source = await Bun.file(`${root.pathname}.yaml`).text()
     const output = await compileWorkflow({ version: 1, filename: `.gitedge/workflow/${name}.yaml`, source, event })
@@ -138,6 +138,24 @@ describe("official parser compiler", () => {
       ),
     ).rejects.toBeInstanceOf(CompileError)
   })
+  test.each([
+    ["ubuntu-latest", "ubuntu-24.04"],
+    ["ubuntu-22.04", "ubuntu-22.04"],
+    ["ubuntu-24.04", "ubuntu-24.04"],
+    ["ubuntu-26.04", "ubuntu-26.04"],
+    ["[self-hosted, Linux, X64, ubuntu-22.04]", "ubuntu-22.04"],
+    ["[ubuntu-latest, ubuntu-24.04]", "ubuntu-24.04"],
+  ])("selects %s as %s", async (labels, runner) => {
+    const source = workflow("    steps:\n      - run: true\n").replace("runs-on: ubuntu-latest", `runs-on: ${labels}`)
+    expect((await compile(source)).jobs[0].runner).toBe(runner)
+  })
+  test.each(["[]", "[ubuntu-22.04, ubuntu-24.04]", "ubuntu-20.04", "ubuntu-24.04-arm", "windows-latest"])(
+    "rejects unavailable or conflicting runners: %s",
+    async (labels) => {
+      const source = workflow("    steps:\n      - run: true\n").replace("runs-on: ubuntu-latest", `runs-on: ${labels}`)
+      await expect(compile(source)).rejects.toBeInstanceOf(CompileError)
+    },
+  )
   test("PR filters use the base branch and GitHub default activity types", async () => {
     const source = workflow("    steps:\n      - run: true\n", "\n  pull_request:\n    branches: [main]")
     const request = { name: "pull_request" as const, ref: "refs/heads/feature", baseRef: "main" }
@@ -166,7 +184,7 @@ test("production adapter and local server share authenticated bounded HTTP behav
   expect((await handleCompile(request(input))).status).toBe(401)
   const response = await handleCompile(request(input), async () => true)
   expect(response.status).toBe(200)
-  expect(compiledWorkflowSchema.parse(await response.json()).version).toBe(1)
+  expect(compiledWorkflowSchema.parse(await response.json()).version).toBe(2)
   expect((await handleCompile(request({ ...input, version: 2 }), async () => true)).status).toBe(422)
   expect((await handleCompile(request({ ...input, filename: "../../other.yaml" }), async () => true)).status).toBe(422)
   const invalid = await handleCompile(request({ ...input, source: "on: [push\n" }), async () => true)

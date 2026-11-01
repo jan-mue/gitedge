@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from pytest_mock import AsyncMockType, MockerFixture
 
     from app.entities.actions import WorkflowOutbox
+    from app.schemas.runners import LinuxRunner
     from tests.unit.utils.fakes import FakeStores
 
 type Execution = tuple[ActionsService, FakeActionsStore, AsyncMockType, FakeActionsQueue]
@@ -92,11 +93,12 @@ async def test_dispatch_claim_commits_before_provider_io_and_duplicate_deliverie
     run = await add_run(execution, "parallel")
     started, both = [], asyncio.Event()
 
-    async def start(name: str, files: dict[str, bytes], lifetime: int) -> None:
+    async def start(name: str, files: dict[str, bytes], lifetime: int, *, runner: LinuxRunner) -> None:
         assert lifetime == 60
         assert not store.in_transaction
         payload = json.loads(files["input.json"])
-        assert payload["version"] == 3
+        assert payload["version"] == 4
+        assert payload["job"]["runner"] == runner
         assert name.endswith(payload["attempt"]["id"].replace("-", ""))
         started.append(name)
         if len(started) == 2:
@@ -134,14 +136,15 @@ async def test_cancel_during_provisioning_revokes_callbacks_and_destroys_a_late_
     run = await add_run(execution)
     started, finish = asyncio.Event(), asyncio.Event()
 
-    async def start(_name: str, _files: dict[str, bytes], _lifetime: int) -> None:
+    async def start(_name: str, _files: dict[str, bytes], _lifetime: int, *, runner: LinuxRunner) -> None:
+        assert runner == "ubuntu-24.04"
         assert not store.in_transaction
         started.set()
         await finish.wait()
 
     sandbox.start.side_effect = start
     delivery = asyncio.create_task(service.dispatcher.deliver(pending(store, "dispatch")[0]))
-    await started.wait()
+    await asyncio.wait_for(started.wait(), 1)
     await service.dispatcher.cancel(run.repo_id, run.id)
     with pytest.raises(PermissionDeniedError):
         await service.complete(*completion(sandbox))
@@ -209,7 +212,7 @@ async def test_late_collection_cannot_resurrect_a_cancelled_attempt(execution: E
     sandbox.is_running.side_effect = is_running
     command = next(item for item in pending(store, "inspect") if item.due_at < datetime.now(UTC) + timedelta(seconds=1))
     delivery = asyncio.create_task(service.dispatcher.deliver(command))
-    await started.wait()
+    await asyncio.wait_for(started.wait(), 1)
     await service.dispatcher.cancel(run.repo_id, run.id)
     finish.set()
     await delivery
@@ -272,3 +275,25 @@ async def test_artifact_upload_commits_a_fenced_reference_before_completion(
     assert key is not None
     assert fake_stores.blob.objects[key] == b"archive"
     assert await store.artifacts(run.id) == [key]
+
+
+async def test_matrix_runner_selection_reaches_the_provider(execution: Execution) -> None:
+    service, store, sandbox, _ = execution
+    await add_run(execution, "linux")
+    for command in pending(store, "dispatch"):
+        await service.dispatcher.deliver(command)
+    assert [call.kwargs["runner"] for call in sandbox.start.call_args_list] == ["ubuntu-22.04", "ubuntu-24.04"]
+    for call in sandbox.start.call_args_list:
+        descriptor = json.loads(call.args[1]["input.json"])
+        assert descriptor["job"]["runner"] == call.kwargs["runner"]
+
+
+async def test_queued_old_manifests_fail_visibly_without_provisioning(execution: Execution) -> None:
+    service, store, sandbox, _ = execution
+    run = await add_run(execution)
+    assert run.compiled is not None
+    run.compiled["version"] = 1
+    await service.dispatcher.deliver(pending(store, "dispatch")[0])
+    assert run.jobs[0]["status"] == "failure"
+    assert "incompatible compiled manifest" in run.jobs[0]["error"]
+    sandbox.start.assert_not_awaited()

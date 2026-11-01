@@ -1,0 +1,10 @@
+.git
+.env*
+.venv
+**/node_modules
+**/dist
+**/.pytest_cache
+**/__pycache__
+**/coverage
+frontend/storybook-static
+backend/test-results

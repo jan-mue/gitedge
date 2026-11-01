@@ -25,7 +25,7 @@ class WorkflowCompiler {
     const trigger = new WorkflowTrigger(document)
     const inputs = trigger.inputs()
     return compiledWorkflowSchema.parse({
-      version: 1,
+      version: 2,
       matched: trigger.matches(),
       workflowName: shared.name || request.filename.split("/").pop(),
       dispatch: "workflow_dispatch" in template.events,
