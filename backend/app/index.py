@@ -15,6 +15,7 @@ from app.config import settings
 from app.exceptions import (
     ActionsUnavailableError,
     CompilerUnavailableError,
+    ConflictError,
     InvalidDeliveryError,
     NotFoundError,
     PayloadTooLargeError,
@@ -68,6 +69,12 @@ async def not_found_exception_handler(_request: Request, exc: NotFoundError) -> 
 async def workflow_exception_handler(_request: Request, exc: WorkflowError) -> JSONResponse:
     """Report invalid workflows consistently across Actions endpoints."""
     return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(ConflictError)
+async def conflict_handler(_request: Request, exc: ConflictError) -> JSONResponse:
+    """Map conflicting state transitions at the HTTP boundary."""
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 @app.exception_handler(CompilerUnavailableError)

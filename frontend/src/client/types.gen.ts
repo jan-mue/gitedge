@@ -68,10 +68,6 @@ export type ActionJob = {
      */
     steps?: Array<ActionStep>;
     /**
-     * Log
-     */
-    log?: string;
-    /**
      * Error
      */
     error?: string | null;
@@ -144,7 +140,7 @@ export type ActionStatus = 'queued' | 'running' | 'success' | 'failure' | 'skipp
 /**
  * ActionStep
  *
- * One step and its masked, plain-text log.
+ * One step and its execution status.
  */
 export type ActionStep = {
     /**
@@ -156,10 +152,6 @@ export type ActionStep = {
      */
     name: string;
     status?: ActionStatus;
-    /**
-     * Log
-     */
-    log?: string;
 };
 
 /**
@@ -1085,6 +1077,55 @@ export type LanguageStatistic = {
      * Percentage
      */
     percentage: number;
+};
+
+/**
+ * LogPage
+ *
+ * A bounded replay page and its resume cursor.
+ */
+export type LogPage = {
+    /**
+     * Attempt Id
+     */
+    attempt_id: string;
+    /**
+     * Records
+     */
+    records: Array<LogRecord>;
+    /**
+     * Next Seq
+     */
+    next_seq: number;
+    /**
+     * Complete
+     */
+    complete: boolean;
+};
+
+/**
+ * LogRecord
+ *
+ * One ordered fragment, optionally ending an output line.
+ */
+export type LogRecord = {
+    /**
+     * Seq
+     */
+    seq: number;
+    /**
+     * Msg
+     */
+    msg: string;
+    /**
+     * Step Id
+     */
+    step_id?: string | null;
+    status?: ActionStatus | null;
+    /**
+     * End
+     */
+    end?: boolean;
 };
 
 /**
@@ -2668,6 +2709,146 @@ export type actionsCancelRunResponses = {
 };
 
 export type actionsCancelRunResponse = actionsCancelRunResponses[keyof actionsCancelRunResponses];
+
+export type actionsLogHistoryData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+        /**
+         * Attempt Id
+         */
+        attempt_id: string;
+    };
+    query?: {
+        /**
+         * After
+         */
+        after?: number;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_id}/logs';
+};
+
+export type actionsLogHistoryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type actionsLogHistoryError = actionsLogHistoryErrors[keyof actionsLogHistoryErrors];
+
+export type actionsLogHistoryResponses = {
+    /**
+     * Successful Response
+     */
+    200: LogPage;
+};
+
+export type actionsLogHistoryResponse = actionsLogHistoryResponses[keyof actionsLogHistoryResponses];
+
+export type actionsLogEventsData = {
+    body?: never;
+    headers?: {
+        /**
+         * Last-Event-Id
+         */
+        'Last-Event-ID'?: number | null;
+    };
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+        /**
+         * Attempt Id
+         */
+        attempt_id: string;
+    };
+    query?: {
+        /**
+         * After
+         */
+        after?: number;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_id}/logs/events';
+};
+
+export type actionsLogEventsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type actionsLogEventsError = actionsLogEventsErrors[keyof actionsLogEventsErrors];
+
+export type actionsLogEventsResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type actionsDownloadLogData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+        /**
+         * Attempt Id
+         */
+        attempt_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_id}/logs/download';
+};
+
+export type actionsDownloadLogErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type actionsDownloadLogError = actionsDownloadLogErrors[keyof actionsDownloadLogErrors];
+
+export type actionsDownloadLogResponses = {
+    /**
+     * Successful Response
+     */
+    200: string;
+};
+
+export type actionsDownloadLogResponse = actionsDownloadLogResponses[keyof actionsDownloadLogResponses];
 
 export type loginLoginAccessTokenData = {
     body: Body_login_login_access_token;

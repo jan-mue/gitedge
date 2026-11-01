@@ -1,4 +1,4 @@
-from app.entities.actions import WorkflowAttempt, WorkflowCacheEntry, WorkflowOutbox, WorkflowRun
+from app.entities.actions import WorkflowAttempt, WorkflowCacheEntry, WorkflowLogChunk, WorkflowOutbox, WorkflowRun
 from app.entities.activity import Activity
 from app.entities.comments import Comment
 from app.entities.issues import Issue
@@ -29,6 +29,7 @@ __all__ = [
     "Watcher",
     "WorkflowAttempt",
     "WorkflowCacheEntry",
+    "WorkflowLogChunk",
     "WorkflowOutbox",
     "WorkflowRun",
 ]

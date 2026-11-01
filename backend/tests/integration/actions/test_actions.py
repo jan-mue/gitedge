@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 import httpx2 as httpx
 import psycopg
 import pytest
+import redis
 from aiodocker import Docker
 
 from app.clients.blob_storage import S3Client
@@ -90,13 +91,28 @@ def wait_for_run(client: httpx.Client, path: str, run_id: str | None = None, sec
     pytest.fail(f"Workflow did not finish: {json.dumps(last, indent=2)}")
 
 
+def job_log(client: httpx.Client, path: str, run: dict, position: int = 0) -> str:
+    job = run["jobs"][position]
+    if not job.get("attempt_id"):
+        return ""
+    cursor, text = 0, []
+    while True:
+        response = client.get(f"{path}/runs/{run['id']}/attempts/{job['attempt_id']}/logs", params={"after": cursor})
+        response.raise_for_status()
+        page = response.json()
+        text.extend(record["msg"] + ("\n" if record.get("end", True) else "") for record in page["records"])
+        if page["complete"] or page["next_seq"] == cursor:
+            return "".join(text)
+        cursor = page["next_seq"]
+
+
 def wait_for_started_job(client: httpx.Client, path: str, run_id: str) -> dict:
     deadline = time.monotonic() + 180
     while time.monotonic() < deadline:
         response = client.get(f"{path}/runs")
         response.raise_for_status()
         run = next(run for run in response.json() if run["id"] == run_id)
-        if "Long job started" in run["jobs"][0]["log"]:
+        if "Long job started" in job_log(client, path, run):
             return run["jobs"][0]
         time.sleep(0.25)
     pytest.fail("The job did not start in Docker through QStash")
@@ -133,7 +149,7 @@ def test_push_runs_matrix_jobs_in_separate_sandboxes(
     assert len(run["jobs"]) == 3
     assert all(job["status"] == "success" for job in run["jobs"])
     assert all(job["sandbox"] is None for job in run["jobs"])
-    assert "Dependency outputs verified" in run["jobs"][-1]["log"]
+    assert "Dependency outputs verified" in job_log(client, path, run, -1)
 
     async def has_remaining_jobs() -> bool:
         async with Docker() as client:
@@ -150,8 +166,8 @@ def test_failed_jobs_skip_dependents_but_run_always_cleanup(actions_repo: tuple[
     run = wait_for_run(client, path, dispatch.json()["id"])
     assert run["status"] == "failure", json.dumps(run, indent=2)
     assert [job["status"] for job in run["jobs"]] == ["failure", "skipped", "success"]
-    assert "Cleanup ran" in run["jobs"][0]["log"]
-    assert "Failure reported" in run["jobs"][2]["log"]
+    assert "Cleanup ran" in job_log(client, path, run)
+    assert "Failure reported" in job_log(client, path, run, 2)
 
 
 def test_tooling_actions_cache_and_artifacts(
@@ -160,7 +176,7 @@ def test_tooling_actions_cache_and_artifacts(
     client, _, path = actions_repo
     wait_for_run(client, path)
 
-    async def artifact_state(run_id: str) -> bytes | None:
+    async def artifact_state(run: dict) -> bytes | None:
         blobs = S3Client(
             endpoint=infrastructure["S3_ENDPOINT"],
             access_key=infrastructure["S3_ACCESS_KEY"],
@@ -168,7 +184,15 @@ def test_tooling_actions_cache_and_artifacts(
             bucket=infrastructure["S3_BUCKET"],
         )
         keys = await blobs.list_keys("actions/")
-        key = next(key for key in keys if f"/{run_id}/attempts/" in key and key.endswith("/state.tar.gz"))
+        db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
+        with psycopg.connect(db_url) as connection:
+            row = connection.execute(
+                "SELECT artifact_key FROM workflow_attempt WHERE run_id = %s AND id = %s",
+                (run["id"], run["jobs"][0]["attempt_id"]),
+            ).fetchone()
+        assert row is not None
+        key = row[0]
+        assert key in keys, "The committed artifact archive must be persisted in S3"
         caches = [key for key in keys if "/cache/" in key]
         assert caches, "Workflow cache archives must be persisted in S3"
         for cache_key in caches:
@@ -187,7 +211,7 @@ def test_tooling_actions_cache_and_artifacts(
         for step in run["jobs"][0]["steps"]:
             expected = "skipped" if step["name"] == "Verify restored cache" and not iteration else "success"
             assert step["status"] == expected, json.dumps({"iteration": iteration, "run": run}, indent=2)
-        state = asyncio.run(artifact_state(run["id"]))
+        state = asyncio.run(artifact_state(run))
         assert state is not None
         with tarfile.open(fileobj=io.BytesIO(state), mode="r:gz") as archive:
             member = next(member for member in archive if member.name.endswith("/example-results.zip"))
@@ -196,8 +220,8 @@ def test_tooling_actions_cache_and_artifacts(
             with zipfile.ZipFile(io.BytesIO(uploaded.read())) as artifact:
                 assert artifact.read("result.txt") == b"artifact contents\n"
         if iteration:
-            assert "Portable cache restored" in run["jobs"][0]["log"]
-            assert "uv cache restored" in run["jobs"][0]["log"]
+            assert "Portable cache restored" in job_log(client, path, run)
+            assert "uv cache restored" in job_log(client, path, run)
 
 
 def test_codeql_init_and_analyze_use_prepared_tools(actions_repo: tuple[httpx.Client, Path, str]) -> None:
@@ -207,7 +231,7 @@ def test_codeql_init_and_analyze_use_prepared_tools(actions_repo: tuple[httpx.Cl
     dispatch.raise_for_status()
     run = wait_for_run(client, path, dispatch.json()["id"], seconds=600)
     assert run["status"] == "success", json.dumps(run, indent=2)
-    assert "Verify SARIF results" in run["jobs"][0]["log"]
+    assert "Verify SARIF results" in job_log(client, path, run)
 
 
 def test_cancellation_destroys_running_jobs_and_skips_queued_jobs(actions_repo: tuple[httpx.Client, Path, str]) -> None:
@@ -218,7 +242,7 @@ def test_cancellation_destroys_running_jobs_and_skips_queued_jobs(actions_repo: 
     run_id = dispatch.json()["id"]
     job = wait_for_started_job(client, path, run_id)
 
-    async def completion_url() -> str:
+    async def completion_capability() -> tuple[str, str]:
         async with Docker() as docker:
             container = await docker.containers.get(job["sandbox"])
             configuration = await container.show()
@@ -227,16 +251,20 @@ def test_cancellation_destroys_running_jobs_and_skips_queued_jobs(actions_repo: 
                 for value in configuration["Config"]["Env"]
                 if value.startswith("GITEDGE_JOB=")
             )
-            return json.loads(descriptor)["complete_url"]
+            payload = json.loads(descriptor)
+            return payload["report_url"] + "/complete", payload["report_token"]
 
-    stale_url = asyncio.run(completion_url())
+    stale_url, stale_token = asyncio.run(completion_capability())
     response = client.post(f"{path}/runs/{run_id}/cancel")
     response.raise_for_status()
     run = wait_for_run(client, path, run_id)
     assert run["status"] == "cancelled"
     assert all(job["status"] == "cancelled" and job["sandbox"] is None for job in run["jobs"])
     stale_path = stale_url.split("/api/v1/", 1)[1]
-    assert client.post(f"/api/v1/{stale_path}").status_code == 403
+    assert (
+        client.post(f"/api/v1/{stale_path}", headers={"Authorization": f"Bearer {stale_token}"}, json={}).status_code
+        == 403
+    )
 
 
 def test_timeout_completes_without_actions_api_polling(
@@ -440,3 +468,57 @@ def test_real_bun_compiler_http_contract(actions_compiler_url: str) -> None:
         assert rejected.status_code == 422
         assert rejected.json()["issues"][0]["filename"] == request["filename"]
         assert rejected.json()["issues"][0]["line"] > 0
+
+
+def test_live_logs_replay_after_disconnect_and_redis_loss(
+    actions_repo: tuple[httpx.Client, Path, str],
+    infrastructure: dict[str, str],
+) -> None:
+    client, _, path = actions_repo
+    wait_for_run(client, path)
+    dispatched = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/live.yaml"})
+    dispatched.raise_for_status()
+    run_id = dispatched.json()["id"]
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        runs = client.get(f"{path}/runs").json()
+        run = next(item for item in runs if item["id"] == run_id)
+        if run["jobs"][0].get("attempt_id"):
+            break
+        time.sleep(0.1)
+    else:
+        pytest.fail("QStash did not dispatch the live log job")
+    attempt = run["jobs"][0]["attempt_id"]
+    history = f"{path}/runs/{run_id}/attempts/{attempt}/logs"
+    cursor = 0
+    with client.stream("GET", history + "/events", timeout=30) as response:
+        response.raise_for_status()
+        for line in response.iter_lines():
+            if line.startswith("data: "):
+                record = json.loads(line[6:])
+                if record.get("msg") == "First live record":
+                    cursor = record["seq"]
+                    break
+    assert cursor > 0
+    active = next(item for item in client.get(f"{path}/runs").json() if item["id"] == run_id)
+    assert active["status"] == "running"
+    assert "log" not in active["jobs"][0]
+    with redis.Redis.from_url(infrastructure["REDIS_URL"]) as cache:
+        cache.delete(f"actions:logs:{attempt}")
+    replay = client.get(history).json()
+    assert any(record["msg"] == "First live record" for record in replay["records"])
+    seen = []
+    with client.stream("GET", history + "/events", headers={"Last-Event-ID": str(cursor)}, timeout=30) as response:
+        response.raise_for_status()
+        for line in response.iter_lines():
+            if line.startswith("data: "):
+                data = json.loads(line[6:])
+                if "seq" in data:
+                    seen.append(data)
+    assert seen
+    assert all(record["seq"] > cursor for record in seen)
+    assert len({record["seq"] for record in seen}) == len(seen)
+    assert any(record["msg"] == "Second live record" for record in seen)
+    completed = wait_for_run(client, path, run_id)
+    assert completed["status"] == "success"
+    assert "First live record" in client.get(history + "/download").text

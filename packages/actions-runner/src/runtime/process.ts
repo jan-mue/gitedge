@@ -62,6 +62,10 @@ export class ProcessExecutor {
     let code: number
     try {
       ;[code] = await Promise.all([child.exited, output.consume(child.stdout), output.consume(child.stderr)])
+    } catch (error) {
+      kill("SIGKILL")
+      await child.exited
+      throw error
     } finally {
       request.signal.removeEventListener("abort", abort)
       clearTimeout(escalation)

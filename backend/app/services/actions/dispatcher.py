@@ -13,14 +13,15 @@ from app.config import settings
 from app.exceptions import ActionsUnavailableError, WorkflowError
 from app.schemas.action_dispatch import AttemptIdentity, Capability, Delivery
 from app.services.actions.inputs import build_job_input
-from app.services.actions.runtime import finish_job, redact, update_logs
+from app.services.actions.logs import current_attempt
+from app.services.actions.runtime import finish_job, redact
 from app.services.actions.scheduler import TERMINAL, RunScheduler
 
 if TYPE_CHECKING:
     from app.clients.actions import ActionsStore, RunState
-    from app.clients.blob_storage import BlobStorageClient
     from app.clients.qstash import ActionsQueue
     from app.entities.actions import WorkflowAttempt, WorkflowOutbox
+    from app.schemas.action_logs import JobCompletion
     from app.schemas.actions import ActionJob
 
 
@@ -44,14 +45,13 @@ class ActionsDispatcher:
     def __init__(
         self,
         store: ActionsStore,
-        blobs: BlobStorageClient,
         sandbox: AbstractSandboxClient,
         queue: ActionsQueue,
         scheduler: RunScheduler,
         secrets: dict[str, dict[str, str]],
     ) -> None:
         """Separate durable transitions from sandbox, storage, and broker I/O."""
-        self.store, self.blobs, self.sandbox = store, blobs, sandbox
+        self.store, self.sandbox = store, sandbox
         self.queue, self.scheduler, self.secrets = queue, scheduler, secrets
 
     async def deliver(self, message: WorkflowOutbox) -> None:
@@ -66,7 +66,7 @@ class ActionsDispatcher:
                     if message.kind == "dispatch":
                         await self._start(work)
                     else:
-                        await self._inspect(work, message)
+                        await self._check_status(work, message)
             except (SandboxError, TimeoutError) as error:
                 await self._retry(work, message, error)
         await self.flush()
@@ -127,26 +127,16 @@ class ActionsDispatcher:
         if not accepted:
             await self.sandbox.delete(work.sandbox)
 
-    async def _inspect(self, work: ClaimedJob, message: WorkflowOutbox) -> None:
-        snapshot = await self.sandbox.inspect(work.sandbox)
-        secrets = self._secrets(work.repo_id)
-        update_logs(work.job, snapshot.files.get("log.jsonl", b""), secrets, work.identity)
-        finished = not snapshot.running or "exit-code" in snapshot.files
-        artifact_key = None
-        if finished:
-            finish_job(work.job, snapshot.files, secrets, work.identity)
-            if archive := snapshot.files.get("state.tar.gz"):
-                artifact_key = f"actions/{work.repo_id}/{work.run_id}/attempts/{work.attempt_id}/state.tar.gz"
-                await self.blobs.put(artifact_key, archive)
+    async def _check_status(self, work: ClaimedJob, message: WorkflowOutbox) -> None:
+        running = await self.sandbox.is_running(work.sandbox)
         async with self.store.transaction(work.run_id) as state:
             if state and (attempt := self._owned(state, work)):
-                if finished:
-                    self.scheduler.finish(state, attempt, work.job, artifact_key)
-                elif datetime.now(UTC) >= attempt.deadline:
+                attempt.claim, attempt.lease_until = None, None
+                if datetime.now(UTC) >= attempt.deadline:
                     self.scheduler.fail(state, attempt, "Job exceeded timeout-minutes", retry=False)
+                elif not running:
+                    self.scheduler.fail(state, attempt, "Sandbox exited without a completion report")
                 else:
-                    state.jobs = [work.job if item.id == work.job.id else item for item in state.jobs]
-                    attempt.claim, attempt.lease_until = None, None
                     self.scheduler.inspect_later(state, attempt)
             if state:
                 state.acknowledged.append(message.id)
@@ -162,7 +152,7 @@ class ActionsDispatcher:
                         self.scheduler.fail(state, attempt, "Job exceeded timeout-minutes", retry=False)
                         state.acknowledged.append(message.id)
         if message.kind != "dispatch":
-            raise ActionsUnavailableError("Sandbox collection must be retried") from error
+            raise ActionsUnavailableError("Sandbox status check must be retried") from error
 
     async def _cleanup(self, message: WorkflowOutbox) -> None:
         sandbox = None
@@ -186,11 +176,18 @@ class ActionsDispatcher:
                 state.acknowledged.append(message.id)
                 self.scheduler.advance(state)
 
-    async def notify(self, capability: Capability) -> None:
-        """Queue collection of a completed attempt."""
+    async def complete(self, capability: Capability, completion: JobCompletion) -> None:
+        """Commit a terminal result and release dependencies idempotently."""
         async with self.store.transaction(capability.run, capability.repo) as state:
-            if state and (attempt := state.attempt(capability.id)) and attempt.status in {"starting", "running"}:
-                state.enqueue("inspect", attempt, key="completion")
+            attempt = current_attempt(state, capability, terminal=True)
+            if completion.last_seq != (attempt.log_seq or 0):
+                raise ActionsUnavailableError("Completion is waiting for acknowledged logs")
+            if state and attempt.status in {"starting", "running"}:
+                job = state.job(attempt)
+                if job is not None:
+                    finish_job(job, completion, self._secrets(capability.repo))
+                    attempt.claim, attempt.lease_until = None, None
+                    self.scheduler.finish(state, attempt, job, attempt.artifact_key)
         await self.flush()
 
     async def cancel(self, repo_id: uuid.UUID, run_id: uuid.UUID) -> bool:

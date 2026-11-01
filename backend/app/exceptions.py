@@ -86,3 +86,11 @@ class ServiceUnavailableError(RuntimeError):
 
 class PayloadTooLargeError(ValueError):
     """An upload exceeds its allowed transfer size."""
+
+
+class ConflictError(Exception):
+    """The request conflicts with already committed state."""
+
+
+class RedisUnavailableError(RuntimeError):
+    """Recent log delivery failed at the Redis transport or protocol boundary."""

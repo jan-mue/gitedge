@@ -65,7 +65,14 @@ async def test_private_actions_history_requires_owner(
 
 def test_sandbox_endpoints_require_scoped_tokens(client: TestClient) -> None:
     assert client.get(f"{settings.API_V1_STR}/actions/state", params={"token": "invalid"}).status_code == 403
-    assert client.post(f"{settings.API_V1_STR}/actions/complete", params={"token": "invalid"}).status_code == 403
+    assert (
+        client.post(
+            f"{settings.API_V1_STR}/actions/attempts/{uuid.uuid4()}/complete",
+            headers={"Authorization": "Bearer invalid"},
+            content=b"{}",
+        ).status_code
+        == 403
+    )
 
 
 def test_completion_rejects_read_only_state_tokens(client: TestClient) -> None:
@@ -74,7 +81,14 @@ def test_completion_rejects_read_only_state_tokens(client: TestClient) -> None:
         settings.SECRET_KEY,
         algorithm="HS256",
     )
-    assert client.post(f"{settings.API_V1_STR}/actions/complete", params={"token": token}).status_code == 403
+    assert (
+        client.post(
+            f"{settings.API_V1_STR}/actions/attempts/{uuid.uuid4()}/complete",
+            headers={"Authorization": f"Bearer {token}"},
+            content=b"{}",
+        ).status_code
+        == 403
+    )
 
 
 def test_cache_capabilities_scope_upload_lookup_and_download_to_one_repository(client: TestClient) -> None:

@@ -87,6 +87,8 @@ export const RepositoryActions = ({
           ← Back to runs
         </Button>
         <RunDetail
+          owner={owner}
+          repo={repo}
           initialJob={jobId}
           key={selected.id}
           run={selected}

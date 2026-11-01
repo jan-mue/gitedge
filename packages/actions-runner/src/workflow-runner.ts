@@ -38,7 +38,7 @@ export class WorkflowRunner {
       cache: options.cache || new ControllerCacheClient(input.cache_url, options.signal),
       restoreArtifacts: options.restoreArtifacts,
     })
-    const logger = new JobLogger(options.log, Object.values(input.secrets))
+    const logger = new JobLogger(options.log, [...Object.values(input.secrets), input.report_token || ""])
     try {
       const environment = new JobEnvironment(input, workspace, storage.environment)
       const expressions = new ExpressionEngine(workspace)
