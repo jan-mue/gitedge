@@ -1,81 +1,59 @@
-import json
 import uuid
 
 import pytest
+from pydantic import ValidationError
 
-from app.schemas.action_dispatch import AttemptIdentity
+from app.schemas.action_logs import JobCompletion, JobResult, StepResult
 from app.schemas.actions import ActionJob, ActionStatus, ActionStep
-from app.services.actions.runtime import finish_job, update_logs
+from app.services.actions.runtime import finish_job, redact
 
 
-def test_structured_logs_keep_untrusted_text_plain_and_redact_secrets() -> None:
-    job = ActionJob(id="variant", key="test", name="test", steps=[ActionStep(id="hello", name="Hello")])
-    records = [
-        {"msg": "<script>alert('secret-value')</script>", "stepID": ["hello"], "raw_output": True},
-        {"msg": "done", "stepID": ["hello"], "stepResult": "success"},
-    ]
-    update_logs(job, "\n".join(json.dumps(record) for record in records).encode(), {"TOKEN": "secret-value"})
-    assert "secret-value" not in job.log
-    assert "<script>alert('***')</script>" in job.steps[0].log
-    assert job.steps[0].status == ActionStatus.SUCCESS
+def completion(status: str, code: int = 0) -> JobCompletion:
+    return JobCompletion(
+        id=uuid.uuid4(),
+        job_id="job",
+        generation=1,
+        fence=uuid.uuid4(),
+        exit_code=code,
+        last_seq=0,
+        result=JobResult.model_validate({"status": status}),
+    )
 
 
-def test_missing_executor_result_fails_instead_of_becoming_success() -> None:
-    job = ActionJob(id="variant", key="test", name="test")
-    finish_job(job, {"exit-code": b"0"}, {})
-    assert job.status == ActionStatus.FAILURE
-    assert job.error is not None
-    assert "without a job result" in job.error
-
-
-def test_failed_state_export_overrides_successful_executor_result() -> None:
-    job = ActionJob(id="variant", key="test", name="test")
-    finish_job(job, {"result.json": b'{"status":"success"}', "exit-code": b"2"}, {})
+def test_bootstrap_failure_overrides_successful_result() -> None:
+    job = ActionJob(id="job", key="test", name="Test")
+    finish_job(job, completion("success", 2), {})
     assert job.status == ActionStatus.FAILURE
     assert job.error == "Job bootstrap exited unsuccessfully"
 
 
-def test_executor_result_without_bootstrap_completion_fails() -> None:
-    job = ActionJob(id="variant", key="test", name="test")
-    finish_job(job, {"result.json": b'{"status":"success"}'}, {})
-    assert job.status == ActionStatus.FAILURE
-    assert job.error == "Sandbox exited without a completion marker"
-
-
-def test_timeout_is_failure_even_when_the_executor_reports_signal_cancellation() -> None:
-    job = ActionJob(id="variant", key="test", name="test")
-    finish_job(job, {"result.json": b'{"status":"cancelled"}', "exit-code": b"124"}, {})
+def test_timeout_is_failure_even_after_signal_cancellation() -> None:
+    job = ActionJob(id="job", key="test", name="Test")
+    finish_job(job, completion("cancelled", 124), {})
     assert job.status == ActionStatus.FAILURE
     assert job.error == "Job exceeded timeout-minutes"
 
 
-@pytest.mark.parametrize("field", ["id", "job_id", "generation", "fence"])
-def test_mismatched_attempts_cannot_publish_results_or_logs(field: str) -> None:
-    identity = AttemptIdentity(id=uuid.uuid4(), job_id="variant", generation=2, fence=uuid.uuid4())
-    other = identity.model_dump(mode="json")
-    other[field] = 1 if field == "generation" else str(uuid.uuid4())
-    job = ActionJob(id="variant", key="test", name="test")
-    finish_job(
-        job,
-        {"result.json": json.dumps({"status": "success", "attempt": other}).encode(), "exit-code": b"0"},
-        {},
-        identity,
-    )
-    assert job.status == ActionStatus.FAILURE
-    assert job.error is not None
-    assert "different attempt" in job.error
-    update_logs(
-        job,
-        json.dumps(
-            {
-                "msg": "stale output",
-                "jobID": other["job_id"],
-                "attemptID": other["id"],
-                "generation": other["generation"],
-                "fence": other["fence"],
-            }
-        ).encode(),
-        {},
-        identity,
-    )
-    assert job.log == ""
+def test_completion_redacts_outputs_and_preserves_step_conclusions_without_logs() -> None:
+    job = ActionJob(id="job", key="test", name="Test", steps=[ActionStep(id="hello", name="Hello")])
+    report = completion("success")
+    report.result.outputs = {"value": "secret-value"}
+    report.result.steps = {"hello": StepResult(outcome="failure", conclusion="success", outputs={})}
+    finish_job(job, report, {"TOKEN": "secret-value"})
+    assert job.outputs == {"value": "***"}
+    assert job.steps[0].status == "success"
+    assert "log" not in job.model_dump()
+    assert "log" not in job.steps[0].model_dump()
+
+
+@pytest.mark.parametrize("payload", [{}, {"status": "running"}, {"status": "unknown"}])
+def test_nonterminal_or_missing_result_cannot_be_accepted(payload: dict) -> None:
+    with pytest.raises(ValidationError):
+        JobResult.model_validate(payload)
+
+
+def test_multiline_secrets_are_masked_when_output_arrives_on_separate_lines() -> None:
+    secrets = {"KEY": "first-secret-line\nsecond-secret-line"}
+    assert redact("first-secret-line", secrets) == "***"
+    assert redact("second-secret-line", secrets) == "***"
+    assert redact(secrets["KEY"], secrets) == "***"

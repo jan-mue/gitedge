@@ -1,0 +1,13 @@
+name: Live output
+on: workflow_dispatch
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - id: live
+        name: Stream output
+        shell: bun {0}
+        run: |
+          console.log("First live record")
+          await Bun.sleep(8000)
+          console.log("Second live record")

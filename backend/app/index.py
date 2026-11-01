@@ -18,6 +18,7 @@ from app.exceptions import (
     ApplicationError,
     CompilerUnavailableError,
     EmailDeliveryError,
+    ConflictError,
     InvalidDeliveryError,
     WorkflowError,
 )
@@ -71,6 +72,12 @@ app.add_exception_handler(ApplicationError, application_exception_handler)
 async def workflow_exception_handler(_request: Request, exc: WorkflowError) -> JSONResponse:
     """Report invalid workflows consistently across Actions endpoints."""
     return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(ConflictError)
+async def conflict_handler(_request: Request, exc: ConflictError) -> JSONResponse:
+    """Map conflicting state transitions at the HTTP boundary."""
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 @app.exception_handler(CompilerUnavailableError)

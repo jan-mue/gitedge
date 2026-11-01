@@ -4,7 +4,7 @@ import { compiledJobSchema, expressionsSchema, workflowContextSchema } from "./c
 const statusSchema = z.enum(["success", "failure", "cancelled", "skipped"])
 const strings = z.record(z.string(), z.string())
 export const jobSchema = z.object({
-  version: z.literal(2),
+  version: z.literal(3),
   attempt: z
     .object({ id: z.uuid(), job_id: z.string(), generation: z.number().int().positive(), fence: z.uuid() })
     .strict(),
@@ -13,7 +13,8 @@ export const jobSchema = z.object({
   inputs: expressionsSchema.default({}),
   timeout_seconds: z.number().positive().default(1200),
   restore_url: z.string().url().optional(),
-  complete_url: z.string().url().optional(),
+  report_url: z.string().url().optional(),
+  report_token: z.string().optional(),
   cache_url: z.string().url().optional(),
   event_name: z.string().default(""),
   actor: z.string().default(""),
@@ -51,7 +52,7 @@ export interface LogEntry {
 }
 
 export interface LogSink {
-  write(entry: LogEntry): void
+  write(entry: LogEntry): void | Promise<void>
   close(): Promise<void>
 }
 

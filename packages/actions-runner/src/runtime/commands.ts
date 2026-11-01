@@ -62,15 +62,15 @@ export class OutputCommands {
     private readonly state: Environment,
   ) {}
 
-  line(line: string): void {
+  async line(line: string): Promise<void> {
     if (this.stopped) {
       if (line === `::${this.stopped}::`) this.stopped = undefined
-      else this.logger.emit(line, this.step)
+      else await this.logger.emit(line, this.step)
       return
     }
     const match = line.match(/^::([\w-]+)(?:\s+([^:]*))?::(.*)$/)
     if (!match) {
-      this.logger.emit(line, this.step)
+      await this.logger.emit(line, this.step)
       return
     }
     const name = match[1]
@@ -100,7 +100,7 @@ export class OutputCommands {
         this.environment.prependPaths([value])
         break
       default:
-        this.logger.emit(value, this.step)
+        await this.logger.emit(value, this.step)
     }
   }
 
@@ -108,12 +108,13 @@ export class OutputCommands {
     const decoder = new TextDecoder()
     let pending = ""
     for await (const part of stream) {
+      if (pending.length + part.byteLength > 1024 * 1024) throw new Error("Process output line exceeds 1 MiB")
       pending += decoder.decode(part, { stream: true })
       const lines = pending.split(/\r?\n/)
       pending = lines.pop() || ""
-      for (const line of lines) this.line(line)
+      for (const line of lines) await this.line(line)
     }
     pending += decoder.decode()
-    if (pending) this.line(pending)
+    if (pending) await this.line(pending)
   }
 }

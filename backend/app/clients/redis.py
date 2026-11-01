@@ -3,13 +3,16 @@
 import json
 import logging
 from abc import ABC, abstractmethod
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import redis.asyncio as aioredis
 from redis.exceptions import WatchError
 from upstash_redis.asyncio import Redis
 
 from app.config import settings
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,31 @@ return 1
 """
 
 
+_LOG_APPEND = """
+if #redis.call('XRANGE', KEYS[1], ARGV[1], ARGV[1], 'COUNT', 1) == 0 then
+    redis.call('XADD', KEYS[1], 'MAXLEN', '~', 64, ARGV[1], 'data', ARGV[2])
+end
+redis.call('EXPIRE', KEYS[1], 3600)
+return 1
+"""
+
+
+def _log_values(rows: Sequence[Sequence[object]] | None) -> list[bytes]:
+    values: list[bytes] = []
+    for row in rows or []:
+        fields = row[1]
+        if isinstance(fields, dict):
+            value = fields.get(b"data", fields.get("data"))
+        elif isinstance(fields, list) and fields[::2] == ["data"]:
+            value = fields[1]
+        else:
+            raise ValueError("Malformed Redis log stream")
+        if not isinstance(value, (str, bytes)):
+            raise ValueError("Malformed Redis log entry")
+        values.append(value.encode() if isinstance(value, str) else value)
+    return values
+
+
 class AbstractRedisClient(ABC):
     """Abstract base class for Redis operations."""
 
@@ -58,6 +86,14 @@ class AbstractRedisClient(ABC):
     @abstractmethod
     async def scan_keys(self, pattern: str) -> list[str]:
         """Scan for keys matching a pattern."""
+
+    @abstractmethod
+    async def stream_add(self, key: str, seq: int, value: str) -> None:
+        """Append to a bounded, expiring recent-delivery stream."""
+
+    @abstractmethod
+    async def stream_read(self, key: str, after: int) -> list[bytes]:
+        """Read recent entries without blocking (also supported over REST)."""
 
 
 class RedisClient(AbstractRedisClient):
@@ -120,6 +156,14 @@ class RedisClient(AbstractRedisClient):
                 keys.append(str(key))
         return keys
 
+    @override
+    async def stream_add(self, key: str, seq: int, value: str) -> None:
+        await self._client.eval(_LOG_APPEND, 1, key, f"{seq}-0", value)
+
+    @override
+    async def stream_read(self, key: str, after: int) -> list[bytes]:
+        return _log_values(await self._client.xrange(key, min=f"({after}-0", max="+", count=2))
+
 
 class UpstashRedisClient(AbstractRedisClient):
     """Redis client for Upstash Serverless using upstash-redis."""
@@ -175,3 +219,11 @@ class UpstashRedisClient(AbstractRedisClient):
             if cursor == 0:
                 break
         return keys
+
+    @override
+    async def stream_add(self, key: str, seq: int, value: str) -> None:
+        await self._client.eval(_LOG_APPEND, keys=[key], args=[f"{seq}-0", value])
+
+    @override
+    async def stream_read(self, key: str, after: int) -> list[bytes]:
+        return _log_values(await self._client.xrange(key, start=f"({after}-0", end="+", count=2))

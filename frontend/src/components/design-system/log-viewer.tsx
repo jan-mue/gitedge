@@ -10,28 +10,28 @@ export interface LogSection {
   log?: string
 }
 
-export const LogViewer = ({ sections, log }: { sections: LogSection[]; log?: string }) => {
+export const LogViewer = ({
+  sections,
+  log,
+  truncated = false,
+}: {
+  sections: LogSection[]
+  log?: string
+  truncated?: boolean
+}) => {
   const prefix = useId()
-  const [expanded, setExpanded] = useState(
-    () =>
-      new Set(
-        sections
-          .filter((section) => section.status === "failure" || section.status === "running")
-          .map((section) => section.id),
-      ),
-  )
-  const toggle = (id: string) =>
-    setExpanded((old) => {
-      const next = new Set(old)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const toggle = (id: string, open: boolean) => setExpanded((old) => ({ ...old, [id]: !open }))
   return (
     <section aria-label="Job logs" className="divide-y divide-border bg-secondary/40">
+      {truncated && (
+        <p className="px-4 py-2 text-xs text-muted-foreground">
+          Showing recent output. Download the log for the complete history.
+        </p>
+      )}
       {sections.map((section) => {
         const id = `${prefix}-${section.id}`
-        const open = expanded.has(section.id)
+        const open = expanded[section.id] ?? ["failure", "running"].includes(section.status)
         return (
           <div key={section.id}>
             <Button
@@ -39,7 +39,7 @@ export const LogViewer = ({ sections, log }: { sections: LogSection[]; log?: str
               size="file-row"
               aria-expanded={open}
               aria-controls={id}
-              onClick={() => toggle(section.id)}
+              onClick={() => toggle(section.id, open)}
             >
               {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
               <CheckStatusIcon status={section.status} />

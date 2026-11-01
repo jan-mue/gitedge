@@ -74,6 +74,23 @@ class WorkflowAttempt(Base):
     error: Mapped[str | None] = mapped_column(Text)
     artifact_key: Mapped[str | None] = mapped_column(String(512))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    log_seq: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+
+
+class WorkflowLogChunk(Base):
+    """Index immutable, ordered log objects independently of run snapshots."""
+
+    __tablename__ = "workflow_log_chunk"
+    __table_args__ = (UniqueConstraint("attempt_id", "to_seq"),)
+
+    attempt_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workflow_attempt.id", ondelete="CASCADE")
+    )
+    from_seq: Mapped[int] = mapped_column(Integer)
+    to_seq: Mapped[int] = mapped_column(Integer)
+    checksum: Mapped[str] = mapped_column(String(64))
+    object_key: Mapped[str] = mapped_column(String(512))
+    size: Mapped[int] = mapped_column(Integer)
 
 
 class WorkflowOutbox(Base):

@@ -44,6 +44,7 @@ class RunScheduler:
                 fence=uuid.uuid4(),
                 sandbox=f"gitedge-attempt-{attempt_id.hex}",
                 status="queued",
+                log_seq=0,
                 deadline=datetime.now(UTC) + timedelta(seconds=job.timeout_seconds + settings.ACTIONS_PROVISION_LEASE),
             )
             state.attempts.append(attempt)
@@ -72,9 +73,9 @@ class RunScheduler:
         if retry and attempt.generation < settings.ACTIONS_MAX_ATTEMPTS:
             job.status, job.sandbox, job.attempt_id = ActionStatus.QUEUED, None, None
             job.started_at, job.completed_at = None, None
-            job.log, job.outputs = "", {}
+            job.outputs = {}
             for step in job.steps:
-                step.status, step.log = ActionStatus.QUEUED, ""
+                step.status = ActionStatus.QUEUED
         else:
             job.status, job.completed_at = ActionStatus.FAILURE, datetime.now(UTC)
         self.advance(state)

@@ -20,6 +20,7 @@ export default defineConfig({
     },
     {
       name: "@tanstack/react-query",
+      $hooks: { operations: { isQuery: (operation) => (operation.path.endsWith("/logs/events") ? false : undefined) } },
       queryOptions: true,
       queryKeys: true,
       mutationOptions: true,
