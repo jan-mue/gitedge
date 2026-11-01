@@ -820,7 +820,7 @@ requires-dist = [
     { name = "jinja2", specifier = "==3.1.6" },
     { name = "markdown-it-py", extras = ["linkify"], specifier = "==4.2.0" },
     { name = "mdit-py-plugins", specifier = "==0.6.1" },
-    { name = "merge3", specifier = "==0.0.16" },
+    { name = "merge3", specifier = "==1.0.0" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.3.6" },
     { name = "pwdlib", extras = ["argon2", "bcrypt"], specifier = "==0.3.1" },
     { name = "pydantic", extras = ["email"], specifier = "==2.14.1" },
@@ -1194,11 +1194,11 @@ wheels = [
 
 [[package]]
 name = "merge3"
-version = "0.0.16"
+version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/12/71/daaa7978561b9a7bfdcee4ba5ec2ead6162f6a9d2e2edf069def96085c6b/merge3-0.0.16.tar.gz", hash = "sha256:0852de4381cb46be5ef4ed49e3ac20c5a4a0cd46a8ff4bbb870bc27aab543306", size = 15915, upload-time = "2025-10-15T16:22:25.548Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/41/f7/5c8c25a763bf630cc26a466c86bb336ee2ed607e459c6d12dac20a6d3aad/merge3-1.0.0.tar.gz", hash = "sha256:4a8251068cdb2c1aba76d31ae6aff5e6a47c79a1ee1071d5a58f37bf09f2a790", size = 15921, upload-time = "2026-10-25T14:54:25.707Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/e9/a94184895f008ecc70ae4d227deb6a4209bb4f86c5f35b79b8cf6fc23ee4/merge3-0.0.16-py3-none-any.whl", hash = "sha256:b9d907b7281213a5dca1d711d168c4f8fe8aca20d74e2456bb177c4f31dfd927", size = 16546, upload-time = "2025-10-15T16:22:24.08Z" },
+    { url = "https://files.pythonhosted.org/packages/48/8b/ab9ef4b4bc3dfd8a8840c92bf7d33cd27438eae15b7cd57c596166df45a0/merge3-1.0.0-py3-none-any.whl", hash = "sha256:d7bf07e4193f02540656958227dd015f0df5fd4b91819c7d3ef2334dbe7c4b33", size = 16438, upload-time = "2026-10-25T14:54:24.268Z" },
 ]
 
 [[package]]
