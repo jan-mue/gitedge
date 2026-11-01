@@ -7,9 +7,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 
-from app.api.dependencies import RepositoryServiceDep
+from app.api.dependencies import ActionsServiceDep, OptionalUser, RepositoryServiceDep
 from app.clients.git.types import GitHttpRequest
 from app.utils.cache_headers import CACHE_CONTROL_NO_STORE
 
@@ -203,6 +203,9 @@ async def git_receive_pack(
     request: Request,
     repo_path: str,
     repository_service: RepositoryServiceDep,
+    actions: ActionsServiceDep,
+    user: OptionalUser,
+    background_tasks: BackgroundTasks,
 ) -> Response:
     """Handle git-receive-pack (push).
 
@@ -210,8 +213,18 @@ async def git_receive_pack(
         request: FastAPI request.
         repo_path: Repository path.
         repository_service: Repository service.
+        actions: Workflow orchestration service.
+        user: Authenticated event actor, when provided.
+        background_tasks: On-demand event dispatch after the push is persisted.
 
     Returns:
         Response with push result.
     """
-    return await _handle_git_request(request, repo_path, "/git-receive-pack", repository_service)
+    owner, _, name = repo_path.strip("/").removesuffix(".git").partition("/")
+    await repository_service.ensure_loaded(owner, name)
+    before = await repository_service.action_refs(owner, name) if user else {}
+    response = await _handle_git_request(request, repo_path, "/git-receive-pack", repository_service)
+    if user and response.status_code == status.HTTP_200_OK:
+        after = await repository_service.action_refs(owner, name)
+        background_tasks.add_task(actions.on_push, owner, name, before, after, user)
+    return response

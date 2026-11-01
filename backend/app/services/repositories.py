@@ -315,9 +315,9 @@ class RepositoryService:
         """Delegate get blame to the configured Git engine."""
         return await self.git.get_blame(owner, name, ref, file_path)
 
-    async def get_raw(self, owner: str, name: str, ref: str, file_path: str) -> bytes:
+    async def get_raw(self, owner: str, name: str, ref: str, file_path: str, *, follow_symlinks: bool = False) -> bytes:
         """Delegate get raw to the configured Git engine."""
-        return await self.git.get_raw(owner, name, ref, file_path)
+        return await self.git.get_raw(owner, name, ref, file_path, follow_symlinks=follow_symlinks)
 
     async def get_source(self, owner: str, name: str, ref: str, path: str) -> TreeListing | FileContent:
         """Delegate get source to the configured Git engine."""
@@ -401,3 +401,11 @@ class RepositoryService:
     ) -> DiffHunk:
         """Delegate get diff context to the configured Git engine."""
         return await self.git.get_diff_context(owner, name, base, head, path, side, line)
+
+    async def action_revision(self, owner: str, name: str, ref: str) -> tuple[str, str]:
+        """Resolve an immutable Actions commit and its canonical ref."""
+        return await self.git.action_revision(owner, name, ref)
+
+    async def action_refs(self, owner: str, name: str) -> dict[str, str]:
+        """Snapshot branch and tag tips for authenticated push events."""
+        return await self.git.action_refs(owner, name)

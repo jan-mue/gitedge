@@ -1,0 +1,31 @@
+name: Offline CodeQL analysis
+on: workflow_dispatch
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    env:
+      CODEQL_ACTION_TEST_MODE: 'true'
+      CODEQL_ACTION_ANALYSIS_KEY: gitedge-actions-integration
+      CODEQL_ACTION_SKIP_WORKFLOW_VALIDATION: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Use offline CodeQL feature defaults
+        run: printf '{}' > "$RUNNER_TEMP/cached-feature-flags.json"
+      - uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d
+        with:
+          languages: python
+          tools: toolcache
+          build-mode: none
+          ram: 1024
+          threads: 1
+          config: |
+            query-filters:
+              - include:
+                  id: py/sql-injection
+      - uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d
+        with:
+          upload: never
+          upload-database: false
+          output: results
+      - name: Verify SARIF results
+        run: test -f results/python.sarif

@@ -18,7 +18,7 @@ from fastapi import HTTPException
 import app.clients.git.repositories as repository_module
 from app.clients.git.blob_backend import BlobBackend
 from app.entities.users import User
-from app.exceptions import RepositoryNotFoundError
+from app.exceptions import RepositoryNotFoundError, WorkflowError
 from app.schemas.repositories import FileContent, RepositoryUpdate, TreeListing
 from app.services.repositories import RepositoryService, ensure_repository
 from app.types import PackContents
@@ -761,3 +761,28 @@ async def test_pr_commit_range_excludes_base_ancestors_and_paginates(service: Re
         commits["feature"].id.decode(),
     ]
     assert not (await service.compare_commits(OWNER, REPO, "merged", "main")).data
+
+
+@pytest.mark.parametrize("target", ["config.yaml", "loop.yaml", "../outside.yaml", "/etc/passwd"])
+async def test_workflow_symlinks_resolve_only_inside_the_pinned_repository(
+    service: RepositoryService, target: str
+) -> None:
+    source = Blob.from_string(b"on: push\njobs: {}\n")
+    link = Blob.from_string(target.encode())
+    loop = Blob.from_string(b"ci.yaml")
+    tree = _write_tree(
+        {
+            "config.yaml": (stat.S_IFREG | 0o644, source.id),
+            "ci.yaml": (stat.S_IFLNK, link.id),
+            "loop.yaml": (stat.S_IFLNK, loop.id),
+        }
+    )
+    commit = _make_commit(tree.id)
+    _load_repository(service.git.backend, "owner/repo.git", [source, link, loop, tree, commit], commit.id)
+    assert "ci.yaml" in (await service.get_file_index(OWNER, REPO, commit.id.decode())).paths
+    assert await service.get_raw(OWNER, REPO, commit.id.decode(), "ci.yaml") == target.encode()
+    if target == "config.yaml":
+        assert await service.get_raw(OWNER, REPO, commit.id.decode(), "ci.yaml", follow_symlinks=True) == source.data
+    else:
+        with pytest.raises(WorkflowError, match="Workflow symlink"):
+            await service.get_raw(OWNER, REPO, commit.id.decode(), "ci.yaml", follow_symlinks=True)
