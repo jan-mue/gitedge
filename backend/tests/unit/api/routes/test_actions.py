@@ -5,9 +5,15 @@ from typing import TYPE_CHECKING
 
 import jwt
 import pytest
+from qstash.errors import QStashError
 
+from app.api.dependencies import get_actions_store
 from app.config import settings
-from app.exceptions import WorkflowError
+from app.entities.actions import WorkflowAttempt, WorkflowRun
+from app.exceptions import ActionsUnavailableError, WorkflowError
+from app.index import app
+from app.schemas.actions import ActionJob
+from app.services.actions.capabilities import issue_capability
 from app.services.actions.service import ActionsService
 
 if TYPE_CHECKING:
@@ -73,11 +79,15 @@ def test_completion_rejects_read_only_state_tokens(client: TestClient) -> None:
 
 def test_cache_capabilities_scope_upload_lookup_and_download_to_one_repository(client: TestClient) -> None:
     def capability(repo: uuid.UUID, scope: str = "actions:cache") -> str:
-        return jwt.encode(
-            {"repo": str(repo), "run": str(uuid.uuid4()), "scope": scope, "exp": 4102444800},
-            settings.SECRET_KEY,
-            algorithm="HS256",
+        store = app.dependency_overrides[get_actions_store]()
+        job = ActionJob(id=uuid.uuid4().hex, key="job", name="job")
+        attempt = WorkflowAttempt(
+            id=uuid.uuid4(), run_id=uuid.uuid4(), job_id=job.id, generation=1, fence=uuid.uuid4(), status="running"
         )
+        job.attempt_id = attempt.id
+        run = WorkflowRun(id=attempt.run_id, repo_id=repo, status="running", jobs=[job.model_dump(mode="json")])
+        store.runs[run.id], store.attempts[attempt.id] = run, attempt
+        return issue_capability(run, job, attempt, scope)
 
     repository = uuid.uuid4()
     token = capability(repository)
@@ -121,3 +131,16 @@ def test_workflow_errors_use_the_global_handler(
     )
     assert response.status_code == 422
     assert response.json() == {"detail": "Invalid workflow YAML"}
+
+
+@pytest.mark.parametrize("sdk_error", [False, True])
+def test_delivery_errors_use_the_global_retry_handler(
+    client: TestClient, mocker: MockerFixture, sdk_error: bool
+) -> None:
+    error = QStashError("broker unavailable") if sdk_error else ActionsUnavailableError("leased")
+    mocker.patch.object(ActionsService, "delivery", new=mocker.AsyncMock(side_effect=error))
+    response = client.post(
+        f"{settings.API_V1_STR}/actions/internal/dispatch", json={"version": 1, "id": str(uuid.uuid4())}
+    )
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == "1"

@@ -68,6 +68,14 @@ class CompilerUnavailableError(RuntimeError):
     """The workflow compiler is unconfigured, unavailable, or incompatible."""
 
 
+class ActionsUnavailableError(RuntimeError):
+    """A durable Actions delivery must be retried."""
+
+
+class InvalidDeliveryError(ValueError):
+    """A queue delivery failed authentication."""
+
+
 class PermissionDeniedError(Exception):
     """The caller cannot perform the requested operation."""
 

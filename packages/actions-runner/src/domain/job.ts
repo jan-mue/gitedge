@@ -4,7 +4,10 @@ import { compiledJobSchema, expressionsSchema, workflowContextSchema } from "./c
 const statusSchema = z.enum(["success", "failure", "cancelled", "skipped"])
 const strings = z.record(z.string(), z.string())
 export const jobSchema = z.object({
-  version: z.literal(1),
+  version: z.literal(2),
+  attempt: z
+    .object({ id: z.uuid(), job_id: z.string(), generation: z.number().int().positive(), fence: z.uuid() })
+    .strict(),
   workflow: workflowContextSchema,
   job: compiledJobSchema,
   inputs: expressionsSchema.default({}),
@@ -38,6 +41,10 @@ export interface JobResult {
 }
 
 export interface LogEntry {
+  jobID?: string
+  attemptID?: string
+  generation?: number
+  fence?: string
   msg: string
   stepID?: string[]
   stepResult?: JobStatus
