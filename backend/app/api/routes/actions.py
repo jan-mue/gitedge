@@ -3,9 +3,10 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Query, Request, Response
 
 from app.api.dependencies import ActionsServiceDep, CurrentUser, OptionalUser
+from app.exceptions import PayloadTooLargeError, WorkflowError
 from app.schemas.actions import ActionRun, CacheEntry, CacheIdentity, PullRequestChecks, WorkflowDispatch, WorkflowInfo
 from app.services.actions.cache import STATE_LIMIT
 
@@ -84,7 +85,7 @@ async def lookup_cache(
     response.headers["Cache-Control"] = "private, no-store"
     prefixes = restore_keys or []
     if any(len(prefix) > MAX_CACHE_KEY_LENGTH for prefix in prefixes):
-        raise HTTPException(status_code=422, detail="Cache restore key exceeds 512 characters")
+        raise WorkflowError("Cache restore key exceeds 512 characters")
     return await service.lookup_cache(token, CacheIdentity(key=key, version=version), prefixes)
 
 
@@ -101,7 +102,7 @@ async def save_cache(
     payload = bytearray()
     async for part in request.stream():
         if len(payload) + len(part) > STATE_LIMIT:
-            raise HTTPException(status_code=413, detail="Cache exceeds 32 MiB")
+            raise PayloadTooLargeError("Cache exceeds 32 MiB")
         payload.extend(part)
     return await service.save_cache(token, CacheIdentity(key=key, version=version), bytes(payload))
 

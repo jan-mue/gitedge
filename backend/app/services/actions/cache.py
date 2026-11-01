@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from app.entities.actions import WorkflowCacheEntry
+from app.exceptions import PayloadTooLargeError
 from app.schemas.actions import CacheEntry
 
 if TYPE_CHECKING:
@@ -64,7 +65,7 @@ class ActionsCacheService:
     async def save(self, repo_id: uuid.UUID, identity: CacheIdentity, payload: bytes) -> CacheEntry:
         """Publish one complete generation and remove replaced or losing uploads."""
         if len(payload) > STATE_LIMIT:
-            raise ValueError("Cache exceeds the 32 MiB transfer limit")
+            raise PayloadTooLargeError("Cache exceeds the 32 MiB transfer limit")
         candidates = await self.store.candidates(repo_id, identity.key, identity.version)
         existing = next((entry for entry in candidates if entry.key == identity.key), None)
         if existing and await self._read(existing) is not None:
