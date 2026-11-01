@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: integration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   VCR_IMAGE: vcr.vercel.com/jan-mue-projects/gitedge-backend/gitedge-actions
 
