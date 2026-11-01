@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from app.exceptions import ConflictError
-
 import asyncio
 import hashlib
 import logging
@@ -16,6 +14,7 @@ from pydantic import ValidationError
 from app.entities.actions import WorkflowRun
 from app.exceptions import (
     ActionsUnavailableError,
+    ConflictError,
     NotFoundError,
     PermissionDeniedError,
     ServiceUnavailableError,

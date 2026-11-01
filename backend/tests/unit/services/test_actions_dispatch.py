@@ -7,11 +7,10 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
-from app.exceptions import PermissionDeniedError, ConflictError
 
 from app.clients.sandboxes import AbstractSandboxClient, SandboxError
 from app.entities.actions import WorkflowRun
-from app.exceptions import ActionsUnavailableError
+from app.exceptions import ActionsUnavailableError, ConflictError, PermissionDeniedError
 from app.services.actions.service import ActionsService
 from app.services.actions.workflows import instantiate_jobs
 from tests.unit.utils.actions import FakeActionsQueue, FakeActionsStore, FakeWorkflowCompiler, compiled_fixture
@@ -266,9 +265,8 @@ async def test_artifact_upload_commits_a_fenced_reference_before_completion(
     mocker.patch.object(fake_stores.blob, "put", side_effect=put)
     await service.publish_state(attempt_id, authorization, b"archive")
     await service.publish_state(attempt_id, authorization, b"archive")
-    with pytest.raises(PermissionDeniedError) as changed:
+    with pytest.raises(ConflictError):
         await service.publish_state(attempt_id, authorization, b"changed archive")
-    assert changed.value.status_code == 409
     await service.complete(attempt_id, authorization, result)
     key = store.attempts[attempt_id].artifact_key
     assert key is not None

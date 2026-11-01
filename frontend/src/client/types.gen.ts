@@ -2805,12 +2805,8 @@ export type actionsLogEventsResponses = {
     /**
      * Successful Response
      */
-    200: LogRecord | {
-        last_seq: number;
-    };
+    200: unknown;
 };
-
-export type actionsLogEventsResponse = actionsLogEventsResponses[keyof actionsLogEventsResponses];
 
 export type actionsDownloadLogData = {
     body?: never;

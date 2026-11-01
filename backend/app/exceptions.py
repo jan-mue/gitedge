@@ -90,3 +90,7 @@ class PayloadTooLargeError(ValueError):
 
 class ConflictError(Exception):
     """The request conflicts with already committed state."""
+
+
+class RedisUnavailableError(RuntimeError):
+    """Recent log delivery failed at the Redis transport or protocol boundary."""

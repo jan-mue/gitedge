@@ -77,3 +77,18 @@ class LogPage(BaseModel):
     records: list[LogRecord]
     next_seq: int
     complete: bool
+
+
+class LogEnd(BaseModel):
+    """The final committed sequence of a terminal attempt."""
+
+    last_seq: int = Field(ge=0)
+
+
+class LogCursor(BaseModel):
+    """An authorized, validated position for a log subscription."""
+
+    repo_id: uuid.UUID
+    run_id: uuid.UUID
+    attempt_id: uuid.UUID
+    after: int = Field(ge=0)

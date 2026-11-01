@@ -92,10 +92,18 @@ async def test_private_history_sse_and_download_use_normal_repository_authorizat
     assert "id: 1\n" not in stream.text
     assert "id: 2\n" in stream.text
     assert "event: end" in stream.text
+    assert 'data: {"last_seq":2}' in stream.text
+    assert stream.headers["X-Accel-Buffering"] == "no"
     assert "no-store" in stream.headers["Cache-Control"]
     assert client.get(base + "/download", headers=superuser_token_headers).text == "first\nsecond\n"
     wrong = base.replace(str(run.id), str(uuid.uuid4()))
-    assert client.get(wrong, headers=superuser_token_headers).status_code == 404
+    for path in [wrong, wrong + "/events", base.replace(str(attempt.id), str(uuid.uuid4())) + "/events"]:
+        assert client.get(path, headers=superuser_token_headers).status_code == 404
+    for cursor in ["-1", "invalid"]:
+        assert (
+            client.get(base + "/events", headers={**superuser_token_headers, "Last-Event-ID": cursor}).status_code
+            == 422
+        )
 
 
 async def test_uploads_require_current_capabilities_and_bounded_bodies(
@@ -108,6 +116,10 @@ async def test_uploads_require_current_capabilities_and_bounded_bodies(
     headers = {"Authorization": f"Bearer {token}"}
     assert client.post(path, headers=headers, content=b"invalid").status_code == 422
     assert client.post(path, headers=headers, content=b"x" * (256 * 1024 + 1)).status_code == 413
+    assert client.post(path, headers=headers, json=body(attempt)).status_code == 200
+    changed = body(attempt)
+    changed["records"][0]["msg"] = "changed"
+    assert client.post(path, headers=headers, json=changed).status_code == 409
     assert (
         client.post(path.replace(str(attempt.id), str(uuid.uuid4())), headers=headers, json=body(attempt)).status_code
         == 403

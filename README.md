@@ -421,9 +421,10 @@ tail and is optional for correctness. Run and PR-check rows contain metadata,
 not complete log strings.
 
 The Actions UI loads log history separately, follows authenticated SSE with
-`Last-Event-ID`, and reconnects after bounded sessions. Lost Redis data replays
-from Blob/S3. The viewer keeps a bounded recent window and offers a full log
-download. Secret masking happens before segment boundaries.
+`Last-Event-ID`, and reconnects after bounded sessions. FastAPI handles SSE
+framing and heartbeat comments; access and cursor validation happen before
+streaming starts. Lost Redis data replays from Blob/S3. The viewer keeps a
+bounded recent window and offers a full log download. Secret masking happens before segment boundaries.
 
 Artifacts and structured completion results are pushed directly by the agent.
 Completion waits for the final log ACK and releases dependent jobs through the

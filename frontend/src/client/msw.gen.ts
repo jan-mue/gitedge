@@ -240,7 +240,7 @@ export function handleActionsLogEvents(response?: HandleActionsLogEventsResponse
         }
         const body = response?.body;
         if (body !== undefined) {
-            return HttpResponse.text(typeof body === 'string' ? body : JSON.stringify(body), { status: response?.status ?? 200 });
+            return new HttpResponse(body, { status: response?.status ?? 200 });
         }
         if (options?.responseFallback === 'passthrough') {
             return;

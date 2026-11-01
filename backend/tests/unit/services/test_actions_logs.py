@@ -5,10 +5,9 @@ import uuid
 from typing import TYPE_CHECKING
 
 import pytest
-from app.exceptions import PermissionDeniedError, ConflictError
 
-from app.exceptions import ActionsUnavailableError
-from app.schemas.action_logs import LogChunk, LogRecord
+from app.exceptions import ActionsUnavailableError, ConflictError, PermissionDeniedError, RedisUnavailableError
+from app.schemas.action_logs import LogChunk, LogEnd, LogRecord
 from app.services.actions.logs import ActionsLogService
 from tests.unit.services.test_actions_dispatch import (
     Execution,
@@ -82,9 +81,8 @@ async def test_changed_retry_and_missing_sequences_are_rejected(execution: Execu
     logs, indexes, _ = reporting
     await upload(execution, logs, chunk(execution, 1, ["first"]))
     for data in [chunk(execution, 1, ["changed"]), chunk(execution, 3, ["gap"])]:
-        with pytest.raises(PermissionDeniedError) as error:
+        with pytest.raises(ConflictError):
             await upload(execution, logs, data)
-        assert error.value.status_code == 409
     assert len(indexes.indexes) == 1
 
 
@@ -112,13 +110,13 @@ async def test_redis_loss_and_tail_failure_replay_from_durable_storage(
     mocker: MockerFixture,
 ) -> None:
     logs, _, run = reporting
-    mocker.patch.object(fake_stores.redis, "stream_add", side_effect=OSError("offline"))
+    mocker.patch.object(fake_stores.redis, "stream_add", side_effect=RedisUnavailableError("offline"))
     data = chunk(execution, 1, ["first", "second", "third"])
     assert await upload(execution, logs, data) == 3
     fake_stores.redis.streams.clear()
     page = await logs.page(run.repo_id, run.id, data.id, 1)
     assert [item.seq for item in page.records] == [2, 3]
-    mocker.patch.object(fake_stores.redis, "stream_read", side_effect=OSError("offline"))
+    mocker.patch.object(fake_stores.redis, "stream_read", side_effect=RedisUnavailableError("offline"))
     assert (await logs.page(run.repo_id, run.id, data.id, 2)).records[0].msg == "third"
 
 
@@ -138,10 +136,8 @@ async def test_completion_waits_for_logs_and_replay_stops_at_the_last_sequence(
     await upload(execution, logs, chunk(execution, 1, ["one", "two"]))
     await service.complete(attempt_id, authorization, json.dumps(result).encode())
     fake_stores.redis.streams.clear()
-    events = "".join([event async for event in logs.stream(run.repo_id, run.id, attempt_id, 1)])
-    assert "id: 2\nevent: log" in events
-    assert "id: 1\nevent: log" not in events
-    assert 'event: end\ndata: {"last_seq":2}' in events
+    events = [event async for event in logs.stream(run.repo_id, run.id, attempt_id, 1)]
+    assert events == [LogRecord(seq=2, msg="two", step_id="hello"), LogEnd(last_seq=2)]
     assert "".join([text async for text in logs.download(run.repo_id, run.id, attempt_id)]) == "one\ntwo\n"
 
 
@@ -190,3 +186,16 @@ async def test_large_history_is_paginated_without_growing_the_run_json(
         cursor = page.next_seq
     assert seen == list(range(1, count + 1))
     assert len(json.dumps(run.jobs)) == row_size
+
+
+async def test_unexpected_redis_errors_propagate(
+    execution: Execution, reporting: Reporting, fake_stores: FakeStores, mocker: MockerFixture
+) -> None:
+    logs, _, run = reporting
+    data = chunk(execution, 1, ["first"])
+    mocker.patch.object(fake_stores.redis, "stream_add", side_effect=RuntimeError("bug"))
+    with pytest.raises(RuntimeError, match="bug"):
+        await upload(execution, logs, data)
+    mocker.patch.object(fake_stores.redis, "stream_read", side_effect=RuntimeError("bug"))
+    with pytest.raises(RuntimeError, match="bug"):
+        await logs.page(run.repo_id, run.id, data.id, 0)

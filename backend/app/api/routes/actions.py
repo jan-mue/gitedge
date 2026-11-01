@@ -1,15 +1,16 @@
 """Actions history, dispatch, cancellation, and completion callbacks."""
 
-from app.exceptions import PayloadTooLargeError, WorkflowError
-
 import uuid
+from collections.abc import AsyncIterator
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Header, Query, Request, Response
 from fastapi.responses import StreamingResponse
+from fastapi.sse import EventSourceResponse, ServerSentEvent
 
-from app.api.dependencies import ActionsLogServiceDep, ActionsServiceDep, CurrentUser, OptionalUser
-from app.schemas.action_logs import LOG_CHUNK_BYTES, LogPage
+from app.api.dependencies import ActionsLogCursorDep, ActionsLogServiceDep, ActionsServiceDep, CurrentUser, OptionalUser
+from app.exceptions import PayloadTooLargeError, WorkflowError
+from app.schemas.action_logs import LOG_CHUNK_BYTES, LogPage, LogRecord
 from app.schemas.actions import ActionRun, CacheEntry, CacheIdentity, PullRequestChecks, WorkflowDispatch, WorkflowInfo
 from app.services.actions.cache import STATE_LIMIT
 
@@ -132,47 +133,16 @@ async def log_history(
 
 
 @router.get(
-    "/repositories/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_id}/logs/events",
-    response_class=StreamingResponse,
-    responses={
-        200: {
-            "content": {
-                "text/event-stream": {
-                    "schema": {
-                        "anyOf": [
-                            {"$ref": "#/components/schemas/LogRecord"},
-                            {
-                                "type": "object",
-                                "properties": {"last_seq": {"type": "integer"}},
-                                "required": ["last_seq"],
-                            },
-                        ]
-                    }
-                }
-            }
-        }
-    },
+    "/repositories/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_id}/logs/events",  # noqa: FAST003 — validated by ActionsLogCursorDep.
+    response_class=EventSourceResponse,
 )
-async def log_events(
-    owner: str,
-    repo: str,
-    run_id: uuid.UUID,
-    attempt_id: uuid.UUID,
-    service: ActionsServiceDep,
-    logs: ActionsLogServiceDep,
-    user: OptionalUser,
-    after: Annotated[int, Query(ge=0)] = 0,
-    last_event_id: Annotated[int | None, Header(alias="Last-Event-ID", ge=0)] = None,
-) -> StreamingResponse:
-    """Stream authenticated output from a resumable cursor."""
-    repository = await service.repository(owner, repo, user)
-    cursor = last_event_id if last_event_id is not None else after
-    await logs.page(repository.id, run_id, attempt_id, cursor)
-    return StreamingResponse(
-        logs.stream(repository.id, run_id, attempt_id, cursor),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "private, no-store", "X-Accel-Buffering": "no"},
-    )
+async def log_events(cursor: ActionsLogCursorDep, logs: ActionsLogServiceDep) -> AsyncIterator[ServerSentEvent]:
+    """Stream authenticated events using FastAPI's native SSE transport."""
+    async for event in logs.stream(cursor.repo_id, cursor.run_id, cursor.attempt_id, cursor.after):
+        if isinstance(event, LogRecord):
+            yield ServerSentEvent(data=event, event="log", id=str(event.seq))
+        else:
+            yield ServerSentEvent(data=event, event="end")
 
 
 @router.get(
