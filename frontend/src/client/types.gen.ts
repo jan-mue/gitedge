@@ -22,6 +22,7 @@ export type ActionJob = {
      * Compiled Id
      */
     compiled_id?: string | null;
+    runner?: LinuxRunner;
     /**
      * Attempt Id
      */
@@ -1078,6 +1079,8 @@ export type LanguageStatistic = {
      */
     percentage: number;
 };
+
+export type LinuxRunner = 'ubuntu-22.04' | 'ubuntu-24.04' | 'ubuntu-26.04';
 
 /**
  * LogPage

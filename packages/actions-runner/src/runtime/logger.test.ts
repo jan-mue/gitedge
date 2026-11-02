@@ -16,7 +16,7 @@ const identity = {
 function reporter(url: string) {
   return new JobReporter(
     jobSchema.parse({
-      version: 3,
+      version: 4,
       attempt: identity,
       report_url: url,
       report_token: "report-token",

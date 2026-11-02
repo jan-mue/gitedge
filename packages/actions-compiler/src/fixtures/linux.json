@@ -1,0 +1,105 @@
+{
+  "version": 2,
+  "matched": false,
+  "workflowName": "Linux runner versions",
+  "dispatch": true,
+  "inputs": {},
+  "jobs": [
+    {
+      "id": "release:0",
+      "runner": "ubuntu-22.04",
+      "key": "release",
+      "name": "release (ubuntu-22.04)",
+      "needs": [],
+      "matrix": {
+        "os": "ubuntu-22.04"
+      },
+      "strategy": {
+        "job-index": 0,
+        "job-total": 3
+      },
+      "timeoutSeconds": 1200,
+      "continueOnError": false,
+      "config": {
+        "if": "${{ success() }}",
+        "steps": [
+          {
+            "id": "__run",
+            "name": "Verify the selected operating system",
+            "if": "${{ success() }}",
+            "env": {
+              "EXPECTED_RUNNER": "${{ matrix.os }}"
+            },
+            "kind": "run",
+            "run": "import os\nimport platform\nactual = \"ubuntu-\" + platform.freedesktop_os_release()[\"VERSION_ID\"]\nassert actual == os.environ[\"EXPECTED_RUNNER\"], actual\nprint(actual)\n",
+            "shell": "python3 {0}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "release:1",
+      "runner": "ubuntu-24.04",
+      "key": "release",
+      "name": "release (ubuntu-24.04)",
+      "needs": [],
+      "matrix": {
+        "os": "ubuntu-24.04"
+      },
+      "strategy": {
+        "job-index": 1,
+        "job-total": 3
+      },
+      "timeoutSeconds": 1200,
+      "continueOnError": false,
+      "config": {
+        "if": "${{ success() }}",
+        "steps": [
+          {
+            "id": "__run",
+            "name": "Verify the selected operating system",
+            "if": "${{ success() }}",
+            "env": {
+              "EXPECTED_RUNNER": "${{ matrix.os }}"
+            },
+            "kind": "run",
+            "run": "import os\nimport platform\nactual = \"ubuntu-\" + platform.freedesktop_os_release()[\"VERSION_ID\"]\nassert actual == os.environ[\"EXPECTED_RUNNER\"], actual\nprint(actual)\n",
+            "shell": "python3 {0}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "release:2",
+      "runner": "ubuntu-26.04",
+      "key": "release",
+      "name": "release (ubuntu-26.04)",
+      "needs": [],
+      "matrix": {
+        "os": "ubuntu-26.04"
+      },
+      "strategy": {
+        "job-index": 2,
+        "job-total": 3
+      },
+      "timeoutSeconds": 1200,
+      "continueOnError": false,
+      "config": {
+        "if": "${{ success() }}",
+        "steps": [
+          {
+            "id": "__run",
+            "name": "Verify the selected operating system",
+            "if": "${{ success() }}",
+            "env": {
+              "EXPECTED_RUNNER": "${{ matrix.os }}"
+            },
+            "kind": "run",
+            "run": "import os\nimport platform\nactual = \"ubuntu-\" + platform.freedesktop_os_release()[\"VERSION_ID\"]\nassert actual == os.environ[\"EXPECTED_RUNNER\"], actual\nprint(actual)\n",
+            "shell": "python3 {0}"
+          }
+        ]
+      }
+    }
+  ]
+}

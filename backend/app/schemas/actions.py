@@ -7,6 +7,7 @@ from enum import StrEnum
 from pydantic import Field, JsonValue
 
 from app.schemas.base import GitEdgeBaseModel
+from app.schemas.runners import LinuxRunner
 
 
 class ActionStatus(StrEnum):
@@ -34,6 +35,7 @@ class ActionJob(GitEdgeBaseModel):
     id: str
     key: str
     compiled_id: str | None = None
+    runner: LinuxRunner = "ubuntu-24.04"
     attempt_id: uuid.UUID | None = None
     name: str
     matrix: dict[str, JsonValue] = Field(default_factory=dict)

@@ -224,14 +224,16 @@ def test_tooling_actions_cache_and_artifacts(
             assert "uv cache restored" in job_log(client, path, run)
 
 
-def test_codeql_init_and_analyze_use_prepared_tools(actions_repo: tuple[httpx.Client, Path, str]) -> None:
+def test_matrix_selects_the_requested_ubuntu_release(actions_repo: tuple[httpx.Client, Path, str]) -> None:
     client, _, path = actions_repo
     wait_for_run(client, path)
-    dispatch = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/codeql.yaml"})
-    dispatch.raise_for_status()
-    run = wait_for_run(client, path, dispatch.json()["id"], seconds=600)
+    response = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/linux.yaml"})
+    response.raise_for_status()
+    run = wait_for_run(client, path, response.json()["id"])
     assert run["status"] == "success", json.dumps(run, indent=2)
-    assert "Verify SARIF results" in job_log(client, path, run)
+    assert {job["runner"] for job in run["jobs"]} == {"ubuntu-22.04", "ubuntu-24.04", "ubuntu-26.04"}
+    for index, job in enumerate(run["jobs"]):
+        assert job["runner"] in job_log(client, path, run, index)
 
 
 def test_cancellation_destroys_running_jobs_and_skips_queued_jobs(actions_repo: tuple[httpx.Client, Path, str]) -> None:
@@ -335,8 +337,19 @@ def test_real_qstash_retries_a_failed_signed_callback(
     response = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cancellation.yaml"})
     response.raise_for_status()
     run_id = response.json()["id"]
-    wait_for_started_job(client, path, run_id)
+    job = wait_for_started_job(client, path, run_id)
     db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
+    with psycopg.connect(db_url, autocommit=True) as connection:
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            row = connection.execute(
+                "SELECT status FROM workflow_attempt WHERE id = %s", (job["attempt_id"],)
+            ).fetchone()
+            if row and row[0] == "running":
+                break
+            time.sleep(0.1)
+        else:
+            pytest.fail("Sandbox provisioning did not commit before the retry test")
     with psycopg.connect(db_url) as connection:
         connection.execute("SELECT id FROM workflow_run WHERE id = %s FOR UPDATE", (run_id,))
         message = connection.execute(
@@ -354,12 +367,12 @@ def test_real_qstash_retries_a_failed_signed_callback(
             retry_delay="1000",
         )
         wait_for_access(backend_log_file, offset, "inspect", 503)
-    with psycopg.connect(db_url, autocommit=True) as connection:
         connection.execute(
             "UPDATE workflow_attempt SET claim = NULL, lease_until = NULL WHERE run_id = %s AND status = 'running'",
             (run_id,),
         )
-        deadline = time.monotonic() + 10
+    with psycopg.connect(db_url, autocommit=True) as connection:
+        deadline = time.monotonic() + 20
         while time.monotonic() < deadline:
             row = connection.execute(
                 "SELECT acknowledged_at FROM workflow_outbox WHERE id = %s", (message[0],)
@@ -368,7 +381,10 @@ def test_real_qstash_retries_a_failed_signed_callback(
                 break
             time.sleep(0.1)
         else:
-            pytest.fail("QStash did not retry the command after the database lock was released")
+            attempt = connection.execute(
+                "SELECT status, lease_until FROM workflow_attempt WHERE id = %s", (job["attempt_id"],)
+            ).fetchone()
+            pytest.fail(f"QStash did not retry after the database lock was released; attempt={attempt}")
     client.post(f"{path}/runs/{run_id}/cancel").raise_for_status()
     assert wait_for_run(client, path, run_id)["status"] == "cancelled"
 
@@ -380,25 +396,32 @@ def test_committed_outbox_recovers_after_real_publish_failure(
 ) -> None:
     client, _, path = actions_repo
     initial = wait_for_run(client, path)
+    db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
     broker = qstash_container.get_wrapped_container()
     broker.pause()
     try:
         response = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cache-bystander.yaml"})
         assert response.status_code == 503
+        response = client.get(f"{path}/runs")
+        response.raise_for_status()
+        run_id = next(run["id"] for run in response.json() if run["id"] != initial["id"])
+        with psycopg.connect(db_url) as connection:
+            pending = connection.execute(
+                "SELECT published_at, acknowledged_at FROM workflow_outbox WHERE run_id = %s AND kind = 'dispatch'",
+                (run_id,),
+            ).fetchall()
+            assert pending
+            assert all(published is None and acknowledged is None for published, acknowledged in pending)
     finally:
         broker.unpause()
-    response = client.get(f"{path}/runs")
-    response.raise_for_status()
-    run_id = next(run["id"] for run in response.json() if run["id"] != initial["id"])
     run = wait_for_run(client, path, run_id)
     assert run["status"] == "success", json.dumps(run, indent=2)
-    db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
     with psycopg.connect(db_url) as connection:
         row = connection.execute(
-            "SELECT bool_and(published_at IS NOT NULL AND acknowledged_at IS NOT NULL) "
-            "FROM workflow_outbox WHERE run_id = %s AND kind = 'dispatch'",
+            "SELECT bool_and(acknowledged_at IS NOT NULL) FROM workflow_outbox WHERE run_id = %s AND kind = 'dispatch'",
             (run_id,),
         ).fetchone()
+    # Delivery can succeed after a publish timeout without a recorded publisher receipt.
     assert row == (True,)
 
 

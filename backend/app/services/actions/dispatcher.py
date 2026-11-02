@@ -117,7 +117,7 @@ class ActionsDispatcher:
             )
 
     async def _start(self, work: ClaimedJob) -> None:
-        await self.sandbox.start(work.sandbox, work.files, work.job.timeout_seconds)
+        await self.sandbox.start(work.sandbox, work.files, work.job.timeout_seconds, runner=work.job.runner)
         accepted = False
         async with self.store.transaction(work.run_id) as state:
             if state and (attempt := self._owned(state, work)):

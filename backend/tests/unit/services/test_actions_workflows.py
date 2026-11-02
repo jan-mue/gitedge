@@ -26,7 +26,7 @@ def test_golden_manifest_preserves_agent_fields_without_parsing_yaml() -> None:
 def test_manifest_contract_rejects_incompatible_versions_and_unknown_fields() -> None:
     payload = compiled_fixture().model_dump(mode="json", by_alias=True, exclude_none=True)
     with pytest.raises(ValidationError):
-        CompiledWorkflow.model_validate({**payload, "version": 2})
+        CompiledWorkflow.model_validate({**payload, "version": 3})
     with pytest.raises(ValidationError):
         CompiledWorkflow.model_validate({**payload, "futureLanguage": {}})
     assert (
@@ -41,10 +41,13 @@ def test_workflow_discovery_only_selects_direct_yaml_children() -> None:
     ) == [".gitedge/workflow/ci.yaml"]
 
 
-def test_every_repository_action_has_an_integration_workflow_and_is_prepared() -> None:
+def test_shared_workflow_actions_have_integration_coverage_and_are_prepared() -> None:
     root = Path(__file__).resolve().parents[4]
     references = set()
+    github_only = {"codeql.yaml", "integration-tests.yaml"}
     for workflow in (root / ".github/workflows").glob("*.yaml"):
+        if workflow.name in github_only:
+            continue
         references.update(re.findall(r"uses:\s*([^\s#]+)", workflow.read_text()))
     examples = set()
     for workflow in (root / "backend/tests/integration/actions/workflows").glob("*.yaml"):

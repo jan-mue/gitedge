@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pydantic import ValidationError
+
 from app.config import settings
 from app.exceptions import WorkflowError
 from app.schemas.action_dispatch import AttemptIdentity
@@ -25,8 +27,11 @@ def build_job_input(
         raise ValueError("Workflow event must identify its repository")
     repository = event.repository.full_name
     if run.compiled is None:
-        raise WorkflowError("Workflow run predates manifest version 1; dispatch a new run")
-    compiled = CompiledWorkflow.model_validate(run.compiled)
+        raise WorkflowError("Workflow run has no compiled manifest; dispatch a new run")
+    try:
+        compiled = CompiledWorkflow.model_validate(run.compiled)
+    except ValidationError as error:
+        raise WorkflowError("Workflow has an incompatible compiled manifest; dispatch a new run") from error
     specification = next((item for item in compiled.jobs if item.id == job.compiled_id), None)
     if specification is None:
         raise WorkflowError("Compiled job variant is missing from the persisted plan")

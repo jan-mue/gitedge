@@ -37,9 +37,13 @@ const jobConfigurationSchema = z
     steps: z.array(compiledStepSchema).min(1),
   })
   .strict()
+export const linuxRunnerSchema = z.enum(["ubuntu-22.04", "ubuntu-24.04", "ubuntu-26.04"])
+export type LinuxRunner = z.infer<typeof linuxRunnerSchema>
+
 export const compiledJobSchema = z
   .object({
     id: z.string().min(1),
+    runner: linuxRunnerSchema.default("ubuntu-24.04"),
     key: z.string().min(1),
     name: z.string(),
     needs: z.array(z.string()),

@@ -720,10 +720,8 @@ ActionsCacheStoreDep = Annotated[ActionsCacheStore, Depends(get_actions_cache_st
 def get_sandbox_client() -> AbstractSandboxClient:
     """Select the configured job sandbox provider."""
     if settings.ACTIONS_PROVIDER == "vercel":
-        return VercelSandboxClient(
-            settings.ACTIONS_IMAGE, settings.ACTIONS_VERCEL_SNAPSHOT, settings.ACTIONS_VERCEL_REGION
-        )
-    return DockerSandboxClient(settings.ACTIONS_IMAGE)
+        return VercelSandboxClient(settings.ACTIONS_RUNNERS, region=settings.ACTIONS_VERCEL_REGION)
+    return DockerSandboxClient(settings.ACTIONS_RUNNERS)
 
 
 SandboxClientDep = Annotated[AbstractSandboxClient, Depends(get_sandbox_client)]

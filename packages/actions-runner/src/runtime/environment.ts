@@ -26,7 +26,7 @@ export class JobEnvironment {
       GITHUB_ACTIONS: "true",
       CI: "true",
       GITHUB_RUN_ATTEMPT: String(input.attempt.generation),
-      RUNNER_NAME: "gitedge",
+      RUNNER_NAME: `gitedge-${input.job.runner}`,
       RUNNER_ENVIRONMENT: "self-hosted",
       RUNNER_OS: "Linux",
       RUNNER_ARCH: process.arch === "arm64" ? "ARM64" : "X64",
