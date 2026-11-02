@@ -396,25 +396,32 @@ def test_committed_outbox_recovers_after_real_publish_failure(
 ) -> None:
     client, _, path = actions_repo
     initial = wait_for_run(client, path)
+    db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
     broker = qstash_container.get_wrapped_container()
     broker.pause()
     try:
         response = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/cache-bystander.yaml"})
         assert response.status_code == 503
+        response = client.get(f"{path}/runs")
+        response.raise_for_status()
+        run_id = next(run["id"] for run in response.json() if run["id"] != initial["id"])
+        with psycopg.connect(db_url) as connection:
+            pending = connection.execute(
+                "SELECT published_at, acknowledged_at FROM workflow_outbox WHERE run_id = %s AND kind = 'dispatch'",
+                (run_id,),
+            ).fetchall()
+            assert pending
+            assert all(published is None and acknowledged is None for published, acknowledged in pending)
     finally:
         broker.unpause()
-    response = client.get(f"{path}/runs")
-    response.raise_for_status()
-    run_id = next(run["id"] for run in response.json() if run["id"] != initial["id"])
     run = wait_for_run(client, path, run_id)
     assert run["status"] == "success", json.dumps(run, indent=2)
-    db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
     with psycopg.connect(db_url) as connection:
         row = connection.execute(
-            "SELECT bool_and(published_at IS NOT NULL AND acknowledged_at IS NOT NULL) "
-            "FROM workflow_outbox WHERE run_id = %s AND kind = 'dispatch'",
+            "SELECT bool_and(acknowledged_at IS NOT NULL) FROM workflow_outbox WHERE run_id = %s AND kind = 'dispatch'",
             (run_id,),
         ).fetchone()
+    # Delivery can succeed after a publish timeout without a recorded publisher receipt.
     assert row == (True,)
 
 
