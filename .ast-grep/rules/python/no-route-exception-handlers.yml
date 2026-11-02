@@ -1,0 +1,8 @@
+id: no-route-exception-handlers
+language: python
+severity: error
+message: Raise custom exceptions and handle them in registered FastAPI exception handlers, not route files.
+files:
+  - backend/app/api/routes/**/*.py
+rule:
+  kind: except_clause

@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "matched": true,
+  "workflowName": "Compiler contract",
+  "dispatch": true,
+  "env": {
+    "SHARED": "shared"
+  },
+  "defaults": {
+    "run": {
+      "shell": "bash"
+    }
+  },
+  "inputs": {},
+  "jobs": [
+    {
+      "id": "check:0",
+      "key": "check",
+      "name": "check",
+      "needs": [],
+      "matrix": {},
+      "strategy": {
+        "job-index": 0,
+        "job-total": 1
+      },
+      "timeoutSeconds": 120,
+      "continueOnError": false,
+      "config": {
+        "if": "${{ success() }}",
+        "defaults": {
+          "run": {
+            "working-directory": "."
+          }
+        },
+        "outputs": {
+          "result": "${{ steps.command.outputs.value }}"
+        },
+        "timeout-minutes": 2,
+        "steps": [
+          {
+            "id": "command",
+            "name": "Export result",
+            "if": "${{ success() }}",
+            "env": {
+              "FLAG": "${{ github.event_name }}"
+            },
+            "timeout-minutes": 1,
+            "kind": "run",
+            "run": "${{ format('echo \"value={0}\" >> \"$GITHUB_OUTPUT\"', github.ref) }}",
+            "shell": "bash",
+            "working-directory": "."
+          },
+          {
+            "id": "checkout",
+            "if": "${{ success() }}",
+            "kind": "action",
+            "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "with": {
+              "ref": "${{ github.sha }}",
+              "fetch-depth": "0"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "matched": true,
+  "workflowName": "Dependencies",
+  "dispatch": false,
+  "inputs": {},
+  "jobs": [
+    {
+      "id": "dependent:0",
+      "key": "dependent",
+      "name": "dependent",
+      "needs": ["parent"],
+      "matrix": {},
+      "strategy": {
+        "job-index": 0,
+        "job-total": 1
+      },
+      "timeoutSeconds": 1200,
+      "continueOnError": false,
+      "config": {
+        "if": "${{ success() }}",
+        "steps": [
+          {
+            "id": "__run",
+            "if": "${{ success() }}",
+            "kind": "run",
+            "run": "echo dependent"
+          }
+        ]
+      }
+    },
+    {
+      "id": "parent:0",
+      "key": "parent",
+      "name": "parent",
+      "needs": [],
+      "matrix": {},
+      "strategy": {
+        "job-index": 0,
+        "job-total": 1
+      },
+      "timeoutSeconds": 1200,
+      "continueOnError": false,
+      "config": {
+        "if": "${{ success() }}",
+        "steps": [
+          {
+            "id": "__run",
+            "if": "${{ success() }}",
+            "kind": "run",
+            "run": "echo parent"
+          }
+        ]
+      }
+    }
+  ]
+}

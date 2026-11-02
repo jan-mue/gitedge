@@ -4,6 +4,7 @@ ruleDirs:
 utilDirs:
   - .ast-grep/utils/typescript
 testConfigs:
+  - testDir: .ast-grep/tests/python
   - testDir: .ast-grep/tests/typescript
 languageGlobs:
   tsx: ['*.ts']

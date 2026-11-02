@@ -1,0 +1,12 @@
+name: Dependencies
+on: push
+jobs:
+  dependent:
+    needs: parent
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo dependent
+  parent:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo parent

@@ -1,10 +1,21 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>jan-mue/renovate-config"],
+  "extends": [
+    "github>jan-mue/renovate-config"
+  ],
   "packageRules": [
     {
-      "matchManagers": ["bun"],
+      "matchManagers": [
+        "bun"
+      ],
       "rangeStrategy": "pin"
+    },
+    {
+      "matchPackageNames": [
+        "bun",
+        "oven/bun"
+      ],
+      "groupName": "Bun runtime"
     }
   ]
 }

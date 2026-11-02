@@ -1,0 +1,15 @@
+name: Parallel jobs
+on: push
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ready
+  b:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ready
+  c:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ready
