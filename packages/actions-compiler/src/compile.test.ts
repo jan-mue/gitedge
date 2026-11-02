@@ -12,6 +12,46 @@ function workflow(job: string, trigger = "push"): string {
 }
 
 describe("official parser compiler", () => {
+  test.each([
+    "Deploy ${{ github.sha }}",
+    "Deploy ${{ github.actor }}",
+    "Deploy ${{ github.ref_name }}",
+    "${{ github['sha'] }}",
+    "${{ github[format('{0}', 'sha')] }}",
+    "${{ github.sha || 'fallback' }}",
+    "${{ toJSON(github) }}",
+    "${{ join(github.*, ',') }}",
+    "${{ github.repository }}",
+  ])("rejects job names that need unavailable GitHub context: %s", async (name) => {
+    const source = workflow(`    name: "${name}"\n    steps:\n      - run: true\n`)
+    await expect(compile(source)).rejects.toMatchObject({
+      issues: [{ filename: "test.yaml", line: 5, message: expect.stringContaining("unavailable during job planning") }],
+    })
+    const response = await handleCompile(
+      request({ version: 1, filename: "test.yaml", source, event }),
+      async () => true,
+    )
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({
+      error: "invalid_workflow",
+      issues: [{ filename: "test.yaml", line: 5, column: expect.any(Number) }],
+    })
+  })
+  test("resolves available job-name contexts without changing optional matrix lookups", async () => {
+    const source = workflow(`    strategy:
+      fail-fast: false
+      matrix:
+        os: [linux]
+    name: "Deploy \${{ github.repository }} \${{ github.ref }} \${{ github.event_name }} \${{ matrix.os }} \${{ matrix.optional || 'default' }}"
+    steps:
+      - run: true
+`)
+    expect((await compile(source, { ...event, repository: "owner/repo" })).jobs[0].name).toBe(
+      "Deploy owner/repo refs/heads/main push linux default",
+    )
+    const literal = workflow("    name: \"${{ 'Deploy ${{ github.sha }}' }}\"\n    steps:\n      - run: true\n")
+    expect((await compile(literal)).jobs[0].name).toBe("Deploy ${{ github.sha }}")
+  })
   test.each(["basic", "parallel", "dependencies"])("matches the %s golden contract", async (name) => {
     const root = new URL(`./fixtures/${name}`, import.meta.url)
     const source = await Bun.file(`${root.pathname}.yaml`).text()

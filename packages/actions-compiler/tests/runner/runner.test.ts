@@ -46,6 +46,79 @@ test("file commands support multiline and preserve embedded equals", () => {
   assert.deepEqual(commands("a=one=two\nb<<END\nline1\nline2\nEND\n"), { a: "one=two", b: "line1\nline2" })
   assert.throws(() => commands("a<<END\nunfinished"), /Unterminated/)
 })
+test("nested composites preserve caller env precedence, exports and protected variables", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gitedge-composite-env-"))
+  try {
+    const actions = {
+      outer: `name: Outer
+outputs:
+  value:
+    value: \${{ steps.inner.outputs.value }}
+runs:
+  using: composite
+  steps:
+    - id: inner
+      uses: ./.gitedge/inner
+`,
+      inner: `name: Inner
+outputs:
+  value:
+    value: \${{ steps.verify.outputs.value }}
+runs:
+  using: composite
+  steps:
+    - id: verify
+      if: env.VALUE == 'caller' && env.RUNNER_OS == 'Linux'
+      shell: bash
+      env:
+        INHERITED: \${{ env.VALUE }}
+        VALUE: inner
+      run: |
+        test "$VALUE" = inner
+        test "$INHERITED" = caller
+        test "$RUNNER_OS" = Linux
+        echo "value=$INHERITED" >> "$GITHUB_OUTPUT"
+        echo "VALUE=exported" >> "$GITHUB_ENV"
+    - shell: bash
+      run: test "$VALUE" = exported
+`,
+    }
+    for (const [name, source] of Object.entries(actions)) {
+      const directory = join(root, "source", ".gitedge", name)
+      await mkdir(directory, { recursive: true })
+      await writeFile(join(directory, "action.yml"), source)
+    }
+    const entries: LogEntry[] = []
+    const result = await execute(
+      {
+        workflow: `on: workflow_dispatch
+env:
+  VALUE: workflow
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      VALUE: job
+    outputs:
+      inherited: \${{ steps.call.outputs.value }}
+    steps:
+      - id: call
+        uses: ./.gitedge/outer
+        env:
+          VALUE: caller
+          RUNNER_OS: forbidden
+      - run: test "$VALUE" = exported
+`,
+        job: "test",
+      },
+      { root, log: (entry) => entries.push(entry) },
+    )
+    assert.equal(result.status, "success", JSON.stringify(entries))
+    assert.equal(result.outputs.inherited, "caller")
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
 test("shell, composite and JavaScript actions share outputs, environment, pre/post state and masks", async () => {
   const root = await mkdtemp(join(tmpdir(), "gitedge-executor-"))
   try {

@@ -14,6 +14,22 @@ import { CompileError, type WorkflowDocument } from "./document"
 
 const MAX_JOBS = 256
 
+class StaticGithubContext extends data.Dictionary {
+  override get(key: string): data.ExpressionData {
+    const value = super.get(key)
+    if (value === undefined) throw new Error(`github.${key} is unavailable during job planning`)
+    return value
+  }
+
+  override pairs(): never {
+    throw new Error("The full github context is unavailable during job planning")
+  }
+
+  override values(): never {
+    throw new Error("The full github context is unavailable during job planning")
+  }
+}
+
 function expressionData(input: JsonValue): data.ExpressionData {
   if (input === null) return new data.Null()
   if (Array.isArray(input)) return new data.Array(...input.map(expressionData))
@@ -39,8 +55,18 @@ function staticValue(
   try {
     const expression = input.slice(3, -2)
     const tree = new Parser(new Lexer(expression).lex().tokens, Object.keys(context), []).parse()
-    const scope = expressionData(context)
-    if (scope.kind !== data.Kind.Dictionary) throw new Error("Invalid compile context")
+    const scope = new data.Dictionary(
+      ...Object.entries(context).map(([key, value]) => {
+        const converted = expressionData(value)
+        return {
+          key,
+          value:
+            key === "github" && converted instanceof data.Dictionary
+              ? new StaticGithubContext(...converted.pairs())
+              : converted,
+        }
+      }),
+    )
     const result = new Evaluator(tree, scope).evaluate()
     if (result.kind === data.Kind.Null) return null
     if ("value" in result) return result.value
@@ -48,7 +74,7 @@ function staticValue(
   } catch (error) {
     if (error instanceof CompileError) throw error
     document.fail(
-      `Job planning requires a static matrix/input expression: ${error instanceof Error ? error.message : String(error)}`,
+      `Job planning requires an available static expression: ${error instanceof Error ? error.message : String(error)}`,
       token,
     )
   }
@@ -234,14 +260,21 @@ export class JobCompiler {
       matrix,
       strategy,
       inputs: this.inputs,
-      github: { ref: event.ref, event_name: event.name, repository: event.repository || "" },
+      github: {
+        ref: event.ref,
+        event_name: event.name,
+        ...(event.repository === undefined ? {} : { repository: event.repository }),
+      },
     }
     validateRunner(fields["runs-on"], context, document, token)
     const timeout = jobTimeout(fields["timeout-minutes"], context, document, token)
     const ignored = staticValue(fields["continue-on-error"] ?? false, context, document, token)
     if (typeof ignored !== "boolean") document.fail("continue-on-error must resolve to a boolean", token)
     const suffix = Object.keys(matrix).length ? ` (${Object.values(matrix).join(", ")})` : ""
-    const name = fields.name === undefined ? key + suffix : String(staticValue(fields.name, context, document, token))
+    const name =
+      fields.name === undefined
+        ? key + suffix
+        : String(staticValue(fields.name, context, document, token.find("name") ?? token))
     return compiledJobSchema.parse({
       id: `${key}:${index}`,
       key,

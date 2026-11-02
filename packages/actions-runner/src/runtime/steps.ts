@@ -58,16 +58,16 @@ export class StepExecutor {
     try {
       scope.environment = this.environment.snapshot(base)
       const workflow = await this.expressions.environment(this.workflow.env, scope.expressionContext(), status)
-      scope.environment = this.environment.snapshot(base, workflow)
+      scope.environment = this.environment.snapshot(workflow, base)
       const job = await this.expressions.environment(this.job.env, scope.expressionContext(), status)
-      scope.environment = this.environment.snapshot(base, workflow, job)
+      scope.environment = this.environment.snapshot(workflow, job, base)
       if (this.signal.aborted || !(await this.expressions.condition(step.if, scope.expressionContext(), status))) {
         this.logger.emit(`Skipped ${label}`, displayId, "skipped")
         return result
       }
       const values = await this.expressions.environment(step.env, scope.expressionContext(), status)
       scope.environment = {
-        ...this.environment.snapshot(base, workflow, job),
+        ...this.environment.snapshot(workflow, job, base),
         ...values,
         ...this.environment.protected,
       }
