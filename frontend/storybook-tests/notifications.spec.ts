@@ -64,3 +64,56 @@ test("notification inbox filters and category settings match the reference layou
   const overflowing = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
   expect(overflowing).toBe(false)
 })
+
+test("isolated watch and star controls place the dropdown after the count", async ({ page }, testInfo) => {
+  const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"
+  for (const [story, count, label] of [
+    ["watch-control", "watch-count", "Notification settings"],
+    ["star-control", "star-count", "Add to list"],
+  ]) {
+    await page.goto(`/iframe.html?id=patterns-repository-header--${story}&viewMode=story&globals=theme:${theme}`)
+    const dropdown = page.getByRole("button", { name: label, exact: true })
+    await expect(dropdown).toBeEnabled()
+    const countBounds = await page.getByTestId(count).boundingBox()
+    const dropdownBounds = await dropdown.boundingBox()
+    expect(countBounds).not.toBeNull()
+    expect(dropdownBounds).not.toBeNull()
+    expect(dropdownBounds!.x).toBeGreaterThanOrEqual(countBounds!.x + countBounds!.width)
+    expect(dropdownBounds!.y).toBe(countBounds!.y)
+    await dropdown.focus()
+    await page.keyboard.press("Enter")
+    await expect(page.getByRole(story === "watch-control" ? "switch" : "textbox").first()).toBeVisible()
+    await page.keyboard.press("Escape")
+    await expect(dropdown).toBeFocused()
+  }
+})
+
+test("four notification columns keep actor and time separate and return without a blue border", async ({
+  page,
+}, testInfo) => {
+  const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"
+  await page.goto(`/iframe.html?id=patterns-notifications-inbox--inbox&viewMode=story&globals=theme:${theme}`)
+  const row = page.getByRole("listitem").first()
+  await expect(row.locator("[data-notification-column]")).toHaveCount(4)
+  await expect(row.locator('[data-notification-column="subject"]')).toContainText("Security vulnerability")
+  await expect(row.locator('[data-notification-column="subject"]')).toContainText("Opened this issue")
+  await expect(row.locator('[data-notification-column="event"]')).toHaveText("Opened")
+  await expect(row.locator('[data-notification-column="actor"] a')).toHaveAttribute("href", "/profile/alice")
+  await expect(row.locator('[data-notification-column="time"] time')).toContainText("min ago")
+  if (testInfo.project.use.viewport!.width >= 640) {
+    const positions = await row
+      .locator("[data-notification-column]")
+      .evaluateAll((cells) => cells.map((cell) => cell.getBoundingClientRect().x))
+    expect(positions).toEqual([...positions].sort((left, right) => left - right))
+  }
+  await page.getByRole("button", { name: "unread", exact: true }).click()
+  await page.getByRole("link", { name: /Security vulnerability/ }).click()
+  await page.getByRole("link", { name: "Back to notifications" }).click()
+  await expect(page.getByRole("link", { name: /Security vulnerability/ })).toBeVisible()
+  const decoration = await row.evaluate((element) => {
+    const style = getComputedStyle(element)
+    return { shadow: style.boxShadow, border: style.borderWidth }
+  })
+  expect(decoration).toEqual({ shadow: "none", border: "0px" })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+})

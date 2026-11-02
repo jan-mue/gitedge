@@ -6,7 +6,8 @@ import type { NotificationPublic } from "@/client"
 import { handleNotificationsListNotifications, handleNotificationsUpdateNotifications } from "@/client/msw.gen"
 import { notificationPreferenceHandlers } from "@/components/Storybook/notification-fixtures"
 import { NotificationCenter } from "./NotificationCenter"
-import { notificationSearchSchema } from "./search"
+import { NotificationReturnBanner } from "./NotificationReturnBanner"
+import { notificationOriginSchema, notificationSearchSchema } from "./search"
 
 const entries = [
   ["gitedge/gitedge", 11192, "bug: Security vulnerability in GitEdge v14.0.2", "issue", "subscribed", 4],
@@ -34,7 +35,16 @@ const fixtures: NotificationPublic[] = entries.map(([repo, number, title, catego
   title,
   category,
   reason,
-  kind: category === "pull" ? "pull_request_open" : "issue_open",
+  kind:
+    category === "pull"
+      ? "pull_request_open"
+      : category === "release"
+        ? "release"
+        : category === "repository"
+          ? "watch"
+          : category === "mention"
+            ? "comment"
+            : "issue_open",
   actor: "alice",
   url: `/${repo}/issues/${number ?? 1}`,
   created_at: new Date(Date.now() - minutes * 60_000).toISOString(),
@@ -46,15 +56,20 @@ let notifications = fixtures.map((entry) => ({ ...entry }))
 const NotificationStory = () => {
   const [router] = useState(() => {
     const root = createRootRoute()
-    const layout = createRoute({ getParentRoute: () => root, id: "_layout" })
+    const layout = createRoute({ getParentRoute: () => root, id: "_layout", validateSearch: notificationOriginSchema })
     const center = createRoute({
       getParentRoute: () => layout,
       path: "notifications",
       validateSearch: notificationSearchSchema,
       component: NotificationCenter,
     })
+    const discussion = createRoute({
+      getParentRoute: () => layout,
+      path: "$owner/$repo/issues/$number",
+      component: NotificationReturnBanner,
+    })
     return createRouter({
-      routeTree: root.addChildren([layout.addChildren([center])]),
+      routeTree: root.addChildren([layout.addChildren([center, discussion])]),
       history: createMemoryHistory({ initialEntries: ["/notifications"] }),
     })
   })
@@ -73,7 +88,7 @@ const meta = {
             (entry) =>
               (!params.get("reason") || entry.reason === params.get("reason")) &&
               (!params.get("repo") || entry.repo === params.get("repo")) &&
-              (params.get("read") !== "unread" || !entry.is_read) &&
+              (params.get("read") !== "unread" || !entry.is_read || params.get("focus") === entry.id) &&
               (!params.get("query") || entry.title.toLowerCase().includes(params.get("query")?.toLowerCase() ?? "")),
           )
           return HttpResponse.json({

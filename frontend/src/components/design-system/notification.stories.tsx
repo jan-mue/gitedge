@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { Archive, ArrowLeft, CircleDot, Inbox } from "lucide-react"
 import { useState } from "react"
 import {
+  Avatar,
+  AvatarFallback,
   Button,
   ChoiceInput,
   NotificationFilter,
@@ -15,13 +17,13 @@ import {
 const meta = {
   title: "Components/Notification center",
   component: NotificationItem,
-  args: { selection: null, icon: null },
+  args: { selection: null, icon: null, event: null, actor: null, timestamp: null },
   parameters: { layout: "padded" },
 } satisfies Meta<typeof NotificationItem>
 export default meta
 type Story = StoryObj<typeof meta>
 
-const RepositoryExample = ({ unread = true, focused = false, disabled = false }) => {
+const RepositoryExample = ({ unread = true, disabled = false }) => {
   const [selected, setSelected] = useState(false)
   const [isUnread, setUnread] = useState(unread)
   return (
@@ -44,7 +46,6 @@ const RepositoryExample = ({ unread = true, focused = false, disabled = false })
     >
       <NotificationItem
         unread={isUnread}
-        focused={focused}
         selection={
           <ChoiceInput
             type="checkbox"
@@ -55,6 +56,13 @@ const RepositoryExample = ({ unread = true, focused = false, disabled = false })
           />
         }
         icon={<CircleDot aria-hidden="true" className="size-4 shrink-0 text-success" />}
+        event="Review requested"
+        actor={
+          <Avatar appearance="notification">
+            <AvatarFallback appearance="notification">A</AvatarFallback>
+          </Avatar>
+        }
+        timestamp={<time dateTime="2026-11-02T12:00:00Z">5 min ago</time>}
         actions={
           <Button variant="notificationIcon" size="notificationIcon" aria-label="Dismiss" disabled={disabled}>
             <Archive className="size-4" />
@@ -63,7 +71,7 @@ const RepositoryExample = ({ unread = true, focused = false, disabled = false })
       >
         <Button variant="text" size="text" disabled={disabled} onClick={() => setUnread(!isUnread)}>
           <NotificationSummary title="Add keyboard navigation" number={42} unread={isUnread}>
-            mentioned · 5 minutes ago
+            Requested your review on this pull request
           </NotificationSummary>
         </Button>
       </NotificationItem>
@@ -73,7 +81,7 @@ const RepositoryExample = ({ unread = true, focused = false, disabled = false })
 
 export const Unread: Story = { render: () => <RepositoryExample /> }
 export const Read: Story = { render: () => <RepositoryExample unread={false} /> }
-export const Focused: Story = { render: () => <RepositoryExample focused /> }
+export const Returned: Story = { render: () => <RepositoryExample unread={false} /> }
 export const Busy: Story = { render: () => <RepositoryExample disabled /> }
 export const Filters: Story = {
   render: () => (

@@ -43,32 +43,47 @@ export const NotificationGroup = ({
   </section>
 )
 
-/** Presentation only: links, selection, and mutations belong to the consumer. */
+/** Four data columns, with utility actions kept inside the time cell. */
 export const NotificationItem = ({
   unread = false,
-  focused = false,
   selection,
   icon,
+  event,
+  actor,
+  timestamp,
   actions,
   children,
   ...props
 }: Omit<ComponentProps<"li">, "className" | "style" | "title"> & {
   unread?: boolean
-  focused?: boolean
   selection: ReactNode
   icon: ReactNode
+  event: ReactNode
+  actor: ReactNode
+  timestamp: ReactNode
   actions?: ReactNode
 }) => (
   <li
     {...props}
-    className={`flex items-center gap-3 border-b border-border px-3 py-2 last:border-b-0 ${focused ? "ring-1 ring-inset ring-primary" : ""} ${unread ? "bg-primary/5" : ""}`}
+    className={`grid grid-cols-[minmax(0,1fr)_2rem_auto] items-center gap-x-3 gap-y-2 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_8rem_2rem_7rem] ${unread ? "bg-primary/5" : ""}`}
   >
-    {selection}
-    <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${unread ? "bg-primary" : "bg-transparent"}`} />
-    {unread && <span className="sr-only">Unread</span>}
-    {icon}
-    {children}
-    <div className="flex shrink-0 items-center gap-0.5">{actions}</div>
+    <div data-notification-column="subject" className="col-span-3 flex min-w-0 items-center gap-3 sm:col-span-1">
+      {selection}
+      <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${unread ? "bg-primary" : "bg-transparent"}`} />
+      {unread && <span className="sr-only">Unread</span>}
+      {icon}
+      {children}
+    </div>
+    <div data-notification-column="event" className="min-w-0 text-xs text-muted-foreground">
+      {event}
+    </div>
+    <div data-notification-column="actor" className="flex justify-center">
+      {actor}
+    </div>
+    <div data-notification-column="time" className="flex flex-col items-end gap-1 text-xs text-muted-foreground">
+      {timestamp}
+      {actions && <div className="flex items-center gap-0.5">{actions}</div>}
+    </div>
   </li>
 )
 
@@ -87,7 +102,7 @@ export const NotificationSummary = ({
     <div className={`truncate text-sm text-foreground group-hover:text-primary ${unread ? "font-semibold" : ""}`}>
       {title} {number != null && <span className="font-normal text-muted-foreground">#{number}</span>}
     </div>
-    <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">{children}</div>
+    <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{children}</div>
   </>
 )
 

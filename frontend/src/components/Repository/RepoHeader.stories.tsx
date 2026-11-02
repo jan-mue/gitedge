@@ -4,6 +4,8 @@ import RepoHeader from "@/components/Repository/RepoHeader"
 import { notificationPreferenceHandlers } from "@/components/Storybook/notification-fixtures"
 import { handlers, repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
 import { storybookSession, storybookUser } from "@/components/Storybook/StoryRouter"
+import StarButton from "./StarButton"
+import WatchButton from "./WatchButton"
 
 const preferenceHandlers = [handleUsersReadUserMe({ body: storybookUser }), ...notificationPreferenceHandlers()]
 const meta = {
@@ -29,3 +31,6 @@ export const SelectedActions: Story = {
     },
   },
 }
+
+export const WatchControl: Story = { render: () => <WatchButton owner="jan-mue" repo="gitedge" /> }
+export const StarControl: Story = { render: () => <StarButton owner="jan-mue" repo="gitedge" /> }

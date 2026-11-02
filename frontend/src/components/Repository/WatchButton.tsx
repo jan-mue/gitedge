@@ -56,9 +56,18 @@ const WatchButton = ({ owner, repo }: WatchButtonProps) => {
         <Icon className="h-3.5 w-3.5" />
         <span>{isWatching ? "Unwatch" : "Watch"}</span>
       </Button>
+      <RouterLink
+        to="/$owner/$repo/watchers"
+        params={{ owner, repo }}
+        aria-label="View watchers"
+        data-testid="watch-count"
+        appearance="splitCount"
+      >
+        {count}
+      </RouterLink>
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="repository" size="watchMenu" shape="square" aria-label="Notification settings">
+          <Button variant="repository" size="icon-sm" shape="end" aria-label="Notification settings">
             <ChevronDown className="size-3.5" />
           </Button>
         </PopoverTrigger>
@@ -72,15 +81,6 @@ const WatchButton = ({ owner, repo }: WatchButtonProps) => {
           </RepositoryMenuFooter>
         </PopoverContent>
       </Popover>
-      <RouterLink
-        to="/$owner/$repo/watchers"
-        params={{ owner, repo }}
-        aria-label="View watchers"
-        data-testid="watch-count"
-        appearance="count"
-      >
-        {count}
-      </RouterLink>
     </div>
   )
 }

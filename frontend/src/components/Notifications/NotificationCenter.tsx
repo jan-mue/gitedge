@@ -24,6 +24,8 @@ import {
   notificationsUpdateNotificationsMutation,
 } from "@/client/@tanstack/react-query.gen"
 import {
+  Avatar,
+  AvatarFallback,
   Button,
   ChoiceInput,
   Input,
@@ -38,6 +40,7 @@ import {
 } from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
+import { notificationEvent } from "./event-presentation"
 import { categoryMeta, RepositoryNotificationPreferences } from "./RepositoryNotificationPreferences"
 import type { NotificationSearch } from "./search"
 
@@ -395,13 +398,13 @@ export const NotificationCenter = () => {
               >
                 {items.map((n) => {
                   const meta = categoryMeta[n.category]
+                  const event = notificationEvent(n)
                   const [path, hash] = n.url.split("#")
                   return (
                     <NotificationItem
                       key={n.id}
                       id={`notif-${n.id}`}
                       unread={!n.is_read}
-                      focused={n.id === search.focus}
                       selection={
                         <ChoiceInput
                           appearance="notification"
@@ -413,6 +416,27 @@ export const NotificationCenter = () => {
                         />
                       }
                       icon={<meta.icon className={`w-4 h-4 shrink-0 ${meta.color}`} />}
+                      event={<span>{event.label}</span>}
+                      actor={
+                        <Link
+                          to="/profile/$username"
+                          params={{ username: n.actor }}
+                          appearance="icon"
+                          aria-label={`View ${n.actor}'s profile`}
+                          title={n.actor}
+                        >
+                          <Avatar appearance="notification">
+                            <AvatarFallback appearance="notification">
+                              {n.actor.slice(0, 1).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        </Link>
+                      }
+                      timestamp={
+                        <time dateTime={n.created_at} title={new Date(n.created_at).toLocaleString()}>
+                          {timeAgo(n.created_at)}
+                        </time>
+                      }
                       actions={
                         <>
                           {!n.is_archived && (
@@ -461,10 +485,7 @@ export const NotificationCenter = () => {
                         }}
                       >
                         <NotificationSummary title={n.title} number={n.number} unread={!n.is_read}>
-                          <span>{meta.label.replace(/s$/, "")}</span>·<span>{n.reason}</span>·
-                          <time dateTime={n.created_at} title={new Date(n.created_at).toLocaleString()}>
-                            {timeAgo(n.created_at)}
-                          </time>
+                          <span>{event.description}</span>
                           {n.unsubscribed && <span className="text-warning">· unsubscribed from thread</span>}
                         </NotificationSummary>
                       </Link>
