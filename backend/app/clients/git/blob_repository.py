@@ -230,18 +230,19 @@ class BlobRepository(BaseRepo):
         return MemoryRebaseStateManager(self)
 
     @override
-    def get_blob_normalizer(self, config: Config | None = None) -> FilterBlobNormalizer:
+    def get_blob_normalizer(self, config: Config | None = None, tree: bytes | None = None) -> FilterBlobNormalizer:
         """Return a BlobNormalizer object for check-in/checkout operations.
 
         Args:
             config: Configuration to consult for filter setup. If None, falls back to ``self.get_config_stack()``.
+            tree: Tree SHA to read .gitattributes from (defaults to HEAD).
 
         Returns:
             FilterBlobNormalizer instance.
         """
         if config is None:
             config = self.get_config_stack()
-        git_attributes = self.get_gitattributes()
+        git_attributes = self.get_gitattributes(tree)
 
         if self.filter_context is None:
             filter_registry = FilterRegistry(config, self)
