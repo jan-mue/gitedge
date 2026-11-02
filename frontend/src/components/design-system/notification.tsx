@@ -43,7 +43,7 @@ export const NotificationGroup = ({
   </section>
 )
 
-/** Four data columns, with utility actions kept inside the time cell. */
+/** Four data columns followed by a dedicated actions column. */
 export const NotificationItem = ({
   unread = false,
   selection,
@@ -65,9 +65,9 @@ export const NotificationItem = ({
 }) => (
   <li
     {...props}
-    className={`grid grid-cols-[minmax(0,1fr)_2rem_auto] items-center gap-x-3 gap-y-2 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_8rem_2rem_7rem] ${unread ? "bg-primary/5" : ""}`}
+    className={`grid grid-cols-[minmax(0,1fr)_1.5rem_4rem_6.25rem] items-center gap-x-3 gap-y-2 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_7rem_2rem_5rem_6.25rem] ${unread ? "bg-primary/5" : ""}`}
   >
-    <div data-notification-column="subject" className="col-span-3 flex min-w-0 items-center gap-3 sm:col-span-1">
+    <div data-notification-column="subject" className="col-span-4 flex min-w-0 items-center gap-3 sm:col-span-1">
       {selection}
       <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${unread ? "bg-primary" : "bg-transparent"}`} />
       {unread && <span className="sr-only">Unread</span>}
@@ -80,9 +80,11 @@ export const NotificationItem = ({
     <div data-notification-column="actor" className="flex justify-center">
       {actor}
     </div>
-    <div data-notification-column="time" className="flex flex-col items-end gap-1 text-xs text-muted-foreground">
+    <div data-notification-column="time" className="text-right text-xs whitespace-nowrap text-muted-foreground">
       {timestamp}
-      {actions && <div className="flex items-center gap-0.5">{actions}</div>}
+    </div>
+    <div data-notification-column="actions" className="flex items-center justify-end gap-0.5">
+      {actions}
     </div>
   </li>
 )
@@ -99,10 +101,18 @@ export const NotificationSummary = ({
   children: ReactNode
 }) => (
   <>
-    <div className={`truncate text-sm text-foreground group-hover:text-primary ${unread ? "font-semibold" : ""}`}>
+    <div
+      data-slot="notification-name"
+      className="truncate text-[10px] leading-[14px] font-normal text-muted-foreground"
+    >
       {title} {number != null && <span className="font-normal text-muted-foreground">#{number}</span>}
     </div>
-    <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{children}</div>
+    <div
+      data-slot="notification-description"
+      className={`mt-0.5 line-clamp-2 text-sm text-foreground group-hover:text-primary ${unread ? "font-semibold" : ""}`}
+    >
+      {children}
+    </div>
   </>
 )
 

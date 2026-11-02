@@ -88,18 +88,32 @@ test("isolated watch and star controls place the dropdown after the count", asyn
   }
 })
 
-test("four notification columns keep actor and time separate and return without a blue border", async ({
+test("notification columns separate actions, emphasize descriptions, and return without a blue border", async ({
   page,
 }, testInfo) => {
   const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"
   await page.goto(`/iframe.html?id=patterns-notifications-inbox--inbox&viewMode=story&globals=theme:${theme}`)
   const row = page.getByRole("listitem").first()
-  await expect(row.locator("[data-notification-column]")).toHaveCount(4)
+  await expect(row.locator("[data-notification-column]")).toHaveCount(5)
   await expect(row.locator('[data-notification-column="subject"]')).toContainText("Security vulnerability")
   await expect(row.locator('[data-notification-column="subject"]')).toContainText("Opened this issue")
   await expect(row.locator('[data-notification-column="event"]')).toHaveText("Opened")
   await expect(row.locator('[data-notification-column="actor"] a')).toHaveAttribute("href", "/profile/alice")
   await expect(row.locator('[data-notification-column="time"] time')).toContainText("min ago")
+  await expect(row.locator('[data-notification-column="time"] button')).toHaveCount(0)
+  await expect(
+    row.locator('[data-notification-column="actions"]').getByRole("button", { name: "Dismiss", exact: true }),
+  ).toBeVisible()
+  await expect(
+    row.locator('[data-notification-column="actions"]').getByRole("button", { name: "Unsubscribe", exact: true }),
+  ).toBeVisible()
+  const sizes = await row.locator('[data-notification-column="subject"]').evaluate((subject) => ({
+    name: parseFloat(getComputedStyle(subject.querySelector('[data-slot="notification-name"]')!).fontSize),
+    description: parseFloat(
+      getComputedStyle(subject.querySelector('[data-slot="notification-description"]')!).fontSize,
+    ),
+  }))
+  expect(sizes.name).toBeLessThanOrEqual(sizes.description * 0.75)
   if (testInfo.project.use.viewport!.width >= 640) {
     const positions = await row
       .locator("[data-notification-column]")
