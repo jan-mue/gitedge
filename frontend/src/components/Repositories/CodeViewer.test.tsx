@@ -40,10 +40,23 @@ const backLink = { owner: "owner", repo: "repo", mode: "branch" as const, refNam
 
 describe("CodeViewer", () => {
   test("shows the file's last change above its contents while permalinks use the viewed revision", () => {
-    render(<CodeViewer file={file} backLink={backLink} commitSha={"b".repeat(40)} />)
+    render(
+      <CodeViewer
+        file={file}
+        backLink={backLink}
+        commitSha={"b".repeat(40)}
+        lastCommit={{
+          sha: "b".repeat(40),
+          author: "Other author",
+          message: "Repository tip",
+          timestamp: 1_700_000_001,
+        }}
+      />,
+    )
     const header = screen.getByTestId("last-commit-header")
     expect(header).toHaveTextContent("Jan")
     expect(header).toHaveTextContent("Change this file")
+    expect(header).not.toHaveTextContent("Repository tip")
     expect(screen.getByTestId("last-commit-sha")).toHaveAttribute("href", `/owner/repo/commit/${"a".repeat(40)}`)
     expect(
       header.compareDocumentPosition(screen.getByTestId("file-name")) & Node.DOCUMENT_POSITION_FOLLOWING,

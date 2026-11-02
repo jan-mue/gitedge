@@ -12,9 +12,11 @@
     "test:ui": "bun run --filter frontend test:ui",
     "email:dev": "bun run --filter emails dev",
     "email:export": "bun run --filter emails export",
-    "knip": "knip"
+    "fallow": "fallow --fail-on-issues"
   },
   "devDependencies": {
-    "knip": "6.41.0"
+    "@biomejs/biome": "2.6.3",
+    "css-tree": "3.2.1",
+    "fallow": "3.36.0"
   }
 }

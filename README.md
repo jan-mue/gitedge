@@ -160,6 +160,33 @@ The frontend lives in `frontend/` and is built with [Vite](https://vitejs.dev/),
 and [Tailwind CSS](https://tailwindcss.com/). See `frontend/package.json` for all
 available scripts.
 
+Run `bun run fallow` from the repository root to check unused code, dependencies,
+duplication, and complexity. Each analysis fails on findings. Health allows up to
+45 cyclomatic complexity, 45 cognitive complexity, and a CRAP score below 450,
+with no per-function exceptions.
+
+Pre-commit runs the full Fallow suite when JavaScript, TypeScript, CSS, MDX,
+package manifests, `bun.lock`, or `.fallowrc.json` change. Each run scans the full
+project, including application code, tests, stories, and email templates, using
+`.fallowrc.json`. Generated API client and route-tree files are excluded, and
+vendored shadcn components are excluded from health analysis.
+
+#### Storybook
+
+Run the component explorer:
+
+```shell
+bun run --filter frontend storybook
+```
+
+Storybook runs at <http://localhost:6006>. The MCP addon exposes component
+documentation and story development tools at <http://localhost:6006/mcp> while
+the dev server is running. Add that URL as an HTTP MCP server in your agent's
+configuration. Component manifests are enabled for the documentation tools.
+
+Build the static Storybook with `bun run --filter frontend build-storybook`.
+Both scripts disable all Storybook telemetry, including the startup event.
+
 ### Disabling sign-ups
 
 Self-service registration can be turned off by setting the matching variables on
@@ -202,14 +229,27 @@ uv run coverage report
 
 ### Backend integration tests
 
-The end-to-end tests use Playwright and Docker (testcontainers for Postgres,
-Redis, MinIO, and Mailpit). Install the browsers once, then run:
+Integration tests use Docker (testcontainers for Postgres, Redis, MinIO, and
+Mailpit), without starting the frontend or a browser:
 
 ```shell
 cd backend
-uv run playwright install
 uv run pytest tests/integration
 ```
+
+### Browser end-to-end tests
+
+End-to-end tests use the same Docker services, Bun, and Playwright. Install the
+browsers once, then run:
+
+```shell
+cd backend
+uv run playwright install chromium --with-deps
+uv run pytest --tracing=retain-on-failure tests/e2e
+```
+
+Run these suites in separate pytest processes, as in GitHub Actions, to keep
+Playwright's event loop separate from pytest-asyncio.
 
 For more information on writing and running Playwright tests, see the official
 [Playwright documentation](https://playwright.dev/docs/intro).
@@ -269,6 +309,9 @@ Export the compiled HTML into the backend templates directory:
 ```shell
 bun run email:export
 ```
+
+The root `css-tree` development dependency lets the React Email CLI resolve its
+external CSS parser when rendering files in the backend templates directory.
 
 ## Deployment
 

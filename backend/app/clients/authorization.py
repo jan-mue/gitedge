@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from sqlalchemy import delete, select
 
@@ -58,6 +58,7 @@ class SQLAuthorizationStore(AuthorizationStore):
         """Bind the store to the request's database session."""
         self.db = db
 
+    @override
     async def members(self, organization_id: uuid.UUID, *, for_update: bool = False) -> list[OrganizationMember]:
         """List organization memberships."""
         statement = (
@@ -69,14 +70,17 @@ class SQLAuthorizationStore(AuthorizationStore):
             statement = statement.with_for_update().execution_options(populate_existing=True)
         return list(await self.db.scalars(statement))
 
+    @override
     async def teams(self, organization_id: uuid.UUID) -> list[Team]:
         """List organization teams."""
         return list(await self.db.scalars(select(Team).where(Team.organization_id == organization_id)))
 
+    @override
     async def team_members(self, team_id: uuid.UUID) -> list[TeamMember]:
         """List team memberships."""
         return list(await self.db.scalars(select(TeamMember).where(TeamMember.team_id == team_id)))
 
+    @override
     async def collaborators(self, repository_id: uuid.UUID) -> list[RepositoryCollaborator]:
         """List repository role assignments."""
         return list(
@@ -85,12 +89,14 @@ class SQLAuthorizationStore(AuthorizationStore):
             )
         )
 
+    @override
     async def save(self, entity: AccessEntity) -> None:
         """Persist an authorization fact."""
         self.db.add(entity)
         await self.db.commit()
         await self.db.refresh(entity)
 
+    @override
     async def remove(self, entity: AccessEntity) -> None:
         """Delete a fact and revoke dependent team memberships."""
         if isinstance(entity, OrganizationMember):
@@ -101,6 +107,7 @@ class SQLAuthorizationStore(AuthorizationStore):
         await self.db.delete(entity)
         await self.db.commit()
 
+    @override
     async def create_organization(self, organization: Organization, user_id: uuid.UUID) -> None:
         """Create an organization and its administrator in one transaction."""
         self.db.add(organization)

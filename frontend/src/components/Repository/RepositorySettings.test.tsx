@@ -58,6 +58,13 @@ describe("RepositorySettings permissions", () => {
         description: "A repository",
         default_branch: "main",
         is_private: true,
+        allow_merge_commit: true,
+        allow_squash_merge: true,
+        allow_rebase_merge: true,
+        merge_commit_message: "default",
+        squash_commit_message: "title_description",
+        rebase_commit_message: "default",
+        delete_branch_on_merge: true,
       }),
     )
   })

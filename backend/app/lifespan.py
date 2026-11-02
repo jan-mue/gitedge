@@ -11,21 +11,20 @@ from app.clients.cache import uses_redis_cache
 from app.clients.database import create_db_engine, create_session_factory
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
 
     from fastapi import FastAPI
-    from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 class LifespanState(TypedDict):
     """Shared resources created on startup and exposed via ``request.state``."""
 
-    db_engine: AsyncEngine
     db_session_factory: async_sessionmaker[AsyncSession]
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[LifespanState]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[LifespanState]:
     """Create shared resources on startup and release them on shutdown.
 
     Args:
@@ -39,6 +38,5 @@ async def lifespan(app: FastAPI) -> AsyncIterator[LifespanState]:
             await stack.enter_async_context(redis_lifespan(app))
         engine = await stack.enter_async_context(create_db_engine())
         yield {
-            "db_engine": engine,
             "db_session_factory": create_session_factory(engine),
         }

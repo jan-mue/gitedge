@@ -1,0 +1,12 @@
+.conversation-comment[data-compact="true"] .markdown-body {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.conversation-comment[data-compact="true"] .markdown-body p {
+  line-height: 1.5;
+}
+
+.conversation-comment[data-compact="true"] .markdown-body p:not(:last-child) {
+  margin-bottom: 0.5rem;
+}

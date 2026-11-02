@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from app.entities.activity import Activity, ActivityKind, ActivityTargetType
 from app.schemas.activity import ActivitiesPublic, ActivityPublic
 from app.schemas.repository_activity import ActivityOverview, ActivitySeriesPoint, RepositoryActivityStatistics
-from app.services.repository_activity import aggregate_contributors, aggregate_recent_commits
+from app.utils.repository_activity import aggregate_contributors, aggregate_recent_commits
 
 if TYPE_CHECKING:
     import uuid
@@ -172,6 +172,10 @@ class ActivityService:
             return ActivitiesPublic(data=[], count=0)
         activities = await self.activity_store.list_by_repo(repository.id, offset, limit)
         return ActivitiesPublic(data=self._to_public_list(activities), count=len(activities))
+
+    async def pull_request_events(self, repo_id: uuid.UUID, number: int) -> list[ActivityPublic]:
+        """Read the recorded state transitions for a pull request."""
+        return self._to_public_list(await self.activity_store.list_pull_request_events(repo_id, number))
 
     async def feed(self, user: User, offset: int = 0, limit: int = 50) -> ActivitiesPublic:
         """Build a personalized feed for a user.

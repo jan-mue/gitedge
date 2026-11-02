@@ -11,7 +11,7 @@ from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.comments import Comment
 from app.exceptions import IssueNotFoundError, PullRequestNotFoundError
 from app.schemas.comments import CommentCreate, CommentPublic, CommentsPublic, CommentUpdate
-from app.services.markdown import render_markdown
+from app.utils.markdown import render_markdown
 
 if TYPE_CHECKING:
     import uuid
@@ -71,7 +71,7 @@ class CommentService:
             HTTPException: If the issue or pull request is not found.
         """
         issue = await self._find_issue(owner, name, number)
-        comments = issue.comments
+        comments = await self.comment_store.list_by_issue(issue.id)
         return CommentsPublic(data=[self._to_public(comment) for comment in comments], count=len(comments))
 
     async def create_comment(

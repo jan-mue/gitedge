@@ -7,7 +7,7 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-from tests.integration.conftest import configure_git_auth
+from tests.git import configure_git_auth
 
 
 def test_git_push_and_clone(app_url: str) -> None:

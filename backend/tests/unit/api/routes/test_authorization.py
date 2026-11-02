@@ -12,6 +12,7 @@ from app.entities.repositories import Repository
 from app.entities.users import User
 from app.services.authorization import AuthorizationService
 from app.utils.security import create_access_token
+from tests.unit.utils.git import seed_merge_repository
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -91,6 +92,14 @@ async def test_role_hierarchy_is_scoped(fake_stores: FakeStores, role: str, allo
         "/stargazers",
         "/watchers",
         "/forks",
+        "/compare",
+        "/diff-file",
+        "/pulls/1/events",
+        "/pulls/1/commits",
+        "/pulls/1/mergeability",
+        "/pulls/1/reviews",
+        "/pulls/1/review-workspace",
+        "/pulls/1/reviews/00000000-0000-0000-0000-000000000001/comments/0/context",
     ],
 )
 def test_private_reads_require_auth_and_grant(client: TestClient, fake_stores: FakeStores, suffix: str) -> None:
@@ -253,12 +262,15 @@ async def test_discussion_authors_and_writers(client: TestClient, fake_stores: F
     repo.is_private = True
     assert client.delete(comment_url, headers=headers(author)).status_code == 403
     assert client.delete(comment_url, headers=headers(writer)).status_code == 204
+    seed_merge_repository(fake_stores, "owner", "repo")
     pull = client.post(f"{base}/pulls", json={"title": "PR", "head_branch": "feature"}, headers=headers(writer)).json()
     pull_url = f"{base}/pulls/{pull['number']}"
     grant = RepositoryCollaborator(repository_id=repo.id, user_id=author.id, role="read")
     await fake_stores.authorization.save(grant)
     assert client.patch(pull_url, json={"state": "merged"}, headers=headers(author)).status_code == 403
-    assert client.patch(pull_url, json={"state": "merged"}, headers=headers(writer)).status_code == 200
+    response = client.patch(pull_url, json={"state": "merged"}, headers=headers(writer))
+    assert response.status_code == 200
+    assert response.json()["has_merged"]
 
 
 async def test_drafts_and_revoked_stars_do_not_leak(client: TestClient, fake_stores: FakeStores) -> None:

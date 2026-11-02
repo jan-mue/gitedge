@@ -1,6 +1,6 @@
 import { ArrowLeft, File } from "lucide-react"
 import { useState } from "react"
-import type { FileContent } from "@/client"
+import type { CommitInfo, FileContent } from "@/client"
 import { Button, ExternalLink, Link } from "@/components/design-system"
 import type { SourceMode } from "@/components/Repositories/SourceLink"
 import SourceLink from "@/components/Repositories/SourceLink"
@@ -12,6 +12,10 @@ import { formatSize } from "@/utils"
 interface CodeViewerProps {
   file: FileContent
   commitSha?: string
+  lastCommit?: CommitInfo | null
+  lastCommitLoading?: boolean
+  lastCommitError?: boolean
+  onRetryLastCommit?: () => void
   backLink: {
     owner: string
     repo: string
@@ -21,7 +25,15 @@ interface CodeViewerProps {
   }
 }
 
-const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
+const CodeViewer = ({
+  file,
+  backLink,
+  commitSha,
+  lastCommit,
+  lastCommitLoading,
+  lastCommitError,
+  onRetryLastCommit,
+}: CodeViewerProps) => {
   useSyntaxHighlightCSS(file.css, file.css_dark)
   const [escapedTabs, setEscapedTabs] = useState(false)
   const [, copy] = useCopyToClipboard()
@@ -30,7 +42,14 @@ const CodeViewer = ({ file, backLink, commitSha }: CodeViewerProps) => {
 
   return (
     <div className="file-viewer border rounded-lg overflow-hidden" data-testid="file-viewer">
-      <RepositoryCommitHeader owner={backLink.owner} repo={backLink.repo} commit={file.last_commit} />
+      <RepositoryCommitHeader
+        owner={backLink.owner}
+        repo={backLink.repo}
+        commit={file.last_commit ?? lastCommit}
+        loading={lastCommitLoading}
+        error={lastCommitError}
+        onRetry={onRetryLastCommit}
+      />
       <FileHeader file={file} backLink={backLink} />
       <div className="flex flex-wrap items-center justify-end gap-1 border-b bg-secondary/50 px-4 py-2">
         <ExternalLink href={rawUrl} appearance="codeAction">

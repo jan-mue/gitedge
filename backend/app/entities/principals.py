@@ -7,6 +7,7 @@ from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.entities.base import Base
+from app.entities.enums import string_enum
 
 if TYPE_CHECKING:
     from app.entities.repositories import Repository
@@ -31,7 +32,7 @@ class Principal(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     lower_name: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    principal_type: Mapped[PrincipalType] = mapped_column("type", String(20), nullable=False)
+    principal_type: Mapped[PrincipalType] = mapped_column("type", string_enum(PrincipalType, 20), nullable=False)
 
     repositories: Mapped[list["Repository"]] = relationship(back_populates="owner")
 

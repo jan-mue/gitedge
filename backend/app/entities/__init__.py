@@ -8,6 +8,7 @@ from app.entities.principals import Principal
 from app.entities.pull_requests import PullRequest
 from app.entities.releases import Release
 from app.entities.repositories import Repository
+from app.entities.reviews import PullRequestComment, PullRequestReview, PullRequestReviewWorkspace
 from app.entities.stars import Star
 from app.entities.users import User
 from app.entities.watchers import Watcher
@@ -21,6 +22,9 @@ __all__ = [
     "PersonalAccessToken",
     "Principal",
     "PullRequest",
+    "PullRequestComment",
+    "PullRequestReview",
+    "PullRequestReviewWorkspace",
     "Release",
     "Repository",
     "RepositoryCollaborator",

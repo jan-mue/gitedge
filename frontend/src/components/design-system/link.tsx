@@ -18,11 +18,16 @@ const appearances = {
   repositoryEntry: "flex items-center gap-2 font-medium text-primary hover:underline",
   truncated: "min-w-0 truncate text-primary hover:underline",
   commitPreview: "block max-w-60 truncate text-xs hover:text-primary hover:underline",
+  commitMessage:
+    "order-last w-full truncate text-sm text-foreground hover:text-primary hover:underline md:order-none md:w-auto md:min-w-0 md:flex-1",
   hash: "font-mono text-xs text-primary hover:underline",
   branch: "font-mono text-sm text-primary hover:underline",
   revision: "font-mono text-primary hover:underline",
   title: "text-sm font-medium text-foreground hover:text-primary",
   commitHash: "flex-shrink-0 font-mono text-xs text-primary hover:underline",
+  commitPill:
+    "shrink-0 rounded border border-border bg-secondary px-2 py-0.5 font-mono text-xs text-foreground hover:text-primary",
+  commitSubject: "block truncate text-sm font-medium text-foreground hover:text-primary",
   successAction: "rounded bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:opacity-90",
   trackerAction:
     "shrink-0 rounded bg-success px-4 py-1.5 text-sm font-medium text-success-foreground transition-opacity hover:opacity-90",
@@ -36,6 +41,9 @@ const appearances = {
   repositoryOwner: "text-foreground hover:text-primary hover:underline",
   repositoryName: "font-bold text-foreground hover:text-primary hover:underline",
   file: "text-foreground hover:text-primary hover:underline",
+  fileEntry: "flex min-w-0 items-center gap-3 text-foreground hover:text-primary hover:underline",
+  fileCommit:
+    "order-last col-span-2 min-w-0 truncate text-sm text-muted-foreground hover:text-primary hover:underline sm:order-none sm:col-span-1",
   muted: "inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground",
   underline: "text-sm underline underline-offset-4",
   recovery: "ml-auto text-sm underline-offset-4 hover:underline",

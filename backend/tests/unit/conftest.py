@@ -21,15 +21,15 @@ from app.api.dependencies import (
     get_redis_client,
     get_release_store,
     get_repository_store,
+    get_review_store,
     get_star_store,
     get_user_store,
     get_watcher_store,
 )
-from app.config import settings
 from app.index import app
 from app.services.crud import CrudService
 from tests.unit.utils.fakes import FakeStores, build_fake_stores
-from tests.unit.utils.user import authentication_token_from_email
+from tests.unit.utils.user import EMAIL_TEST_USER, authentication_token_from_email
 from tests.unit.utils.utils import get_superuser_token_headers
 
 if TYPE_CHECKING:
@@ -53,6 +53,7 @@ def fake_stores() -> Generator[FakeStores]:
     app.dependency_overrides[get_user_store] = lambda: fakes.users
     app.dependency_overrides[get_issue_store] = lambda: fakes.issues
     app.dependency_overrides[get_pull_request_store] = lambda: fakes.pull_requests
+    app.dependency_overrides[get_review_store] = lambda: fakes.reviews
     app.dependency_overrides[get_repository_store] = lambda: fakes.repository
     app.dependency_overrides[get_organization_store] = lambda: fakes.organizations
     app.dependency_overrides[get_star_store] = lambda: fakes.stars
@@ -71,6 +72,7 @@ def fake_stores() -> Generator[FakeStores]:
     app.dependency_overrides.pop(get_user_store, None)
     app.dependency_overrides.pop(get_issue_store, None)
     app.dependency_overrides.pop(get_pull_request_store, None)
+    app.dependency_overrides.pop(get_review_store, None)
     app.dependency_overrides.pop(get_repository_store, None)
     app.dependency_overrides.pop(get_organization_store, None)
     app.dependency_overrides.pop(get_star_store, None)
@@ -102,4 +104,4 @@ def superuser_token_headers(client: TestClient) -> dict[str, str]:
 
 @pytest_asyncio.fixture
 async def normal_user_token_headers(client: TestClient, crud: CrudService) -> dict[str, str]:
-    return await authentication_token_from_email(client=client, email=settings.EMAIL_TEST_USER, crud=crud)
+    return await authentication_token_from_email(client=client, email=EMAIL_TEST_USER, crud=crud)

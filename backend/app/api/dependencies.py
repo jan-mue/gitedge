@@ -27,6 +27,10 @@ from app.clients.cache import (
 )
 from app.clients.comments import CommentStore, SQLCommentStore
 from app.clients.email import EmailClient, SMTPClient
+from app.clients.git.blob_backend import BlobBackend
+from app.clients.git.merges import GitMergeClient
+from app.clients.git.repositories import GitClient
+from app.clients.git.storage import RepositoryStorage
 from app.clients.issues import IssueStore, SQLIssueStore
 from app.clients.organizations import OrganizationStore, SQLOrganizationStore
 from app.clients.personal_access_tokens import PersonalAccessTokenStore, SQLPersonalAccessTokenStore
@@ -34,6 +38,7 @@ from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
 from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClient
 from app.clients.releases import ReleaseStore, SQLReleaseStore
 from app.clients.repositories import RepositoryStore, SQLRepositoryStore
+from app.clients.reviews import ReviewStore, SQLReviewStore
 from app.clients.stars import SQLStarStore, StarStore
 from app.clients.users import SQLUserStore, UserStore
 from app.clients.watchers import SQLWatcherStore, WatcherStore
@@ -43,7 +48,6 @@ from app.schemas.personal_access_tokens import GitScope
 from app.schemas.token import TokenPayload
 from app.services.activity import ActivityService
 from app.services.authorization import AuthorizationService
-from app.services.blob_backend import BlobBackend
 from app.services.comments import CommentService
 from app.services.crud import CrudService
 from app.services.forks import ForkService
@@ -53,6 +57,7 @@ from app.services.personal_access_tokens import PersonalAccessTokenService, inva
 from app.services.pull_requests import PullRequestService
 from app.services.releases import ReleaseService
 from app.services.repositories import RepositoryService
+from app.services.reviews import ReviewService
 from app.services.stars import StarService
 from app.services.watchers import WatcherService
 from app.utils import security
@@ -360,32 +365,33 @@ def get_star_store(session: SessionDep) -> StarStore:
 StarStoreDep = Annotated[StarStore, Depends(get_star_store)]
 
 
-def get_repository_service(
+def get_git_client(
     backend: BackendDep,
     blob_client: BlobStorageClientDep,
     redis_client: RedisClientDep,
     cache_client: CacheClientDep,
     repository_store: RepositoryStoreDep,
+) -> GitClient:
+    """Create a request-scoped Git client."""
+
+    async def exists(owner: str, name: str) -> bool:
+        return await repository_store.find_by_owner_and_name(owner, name) is not None
+
+    return GitClient(backend, RepositoryStorage(blob_client, redis_client), cache_client, exists)
+
+
+GitClientDep = Annotated[GitClient, Depends(get_git_client)]
+
+
+def get_repository_service(
+    git: GitClientDep,
+    cache_client: CacheClientDep,
+    repository_store: RepositoryStoreDep,
     star_store: StarStoreDep,
     authorization: AuthorizationServiceDep,
 ) -> RepositoryService:
-    """Get the repository service dependency.
-
-    Args:
-        authorization: Authorization service for scoped role checks.
-        backend: Git backend dependency.
-        blob_client: Blob storage client dependency.
-        redis_client: Redis client dependency.
-        cache_client: Cache client dependency.
-        repository_store: Repository store dependency.
-        star_store: Star store dependency.
-
-    Returns:
-        Repository service instance.
-    """
-    return RepositoryService(
-        backend, blob_client, redis_client, cache_client, repository_store, star_store, authorization
-    )
+    """Bind repository metadata stores and the Git client."""
+    return RepositoryService(git, cache_client, repository_store, star_store, authorization)
 
 
 RepositoryServiceDep = Annotated[RepositoryService, Depends(get_repository_service)]
@@ -527,7 +533,18 @@ def get_issue_service(
 IssueServiceDep = Annotated[IssueService, Depends(get_issue_service)]
 
 
+def get_git_merge_client(
+    blob: BlobStorageClientDep, redis: RedisClientDep, cache: CacheClientDep, backend: BackendDep
+) -> GitMergeClient:
+    """Create the merge storage adapter."""
+    return GitMergeClient(blob, redis, cache, backend)
+
+
+GitMergeClientDep = Annotated[GitMergeClient, Depends(get_git_merge_client)]
+
+
 def get_pull_request_service(
+    git_merges: GitMergeClientDep,
     pull_request_store: PullRequestStoreDep,
     repository_store: RepositoryStoreDep,
     repository_service: RepositoryServiceDep,
@@ -538,6 +555,7 @@ def get_pull_request_service(
 
     Args:
         authorization: Authorization service for scoped role checks.
+        git_merges: Durable Git merge storage adapter.
         pull_request_store: Pull request store dependency.
         repository_store: Repository store dependency.
         repository_service: Repository service dependency.
@@ -546,10 +564,33 @@ def get_pull_request_service(
     Returns:
         Pull request service instance.
     """
-    return PullRequestService(pull_request_store, repository_store, repository_service, activity_service, authorization)
+    return PullRequestService(
+        pull_request_store, repository_store, repository_service, activity_service, git_merges, authorization
+    )
 
 
 PullRequestServiceDep = Annotated[PullRequestService, Depends(get_pull_request_service)]
+
+
+def get_review_store(session: SessionDep) -> ReviewStore:
+    """Get the review persistence dependency."""
+    return SQLReviewStore(session)
+
+
+ReviewStoreDep = Annotated[ReviewStore, Depends(get_review_store)]
+
+
+def get_review_service(
+    store: ReviewStoreDep,
+    pull_requests: PullRequestStoreDep,
+    repositories: RepositoryStoreDep,
+    repository_service: RepositoryServiceDep,
+) -> ReviewService:
+    """Get the pull request review service."""
+    return ReviewService(store, pull_requests, repositories, repository_service)
+
+
+ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
 
 
 def get_star_service(

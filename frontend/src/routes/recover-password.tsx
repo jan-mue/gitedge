@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { loginRecoverPasswordMutation } from "@/client/@tanstack/react-query.gen"
 import { AuthLayout } from "@/components/Common/AuthLayout"
+import { FormInputField } from "@/components/Common/FormInputField"
 import {
   AuthFooter,
   AuthForm,
@@ -12,12 +13,6 @@ import {
   AuthTitle,
   FieldStack,
   Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  Input,
   LoadingButton,
   Link as RouterLink,
 } from "@/components/design-system"
@@ -81,18 +76,13 @@ function RecoverPassword() {
           </AuthHeading>
 
           <FieldStack>
-            <FormField
+            <FormInputField
               control={form.control}
               name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input data-testid="email-input" placeholder="user@example.com" type="email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Email"
+              testId="email-input"
+              placeholder="user@example.com"
+              type="email"
             />
 
             <LoadingButton type="submit" fullWidth loading={mutation.isPending}>

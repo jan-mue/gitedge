@@ -3,6 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { AuthLayout } from "@/components/Common/AuthLayout"
+import { FormInputField } from "@/components/Common/FormInputField"
 import {
   AuthFooter,
   AuthForm,
@@ -10,27 +11,17 @@ import {
   AuthTitle,
   FieldStack,
   Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  Input,
   LoadingButton,
-  PasswordInput,
   Link as RouterLink,
 } from "@/components/design-system"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
-import { signupsEnabled } from "@/utils"
+import { passwordSchema, signupsEnabled } from "@/utils"
 
 const formSchema = z
   .object({
     email: z.email({ message: "Invalid email address" }),
     display_name: z.string().min(1, { message: "Full Name is required" }),
-    password: z
-      .string()
-      .min(1, { message: "Password is required" })
-      .min(8, { message: "Password must be at least 8 characters" }),
+    password: passwordSchema,
     confirm_password: z.string().min(1, { message: "Password confirmation is required" }),
   })
   .refine((data) => data.password === data.confirm_password, {
@@ -94,60 +85,42 @@ function SignUp() {
           </AuthHeading>
 
           <FieldStack>
-            <FormField
+            <FormInputField
               control={form.control}
               name="display_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl>
-                    <Input data-testid="full-name-input" placeholder="User" type="text" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Full Name"
+              testId="full-name-input"
+              placeholder="User"
+              type="text"
             />
 
-            <FormField
+            <FormInputField
               control={form.control}
               name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input data-testid="email-input" placeholder="user@example.com" type="email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Email"
+              testId="email-input"
+              placeholder="user@example.com"
+              type="email"
             />
 
-            <FormField
+            <FormInputField
               control={form.control}
               name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <PasswordInput data-testid="password-input" placeholder="Password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Password"
+              testId="password-input"
+              placeholder="Password"
+              passwordToggle
+              type="password"
             />
 
-            <FormField
+            <FormInputField
               control={form.control}
               name="confirm_password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
-                  <FormControl>
-                    <PasswordInput data-testid="confirm-password-input" placeholder="Confirm Password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Confirm Password"
+              testId="confirm-password-input"
+              placeholder="Confirm Password"
+              passwordToggle
+              type="password"
             />
 
             <LoadingButton type="submit" fullWidth loading={signUpMutation.isPending}>

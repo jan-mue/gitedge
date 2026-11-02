@@ -25,7 +25,7 @@ async def test_create_user(client: TestClient, crud: CrudService) -> None:
 
     data = r.json()
 
-    user = await crud.get_user_by_id(uuid.UUID(data["id"]))
+    user = await crud.user_store.get(uuid.UUID(data["id"]))
 
     assert user
     assert user.email == "pollo@listo.com"

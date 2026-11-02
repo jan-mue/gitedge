@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 import pytest
 from fastapi import HTTPException
@@ -17,7 +17,7 @@ from app.clients.users import SQLUserStore
 from app.entities.users import User
 from app.schemas.personal_access_tokens import GitScope, PersonalAccessTokenCreate
 from app.services.personal_access_tokens import PersonalAccessTokenService
-from tests.integration.conftest import _run_async
+from tests.conftest import _run_async
 
 if TYPE_CHECKING:
     from app.entities.personal_access_tokens import PersonalAccessToken
@@ -65,6 +65,7 @@ async def check_personal_access_tokens(database_url: str) -> None:
 
                 attempts = 0
 
+                @override
                 async def issue(self, token: PersonalAccessToken, replacing: PersonalAccessToken | None = None) -> bool:
                     self.attempts += 1
                     if self.attempts == 1:

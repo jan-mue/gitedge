@@ -18,7 +18,7 @@ from app.entities.repositories import Repository
 from app.entities.users import User
 from app.schemas.authorization import CollaboratorInput, RepositoryRole
 from app.services.authorization import AuthorizationService
-from tests.integration.conftest import _run_async
+from tests.conftest import _run_async
 
 
 def test_authorization_persistence(infrastructure: dict[str, str]) -> None:

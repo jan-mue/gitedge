@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { describe, expect, test } from "vitest"
 import { render, screen } from "@/test/test-utils"
 
-import { DataTable } from "./DataTable"
+import { DataTable, type DataTableFeatures } from "./DataTable"
 
 interface TestData {
   id: number
@@ -11,7 +11,7 @@ interface TestData {
   email: string
 }
 
-const columns: ColumnDef<TestData>[] = [
+const columns: ColumnDef<DataTableFeatures, TestData>[] = [
   {
     accessorKey: "id",
     header: "ID",

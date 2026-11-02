@@ -34,19 +34,22 @@ const IssueDetail = () => {
     ...repositoriesGetIssueOptions({ path: { owner, repo, number: issueNumber } }),
   })
 
+  const updateIssue = (response: NonNullable<typeof issue>) => {
+    queryClient.setQueryData(repositoriesGetIssueQueryKey({ path: { owner, repo, number: issueNumber } }), response)
+    queryClient.invalidateQueries({ queryKey: repositoriesListIssuesQueryKey({ path: { owner, repo } }) })
+  }
+
   const mutation = useMutation({
     ...repositoriesUpdateIssueMutation(),
     onSuccess: (response) => {
-      queryClient.setQueryData(repositoriesGetIssueQueryKey({ path: { owner, repo, number: issueNumber } }), response)
-      queryClient.invalidateQueries({ queryKey: repositoriesListIssuesQueryKey({ path: { owner, repo } }) })
+      updateIssue(response)
     },
   })
 
   const editMutation = useMutation({
     ...repositoriesUpdateIssueMutation(),
     onSuccess: (response) => {
-      queryClient.setQueryData(repositoriesGetIssueQueryKey({ path: { owner, repo, number: issueNumber } }), response)
-      queryClient.invalidateQueries({ queryKey: repositoriesListIssuesQueryKey({ path: { owner, repo } }) })
+      updateIssue(response)
       setEditing(false)
     },
     onError: handleError.bind(showErrorToast),

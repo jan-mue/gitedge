@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { type Control, useForm } from "react-hook-form"
 import { z } from "zod"
 import type { PersonalAccessTokenCreate, PersonalAccessTokenIssued, PersonalAccessTokenPublic } from "@/client"
 import {
@@ -35,6 +35,40 @@ const schema = z.object({
   expiry: z.enum(["30", "90", "365", "never"]),
 })
 type TokenForm = z.infer<typeof schema>
+
+const TokenSelect = ({
+  control,
+  name,
+  label,
+  busy,
+  options,
+}: {
+  control: Control<TokenForm>
+  name: "access" | "expiry"
+  label: string
+  busy: boolean
+  options: { value: string; label: string }[]
+}) => (
+  <FormField
+    control={control}
+    name={name}
+    render={({ field, fieldState }) => (
+      <FormItem>
+        <FormLabel>{label}</FormLabel>
+        <FormControl>
+          <SelectField
+            {...field}
+            onValueChange={field.onChange}
+            disabled={busy}
+            aria-invalid={fieldState.invalid}
+            options={options}
+          />
+        </FormControl>
+        <FormMessage />
+      </FormItem>
+    )}
+  />
+)
 
 const tokenStatus = (token: PersonalAccessTokenPublic) => {
   if (token.revoked_at) return "Revoked"
@@ -152,57 +186,27 @@ const PersonalAccessTokens = () => {
                 )}
               />
             </div>
-            <FormField
+            <TokenSelect
               control={form.control}
               name="access"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel>Git access</FormLabel>
-                  <FormControl>
-                    <SelectField
-                      name={field.name}
-                      ref={field.ref}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      onBlur={field.onBlur}
-                      disabled={busy}
-                      aria-invalid={fieldState.invalid}
-                      options={[
-                        { value: "read", label: "Read — clone and fetch" },
-                        { value: "write", label: "Read and write — clone, fetch, and push" },
-                      ]}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Git access"
+              busy={busy}
+              options={[
+                { value: "read", label: "Read — clone and fetch" },
+                { value: "write", label: "Read and write — clone, fetch, and push" },
+              ]}
             />
-            <FormField
+            <TokenSelect
               control={form.control}
               name="expiry"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel>Expiration</FormLabel>
-                  <FormControl>
-                    <SelectField
-                      name={field.name}
-                      ref={field.ref}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      onBlur={field.onBlur}
-                      disabled={busy}
-                      aria-invalid={fieldState.invalid}
-                      options={[
-                        { value: "30", label: "30 days" },
-                        { value: "90", label: "90 days" },
-                        { value: "365", label: "1 year" },
-                        { value: "never", label: "No expiration" },
-                      ]}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Expiration"
+              busy={busy}
+              options={[
+                { value: "30", label: "30 days" },
+                { value: "90", label: "90 days" },
+                { value: "365", label: "1 year" },
+                { value: "never", label: "No expiration" },
+              ]}
             />
             <div className="flex gap-2 sm:col-span-2">
               <LoadingButton variant="success" type="submit" loading={busy} disabled={Boolean(issued)}>

@@ -20,7 +20,6 @@ class PrivateUserCreate(GitEdgeBaseModel):
     email: str
     password: str
     display_name: str
-    is_verified: bool = False
 
 
 @router.post("/users/", response_model=UserPublic)

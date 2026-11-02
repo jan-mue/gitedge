@@ -73,6 +73,10 @@ const SourceView = ({ owner, repo, mode, refName, path }: SourceViewProps) => {
         <CodeViewer
           file={blob}
           commitSha={repoInfo?.last_commit?.sha}
+          lastCommit={repoInfo?.last_commit}
+          lastCommitLoading={infoPending}
+          lastCommitError={infoError}
+          onRetryLastCommit={() => refetchInfo()}
           backLink={{ owner, repo, mode, refName, path: parts.slice(0, -1).join("/") }}
         />
       </div>

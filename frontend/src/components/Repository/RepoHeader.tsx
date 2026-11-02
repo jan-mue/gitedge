@@ -50,6 +50,7 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
       return (
         currentPath === "/$owner/$repo/" ||
         currentPath.startsWith("/$owner/$repo/src/") ||
+        currentPath.startsWith("/$owner/$repo/compare") ||
         currentPath.startsWith("/$owner/$repo/blame/")
       )
     }
@@ -96,6 +97,16 @@ const RepoHeader = ({ owner, repo }: RepoHeaderProps) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <RouterLink
+                    to="/$owner/$repo/compare"
+                    params={{ owner, repo }}
+                    search={{ base: "main", head: "HEAD" }}
+                    appearance="inherited"
+                  >
+                    Compare revisions
+                  </RouterLink>
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => copy(`${window.location.origin}/${owner}/${repo}`)}>
                   Copy URL
                 </DropdownMenuItem>

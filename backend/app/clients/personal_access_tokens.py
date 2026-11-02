@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from sqlalchemy import case, or_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -49,10 +49,12 @@ class SQLPersonalAccessTokenStore(PersonalAccessTokenStore, SQLStore[PersonalAcc
         """Bind token operations to a database session."""
         super().__init__(db, PersonalAccessToken)
 
+    @override
     async def find_by_key_id(self, key_id: str) -> PersonalAccessToken | None:
         """Look up a token without scanning hashes."""
         return await self.db.scalar(select(PersonalAccessToken).where(PersonalAccessToken.key_id == key_id))
 
+    @override
     async def list_by_owner(self, owner_id: uuid.UUID) -> list[PersonalAccessToken]:
         """List account tokens newest first."""
         return list(
@@ -63,6 +65,7 @@ class SQLPersonalAccessTokenStore(PersonalAccessTokenStore, SQLStore[PersonalAcc
             )
         )
 
+    @override
     async def issue(self, token: PersonalAccessToken, replacing: PersonalAccessToken | None = None) -> bool:
         """Issue and optionally revoke the previous credential in one transaction."""
         self.db.add(token)
@@ -83,6 +86,7 @@ class SQLPersonalAccessTokenStore(PersonalAccessTokenStore, SQLStore[PersonalAcc
         await self.db.refresh(token)
         return True
 
+    @override
     async def reserve_authentication(self, token: PersonalAccessToken, now: datetime) -> bool:
         """Use a conditional UPDATE so concurrent workers share one attempt limit."""
         expired_window = or_(

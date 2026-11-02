@@ -1,8 +1,7 @@
-import { useNavigate } from "@tanstack/react-router"
 import { FileText, Folder } from "lucide-react"
 import type { CommitInfo, TreeEntry } from "@/client"
-import { Button } from "@/components/design-system"
-import type { SourceMode } from "@/components/Repositories/SourceLink"
+import { FileRow, Link } from "@/components/design-system"
+import SourceLink, { type SourceMode } from "@/components/Repositories/SourceLink"
 import { formatRelativeTime } from "@/utils"
 import RepositoryCommitHeader from "./RepositoryCommitHeader"
 
@@ -32,30 +31,6 @@ const FileBrowser = ({
   lastCommitError,
   onRetryLastCommit,
 }: FileBrowserProps) => {
-  const navigate = useNavigate()
-
-  const navigateToPath = (targetPath: string) => {
-    if (mode === "commit") {
-      navigate({ to: "/$owner/$repo/src/commit/$sha/$", params: { owner, repo, sha: refName, _splat: targetPath } })
-    } else if (mode === "tag") {
-      navigate({ to: "/$owner/$repo/src/tag/$tag/$", params: { owner, repo, tag: refName, _splat: targetPath } })
-    } else {
-      navigate({
-        to: "/$owner/$repo/src/branch/$branch/$",
-        params: { owner, repo, branch: refName, _splat: targetPath },
-      })
-    }
-  }
-
-  const handleEntryClick = (entry: TreeEntry) => {
-    navigateToPath(entry.path)
-  }
-
-  const handleParentClick = () => {
-    const parentPath = treePath?.split("/").slice(0, -1).join("/")
-    navigateToPath(parentPath ?? "")
-  }
-
   return (
     <div className="border border-border rounded-lg overflow-hidden" data-testid="file-tree">
       <RepositoryCommitHeader
@@ -68,44 +43,57 @@ const FileBrowser = ({
       />
 
       {treePath && (
-        <Button type="button" onClick={handleParentClick} variant="row" size="file-row" data-testid="tree-entry-parent">
-          <Folder className="w-4 h-4 text-primary flex-shrink-0" />
-          <span>..</span>
-        </Button>
+        <FileRow>
+          <SourceLink
+            owner={owner}
+            repo={repo}
+            mode={mode}
+            refName={refName}
+            path={treePath.split("/").slice(0, -1).join("/")}
+            appearance="fileEntry"
+            data-testid="tree-entry-parent"
+          >
+            <Folder aria-hidden="true" className="size-4 shrink-0 text-primary" />
+            <span>..</span>
+          </SourceLink>
+        </FileRow>
       )}
 
       {entries.map((entry) => (
-        <Button
-          key={entry.path}
-          type="button"
-          onClick={() => handleEntryClick(entry)}
-          aria-label={entry.name}
-          aria-description={
-            entry.last_commit
-              ? `${entry.last_commit.message.split("\n")[0]}; ${formatRelativeTime(entry.last_commit.timestamp)}`
-              : undefined
-          }
-          variant="fileRow"
-          size="file-row"
-          data-testid={`tree-entry-${entry.name}`}
-        >
-          <span className="flex min-w-0 items-center gap-3">
+        <FileRow key={entry.path} data-testid={`file-row-${entry.name}`}>
+          <SourceLink
+            owner={owner}
+            repo={repo}
+            mode={mode}
+            refName={refName}
+            path={entry.path}
+            appearance="fileEntry"
+            data-testid={`tree-entry-${entry.name}`}
+          >
             {entry.type === "tree" ? (
-              <Folder className="size-4 shrink-0 text-primary" />
+              <Folder aria-hidden="true" className="size-4 shrink-0 text-primary" />
             ) : (
-              <FileText className="size-4 shrink-0 text-muted-foreground" />
+              <FileText aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
             )}
-            <span data-slot="file-name" className="truncate" title={entry.name}>
+            <span className="truncate" title={entry.name}>
               {entry.name}
             </span>
-          </span>
-          <span
-            className="order-last col-span-2 min-w-0 truncate text-sm text-muted-foreground sm:order-none sm:col-span-1"
-            title={entry.last_commit?.message}
-            data-testid={`entry-commit-${entry.name}`}
-          >
-            {entry.last_commit?.message.split("\n")[0] ?? "Commit information unavailable"}
-          </span>
+          </SourceLink>
+          {entry.last_commit ? (
+            <Link
+              to="/$owner/$repo/commit/$hash"
+              params={{ owner, repo, hash: entry.last_commit.sha }}
+              appearance="fileCommit"
+              title={entry.last_commit.message}
+              data-testid={`entry-commit-${entry.name}`}
+            >
+              {entry.last_commit.message.split("\n")[0]}
+            </Link>
+          ) : (
+            <span className="order-last col-span-2 text-sm text-muted-foreground sm:order-none sm:col-span-1">
+              Commit information unavailable
+            </span>
+          )}
           {entry.last_commit && (
             <time
               className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm"
@@ -115,7 +103,7 @@ const FileBrowser = ({
               {formatRelativeTime(entry.last_commit.timestamp)}
             </time>
           )}
-        </Button>
+        </FileRow>
       ))}
 
       {entries.length === 0 && !treePath && (

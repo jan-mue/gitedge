@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.clients.database import CrudStore, SQLStore
-from app.entities.comments import Comment
 from app.entities.issues import Issue, IssueKind, IssueState
 from app.exceptions import IssueNotFoundError
 
@@ -50,17 +49,19 @@ class SQLIssueStore(IssueStore, SQLStore[Issue]):
         """
         super().__init__(db, Issue)
 
+    @override
     async def get_by_number(self, repo_id: uuid.UUID, number: int) -> Issue:
         """Get an issue by repository id and number, raising when absent."""
         issue = await self.db.scalar(
             select(Issue)
-            .options(selectinload(Issue.author), selectinload(Issue.comments).selectinload(Comment.author))
+            .options(joinedload(Issue.author))
             .where(Issue.repo_id == repo_id, Issue.number == number, Issue.kind == IssueKind.ISSUE)
         )
         if issue is None:
             raise IssueNotFoundError
         return issue
 
+    @override
     async def list_by_repo(self, repo_id: uuid.UUID, state: IssueState | None = None) -> list[Issue]:
         """List issues for a repository, newest first."""
         stmt = (
@@ -74,6 +75,7 @@ class SQLIssueStore(IssueStore, SQLStore[Issue]):
         result = await self.db.scalars(stmt)
         return list(result.all())
 
+    @override
     async def count_by_state(self, repo_id: uuid.UUID, state: IssueState) -> int:
         """Count issues in a repository by state."""
         result = await self.db.execute(
@@ -83,6 +85,7 @@ class SQLIssueStore(IssueStore, SQLStore[Issue]):
         )
         return result.scalar_one()
 
+    @override
     async def next_number(self, repo_id: uuid.UUID) -> int:
         """Get the next issue or pull request number for a repository."""
         result = await self.db.execute(select(func.max(Issue.number)).where(Issue.repo_id == repo_id))
