@@ -1,3 +1,4 @@
+import { Inbox } from "lucide-react"
 import type { ComponentProps, ReactNode } from "react"
 import { Button } from "./button"
 
@@ -100,5 +101,39 @@ export const NotificationReturnNotice = ({ children, action }: { children: React
   <div className="flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
     <span className="flex min-w-0 items-center gap-2 text-muted-foreground">{children}</span>
     {action}
+  </div>
+)
+
+export const NotificationPreferenceList = ({
+  compact = false,
+  children,
+}: {
+  compact?: boolean
+  children: ReactNode
+}) => <div className={compact ? "py-1" : "divide-y divide-border rounded-md border border-border"}>{children}</div>
+export const NotificationPreferenceOption = ({
+  compact = false,
+  htmlFor,
+  icon,
+  label,
+  children,
+  ...props
+}: Omit<ComponentProps<"label">, "className" | "style"> & { compact?: boolean; icon: ReactNode; label: string }) => (
+  <label
+    {...props}
+    htmlFor={htmlFor}
+    className={`flex cursor-pointer items-center justify-between gap-3 px-3 ${compact ? "py-1.5 hover:bg-accent" : "py-2.5"}`}
+  >
+    <span className="flex items-center gap-2 text-sm text-foreground">
+      {icon}
+      {label}
+    </span>
+    {children}
+  </label>
+)
+export const NotificationEmptyState = ({ archived = false }: { archived?: boolean }) => (
+  <div className="flex flex-col items-center rounded-md border border-border py-16 text-muted-foreground">
+    <Inbox aria-hidden="true" className="mb-3 size-10" />
+    <p className="text-sm">{archived ? "Nothing archived." : "No notifications match these filters."}</p>
   </div>
 )

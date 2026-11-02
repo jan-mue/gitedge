@@ -54,6 +54,8 @@ export const buttonVariants = cva(
         branchItem: "w-full justify-start gap-2 rounded-none text-left font-normal text-foreground hover:bg-accent",
       },
       size: {
+        notificationMarkAll: "h-auto px-3 py-1",
+        watchMenu: "h-8 px-1.5 border-r-0",
         notificationSidebar: "h-auto px-3 py-1.5",
         notificationChip: "h-auto px-2.5 py-1",
         notificationTab: "h-auto px-3 py-1",

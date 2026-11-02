@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AtSign, CircleDot, GitPullRequest, Tag, Users } from "lucide-react"
+import { useId } from "react"
 import {
   notificationsGetRepositoryPreferencesOptions,
   notificationsGetRepositoryPreferencesQueryKey,
@@ -13,6 +14,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  NotificationPreferenceList,
+  NotificationPreferenceOption,
 } from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -25,14 +28,15 @@ export const categoryMeta = {
   repository: { label: "Repository activity", icon: Users, color: "text-info" },
 }
 
-export const RepositoryNotificationPreferences = ({
+export const RepositoryNotificationOptions = ({
   repository,
-  onClose,
+  compact = false,
 }: {
   repository: string
-  onClose: () => void
+  compact?: boolean
 }) => {
   const [owner, repo] = repository.split("/")
+  const id = useId()
   const queryClient = useQueryClient()
   const { showErrorToast } = useCustomToast()
   const { data, isError, refetch } = useQuery(notificationsGetRepositoryPreferencesOptions({ path: { owner, repo } }))
@@ -42,66 +46,75 @@ export const RepositoryNotificationPreferences = ({
       queryClient.setQueryData(notificationsGetRepositoryPreferencesQueryKey({ path: { owner, repo } }), response),
     onError: handleError.bind(showErrorToast),
   })
+  if (isError)
+    return (
+      <div role="alert" className="p-3 text-sm">
+        <p>Unable to load settings.</p>
+        <Button variant="text" size="text" onClick={() => refetch()}>
+          Try again
+        </Button>
+      </div>
+    )
+  if (!data)
+    return (
+      <p role="status" className="p-3 text-sm">
+        Loading settings…
+      </p>
+    )
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Notification settings</DialogTitle>
-          <DialogDescription>
-            Choose what <span className="font-medium text-foreground">{repository}</span> notifies you about.
-          </DialogDescription>
-        </DialogHeader>
-        {isError ? (
-          <div role="alert">
-            <p>Unable to load settings.</p>
-            <Button variant="repository" size="compact" onClick={() => refetch()}>
-              Try again
-            </Button>
-          </div>
-        ) : !data ? (
-          <p role="status">Loading settings…</p>
-        ) : (
-          <div className="divide-y divide-border border border-border rounded-md">
-            {(Object.keys(categoryMeta) as (keyof typeof categoryMeta)[]).map((category) => {
-              const meta = categoryMeta[category]
-              return (
-                <label
-                  htmlFor={`notification-category-${category}`}
-                  key={category}
-                  className="flex items-center justify-between gap-3 px-3 py-2.5 cursor-pointer"
-                >
-                  <span className="flex items-center gap-2 text-sm text-foreground">
-                    <meta.icon className={`w-4 h-4 ${meta.color}`} />
-                    {meta.label}
-                  </span>
-                  <ChoiceInput
-                    id={`notification-category-${category}`}
-                    appearance="notificationSwitch"
-                    type="checkbox"
-                    role="switch"
-                    aria-label={meta.label}
-                    checked={data.categories?.includes(category) ?? false}
-                    disabled={mutation.isPending}
-                    onChange={(event) =>
-                      mutation.mutate({
-                        path: { owner, repo },
-                        body: {
-                          categories: event.target.checked
-                            ? [...(data.categories ?? []), category]
-                            : data.categories?.filter((value) => value !== category),
-                        },
-                      })
-                    }
-                  />
-                </label>
-              )
-            })}
-          </div>
-        )}
-        <p className="text-xs text-muted-foreground">
-          Changes apply to future notifications. Your existing notifications stay in your inbox.
-        </p>
-      </DialogContent>
-    </Dialog>
+    <NotificationPreferenceList compact={compact}>
+      {(Object.keys(categoryMeta) as (keyof typeof categoryMeta)[]).map((category) => {
+        const meta = categoryMeta[category]
+        return (
+          <NotificationPreferenceOption
+            compact={compact}
+            key={category}
+            htmlFor={`${id}-${category}`}
+            icon={<meta.icon className={`size-4 ${meta.color}`} />}
+            label={meta.label}
+          >
+            <ChoiceInput
+              id={`${id}-${category}`}
+              appearance="notificationSwitch"
+              type="checkbox"
+              role="switch"
+              aria-label={meta.label}
+              checked={data.categories?.includes(category) ?? false}
+              disabled={mutation.isPending}
+              onChange={(event) =>
+                mutation.mutate({
+                  path: { owner, repo },
+                  body: {
+                    categories: event.target.checked
+                      ? [...(data.categories ?? []), category]
+                      : data.categories?.filter((value) => value !== category),
+                  },
+                })
+              }
+            />
+          </NotificationPreferenceOption>
+        )
+      })}
+    </NotificationPreferenceList>
   )
 }
+
+export const RepositoryNotificationPreferences = ({
+  repository,
+  onClose,
+}: {
+  repository: string
+  onClose: () => void
+}) => (
+  <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Notification settings</DialogTitle>
+        <DialogDescription>
+          Choose what <span className="font-medium text-foreground">{repository}</span> notifies you about.
+        </DialogDescription>
+      </DialogHeader>
+      <RepositoryNotificationOptions repository={repository} />
+    </DialogContent>
+  </Dialog>
+)

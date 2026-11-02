@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Eye, EyeOff } from "lucide-react"
+import { ChevronDown, Eye, EyeOff } from "lucide-react"
 import {
   watchersGetWatchStateOptions,
   watchersGetWatchStateQueryKey,
@@ -7,7 +7,16 @@ import {
   watchersUnwatchRepositoryMutation,
   watchersWatchRepositoryMutation,
 } from "@/client/@tanstack/react-query.gen"
-import { Button, Link as RouterLink } from "@/components/design-system"
+import {
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  RepositoryMenuFooter,
+  RepositoryMenuHeader,
+  Link as RouterLink,
+} from "@/components/design-system"
+import { RepositoryNotificationOptions } from "@/components/Notifications/RepositoryNotificationPreferences"
 
 interface WatchButtonProps {
   owner: string
@@ -38,7 +47,7 @@ const WatchButton = ({ owner, repo }: WatchButtonProps) => {
       <Button
         type="button"
         onClick={() => mutation.mutate({ path: { owner, repo } })}
-        disabled={mutation.isPending}
+        disabled={mutation.isPending || !state}
         aria-pressed={isWatching}
         variant="repository"
         size="compact"
@@ -47,7 +56,29 @@ const WatchButton = ({ owner, repo }: WatchButtonProps) => {
         <Icon className="h-3.5 w-3.5" />
         <span>{isWatching ? "Unwatch" : "Watch"}</span>
       </Button>
-      <RouterLink to="/$owner/$repo/watchers" params={{ owner, repo }} data-testid="watch-count" appearance="count">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="repository" size="watchMenu" shape="square" aria-label="Notification settings">
+            <ChevronDown className="size-3.5" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent appearance="watchSettings">
+          <RepositoryMenuHeader>Notify me about</RepositoryMenuHeader>
+          <RepositoryNotificationOptions repository={`${owner}/${repo}`} compact />
+          <RepositoryMenuFooter>
+            <RouterLink to="/notifications" appearance="caption">
+              Open notifications
+            </RouterLink>
+          </RepositoryMenuFooter>
+        </PopoverContent>
+      </Popover>
+      <RouterLink
+        to="/$owner/$repo/watchers"
+        params={{ owner, repo }}
+        aria-label="View watchers"
+        data-testid="watch-count"
+        appearance="count"
+      >
         {count}
       </RouterLink>
     </div>

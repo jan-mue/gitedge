@@ -3,6 +3,8 @@ import { component } from "./component"
 export const Input = component(
   PrimitiveInput,
   {
+    starList:
+      "h-auto min-w-0 flex-1 rounded border-border px-2 py-1 text-xs md:text-xs focus-visible:ring-1 focus-visible:ring-offset-0",
     notificationSearch:
       "h-auto px-3 py-1 text-sm border border-border rounded bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary",
     branchSearch:

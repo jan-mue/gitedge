@@ -1,9 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { handleStarsGetStarState, handleWatchersGetWatchState } from "@/client/msw.gen"
+import { handleStarsGetStarState, handleUsersReadUserMe, handleWatchersGetWatchState } from "@/client/msw.gen"
 import RepoHeader from "@/components/Repository/RepoHeader"
+import { notificationPreferenceHandlers } from "@/components/Storybook/notification-fixtures"
 import { handlers, repositoryStoryMeta } from "@/components/Storybook/repository-fixtures"
+import { storybookSession, storybookUser } from "@/components/Storybook/StoryRouter"
 
-const meta = { ...repositoryStoryMeta, title: "Patterns/Repository/Header" } satisfies Meta
+const preferenceHandlers = [handleUsersReadUserMe({ body: storybookUser }), ...notificationPreferenceHandlers()]
+const meta = {
+  ...repositoryStoryMeta,
+  title: "Patterns/Repository/Header",
+  beforeEach: storybookSession,
+  parameters: { msw: { handlers: [...preferenceHandlers, ...handlers] } },
+} satisfies Meta
 export default meta
 type Story = StoryObj
 
@@ -15,7 +23,8 @@ export const SelectedActions: Story = {
       handlers: [
         handleStarsGetStarState({ body: { is_starred: true, stars_count: 129 } }),
         handleWatchersGetWatchState({ body: { is_watching: true, watchers_count: 33 } }),
-        ...handlers.slice(2),
+        ...preferenceHandlers,
+        ...handlers.filter((_, index) => index !== 1 && index !== 2),
       ],
     },
   },

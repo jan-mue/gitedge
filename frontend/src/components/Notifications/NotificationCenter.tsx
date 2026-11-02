@@ -8,8 +8,9 @@ import {
   BellOff,
   Check,
   CheckCheck,
+  CircleDot,
+  GitPullRequest,
   Inbox,
-  MessageSquare,
   Pin,
   Settings2,
 } from "lucide-react"
@@ -25,9 +26,9 @@ import {
 import {
   Button,
   ChoiceInput,
-  EmptyState,
   Input,
   Link,
+  NotificationEmptyState,
   NotificationFilter,
   NotificationGroup,
   NotificationItem,
@@ -41,20 +42,19 @@ import { categoryMeta, RepositoryNotificationPreferences } from "./RepositoryNot
 import type { NotificationSearch } from "./search"
 
 const reasons = [
+  { id: "assigned", label: "Assigned", icon: CircleDot },
   { id: "mentioned", label: "Mentioned", icon: AtSign },
+  { id: "review requested", label: "Review requested", icon: GitPullRequest },
   { id: "author", label: "Authored", icon: Pin },
-  { id: "participating", label: "Participating", icon: MessageSquare },
-  { id: "reaction", label: "Reactions", icon: Check },
   { id: "subscribed", label: "Watching", icon: Bell },
 ]
 const PAGE_SIZE = 50
-const relativeTime = new Intl.RelativeTimeFormat("en", { numeric: "auto" })
 const timeAgo = (date: string) => {
   const minutes = Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 60_000))
   if (minutes < 1) return "just now"
-  if (minutes < 60) return relativeTime.format(-minutes, "minute")
-  if (minutes < 1440) return relativeTime.format(-Math.floor(minutes / 60), "hour")
-  return relativeTime.format(-Math.floor(minutes / 1440), "day")
+  if (minutes < 60) return `${minutes} min ago`
+  if (minutes < 1440) return `${Math.floor(minutes / 60)} ${minutes < 120 ? "hour" : "hours"} ago`
+  return `${Math.floor(minutes / 1440)} ${minutes < 2880 ? "day" : "days"} ago`
 }
 
 export const NotificationCenter = () => {
@@ -203,12 +203,8 @@ export const NotificationCenter = () => {
               </NotificationFilter>
             ))}
           </div>
-          <Link to="/settings" search={{ tab: "notifications" }} appearance="muted">
-            <Settings2 className="w-4 h-4" />
-            Notification preferences
-          </Link>
         </aside>
-        <div className="flex-1 min-w-0 space-y-3">
+        <div className="flex-1 min-w-0 space-y-3 md:pt-3">
           <nav className="md:hidden flex flex-wrap gap-1.5" aria-label="Notification filters">
             {viewButtons(true)}
             {reasons.map((reason) => (
@@ -231,9 +227,6 @@ export const NotificationCenter = () => {
                 {repo}
               </NotificationFilter>
             ))}
-            <Link to="/settings" search={{ tab: "notifications" }} appearance="caption">
-              Notification preferences
-            </Link>
           </nav>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex border border-border rounded overflow-hidden">
@@ -259,7 +252,12 @@ export const NotificationCenter = () => {
               />
             </div>
             {view === "inbox" && (data?.unread_count ?? 0) > 0 && (
-              <Button variant="repository" size="create" disabled={busy} onClick={() => markAll.mutate({})}>
+              <Button
+                variant="repository"
+                size="notificationMarkAll"
+                disabled={busy}
+                onClick={() => markAll.mutate({})}
+              >
                 <CheckCheck className="w-4 h-4" />
                 Mark all read
               </Button>
@@ -344,12 +342,7 @@ export const NotificationCenter = () => {
               </Button>
             </div>
           )}
-          {!isPending && !isError && visible.length === 0 && (
-            <EmptyState
-              icon={Inbox}
-              title={view === "archived" ? "Nothing archived." : "No notifications match these filters."}
-            />
-          )}
+          {!isPending && !isError && visible.length === 0 && <NotificationEmptyState archived={view === "archived"} />}
           {Object.entries(groups).map(([repo, items]) =>
             !items ? null : (
               <NotificationGroup
@@ -468,7 +461,7 @@ export const NotificationCenter = () => {
                         }}
                       >
                         <NotificationSummary title={n.title} number={n.number} unread={!n.is_read}>
-                          <span>{n.kind.replace(/_/g, " ")}</span>·<span>{n.reason}</span>·
+                          <span>{meta.label.replace(/s$/, "")}</span>·<span>{n.reason}</span>·
                           <time dateTime={n.created_at} title={new Date(n.created_at).toLocaleString()}>
                             {timeAgo(n.created_at)}
                           </time>
