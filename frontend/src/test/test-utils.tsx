@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from "@tanstack/react-router"
 import { type RenderOptions, render } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import type { ReactElement, ReactNode } from "react"
+import { type ReactElement, type ReactNode, useState } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
 
 // Create a fresh QueryClient for each test
@@ -24,24 +24,22 @@ interface WrapperProps {
   children: ReactNode
 }
 
-function createWrapper() {
-  const queryClient = createTestQueryClient()
+function Wrapper({ children }: WrapperProps) {
+  const [queryClient] = useState(createTestQueryClient)
 
-  return function Wrapper({ children }: WrapperProps) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="light" storageKey="test-theme">
-          {children}
-        </ThemeProvider>
-      </QueryClientProvider>
-    )
-  }
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="light" storageKey="test-theme">
+        {children}
+      </ThemeProvider>
+    </QueryClientProvider>
+  )
 }
 
 function customRender(ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) {
   return {
     user: userEvent.setup(),
-    ...render(ui, { wrapper: createWrapper(), ...options }),
+    ...render(ui, { wrapper: Wrapper, ...options }),
   }
 }
 

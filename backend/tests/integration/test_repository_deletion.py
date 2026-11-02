@@ -14,18 +14,11 @@ from app.entities.activity import Activity, ActivityKind
 from app.entities.comments import Comment
 from app.entities.issues import Issue
 from app.entities.repositories import Repository
-from tests.integration.conftest import _run_async
 
 
 @pytest.mark.parametrize("failure", [None, "delete", "commit"])
 @pytest.mark.parametrize("active_transaction", [False, True])
-def test_repository_deletion_transaction(
-    infrastructure: dict[str, str], failure: str | None, active_transaction: bool
-) -> None:
-    _run_async(_check_repository_deletion(infrastructure, failure, active_transaction))
-
-
-async def _check_repository_deletion(
+async def test_repository_deletion_transaction(
     infrastructure: dict[str, str], failure: str | None, active_transaction: bool
 ) -> None:
     engine = create_async_engine(infrastructure["DATABASE_URL"])

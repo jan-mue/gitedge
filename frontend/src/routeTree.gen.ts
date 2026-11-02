@@ -26,6 +26,7 @@ import { Route as LayoutOwnerRepoActivityRouteImport } from './routes/_layout/$o
 import { Route as LayoutOwnerRepoBranchesRouteImport } from './routes/_layout/$owner/$repo/branches'
 import { Route as LayoutOwnerRepoCommitRouteImport } from './routes/_layout/$owner/$repo/commit'
 import { Route as LayoutOwnerRepoCommitsRouteImport } from './routes/_layout/$owner/$repo/commits'
+import { Route as LayoutOwnerRepoCompareRouteImport } from './routes/_layout/$owner/$repo/compare'
 import { Route as LayoutOwnerRepoForksRouteImport } from './routes/_layout/$owner/$repo/forks'
 import { Route as LayoutOwnerRepoIssuesRouteImport } from './routes/_layout/$owner/$repo/issues'
 import { Route as LayoutOwnerRepoPullsRouteImport } from './routes/_layout/$owner/$repo/pulls'
@@ -136,6 +137,11 @@ const LayoutOwnerRepoCommitRoute = LayoutOwnerRepoCommitRouteImport.update({
 const LayoutOwnerRepoCommitsRoute = LayoutOwnerRepoCommitsRouteImport.update({
   id: '/$owner/$repo/commits',
   path: '/$owner/$repo/commits',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutOwnerRepoCompareRoute = LayoutOwnerRepoCompareRouteImport.update({
+  id: '/$owner/$repo/compare',
+  path: '/$owner/$repo/compare',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutOwnerRepoForksRoute = LayoutOwnerRepoForksRouteImport.update({
@@ -309,6 +315,7 @@ export interface FileRoutesByFullPath {
   '/$owner/$repo/branches': typeof LayoutOwnerRepoBranchesRoute
   '/$owner/$repo/commit': typeof LayoutOwnerRepoCommitRouteWithChildren
   '/$owner/$repo/commits': typeof LayoutOwnerRepoCommitsRouteWithChildren
+  '/$owner/$repo/compare': typeof LayoutOwnerRepoCompareRoute
   '/$owner/$repo/forks': typeof LayoutOwnerRepoForksRoute
   '/$owner/$repo/issues': typeof LayoutOwnerRepoIssuesRouteWithChildren
   '/$owner/$repo/pulls': typeof LayoutOwnerRepoPullsRouteWithChildren
@@ -353,6 +360,7 @@ export interface FileRoutesByTo {
   '/$owner/$repo/activity': typeof LayoutOwnerRepoActivityRoute
   '/$owner/$repo/branches': typeof LayoutOwnerRepoBranchesRoute
   '/$owner/$repo/commit': typeof LayoutOwnerRepoCommitRouteWithChildren
+  '/$owner/$repo/compare': typeof LayoutOwnerRepoCompareRoute
   '/$owner/$repo/forks': typeof LayoutOwnerRepoForksRoute
   '/$owner/$repo/releases': typeof LayoutOwnerRepoReleasesRoute
   '/$owner/$repo/settings': typeof LayoutOwnerRepoSettingsRoute
@@ -395,6 +403,7 @@ export interface FileRoutesById {
   '/_layout/$owner/$repo/branches': typeof LayoutOwnerRepoBranchesRoute
   '/_layout/$owner/$repo/commit': typeof LayoutOwnerRepoCommitRouteWithChildren
   '/_layout/$owner/$repo/commits': typeof LayoutOwnerRepoCommitsRouteWithChildren
+  '/_layout/$owner/$repo/compare': typeof LayoutOwnerRepoCompareRoute
   '/_layout/$owner/$repo/forks': typeof LayoutOwnerRepoForksRoute
   '/_layout/$owner/$repo/issues': typeof LayoutOwnerRepoIssuesRouteWithChildren
   '/_layout/$owner/$repo/pulls': typeof LayoutOwnerRepoPullsRouteWithChildren
@@ -442,6 +451,7 @@ export interface FileRouteTypes {
     | '/$owner/$repo/branches'
     | '/$owner/$repo/commit'
     | '/$owner/$repo/commits'
+    | '/$owner/$repo/compare'
     | '/$owner/$repo/forks'
     | '/$owner/$repo/issues'
     | '/$owner/$repo/pulls'
@@ -486,6 +496,7 @@ export interface FileRouteTypes {
     | '/$owner/$repo/activity'
     | '/$owner/$repo/branches'
     | '/$owner/$repo/commit'
+    | '/$owner/$repo/compare'
     | '/$owner/$repo/forks'
     | '/$owner/$repo/releases'
     | '/$owner/$repo/settings'
@@ -527,6 +538,7 @@ export interface FileRouteTypes {
     | '/_layout/$owner/$repo/branches'
     | '/_layout/$owner/$repo/commit'
     | '/_layout/$owner/$repo/commits'
+    | '/_layout/$owner/$repo/compare'
     | '/_layout/$owner/$repo/forks'
     | '/_layout/$owner/$repo/issues'
     | '/_layout/$owner/$repo/pulls'
@@ -684,6 +696,13 @@ declare module '@tanstack/react-router' {
       path: '/$owner/$repo/commits'
       fullPath: '/$owner/$repo/commits'
       preLoaderRoute: typeof LayoutOwnerRepoCommitsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/$owner/$repo/compare': {
+      id: '/_layout/$owner/$repo/compare'
+      path: '/$owner/$repo/compare'
+      fullPath: '/$owner/$repo/compare'
+      preLoaderRoute: typeof LayoutOwnerRepoCompareRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/$owner/$repo/forks': {
@@ -1006,6 +1025,7 @@ interface LayoutRouteChildren {
   LayoutOwnerRepoBranchesRoute: typeof LayoutOwnerRepoBranchesRoute
   LayoutOwnerRepoCommitRoute: typeof LayoutOwnerRepoCommitRouteWithChildren
   LayoutOwnerRepoCommitsRoute: typeof LayoutOwnerRepoCommitsRouteWithChildren
+  LayoutOwnerRepoCompareRoute: typeof LayoutOwnerRepoCompareRoute
   LayoutOwnerRepoForksRoute: typeof LayoutOwnerRepoForksRoute
   LayoutOwnerRepoIssuesRoute: typeof LayoutOwnerRepoIssuesRouteWithChildren
   LayoutOwnerRepoPullsRoute: typeof LayoutOwnerRepoPullsRouteWithChildren
@@ -1032,6 +1052,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutOwnerRepoBranchesRoute: LayoutOwnerRepoBranchesRoute,
   LayoutOwnerRepoCommitRoute: LayoutOwnerRepoCommitRouteWithChildren,
   LayoutOwnerRepoCommitsRoute: LayoutOwnerRepoCommitsRouteWithChildren,
+  LayoutOwnerRepoCompareRoute: LayoutOwnerRepoCompareRoute,
   LayoutOwnerRepoForksRoute: LayoutOwnerRepoForksRoute,
   LayoutOwnerRepoIssuesRoute: LayoutOwnerRepoIssuesRouteWithChildren,
   LayoutOwnerRepoPullsRoute: LayoutOwnerRepoPullsRouteWithChildren,

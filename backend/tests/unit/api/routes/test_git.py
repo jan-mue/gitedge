@@ -10,10 +10,11 @@ from dulwich.pack import write_pack_objects
 from dulwich.protocol import pkt_line
 from starlette.requests import Request
 
-from app.api.routes.git import _create_wsgi_environ
+from app.clients.git.blob_repository import BlobRepository
+from app.clients.git.http import create_wsgi_environ
+from app.clients.git.storage import RepositoryStorage
+from app.clients.git.types import GitHttpRequest
 from app.config import settings
-from app.services.blob_backend import load_repository_from_storage
-from app.services.blob_repository import BlobRepository
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -37,6 +38,21 @@ def _make_request(
         "scheme": "http",
     }
     return Request(scope)
+
+
+def _create_wsgi_environ(request: Request, body: bytes, path: str) -> dict:
+    return create_wsgi_environ(
+        GitHttpRequest(
+            method=request.method,
+            path=path,
+            query=str(request.url.query),
+            headers=dict(request.headers),
+            body=body,
+            scheme=request.url.scheme,
+            hostname=request.url.hostname or "localhost",
+            port=request.url.port or 80,
+        )
+    )
 
 
 def test_create_wsgi_environ_basic() -> None:
@@ -127,7 +143,7 @@ async def test_receive_pack_persists_objects_and_refs(
     assert b"unpack ok\n" in response.content
     assert b"ok refs/heads/main\n" in response.content
 
-    packs, refs = await load_repository_from_storage(fake_stores.blob, fake_stores.redis, repo_path)
+    packs, refs = await RepositoryStorage(fake_stores.blob, fake_stores.redis).load(repo_path)
     assert refs["refs/heads/main"] == commit.id
     repo = BlobRepository()
     repo.load_from_storage(packs, refs)

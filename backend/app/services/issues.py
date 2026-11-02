@@ -10,8 +10,8 @@ from fastapi import HTTPException
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.issues import Issue, IssueState
 from app.schemas.repositories import IssueCreate, IssuePublic, IssuesListPublic, IssueUpdate
-from app.services.markdown import render_markdown
 from app.services.repositories import ensure_repository
+from app.utils.markdown import render_markdown
 
 if TYPE_CHECKING:
     from app.clients.issues import IssueStore

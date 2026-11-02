@@ -1,4 +1,4 @@
-import { Button } from "@react-email/components"
+import { Button } from "react-email"
 
 type ButtonProps = React.PropsWithChildren & { href: string }
 

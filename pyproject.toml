@@ -1,6 +1,10 @@
 [tool.uv]
 exclude-newer = "7 days"
+exclude-newer-package.certifi = false
 workspace.members = [ "backend" ]
 
 [tool.codespell]
 skip = "uv.lock,bun.lock"
+
+[tool.ty]
+rules.missing-override-decorator = "error"

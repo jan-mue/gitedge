@@ -40,9 +40,9 @@ class OrganizationService:
             HTTPException: If the name is already taken by a user or organization.
         """
         name = body.name.strip()
-        if await self.user_store.get_by_name(name) is not None:
+        if await self.user_store.find_by_name(name) is not None:
             raise HTTPException(status_code=409, detail="An owner with that name already exists")
-        if await self.organization_store.get_by_name(name) is not None:
+        if await self.organization_store.find_by_name(name) is not None:
             raise HTTPException(status_code=409, detail="An owner with that name already exists")
 
         organization = Organization(

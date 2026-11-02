@@ -1,4 +1,4 @@
-import { Text } from "@react-email/components"
+import { Text } from "react-email"
 import { LinkButton } from "../ui/Button"
 import { Callout, Detail } from "../ui/Callout"
 import { Heading } from "../ui/Heading"

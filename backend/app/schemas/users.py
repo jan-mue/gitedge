@@ -39,7 +39,7 @@ class UserUpdate(UserBase):
     """Schema for updating a user (admin)."""
 
     name: str | None = Field(default=None, max_length=255)
-    email: EmailStr | None = Field(default=None, max_length=255)  # type: ignore[assignment]
+    email: EmailStr | None = Field(default=None, max_length=255)  # type: ignore[ty:invalid-attribute-override]
     password: str | None = Field(default=None, min_length=8, max_length=40)
 
 

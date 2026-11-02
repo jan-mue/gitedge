@@ -1,6 +1,7 @@
 import type { ColumnDef } from "@tanstack/react-table"
 import { Check, Copy, GitBranch } from "lucide-react"
 import type { Repository } from "@/client"
+import type { DataTableFeatures } from "@/components/Common/DataTable"
 import { Button, Link as RouterLink } from "@/components/design-system"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 
@@ -27,7 +28,7 @@ function CopyPath({ path }: { path: string }) {
   )
 }
 
-export const columns: ColumnDef<Repository>[] = [
+export const columns: ColumnDef<DataTableFeatures, Repository>[] = [
   {
     accessorKey: "name",
     header: "Name",

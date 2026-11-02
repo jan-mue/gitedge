@@ -7,6 +7,7 @@ import {
   handleRepositoriesGetIssue,
   handleRepositoriesGetPullRequest,
   handleRepositoriesGetPullRequestFiles,
+  handleReviewsListReviews,
 } from "@/client/msw.gen"
 import { issue, pullRequest } from "@/test/fixtures"
 import { server } from "@/test/server"
@@ -38,6 +39,7 @@ describe("Markdown descriptions and comments", () => {
       handleCommentsListComments({ body: { data: [], count: 0 } }),
       handleCommentsListReactions({ body: { data: [] } }),
       handleRepositoriesGetPullRequestFiles({ body: { files: [], additions: 0, deletions: 0 } }),
+      handleReviewsListReviews({ body: [] }),
       handleRepositoriesGetIssue({ body: { ...issue, body, body_html: bodyHtml } }),
       handleRepositoriesGetPullRequest({ body: { ...pullRequest, body, body_html: bodyHtml } }),
     )

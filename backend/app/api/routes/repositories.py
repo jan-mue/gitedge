@@ -12,10 +12,12 @@ from app.api.dependencies import (
     PullRequestServiceDep,
     RepositoryServiceDep,
 )
+from app.schemas.activity import ActivityPublic
 from app.schemas.repositories import (
     BlameContent,
     BranchInfo,
     CommitDetail,
+    CommitFileChange,
     CommitsPublic,
     CompareResult,
     CreateRepositoryRequest,
@@ -25,7 +27,10 @@ from app.schemas.repositories import (
     IssuePublic,
     IssuesListPublic,
     IssueUpdate,
+    MergeMethod,
     PullRequestCreate,
+    PullRequestMerge,
+    PullRequestMergeability,
     PullRequestPublic,
     PullRequestsListPublic,
     PullRequestUpdate,
@@ -240,10 +245,15 @@ async def list_commits(
 
 @router.get("/{owner}/{repo}/commits/{sha}")
 async def get_commit(
-    owner: str, repo: str, sha: str, response: Response, repository_service: RepositoryServiceDep
+    owner: str,
+    repo: str,
+    sha: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    include_diff: bool = True,
 ) -> CommitDetail:
     """Get a single commit with its diff."""
-    result = await repository_service.get_commit(owner, repo, sha)
+    result = await repository_service.get_commit(owner, repo, sha, include_diff=include_diff)
     await _apply_cache_headers(response, repository_service, owner, repo, immutable=True)
     return result
 
@@ -312,19 +322,62 @@ async def get_pull_request(
     return await pull_request_service.get_pull_request(owner, repo, number)
 
 
+@router.get("/{owner}/{repo}/pulls/{number}/events")
+async def get_pull_request_events(
+    owner: str, repo: str, number: int, pull_request_service: PullRequestServiceDep
+) -> list[ActivityPublic]:
+    """Read state transitions at their original event dates."""
+    return await pull_request_service.get_pull_request_events(owner, repo, number)
+
+
+@router.get("/{owner}/{repo}/pulls/{number}/commits")
+async def get_pull_request_commits(
+    owner: str,
+    repo: str,
+    number: int,
+    pull_request_service: PullRequestServiceDep,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> CommitsPublic:
+    """List commits unique to the PR branch, excluding the base's history."""
+    return await pull_request_service.get_pull_request_commits(owner, repo, number, offset, limit)
+
+
 @router.get("/{owner}/{repo}/pulls/{number}/files")
 async def get_pull_request_files(
     owner: str,
     repo: str,
     number: int,
-    response: Response,
     pull_request_service: PullRequestServiceDep,
-    repository_service: RepositoryServiceDep,
+    include_diff: bool = True,
 ) -> CompareResult:
     """List the files changed by a pull request, diffed against its base branch."""
-    result = await pull_request_service.get_pull_request_files(owner, repo, number)
-    await _apply_cache_headers(response, repository_service, owner, repo, immutable=False)
-    return result
+    return await pull_request_service.get_pull_request_files(owner, repo, number, include_diff=include_diff)
+
+
+@router.get("/{owner}/{repo}/pulls/{number}/mergeability")
+async def get_pull_request_mergeability(
+    owner: str,
+    repo: str,
+    number: int,
+    pull_request_service: PullRequestServiceDep,
+    method: MergeMethod = MergeMethod.MERGE,
+) -> PullRequestMergeability:
+    """Report conflicts before merging, checking fresh tips with immutable calculation caching."""
+    return await pull_request_service.get_mergeability(owner, repo, number, method)
+
+
+@router.post("/{owner}/{repo}/pulls/{number}/merge")
+async def merge_pull_request(
+    owner: str,
+    repo: str,
+    number: int,
+    body: PullRequestMerge,
+    pull_request_service: PullRequestServiceDep,
+    current_user: CurrentUser,
+) -> PullRequestPublic:
+    """Merge Git history and record the PR state only after successful publication."""
+    return await pull_request_service.merge_pull_request(owner, repo, number, body, current_user)
 
 
 @router.patch("/{owner}/{repo}/pulls/{number}")
@@ -338,6 +391,39 @@ async def update_pull_request(
 ) -> PullRequestPublic:
     """Update a pull request."""
     return await pull_request_service.update_pull_request(owner, repo, number, body, current_user)
+
+
+@router.get("/{owner}/{repo}/compare")
+async def compare_revisions(
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    base: str = "main",
+    head: str = "HEAD",
+    include_diff: bool = True,
+) -> CompareResult:
+    """Compare two branches, tags or commits using the shared diff response."""
+    result = await repository_service.compare(owner, repo, base, head, include_diff=include_diff)
+    if is_commit_sha(base) and is_commit_sha(head):
+        await _apply_cache_headers(response, repository_service, owner, repo, immutable=True)
+    return result
+
+
+@router.get("/{owner}/{repo}/diff-file")
+async def get_diff_file(
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
+    head: Annotated[str, Query(pattern=r"^[0-9a-f]{40}$")],
+    file_path: Annotated[str, Query(min_length=1, max_length=4096)],
+    base: Annotated[str, Query(pattern=r"^(?:[0-9a-f]{40})?$")] = "",
+) -> CommitFileChange:
+    """Load one highlighted file at immutable base and head revisions."""
+    result = await repository_service.get_diff_file(owner, repo, head, file_path, base)
+    await _apply_cache_headers(response, repository_service, owner, repo, immutable=True)
+    return result
 
 
 @router.get("/{owner}/{repo}")

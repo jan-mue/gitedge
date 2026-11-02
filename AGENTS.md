@@ -48,7 +48,10 @@ Keep layers focused; dependencies point inward:
 - Unit tests must not touch a real DB, Redis, or blob storage — use the in-memory
   fakes in `tests/unit/utils/fakes.py` and inject them via FastAPI dependency
   overrides (see the `fake_stores` fixture)
-- Integration tests use real dependencies (Docker/testcontainers)
+- Integration tests: `cd backend && uv run pytest tests/integration` (Docker/testcontainers)
+- Browser E2E tests: `cd backend && uv run pytest tests/e2e` (Docker/testcontainers, Bun, Playwright)
+- Run integration and E2E suites in separate pytest processes; synchronous Playwright
+  and pytest-asyncio cannot share the same thread's event loop
 - Use `pytest-mock`, not `unittest.mock`
 - `asyncio_mode=auto`: write `async def test_...` directly, never `@pytest.mark.asyncio`
 - Frontend tests: co-located `*.test.{ts,tsx}`, `describe`/`test` (never `it`), custom

@@ -13,6 +13,7 @@ from app.config import settings
 from app.entities.repositories import Repository
 from app.index import app
 from app.services.notifications import mentioned_users
+from tests.unit.utils.git import seed_merge_repository
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -32,8 +33,14 @@ def inbox(client: TestClient, headers: dict[str, str], **params: str | int) -> d
 
 @pytest.mark.parametrize("target", ["issues", "pulls"])
 def test_discussion_lifecycle(
-    client: TestClient, superuser_token_headers: dict[str, str], normal_user_token_headers: dict[str, str], target: str
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    target: str,
+    fake_stores: FakeStores,
 ) -> None:
+    if target == "pulls":
+        seed_merge_repository(fake_stores, OWNER, "notifications-test")
     response = client.post(
         f"{REPO}/{target}",
         headers=normal_user_token_headers,
@@ -50,19 +57,31 @@ def test_discussion_lifecycle(
             == 200
         )
     if target == "pulls":
-        client.patch(f"{REPO}/pulls/{number}", headers=normal_user_token_headers, json={"state": "merged"})
+        assert (
+            client.patch(
+                f"{REPO}/pulls/{number}", headers=normal_user_token_headers, json={"state": "merged"}
+            ).status_code
+            == 403
+        )
+        assert (
+            client.patch(
+                f"{REPO}/pulls/{number}", headers=superuser_token_headers, json={"state": "merged"}
+            ).status_code
+            == 200
+        )
+        assert inbox(client, normal_user_token_headers)["data"][0]["kind"] == "pull_request_merge"
     result = inbox(client, superuser_token_headers)
-    assert result["count"] == (4 if target == "pulls" else 3)
+    assert result["count"] == 3
     assert all(n["url"] == f"/{OWNER}/notifications-test/{target}/{number}" for n in result["data"])
     client.patch(
         f"{REPO}/{target}/{number}",
-        headers=normal_user_token_headers,
+        headers=superuser_token_headers if target == "pulls" else normal_user_token_headers,
         json={"state": "merged" if target == "pulls" else "open"},
     )
     assert inbox(client, superuser_token_headers)["count"] == result["count"]
     client.post(f"{REPO}/issues/{number}/comments", headers=superuser_token_headers, json={"body": "Reply"})
     authored = inbox(client, normal_user_token_headers)["data"]
-    assert len(authored) == 1
+    assert len(authored) == (2 if target == "pulls" else 1)
     assert authored[0]["reason"] == "author"
     assert "#comment-" in authored[0]["url"]
 

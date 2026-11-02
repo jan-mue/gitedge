@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from app.api.dependencies import OrganizationStoreDep, RepositoryServiceDep, StarServiceDep, UserStoreDep
 from app.schemas.repositories import RepositoriesPublic
@@ -30,13 +30,11 @@ async def _resolve_principal(
         The matching principal.
 
     Raises:
-        HTTPException: If no user or organization matches the name.
+        OrganizationNotFoundError: If no user or organization matches the name.
     """
-    principal: Principal | None = await user_store.get_by_name(username)
+    principal = await user_store.find_by_name(username)
     if principal is None:
-        principal = await organization_store.get_by_name(username)
-    if principal is None:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        return await organization_store.get_by_name(username)
     return principal
 
 
@@ -70,9 +68,7 @@ async def list_user_starred_repositories(
     """List repositories starred by a user.
 
     Raises:
-        HTTPException: If no user matches the name (organizations cannot star).
+        UserNotFoundError: If no user matches the name (organizations cannot star).
     """
     user = await user_store.get_by_name(username)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
     return await star_service.starred_repositories(user.id)

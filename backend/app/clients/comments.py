@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.comments import Comment
@@ -37,6 +37,10 @@ class CommentStore(CrudStore[Comment], ABC):
     async def set_reaction(self, comment_id: uuid.UUID, user_id: uuid.UUID, emoji: str, *, enabled: bool) -> bool:
         """Set a reaction idempotently, returning whether it was newly added."""
 
+    @abstractmethod
+    async def list_by_issue(self, issue_id: uuid.UUID) -> list[Comment]:
+        """Load discussion comments and their authors only when explicitly requested."""
+
 
 class SQLCommentStore(CommentStore, SQLStore[Comment]):
     """SQLAlchemy implementation of the comment store."""
@@ -49,12 +53,14 @@ class SQLCommentStore(CommentStore, SQLStore[Comment]):
         """
         super().__init__(db, Comment)
 
+    @override
     async def find(self, primary_key: uuid.UUID) -> Comment | None:
         """Find a comment by id, loading its author."""
         return await self.db.scalar(
             select(Comment).options(selectinload(Comment.author)).where(Comment.id == primary_key)
         )
 
+    @override
     async def context(self, comment: Comment) -> tuple[Issue, Repository]:
         """Load the discussion and repository, including the owner needed for links."""
         issue = await self.db.scalar(select(Issue).where(Issue.id == comment.issue_id))
@@ -67,11 +73,13 @@ class SQLCommentStore(CommentStore, SQLStore[Comment]):
             raise NotFoundError("Repository not found")
         return issue, repo
 
+    @override
     async def reactions(self, comment_id: uuid.UUID) -> list[CommentReaction]:
         """Read the comment's reaction counts."""
         rows = await self.db.scalars(select(CommentReaction).where(CommentReaction.comment_id == comment_id))
         return list(rows.all())
 
+    @override
     async def set_reaction(self, comment_id: uuid.UUID, user_id: uuid.UUID, emoji: str, *, enabled: bool) -> bool:
         """Use the unique constraint to make repeated requests safe."""
         added = False
@@ -93,3 +101,14 @@ class SQLCommentStore(CommentStore, SQLStore[Comment]):
             )
         await self.db.commit()
         return added
+
+    @override
+    async def list_by_issue(self, issue_id: uuid.UUID) -> list[Comment]:
+        """Read comments chronologically in one query, without metadata-route eager loads."""
+        result = await self.db.scalars(
+            select(Comment)
+            .options(joinedload(Comment.author))
+            .where(Comment.issue_id == issue_id, Comment.reply_to.is_(None), ~Comment.pull_request_comment.has())
+            .order_by(Comment.created_at, Comment.id)
+        )
+        return list(result.all())

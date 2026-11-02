@@ -1,10 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { Settings, Trash2 } from "lucide-react"
+import { GitMerge, Settings, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
+import type { Repository } from "@/client"
 import {
   repositoriesDeleteRepositoryMutation,
   repositoriesGetRepositoryOptions,
@@ -13,6 +14,7 @@ import {
 } from "@/client/@tanstack/react-query.gen"
 import {
   Button,
+  Checkbox,
   DangerZone,
   DangerZoneAction,
   Dialog,
@@ -41,9 +43,53 @@ const schema = z.object({
     .max(255)
     .regex(/^[A-Za-z0-9_.-]+$/, "Use letters, numbers, dots, underscores, or hyphens"),
   description: z.string().max(10000),
+  allow_merge_commit: z.boolean(),
+  allow_squash_merge: z.boolean(),
+  allow_rebase_merge: z.boolean(),
+  merge_commit_message: z.enum(["default", "title", "title_description", "title_commits"]),
+  squash_commit_message: z.enum(["default", "title", "title_description", "title_commits"]),
+  rebase_commit_message: z.enum(["default", "title", "title_description", "title_commits"]),
+  delete_branch_on_merge: z.boolean(),
   default_branch: z.string().min(1, "Default branch is required"),
 })
 type SettingsForm = z.infer<typeof schema>
+
+const mergeFormValues = (data: Partial<Repository>) => ({
+  allow_merge_commit: data.allow_merge_commit ?? true,
+  allow_squash_merge: data.allow_squash_merge ?? true,
+  allow_rebase_merge: data.allow_rebase_merge ?? true,
+  merge_commit_message: data.merge_commit_message ?? "default",
+  squash_commit_message: data.squash_commit_message ?? "title_description",
+  rebase_commit_message: data.rebase_commit_message ?? "default",
+  delete_branch_on_merge: data.delete_branch_on_merge ?? true,
+})
+const mergeMethods = [
+  {
+    enabled: "allow_merge_commit",
+    message: "merge_commit_message",
+    label: "Create merge commit",
+    description: "Keep the original commits and create a commit with two parents.",
+  },
+  {
+    enabled: "allow_squash_merge",
+    message: "squash_commit_message",
+    label: "Squash and merge",
+    description: "Combine all PR changes into one commit.",
+  },
+  {
+    enabled: "allow_rebase_merge",
+    message: "rebase_commit_message",
+    label: "Rebase and merge",
+    description:
+      "Replay each commit onto the base. The message template applies to the final commit; earlier messages and authors are preserved.",
+  },
+] as const
+const messageOptions = [
+  { value: "default", label: "Default: Merge … into …" },
+  { value: "title", label: "PR title" },
+  { value: "title_description", label: "PR title and description" },
+  { value: "title_commits", label: "PR title and commit details" },
+]
 
 const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) => {
   const { user } = useAuth()
@@ -60,10 +106,14 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
     handleSubmit,
     reset,
     formState: { errors, isDirty },
-  } = useForm<SettingsForm>({ resolver: zodResolver(schema) })
+  } = useForm<SettingsForm>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: "", description: "", default_branch: "main", ...mergeFormValues({}) },
+  })
   useEffect(() => {
     if (data)
       reset({
+        ...mergeFormValues(data),
         name: data.name,
         description: data.description ?? "",
         default_branch: data.default_branch ?? "main",
@@ -74,6 +124,7 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
     onSuccess: async (updated) => {
       await queryClient.invalidateQueries()
       reset({
+        ...mergeFormValues(updated),
         name: updated.name,
         description: updated.description ?? "",
         default_branch: updated.default_branch ?? "main",
@@ -109,6 +160,10 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
           <ExternalLink href="#basic-settings" appearance="settings">
             <Settings className="size-4 shrink-0" aria-hidden="true" />
             Repository
+          </ExternalLink>
+          <ExternalLink href="#merge-settings" appearance="settings">
+            <GitMerge className="size-4 shrink-0" aria-hidden="true" />
+            Pull requests
           </ExternalLink>
           <ExternalLink href="#danger-zone" appearance="settingsDanger">
             <Trash2 className="size-4 shrink-0" aria-hidden="true" />
@@ -163,6 +218,70 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
               {errors.default_branch && <p className="text-sm text-destructive">{errors.default_branch.message}</p>}
               <p className="mt-1 text-xs text-muted-foreground">The branch shown when visitors open the repository.</p>
             </div>
+            <fieldset id="merge-settings" className="space-y-5 border-t border-border pt-5">
+              <legend className="pt-5 text-lg font-semibold">Pull requests</legend>
+              <p className="text-sm text-muted-foreground">
+                Choose the available merge methods and their commit messages. Disabling all methods prevents merging.
+              </p>
+              {mergeMethods.map((method) => (
+                <div key={method.enabled} className="space-y-2 rounded-md border border-border p-4">
+                  <div className="flex items-center gap-2">
+                    <Controller
+                      control={control}
+                      name={method.enabled}
+                      render={({ field }) => (
+                        <Checkbox
+                          id={method.enabled}
+                          checked={field.value}
+                          onCheckedChange={(checked) => field.onChange(checked === true)}
+                          onBlur={field.onBlur}
+                          ref={field.ref}
+                        />
+                      )}
+                    />
+                    <Label htmlFor={method.enabled}>{method.label}</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{method.description}</p>
+                  <Label htmlFor={method.message} appearance="field">
+                    {method.label} message
+                  </Label>
+                  <Controller
+                    control={control}
+                    name={method.message}
+                    render={({ field }) => (
+                      <SelectField
+                        id={method.message}
+                        aria-label={`${method.label} message`}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        options={messageOptions}
+                      />
+                    )}
+                  />
+                </div>
+              ))}
+              <div className="flex items-start gap-2">
+                <Controller
+                  control={control}
+                  name="delete_branch_on_merge"
+                  render={({ field }) => (
+                    <Checkbox
+                      id="delete-branch-on-merge"
+                      checked={field.value}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                    />
+                  )}
+                />
+                <div>
+                  <Label htmlFor="delete-branch-on-merge">Automatically delete the PR branch after merging</Label>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    The default branch is kept. The PR’s files, commits and review threads remain available.
+                  </p>
+                </div>
+              </div>
+            </fieldset>
             <p className="text-sm text-muted-foreground">Visibility: {data.is_private ? "Private" : "Public"}</p>
             <LoadingButton type="submit" loading={update.isPending} disabled={!isDirty || remove.isPending}>
               Save settings

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from sqlalchemy import String, cast, func, literal, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -113,6 +113,7 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
         """Bind the store to the request session."""
         super().__init__(db, Notification)
 
+    @override
     async def audience(self, activity: Activity, mentions: set[str]) -> list[tuple[User, str]]:
         """Resolve recipients without broadcasting private repository activity."""
         repo = await self.db.get(Repository, activity.repo_id)
@@ -165,6 +166,7 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
             )
         )
 
+    @override
     async def list_for_user(self, user: User, ids: list[uuid.UUID] | None = None) -> list[Notification]:
         """Read selected accessible rows for ownership checks."""
         query = self._inbox_query(user)
@@ -175,6 +177,7 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
         )
         return list(result.all())
 
+    @override
     async def page(self, user: User, filters: NotificationFilter) -> NotificationPage:
         """Paginate in SQL and compute counts separately from destination hydration."""
         base = self._inbox_query(user)
@@ -226,12 +229,14 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
             list(result.all()), count or 0, unread_count, inbox_count, archived_count, repositories, reasons
         )
 
+    @override
     async def mark_all_read(self, user: User) -> None:
         """Update all visible inbox rows without loading them."""
         ids = self._inbox_query(user).with_only_columns(Notification.id).where(Notification.is_archived.is_(False))
         await self.db.execute(update(Notification).where(Notification.id.in_(ids)).values(is_read=True))
         await self.db.commit()
 
+    @override
     async def archive_repository(self, user: User, repo_id: uuid.UUID) -> None:
         """Archive every accessible notification for this repository in one statement."""
         ids = self._inbox_query(user).with_only_columns(Notification.id).where(Activity.repo_id == repo_id)
@@ -240,6 +245,7 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
         )
         await self.db.commit()
 
+    @override
     async def email_enabled(self, user_id: uuid.UUID) -> bool:
         """Default new accounts to notification center only."""
         return bool(
@@ -251,12 +257,14 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
         await self.db.execute(insert(entity).values(**values).on_conflict_do_update(index_elements=keys, set_=changes))
         await self.db.commit()
 
+    @override
     async def set_email(self, user_id: uuid.UUID, enabled: bool) -> None:
         """Persist the delivery channel."""
         await self._upsert(
             NotificationPreference, {"user_id": user_id, "email": enabled}, ["user_id"], {"email": enabled}
         )
 
+    @override
     async def categories(self, user_id: uuid.UUID, repo_id: uuid.UUID) -> list[str]:
         """Read repository preferences, enabling every category by default."""
         categories = await self.db.scalar(
@@ -266,6 +274,7 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
         )
         return list(NOTIFICATION_CATEGORIES) if categories is None else categories
 
+    @override
     async def set_categories(self, user_id: uuid.UUID, repo_id: uuid.UUID, categories: list[str]) -> None:
         """Save repository preferences."""
         await self._upsert(
@@ -275,6 +284,7 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
             {"categories": categories},
         )
 
+    @override
     async def muted_threads(self, user_id: uuid.UUID) -> set[tuple[uuid.UUID, str]]:
         """Get discussion subscriptions in one query."""
         rows = await self.db.execute(
@@ -284,6 +294,7 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
         )
         return {(repo_id, thread) for repo_id, thread in rows}
 
+    @override
     async def set_muted(self, user_id: uuid.UUID, activity: Activity, muted: bool) -> None:
         """Save a thread subscription."""
         await self._upsert(
