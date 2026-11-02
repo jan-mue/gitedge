@@ -43,6 +43,7 @@ async def check_authorization_persistence(database_url: str) -> None:
                 is_active=True,
             )
             member = User(
+                display_name=f"Display {suffix}",
                 name=f"member-{suffix}",
                 lower_name=f"member-{suffix}",
                 email=f"member-{suffix}@example.com",
@@ -51,6 +52,10 @@ async def check_authorization_persistence(database_url: str) -> None:
             )
             await users.add(admin)
             await users.add(member)
+            for query in [member.name.upper(), member.email, f"Display {suffix}"]:
+                assert [candidate.id for candidate in await users.search(query)] == [member.id]
+            assert not await users.search("%")
+            assert not await users.search("_")
             organization = Organization(name=f"org-{suffix}", lower_name=f"org-{suffix}")
             await facts.create_organization(organization, admin.id)
             assert (await facts.members(organization.id))[0].is_admin

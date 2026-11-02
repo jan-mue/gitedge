@@ -325,3 +325,55 @@ def test_current_privacy_and_permissions(client: TestClient, fake_stores: FakeSt
     repo.is_private = True
     assert client.get(url).status_code == 401
     assert client.get(url, headers=headers(owner)).headers["cache-control"] == "private, no-store"
+
+
+@pytest.mark.parametrize("scope", ["repository", "organization"])
+async def test_access_candidate_search_is_scoped_and_returns_only_profiles(
+    client: TestClient, fake_stores: FakeStores, scope: str
+) -> None:
+    admin = add_user(fake_stores, "manager")
+    admin.is_superuser = True
+    outsider = add_user(fake_stores, "outsider")
+    candidate = add_user(fake_stores, "jan-mueller")
+    candidate.display_name = "Jan Müller"
+    inactive = add_user(fake_stores, "jan-inactive")
+    inactive.is_active = False
+    if scope == "repository":
+        add_repository(fake_stores, admin)
+        url = f"{API}/repositories/manager/repo/collaborator-candidates"
+    else:
+        org = Organization(name="company", lower_name="company")
+        fake_stores.organizations.persist(org)
+        url = f"{API}/organizations/company/member-candidates"
+    assert client.get(url, params={"q": "jan"}).status_code == 401
+    assert client.get(url, params={"q": "jan"}, headers=headers(outsider)).status_code == 403
+    for query in ["jan-mueller", "MÜLLER", candidate.email]:
+        response = client.get(url, params={"q": query}, headers=headers(admin))
+        assert response.status_code == 200
+        assert response.json() == [
+            {
+                "id": str(candidate.id),
+                "name": candidate.name,
+                "display_name": "Jan Müller",
+                "principal_type": "user",
+            }
+        ]
+    assert client.get(url, params={"q": "%"}, headers=headers(admin)).json() == []
+
+
+async def test_member_list_includes_public_names_and_management_permission(
+    client: TestClient, fake_stores: FakeStores
+) -> None:
+    admin = add_user(fake_stores, "admin")
+    admin.is_superuser = True
+    member = add_user(fake_stores, "member")
+    org = Organization(name="company", lower_name="company")
+    fake_stores.organizations.persist(org)
+    url = f"{API}/organizations/company"
+    response = client.put(f"{url}/members/{member.id}", json={}, headers=headers(admin))
+    assert response.status_code == 200
+    assert response.json()["name"] == "member"
+    assert "email" not in response.json()
+    assert client.get(f"{url}/permissions", headers=headers(admin)).json() == {"admin": True}
+    assert client.get(f"{url}/permissions", headers=headers(member)).json() == {"admin": False}
+    assert client.get(f"{url}/members", headers=headers(member)).json() == [response.json()]

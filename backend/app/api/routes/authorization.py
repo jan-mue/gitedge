@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.dependencies import AuthorizationServiceDep, CurrentUser, OptionalUser
 from app.api.permissions import require_permission
@@ -13,10 +13,12 @@ from app.schemas.authorization import (
     CollaboratorPublic,
     MemberInput,
     MemberPublic,
+    OrganizationPermissions,
     RepositoryPermissions,
     TeamInput,
     TeamPublic,
 )
+from app.schemas.users import ProfilePublic
 
 router = APIRouter(tags=["authorization"])
 
@@ -54,7 +56,7 @@ async def list_members(
 ) -> list[MemberPublic]:
     """List an organization's members."""
     org = await authorization.organization(organization, user, "organization:read")
-    return [MemberPublic.model_validate(member) for member in await authorization.store.members(org.id)]
+    return [await authorization.member_public(member) for member in await authorization.store.members(org.id)]
 
 
 @router.put("/organizations/{organization}/members/{user_id}")
@@ -62,7 +64,7 @@ async def set_member(
     organization: str, user_id: uuid.UUID, body: MemberInput, authorization: AuthorizationServiceDep, user: CurrentUser
 ) -> MemberPublic:
     """Add a member or change their organization role."""
-    return MemberPublic.model_validate(await authorization.set_member(organization, user_id, body.is_admin, user))
+    return await authorization.member_public(await authorization.set_member(organization, user_id, body.is_admin, user))
 
 
 @router.delete("/organizations/{organization}/members/{user_id}", status_code=204)
@@ -166,3 +168,42 @@ async def remove_collaborator(
     """Revoke an explicit repository role."""
     repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
     await authorization.remove_collaborator(repository, collaborator_id, current_user)
+
+
+@router.get("/repositories/{owner}/{repo}/collaborator-candidates")
+async def search_collaborator_candidates(
+    owner: str,
+    repo: str,
+    authorization: AuthorizationServiceDep,
+    user: Annotated[User, Depends(require_permission("repository:admin", user_dep=CurrentUser))],
+    q: Annotated[str, Query(min_length=1, max_length=255)],
+) -> list[ProfilePublic]:
+    """Search public identities for the repository's add-people dialog."""
+    del owner, repo, user
+    return [ProfilePublic.model_validate(user) for user in await authorization.users.search(q)]
+
+
+@router.get("/organizations/{organization}/member-candidates")
+async def search_member_candidates(
+    organization: str,
+    authorization: AuthorizationServiceDep,
+    user: CurrentUser,
+    q: Annotated[str, Query(min_length=1, max_length=255)],
+) -> list[ProfilePublic]:
+    """Allow organization administrators to find users to add."""
+    await authorization.organization(organization, user)
+    return [ProfilePublic.model_validate(candidate) for candidate in await authorization.users.search(q)]
+
+
+@router.get("/organizations/{organization}/permissions")
+async def get_organization_permissions(
+    organization: str,
+    authorization: AuthorizationServiceDep,
+    user: CurrentUser,
+) -> OrganizationPermissions:
+    """Expose management controls only to organization administrators."""
+    org = await authorization.organization(organization, user, "organization:read")
+    members = await authorization.store.members(org.id)
+    return OrganizationPermissions(
+        admin=user.is_superuser or any(member.user_id == user.id and member.is_admin for member in members)
+    )

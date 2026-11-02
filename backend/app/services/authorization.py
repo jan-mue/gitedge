@@ -11,7 +11,7 @@ from fastapi import HTTPException
 
 from app.entities.authorization import OrganizationMember, RepositoryCollaborator, Team, TeamMember
 from app.entities.principals import PrincipalType
-from app.schemas.authorization import CollaboratorPublic, RepositoryRole
+from app.schemas.authorization import CollaboratorPublic, MemberPublic, RepositoryRole
 
 if TYPE_CHECKING:
     import uuid
@@ -116,6 +116,11 @@ class AuthorizationService:
             await self.organization(owner, user)
         elif owner_id != user.id and not user.is_superuser:
             raise HTTPException(status_code=403, detail="Cannot create repositories for another user")
+
+    async def member_public(self, member: OrganizationMember) -> MemberPublic:
+        """Include public identity fields in the membership list."""
+        user = await self.users.get(member.user_id)
+        return MemberPublic(user_id=user.id, name=user.name, display_name=user.display_name, is_admin=member.is_admin)
 
     async def set_member(self, name: str, user_id: uuid.UUID, is_admin: bool, actor: User) -> OrganizationMember:
         """Add or update a member, preserving at least one organization admin."""
@@ -232,4 +237,5 @@ class AuthorizationService:
             team_id=collaborator.team_id,
             role=RepositoryRole(collaborator.role),
             subject_name=name,
+            display_name=user.display_name if collaborator.user_id is not None else None,
         )

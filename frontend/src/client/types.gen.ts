@@ -292,6 +292,10 @@ export type CollaboratorPublic = {
      */
     id: string;
     /**
+     * Display Name
+     */
+    display_name?: string | null;
+    /**
      * Subject Name
      */
     subject_name: string;
@@ -1006,6 +1010,14 @@ export type MemberPublic = {
      * User Id
      */
     user_id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
 };
 
 /**
@@ -1056,6 +1068,18 @@ export type OrganizationCreate = {
      * Description
      */
     description?: string | null;
+};
+
+/**
+ * OrganizationPermissions
+ *
+ * The current viewer's organization management permission.
+ */
+export type OrganizationPermissions = {
+    /**
+     * Admin
+     */
+    admin: boolean;
 };
 
 /**
@@ -3793,6 +3817,114 @@ export type authorizationRemoveCollaboratorResponses = {
 };
 
 export type authorizationRemoveCollaboratorResponse = authorizationRemoveCollaboratorResponses[keyof authorizationRemoveCollaboratorResponses];
+
+export type authorizationSearchCollaboratorCandidatesData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query: {
+        /**
+         * Q
+         */
+        q: string;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/collaborator-candidates';
+};
+
+export type authorizationSearchCollaboratorCandidatesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationSearchCollaboratorCandidatesError = authorizationSearchCollaboratorCandidatesErrors[keyof authorizationSearchCollaboratorCandidatesErrors];
+
+export type authorizationSearchCollaboratorCandidatesResponses = {
+    /**
+     * Response Authorization-Search Collaborator Candidates
+     *
+     * Successful Response
+     */
+    200: Array<ProfilePublic>;
+};
+
+export type authorizationSearchCollaboratorCandidatesResponse = authorizationSearchCollaboratorCandidatesResponses[keyof authorizationSearchCollaboratorCandidatesResponses];
+
+export type authorizationSearchMemberCandidatesData = {
+    body?: never;
+    path: {
+        /**
+         * Organization
+         */
+        organization: string;
+    };
+    query: {
+        /**
+         * Q
+         */
+        q: string;
+    };
+    url: '/api/v1/organizations/{organization}/member-candidates';
+};
+
+export type authorizationSearchMemberCandidatesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationSearchMemberCandidatesError = authorizationSearchMemberCandidatesErrors[keyof authorizationSearchMemberCandidatesErrors];
+
+export type authorizationSearchMemberCandidatesResponses = {
+    /**
+     * Response Authorization-Search Member Candidates
+     *
+     * Successful Response
+     */
+    200: Array<ProfilePublic>;
+};
+
+export type authorizationSearchMemberCandidatesResponse = authorizationSearchMemberCandidatesResponses[keyof authorizationSearchMemberCandidatesResponses];
+
+export type authorizationGetOrganizationPermissionsData = {
+    body?: never;
+    path: {
+        /**
+         * Organization
+         */
+        organization: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/{organization}/permissions';
+};
+
+export type authorizationGetOrganizationPermissionsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationGetOrganizationPermissionsError = authorizationGetOrganizationPermissionsErrors[keyof authorizationGetOrganizationPermissionsErrors];
+
+export type authorizationGetOrganizationPermissionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: OrganizationPermissions;
+};
+
+export type authorizationGetOrganizationPermissionsResponse = authorizationGetOrganizationPermissionsResponses[keyof authorizationGetOrganizationPermissionsResponses];
 
 export type starsUnstarRepositoryData = {
     body?: never;

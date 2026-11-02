@@ -4,8 +4,8 @@ import {
   handleAuthorizationListCollaborators,
   handleAuthorizationListCollaboratorTeams,
   handleAuthorizationRemoveCollaborator,
+  handleAuthorizationSearchCollaboratorCandidates,
   handleAuthorizationSetCollaborator,
-  handleProfilesReadUserByUsername,
 } from "@/client/msw.gen"
 
 const userId = "00000000-0000-0000-0000-000000000001"
@@ -30,7 +30,25 @@ export const createCollaboratorFixtures = (initial: CollaboratorPublic[] = story
     handlers: [
       handleAuthorizationListCollaborators(() => HttpResponse.json(collaborators)),
       handleAuthorizationListCollaboratorTeams({ body: [{ id: teamId, organization_id: userId, name: "developers" }] }),
-      handleProfilesReadUserByUsername({ body: { id: userId, name: "alice", principal_type: "user" } }),
+      handleAuthorizationSearchCollaboratorCandidates(({ request }) => {
+        const query = new URL(request.url).searchParams.get("q")?.toLowerCase() ?? ""
+        return HttpResponse.json(
+          [
+            {
+              id: "00000000-0000-0000-0000-000000000005",
+              name: "garrett",
+              display_name: "Garrett Yan",
+              principal_type: "user" as const,
+            },
+            {
+              id: "00000000-0000-0000-0000-000000000006",
+              name: "jan-mueller",
+              display_name: "Jan Müller",
+              principal_type: "user" as const,
+            },
+          ].filter((user) => `${user.name} ${user.display_name}`.toLowerCase().includes(query)),
+        )
+      }),
       handleAuthorizationSetCollaborator(async ({ request }) => {
         const body = await request.json()
         const existing = collaborators.find((item) =>
@@ -39,7 +57,7 @@ export const createCollaboratorFixtures = (initial: CollaboratorPublic[] = story
         const collaborator: CollaboratorPublic = {
           ...body,
           id: existing?.id ?? crypto.randomUUID(),
-          subject_name: body.team_id ? "developers" : "alice",
+          subject_name: body.team_id ? "developers" : "garrett",
         }
         collaborators = [...collaborators.filter((item) => item.id !== collaborator.id), collaborator]
         return HttpResponse.json(collaborator)

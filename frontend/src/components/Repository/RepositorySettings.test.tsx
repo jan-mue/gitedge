@@ -72,6 +72,7 @@ describe("RepositorySettings permissions", () => {
     server.use(handleAuthorizationGetPermissions({ body: { read: true, write: true, admin: true, owner: true } }))
     const { user } = renderSettings()
     expect(await screen.findByRole("button", { name: "Delete this repository" })).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Add people" }))
     await user.click(screen.getByRole("combobox", { name: "Role" }))
     expect(screen.getByRole("option", { name: "Owner" })).toBeInTheDocument()
   })

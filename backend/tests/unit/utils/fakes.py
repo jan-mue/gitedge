@@ -248,6 +248,19 @@ class FakeUserStore(FakeCrudStore[User], UserStore):
         """Find a user by their name (case-insensitive)."""
         return next((user for user in self.items.values() if user.lower_name == name.lower()), None)
 
+    @override
+    async def search(self, query: str, limit: int = 20) -> list[User]:
+        query = query.strip().casefold()
+        return sorted(
+            (
+                user
+                for user in self.items.values()
+                if user.is_active
+                and any(query in value.casefold() for value in (user.name, user.display_name or "", user.email))
+            ),
+            key=lambda user: user.lower_name,
+        )[:limit]
+
 
 class FakeOrganizationStore(FakeCrudStore[Organization], OrganizationStore):
     """In-memory organization store."""

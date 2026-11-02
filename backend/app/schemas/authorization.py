@@ -38,6 +38,7 @@ class CollaboratorPublic(CollaboratorInput):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    display_name: str | None = None
     subject_name: str
 
 
@@ -62,6 +63,14 @@ class MemberPublic(MemberInput):
     model_config = ConfigDict(from_attributes=True)
 
     user_id: uuid.UUID
+    name: str
+    display_name: str | None = None
+
+
+class OrganizationPermissions(GitEdgeBaseModel):
+    """The current viewer's organization management permission."""
+
+    admin: bool
 
 
 class TeamInput(GitEdgeBaseModel):

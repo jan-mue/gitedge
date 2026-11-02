@@ -2,7 +2,7 @@
 
 import { http, type HttpHandler, HttpResponse, type HttpResponseResolver, type RequestHandlerOptions as RequestHandlerOptions2 } from 'msw';
 
-import type { activityGetFeedResponses, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsResponses, authorizationCreateTeamData, authorizationCreateTeamResponses, authorizationDeleteTeamResponses, authorizationGetPermissionsResponses, authorizationListCollaboratorsResponses, authorizationListCollaboratorTeamsResponses, authorizationListMembersResponses, authorizationListTeamMembersResponses, authorizationListTeamsResponses, authorizationRemoveCollaboratorResponses, authorizationRemoveMemberResponses, authorizationRemoveTeamMemberResponses, authorizationSetCollaboratorData, authorizationSetCollaboratorResponses, authorizationSetMemberData, authorizationSetMemberResponses, authorizationSetTeamMemberResponses, ClientOptions, commentsCreateCommentData, commentsCreateCommentResponses, commentsDeleteCommentResponses, commentsListCommentsResponses, commentsUpdateCommentData, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryResponses, forksListForksResponses, gitGetHeadResponses, gitGetInfoPacksResponses, gitGetInfoRefsResponses, gitGetLooseObjectResponses, gitGetPackFileResponses, gitGitReceivePackResponses, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenResponses, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordResponses, loginTestTokenResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationResponses, organizationsListOrganizationsResponses, personalAccessTokensCreateTokenData, personalAccessTokensCreateTokenResponses, personalAccessTokensListTokensResponses, personalAccessTokensRevokeTokenData, personalAccessTokensRevokeTokenResponses, personalAccessTokensRotateTokenData, personalAccessTokensRotateTokenResponses, privateCreateUserData, privateCreateUserResponses, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseResponses, releasesGetReleaseResponses, releasesListReleasesResponses, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseResponses, repositoriesCompareRevisionsResponses, repositoriesCreateIssueData, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryResponses, repositoriesGetBlameResponses, repositoriesGetBlobResponses, repositoriesGetCommitResponses, repositoriesGetDiffFileResponses, repositoriesGetFileIndexResponses, repositoriesGetIssueResponses, repositoriesGetPullRequestCommitsResponses, repositoriesGetPullRequestEventsResponses, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestMergeabilityResponses, repositoriesGetPullRequestResponses, repositoriesGetRawResponses, repositoriesGetReadmeResponses, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceResponses, repositoriesGetStatisticsResponses, repositoriesGetTreeResponses, repositoriesListBranchesResponses, repositoriesListCommitsResponses, repositoriesListIssuesResponses, repositoriesListPullRequestsResponses, repositoriesListRepositoriesResponses, repositoriesMergePullRequestData, repositoriesMergePullRequestResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryResponses, reviewsGetCommentContextResponses, reviewsGetWorkspaceResponses, reviewsListReviewsResponses, reviewsMarkReviewedData, reviewsMarkReviewedResponses, reviewsReplyToReviewData, reviewsReplyToReviewResponses, reviewsSaveDraftData, reviewsSaveDraftResponses, reviewsSubmitReviewData, reviewsSubmitReviewResponses, starsGetStarStateResponses, starsListStargazersResponses, starsListStarredRepositoriesResponses, starsStarRepositoryResponses, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserResponses, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeResponses, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserMeData, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckResponses, utilsPreviewMarkdownData, utilsPreviewMarkdownResponses, utilsTestEmailResponses, watchersGetWatchStateResponses, watchersListWatchersResponses, watchersUnwatchRepositoryResponses, watchersWatchRepositoryResponses } from './types.gen';
+import type { activityGetFeedResponses, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsResponses, authorizationCreateTeamData, authorizationCreateTeamResponses, authorizationDeleteTeamResponses, authorizationGetOrganizationPermissionsResponses, authorizationGetPermissionsResponses, authorizationListCollaboratorsResponses, authorizationListCollaboratorTeamsResponses, authorizationListMembersResponses, authorizationListTeamMembersResponses, authorizationListTeamsResponses, authorizationRemoveCollaboratorResponses, authorizationRemoveMemberResponses, authorizationRemoveTeamMemberResponses, authorizationSearchCollaboratorCandidatesResponses, authorizationSearchMemberCandidatesResponses, authorizationSetCollaboratorData, authorizationSetCollaboratorResponses, authorizationSetMemberData, authorizationSetMemberResponses, authorizationSetTeamMemberResponses, ClientOptions, commentsCreateCommentData, commentsCreateCommentResponses, commentsDeleteCommentResponses, commentsListCommentsResponses, commentsUpdateCommentData, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryResponses, forksListForksResponses, gitGetHeadResponses, gitGetInfoPacksResponses, gitGetInfoRefsResponses, gitGetLooseObjectResponses, gitGetPackFileResponses, gitGitReceivePackResponses, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenResponses, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordResponses, loginTestTokenResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationResponses, organizationsListOrganizationsResponses, personalAccessTokensCreateTokenData, personalAccessTokensCreateTokenResponses, personalAccessTokensListTokensResponses, personalAccessTokensRevokeTokenData, personalAccessTokensRevokeTokenResponses, personalAccessTokensRotateTokenData, personalAccessTokensRotateTokenResponses, privateCreateUserData, privateCreateUserResponses, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseResponses, releasesGetReleaseResponses, releasesListReleasesResponses, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseResponses, repositoriesCompareRevisionsResponses, repositoriesCreateIssueData, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryResponses, repositoriesGetBlameResponses, repositoriesGetBlobResponses, repositoriesGetCommitResponses, repositoriesGetDiffFileResponses, repositoriesGetFileIndexResponses, repositoriesGetIssueResponses, repositoriesGetPullRequestCommitsResponses, repositoriesGetPullRequestEventsResponses, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestMergeabilityResponses, repositoriesGetPullRequestResponses, repositoriesGetRawResponses, repositoriesGetReadmeResponses, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceResponses, repositoriesGetStatisticsResponses, repositoriesGetTreeResponses, repositoriesListBranchesResponses, repositoriesListCommitsResponses, repositoriesListIssuesResponses, repositoriesListPullRequestsResponses, repositoriesListRepositoriesResponses, repositoriesMergePullRequestData, repositoriesMergePullRequestResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryResponses, reviewsGetCommentContextResponses, reviewsGetWorkspaceResponses, reviewsListReviewsResponses, reviewsMarkReviewedData, reviewsMarkReviewedResponses, reviewsReplyToReviewData, reviewsReplyToReviewResponses, reviewsSaveDraftData, reviewsSaveDraftResponses, reviewsSubmitReviewData, reviewsSubmitReviewResponses, starsGetStarStateResponses, starsListStargazersResponses, starsListStarredRepositoriesResponses, starsStarRepositoryResponses, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserResponses, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeResponses, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserMeData, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckResponses, utilsPreviewMarkdownData, utilsPreviewMarkdownResponses, utilsTestEmailResponses, watchersGetWatchStateResponses, watchersListWatchersResponses, watchersUnwatchRepositoryResponses, watchersWatchRepositoryResponses } from './types.gen';
 
 export type RequestHandlerOptions = RequestHandlerOptions2 & {
     baseUrl?: ClientOptions['baseUrl'];
@@ -1261,6 +1261,101 @@ export function handleAuthorizationRemoveCollaborator(response?: HandleAuthoriza
         const body = response?.body;
         if (body !== undefined) {
             return new HttpResponse(body, { status: response?.status ?? 204 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationSearchCollaboratorCandidatesResponse = {
+    body: authorizationSearchCollaboratorCandidatesResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/repositories/{owner}/{repo}/collaborator-candidates` operation.
+ */
+export function handleAuthorizationSearchCollaboratorCandidates(response?: HandleAuthorizationSearchCollaboratorCandidatesResponse | HttpResponseResolver<{
+    owner: string;
+    repo: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        owner: string;
+        repo: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/repositories/:owner/:repo/collaborator-candidates`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationSearchMemberCandidatesResponse = {
+    body: authorizationSearchMemberCandidatesResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/organizations/{organization}/member-candidates` operation.
+ */
+export function handleAuthorizationSearchMemberCandidates(response?: HandleAuthorizationSearchMemberCandidatesResponse | HttpResponseResolver<{
+    organization: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        organization: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/organizations/:organization/member-candidates`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAuthorizationGetOrganizationPermissionsResponse = {
+    body: authorizationGetOrganizationPermissionsResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/organizations/{organization}/permissions` operation.
+ */
+export function handleAuthorizationGetOrganizationPermissions(response?: HandleAuthorizationGetOrganizationPermissionsResponse | HttpResponseResolver<{
+    organization: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        organization: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/organizations/:organization/permissions`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
         }
         if (options?.responseFallback === 'passthrough') {
             return;
@@ -3705,6 +3800,18 @@ export type MswHandlerFactories = {
      */
     authorizationRemoveCollaborator: typeof handleAuthorizationRemoveCollaborator;
     /**
+     * Handler for the `GET /api/v1/repositories/{owner}/{repo}/collaborator-candidates` operation.
+     */
+    authorizationSearchCollaboratorCandidates: typeof handleAuthorizationSearchCollaboratorCandidates;
+    /**
+     * Handler for the `GET /api/v1/organizations/{organization}/member-candidates` operation.
+     */
+    authorizationSearchMemberCandidates: typeof handleAuthorizationSearchMemberCandidates;
+    /**
+     * Handler for the `GET /api/v1/organizations/{organization}/permissions` operation.
+     */
+    authorizationGetOrganizationPermissions: typeof handleAuthorizationGetOrganizationPermissions;
+    /**
      * Handler for the `DELETE /api/v1/repositories/{owner}/{repo}/star` operation.
      */
     starsUnstarRepository: typeof handleStarsUnstarRepository;
@@ -4038,6 +4145,9 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
         authorizationListCollaborators: wrap(handleAuthorizationListCollaborators),
         authorizationSetCollaborator: wrap(handleAuthorizationSetCollaborator),
         authorizationRemoveCollaborator: wrap(handleAuthorizationRemoveCollaborator),
+        authorizationSearchCollaboratorCandidates: wrap(handleAuthorizationSearchCollaboratorCandidates),
+        authorizationSearchMemberCandidates: wrap(handleAuthorizationSearchMemberCandidates),
+        authorizationGetOrganizationPermissions: wrap(handleAuthorizationGetOrganizationPermissions),
         starsUnstarRepository: wrap(handleStarsUnstarRepository),
         starsGetStarState: wrap(handleStarsGetStarState),
         starsStarRepository: wrap(handleStarsStarRepository),
@@ -4156,6 +4266,7 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.authorizationListCollaboratorTeams, overrides.authorizationListCollaboratorTeams),
             invoke(pick.authorizationListCollaborators, overrides.authorizationListCollaborators),
             invoke(pick.authorizationSetCollaborator, overrides.authorizationSetCollaborator),
+            invoke(pick.authorizationSearchCollaboratorCandidates, overrides.authorizationSearchCollaboratorCandidates),
             invoke(pick.starsUnstarRepository, overrides.starsUnstarRepository),
             invoke(pick.starsGetStarState, overrides.starsGetStarState),
             invoke(pick.starsStarRepository, overrides.starsStarRepository),
@@ -4196,6 +4307,8 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.authorizationListMembers, overrides.authorizationListMembers),
             invoke(pick.authorizationListTeams, overrides.authorizationListTeams),
             invoke(pick.authorizationCreateTeam, overrides.authorizationCreateTeam),
+            invoke(pick.authorizationSearchMemberCandidates, overrides.authorizationSearchMemberCandidates),
+            invoke(pick.authorizationGetOrganizationPermissions, overrides.authorizationGetOrganizationPermissions),
             invoke(pick.profilesListUserRepositories, overrides.profilesListUserRepositories),
             invoke(pick.profilesListUserStarredRepositories, overrides.profilesListUserStarredRepositories),
             invoke(pick.repositoriesDeleteRepository, overrides.repositoriesDeleteRepository),
