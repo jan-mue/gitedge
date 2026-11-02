@@ -22,7 +22,19 @@ import {
   notificationsMarkAllReadMutation,
   notificationsUpdateNotificationsMutation,
 } from "@/client/@tanstack/react-query.gen"
-import { Button, ChoiceInput, Input, Link, Page } from "@/components/design-system"
+import {
+  Button,
+  ChoiceInput,
+  EmptyState,
+  Input,
+  Link,
+  NotificationFilter,
+  NotificationGroup,
+  NotificationItem,
+  NotificationSummary,
+  NotificationToolbar,
+  Page,
+} from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 import { categoryMeta, RepositoryNotificationPreferences } from "./RepositoryNotificationPreferences"
@@ -139,10 +151,10 @@ export const NotificationCenter = () => {
   const viewButtons = (mobile = false) => (
     <>
       {(["inbox", "archived"] as const).map((value) => (
-        <Button
+        <NotificationFilter
           key={value}
-          variant={mobile ? "notificationChip" : "notificationSidebar"}
-          size={mobile ? "notificationChip" : "notificationSidebar"}
+          mobile={mobile}
+          count={value === "inbox" ? (data?.inbox_count ?? 0) : (data?.archived_count ?? 0)}
           aria-pressed={view === value}
           onClick={() => setParam("view", value === "inbox" ? undefined : value)}
         >
@@ -150,8 +162,7 @@ export const NotificationCenter = () => {
             {value === "inbox" ? <Inbox className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
             {value === "inbox" ? "Inbox" : "Archived"}
           </span>
-          <span className="text-xs">{value === "inbox" ? (data?.inbox_count ?? 0) : (data?.archived_count ?? 0)}</span>
-        </Button>
+        </NotificationFilter>
       ))}
     </>
   )
@@ -164,10 +175,9 @@ export const NotificationCenter = () => {
           <div>
             <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 mb-1">Filters</div>
             {reasons.map((reason) => (
-              <Button
+              <NotificationFilter
                 key={reason.id}
-                variant="notificationSidebar"
-                size="notificationSidebar"
+                count={data?.reasons[reason.id] ?? 0}
                 aria-pressed={search.reason === reason.id}
                 onClick={() => setParam("reason", search.reason === reason.id ? undefined : reason.id)}
               >
@@ -175,8 +185,7 @@ export const NotificationCenter = () => {
                   <reason.icon className="w-4 h-4" />
                   {reason.label}
                 </span>
-                <span className="text-xs">{data?.reasons[reason.id] ?? 0}</span>
-              </Button>
+              </NotificationFilter>
             ))}
           </div>
           <div>
@@ -184,16 +193,14 @@ export const NotificationCenter = () => {
               Repositories
             </div>
             {data?.repositories.map((repo) => (
-              <Button
+              <NotificationFilter
                 key={repo}
-                variant="notificationSidebar"
-                size="notificationSidebar"
+                count={data.repository_counts[repo] ?? 0}
                 aria-pressed={search.repo === repo}
                 onClick={() => setParam("repo", search.repo === repo ? undefined : repo)}
               >
                 <span className="truncate">{repo}</span>
-                <span className="text-xs">{data.repository_counts[repo] ?? 0}</span>
-              </Button>
+              </NotificationFilter>
             ))}
           </div>
           <Link to="/settings" search={{ tab: "notifications" }} appearance="muted">
@@ -205,26 +212,24 @@ export const NotificationCenter = () => {
           <nav className="md:hidden flex flex-wrap gap-1.5" aria-label="Notification filters">
             {viewButtons(true)}
             {reasons.map((reason) => (
-              <Button
+              <NotificationFilter
                 key={reason.id}
-                variant="notificationChip"
-                size="notificationChip"
+                mobile
                 aria-pressed={search.reason === reason.id}
                 onClick={() => setParam("reason", search.reason === reason.id ? undefined : reason.id)}
               >
                 {reason.label}
-              </Button>
+              </NotificationFilter>
             ))}
             {data?.repositories.map((repo) => (
-              <Button
+              <NotificationFilter
                 key={repo}
-                variant="notificationChip"
-                size="notificationChip"
+                mobile
                 aria-pressed={search.repo === repo}
                 onClick={() => setParam("repo", search.repo === repo ? undefined : repo)}
               >
                 {repo}
-              </Button>
+              </NotificationFilter>
             ))}
             <Link to="/settings" search={{ tab: "notifications" }} appearance="caption">
               Notification preferences
@@ -260,7 +265,7 @@ export const NotificationCenter = () => {
               </Button>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 px-3 py-2 border border-border rounded-md bg-secondary">
+          <NotificationToolbar>
             <label
               htmlFor="select-notifications"
               className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer"
@@ -325,7 +330,7 @@ export const NotificationCenter = () => {
                 </Button>
               </div>
             )}
-          </div>
+          </NotificationToolbar>
           {isPending && (
             <p role="status" className="py-16 text-center text-sm text-muted-foreground">
               Loading notifications…
@@ -340,40 +345,41 @@ export const NotificationCenter = () => {
             </div>
           )}
           {!isPending && !isError && visible.length === 0 && (
-            <div className="flex flex-col items-center py-16 text-muted-foreground border border-border rounded-md">
-              <Inbox className="w-10 h-10 mb-3" />
-              <p className="text-sm">
-                {view === "archived" ? "Nothing archived." : "No notifications match these filters."}
-              </p>
-            </div>
+            <EmptyState
+              icon={Inbox}
+              title={view === "archived" ? "Nothing archived." : "No notifications match these filters."}
+            />
           )}
           {Object.entries(groups).map(([repo, items]) =>
             !items ? null : (
-              <section key={repo} className="border border-border rounded-md overflow-hidden">
-                <header className="sticky top-0 z-10 flex items-center justify-between gap-2 px-3 py-2 bg-secondary border-b border-border">
-                  <span className="flex items-center gap-3 min-w-0">
-                    <ChoiceInput
-                      appearance="notification"
-                      type="checkbox"
-                      aria-label={`Select all in ${repo}`}
-                      checked={items.every((n) => selected.has(n.id))}
-                      disabled={busy}
-                      onChange={() =>
-                        toggle(
-                          items.map((n) => n.id),
-                          !items.every((n) => selected.has(n.id)),
-                        )
-                      }
-                    />
-                    <Link
-                      to="/$owner/$repo"
-                      params={{ owner: repo.split("/")[0], repo: repo.split("/")[1] }}
-                      appearance="notificationRepository"
-                    >
-                      {repo}
-                    </Link>
-                  </span>
-                  <div className="flex items-center gap-1 shrink-0">
+              <NotificationGroup
+                key={repo}
+                selection={
+                  <ChoiceInput
+                    appearance="notification"
+                    type="checkbox"
+                    aria-label={`Select all in ${repo}`}
+                    checked={items.every((n) => selected.has(n.id))}
+                    disabled={busy}
+                    onChange={() =>
+                      toggle(
+                        items.map((n) => n.id),
+                        !items.every((n) => selected.has(n.id)),
+                      )
+                    }
+                  />
+                }
+                title={
+                  <Link
+                    to="/$owner/$repo"
+                    params={{ owner: repo.split("/")[0], repo: repo.split("/")[1] }}
+                    appearance="notificationRepository"
+                  >
+                    {repo}
+                  </Link>
+                }
+                actions={
+                  <>
                     <Button variant="notificationAction" size="notificationAction" onClick={() => setManaging(repo)}>
                       <Settings2 className="w-3.5 h-3.5" />
                       Manage
@@ -391,18 +397,19 @@ export const NotificationCenter = () => {
                         Clear
                       </Button>
                     )}
-                  </div>
-                </header>
-                <ul>
-                  {items.map((n) => {
-                    const meta = categoryMeta[n.category]
-                    const [path, hash] = n.url.split("#")
-                    return (
-                      <li
-                        key={n.id}
-                        id={`notif-${n.id}`}
-                        className={`flex items-center gap-3 px-3 py-2 border-b border-border last:border-b-0 ${n.id === search.focus ? "ring-1 ring-inset ring-primary" : ""} ${!n.is_read ? "bg-primary/5" : ""}`}
-                      >
+                  </>
+                }
+              >
+                {items.map((n) => {
+                  const meta = categoryMeta[n.category]
+                  const [path, hash] = n.url.split("#")
+                  return (
+                    <NotificationItem
+                      key={n.id}
+                      id={`notif-${n.id}`}
+                      unread={!n.is_read}
+                      focused={n.id === search.focus}
+                      selection={
                         <ChoiceInput
                           appearance="notification"
                           type="checkbox"
@@ -411,34 +418,10 @@ export const NotificationCenter = () => {
                           disabled={busy}
                           onChange={() => toggle([n.id])}
                         />
-                        <span
-                          className={`w-2 h-2 rounded-full shrink-0 ${!n.is_read ? "bg-primary" : "bg-transparent"}`}
-                        />
-                        <meta.icon className={`w-4 h-4 shrink-0 ${meta.color}`} />
-                        <Link
-                          to={path}
-                          hash={hash}
-                          search={origin(n)}
-                          appearance="notificationTarget"
-                          onClick={() => {
-                            if (!n.is_read) patch([n.id], { is_read: true })
-                          }}
-                        >
-                          <div
-                            className={`text-sm truncate group-hover:text-primary text-foreground ${!n.is_read ? "font-semibold" : ""}`}
-                          >
-                            {n.title}{" "}
-                            {n.number != null && <span className="text-muted-foreground font-normal">#{n.number}</span>}
-                          </div>
-                          <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2">
-                            <span>{n.kind.replace(/_/g, " ")}</span>·<span>{n.reason}</span>·
-                            <time dateTime={n.created_at} title={new Date(n.created_at).toLocaleString()}>
-                              {timeAgo(n.created_at)}
-                            </time>
-                            {n.unsubscribed && <span className="text-warning">· unsubscribed from thread</span>}
-                          </div>
-                        </Link>
-                        <div className="flex items-center gap-0.5 shrink-0">
+                      }
+                      icon={<meta.icon className={`w-4 h-4 shrink-0 ${meta.color}`} />}
+                      actions={
+                        <>
                           {!n.is_archived && (
                             <Button
                               variant="notificationIcon"
@@ -472,12 +455,30 @@ export const NotificationCenter = () => {
                           >
                             {n.unsubscribed ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
                           </Button>
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </section>
+                        </>
+                      }
+                    >
+                      <Link
+                        to={path}
+                        hash={hash}
+                        search={origin(n)}
+                        appearance="notificationTarget"
+                        onClick={() => {
+                          if (!n.is_read) patch([n.id], { is_read: true })
+                        }}
+                      >
+                        <NotificationSummary title={n.title} number={n.number} unread={!n.is_read}>
+                          <span>{n.kind.replace(/_/g, " ")}</span>·<span>{n.reason}</span>·
+                          <time dateTime={n.created_at} title={new Date(n.created_at).toLocaleString()}>
+                            {timeAgo(n.created_at)}
+                          </time>
+                          {n.unsubscribed && <span className="text-warning">· unsubscribed from thread</span>}
+                        </NotificationSummary>
+                      </Link>
+                    </NotificationItem>
+                  )
+                })}
+              </NotificationGroup>
             ),
           )}
           {data && data.count > PAGE_SIZE && (
