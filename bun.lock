@@ -69,7 +69,7 @@
         "@testing-library/user-event": "14.6.8",
         "@types/react": "19.3.0",
         "@types/react-dom": "19.3.0",
-        "@vercel/config": "0.13.0",
+        "@vercel/config": "0.14.0",
         "@vercel/related-projects": "1.1.1",
         "@vitejs/plugin-react": "6.1.2",
         "@vitejs/plugin-react-swc": "4.3.3",
@@ -895,7 +895,7 @@
 
     "@vercel/cli-exec": ["@vercel/cli-exec@1.0.1", "", { "dependencies": { "execa": "5.1.1" } }, "sha512-g9XerViJ/paZujufXYcu5XYI2vU2rtB4sgdpjUHde5RnOkdmpu0ngH46LCFGHoPXO/C+qDPSczIHIRN+8Q2YKQ=="],
 
-    "@vercel/config": ["@vercel/config@0.13.0", "", { "dependencies": { "@vercel/routing-utils": "6.6.0", "pretty-cache-header": "^1.0.0", "zod": "^3.22.0" }, "bin": { "config": "dist/cli.js" } }, "sha512-Vepsfok6kmYdRYaw0kcx3+G/OnvtdbK2LYriHEbunkaAMa8QYgwZrP+OoLzl0z9LI5LlXsTkd0cmAw/SKG1K+g=="],
+    "@vercel/config": ["@vercel/config@0.14.0", "", { "dependencies": { "@vercel/routing-utils": "6.6.0", "pretty-cache-header": "^1.0.0", "zod": "^3.22.0" }, "bin": { "config": "dist/cli.js" } }, "sha512-z2cUpcCNc+zvd52QUybAhLoal58+PolEbasen3LO/2SKUiyvT4sUiSogV14nN0oucKV2s7lj3eGkXhJEJfSwmg=="],
 
     "@vercel/oidc": ["@vercel/oidc@4.0.4", "", { "dependencies": { "@vercel/cli-config": "0.3.4", "@vercel/cli-exec": "1.0.1", "jose": "^5.9.6" } }, "sha512-cWw+jlAXo7vFHU338hbmPdKOsU0SZflRr1+yfPkar8COC9VEm1qyBWxmfxpbuyhAytp0P2OIa5qUzeWGQ4PvkA=="],
 
