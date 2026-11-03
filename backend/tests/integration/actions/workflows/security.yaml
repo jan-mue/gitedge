@@ -9,12 +9,8 @@ jobs:
           await Bun.write("/gitedge/result.json", JSON.stringify({status: "success", steps: {}, outputs: {}}))
           await Bun.write("/gitedge/exit-code", "0")
           for (const url of ["http://169.254.169.254/latest/meta-data/", process.env.GITHUB_SERVER_URL]) {
-            try {
-              await fetch(url, {proxy: false, signal: AbortSignal.timeout(1000)})
-              throw new Error("Direct network escape succeeded")
-            } catch (error) {
-              if (error.message === "Direct network escape succeeded") throw error
-            }
+            const direct = Bun.spawn(["curl", "--noproxy", "*", "--connect-timeout", "1", "--max-time", "2", "--silent", "--head", url], {stdout: "ignore", stderr: "ignore"})
+            if (await direct.exited === 0) throw new Error("Direct network escape succeeded")
           }
           const registry = await fetch("https://registry.npmjs.org", {signal: AbortSignal.timeout(15000)})
           if (!registry.ok) throw new Error("Allowed registry is unreachable")
