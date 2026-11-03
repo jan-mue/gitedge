@@ -35,5 +35,10 @@ RUN --mount=type=secret,id=proxy_ca,target=/run/proxy-ca.pem \
     rm -rf /var/lib/apt/lists/* /root/.cache && \
     rm -f /usr/local/share/ca-certificates/session-proxy.crt && update-ca-certificates
 COPY --from=runner-build --chmod=755 /build/packages/actions-runner/dist/gitedge-launch* /usr/local/bin/
+COPY --from=runner-build /build/packages/actions-runner/dist/gitedge-egress.mjs /usr/local/bin/
+RUN groupadd --gid 10001 gitedge && useradd --uid 10001 --gid 10001 --home-dir /gitedge gitedge \
+    && mkdir -p /gitedge && chmod 1777 /gitedge && chown -R 10001:10001 /opt/hostedtoolcache
 ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache RUNNER_TOOL_CACHE=/opt/hostedtoolcache
+USER 10001:10001
+ENV HOME=/gitedge
 WORKDIR /gitedge

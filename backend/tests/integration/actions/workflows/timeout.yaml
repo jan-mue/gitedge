@@ -5,4 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 0.02
     steps:
-      - run: sleep 60
+      - shell: bun {0}
+        run: |
+          Bun.spawn(["setsid", "sleep", "600"], {stdin: "ignore", stdout: "inherit", stderr: "inherit"})
+          await Bun.sleep(60000)

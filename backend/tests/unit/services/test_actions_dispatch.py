@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from app.clients.sandboxes import AbstractSandboxClient, SandboxError
+from app.clients.sandboxes import AbstractSandboxClient, SandboxError, SandboxExecution
 from app.entities.actions import WorkflowRun
 from app.exceptions import ActionsUnavailableError, ConflictError, PermissionDeniedError
 from app.services.actions.service import ActionsService
@@ -34,7 +34,7 @@ type Execution = tuple[ActionsService, FakeActionsStore, AsyncMockType, FakeActi
 def execution(mocker: MockerFixture, fake_stores: FakeStores) -> Execution:
     store, queue = FakeActionsStore(), FakeActionsQueue()
     sandbox = mocker.AsyncMock(spec=AbstractSandboxClient)
-    sandbox.is_running.return_value = True
+    sandbox.status.return_value = SandboxExecution(True)
     service = ActionsService(
         store,
         mocker.Mock(),
@@ -90,6 +90,12 @@ def completion(sandbox: AsyncMockType) -> tuple[uuid.UUID, str, bytes]:
         "result": {"status": "success", "steps": {}, "outputs": {"value": "ready"}},
     }
     return uuid.UUID(identity["id"]), f"Bearer {descriptor['report_token']}", json.dumps(payload).encode()
+
+
+async def observe_exit(execution: Execution, code: int = 0) -> None:
+    service, store, sandbox, _ = execution
+    sandbox.status.return_value = SandboxExecution(False, code)
+    await service.dispatcher.deliver(min(pending(store, "inspect"), key=lambda item: item.due_at))
 
 
 async def test_dispatch_claim_commits_before_provider_io_and_duplicate_deliveries_do_not_launch_again(
@@ -238,8 +244,11 @@ async def test_completion_push_is_idempotent_and_never_inspects_files(execution:
     await service.dispatcher.deliver(pending(store, "dispatch")[0])
     await service.complete(*completion(sandbox))
     await service.complete(*completion(sandbox))
+    assert run.status == "running"
+    assert not pending(store, "cleanup")
+    await observe_exit(execution)
     await service.dispatcher.deliver(pending(store, "cleanup")[0])
-    sandbox.is_running.assert_not_awaited()
+    sandbox.status.assert_awaited_once()
     assert run.status == "success"
     assert run.jobs[0]["outputs"] == {"value": "ready"}
 
@@ -250,13 +259,13 @@ async def test_late_collection_cannot_resurrect_a_cancelled_attempt(execution: E
     await service.dispatcher.deliver(pending(store, "dispatch")[0])
     started, finish = asyncio.Event(), asyncio.Event()
 
-    async def is_running(_name: str) -> bool:
+    async def status(_name: str) -> SandboxExecution:
         assert not store.in_transaction
         started.set()
         await finish.wait()
-        return False
+        return SandboxExecution(False, 0)
 
-    sandbox.is_running.side_effect = is_running
+    sandbox.status.side_effect = status
     command = next(item for item in pending(store, "inspect") if item.due_at < datetime.now(UTC) + timedelta(seconds=1))
     delivery = asyncio.create_task(service.dispatcher.deliver(command))
     await asyncio.wait_for(started.wait(), 1)
@@ -318,6 +327,7 @@ async def test_artifact_upload_commits_a_fenced_reference_before_completion(
     with pytest.raises(ConflictError):
         await service.publish_state(attempt_id, authorization, b"changed archive")
     await service.complete(attempt_id, authorization, result)
+    await observe_exit(execution)
     key = store.attempts[attempt_id].artifact_key
     assert key is not None
     assert fake_stores.blob.objects[key] == b"archive"
@@ -344,3 +354,51 @@ async def test_queued_old_manifests_fail_visibly_without_provisioning(execution:
     assert run.jobs[0]["status"] == "failure"
     assert "incompatible compiled manifest" in run.jobs[0]["error"]
     sandbox.start.assert_not_awaited()
+
+
+async def test_early_completion_cannot_release_dependencies_while_launcher_runs(execution: Execution) -> None:
+    service, store, sandbox, _ = execution
+    run = await add_run(execution, "dependencies")
+    await service.dispatcher.deliver(pending(store, "dispatch")[0])
+    await service.complete(*completion(sandbox))
+    await service.dispatcher.deliver(min(pending(store, "inspect"), key=lambda item: item.due_at))
+    assert next(job for job in run.jobs if job["key"] == "parent")["status"] == "running"
+    assert next(job for job in run.jobs if job["key"] == "dependent")["status"] == "queued"
+    assert not pending(store, "cleanup")
+    await observe_exit(execution)
+    assert next(job for job in run.jobs if job["key"] == "parent")["status"] == "success"
+    assert next(job for job in run.jobs if job["key"] == "dependent")["status"] == "queued"
+
+
+async def test_provider_exit_code_overrides_forged_success(execution: Execution) -> None:
+    service, store, sandbox, _ = execution
+    run = await add_run(execution)
+    await service.dispatcher.deliver(pending(store, "dispatch")[0])
+    await service.complete(*completion(sandbox))
+    await observe_exit(execution, 17)
+    assert run.jobs[0]["status"] == "failure"
+    assert run.jobs[0]["error"] == "Job bootstrap exited unsuccessfully"
+
+
+async def test_report_retry_cannot_replace_the_first_result(execution: Execution) -> None:
+    service, store, sandbox, _ = execution
+    await add_run(execution)
+    await service.dispatcher.deliver(pending(store, "dispatch")[0])
+    attempt_id, authorization, raw = completion(sandbox)
+    await service.complete(attempt_id, authorization, raw)
+    report = json.loads(raw)
+    report["result"]["outputs"] = {"changed": "true"}
+    with pytest.raises(ConflictError):
+        await service.complete(attempt_id, authorization, json.dumps(report).encode())
+
+
+async def test_pull_request_jobs_receive_no_repository_secrets_or_shared_cache(execution: Execution) -> None:
+    service, store, sandbox, _ = execution
+    run = await add_run(execution)
+    run.event_name = "pull_request"
+    run.event["pull_request"] = {"number": 1}
+    service.dispatcher.secrets[str(run.repo_id)] = {"PRODUCTION_TOKEN": "should-not-reach-the-job"}
+    await service.dispatcher.deliver(pending(store, "dispatch")[0])
+    descriptor = json.loads(sandbox.start.call_args.args[1]["input.json"])
+    assert set(descriptor["secrets"]) == {"GITHUB_TOKEN"}
+    assert "cache_url" not in descriptor

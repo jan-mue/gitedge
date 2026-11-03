@@ -12,6 +12,7 @@ const builds: Bun.BuildConfig[] = [
     define: { "import.meta.main": "true" },
   },
   { entrypoints: ["prepare.ts"], naming: "prepare.mjs", target: "bun", format: "esm" },
+  { entrypoints: ["src/egress.ts"], naming: "gitedge-egress.mjs", target: "bun", format: "esm", minify: true },
 ]
 
 for (const config of builds) {

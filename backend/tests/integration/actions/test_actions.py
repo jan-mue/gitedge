@@ -546,3 +546,56 @@ def test_live_logs_replay_after_disconnect_and_redis_loss(
     completed = wait_for_run(client, path, run_id)
     assert completed["status"] == "success"
     assert "First live record" in client.get(history + "/download").text
+
+
+def test_forged_completion_waits_for_provider_exit_and_network_policy_is_enforced(
+    actions_repo: tuple[httpx.Client, Path, str], infrastructure: dict[str, str]
+) -> None:
+    client, _, path = actions_repo
+    wait_for_run(client, path)
+    dispatch = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/security.yaml"})
+    dispatch.raise_for_status()
+    run_id = dispatch.json()["id"]
+    deadline = time.monotonic() + 180
+    while time.monotonic() < deadline:
+        run = next(run for run in client.get(f"{path}/runs").json() if run["id"] == run_id)
+        if "Forged markers written; network isolation verified" in job_log(client, path, run):
+            break
+        assert run["status"] in {"queued", "running"}, json.dumps(run)
+        time.sleep(0.1)
+    else:
+        pytest.fail("The security workflow did not start")
+    attacker = next(job for job in run["jobs"] if job["key"] == "attacker")
+
+    async def descriptor() -> dict:
+        async with Docker() as docker:
+            container = await docker.containers.get(attacker["sandbox"])
+            config = await container.show()
+            assert config["Config"]["User"] == "10001:10001"
+            return json.loads(
+                next(item.split("=", 1)[1] for item in config["Config"]["Env"] if item.startswith("GITEDGE_JOB="))
+            )
+
+    manifest = asyncio.run(descriptor())
+    db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
+    with psycopg.connect(db_url) as connection:
+        row = connection.execute(
+            "SELECT log_seq FROM workflow_attempt WHERE id = %s", (attacker["attempt_id"],)
+        ).fetchone()
+        assert row is not None
+    forged = {
+        "version": 1,
+        **manifest["attempt"],
+        "exit_code": 0,
+        "last_seq": row[0],
+        "result": {"status": "success", "steps": {}, "outputs": {}},
+    }
+    callback = "/api/v1/" + manifest["report_url"].split("/api/v1/", 1)[1] + "/complete"
+    response = client.post(callback, headers={"Authorization": f"Bearer {manifest['report_token']}"}, json=forged)
+    assert response.status_code == 202
+    time.sleep(2)
+    current = next(run for run in client.get(f"{path}/runs").json() if run["id"] == run_id)
+    assert {job["key"]: job["status"] for job in current["jobs"]} == {"attacker": "running", "dependent": "queued"}
+    finished = wait_for_run(client, path, run_id)
+    assert finished["status"] == "failure"
+    assert {job["key"]: job["status"] for job in finished["jobs"]} == {"attacker": "failure", "dependent": "skipped"}

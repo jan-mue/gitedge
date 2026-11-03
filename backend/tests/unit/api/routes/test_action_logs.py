@@ -8,6 +8,7 @@ from app.api.dependencies import get_actions_store
 from app.config import settings
 from app.entities.actions import WorkflowAttempt, WorkflowRun
 from app.index import app
+from app.schemas.action_logs import JobCompletion
 from app.schemas.actions import ActionJob, ActionStep
 from app.schemas.authorization import RepositoryCollaborator
 from app.services.actions.capabilities import issue_capability
@@ -136,7 +137,8 @@ async def test_result_callbacks_never_inspect_a_sandbox(client: TestClient, fake
     headers = {"Authorization": f"Bearer {token}"}
     assert client.post(path, headers=headers, json=payload).status_code == 202
     assert client.post(path, headers=headers, json=payload).status_code == 202
-    assert attempt.status == "success"
+    assert attempt.status == "running"
+    assert attempt.completion == JobCompletion.model_validate(payload).model_dump(mode="json")
     assert client.post(path, headers=headers, json={**payload, "generation": 2}).status_code == 403
 
 

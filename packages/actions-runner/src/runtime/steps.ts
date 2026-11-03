@@ -11,7 +11,7 @@ import {
 } from "../domain/workflow.ts"
 import type { ExpressionEngine } from "../expressions/evaluator.ts"
 import type { ExecutionScope, JobEnvironment } from "./environment.ts"
-import { inside, type Workspace, writeFile } from "./files.ts"
+import { existingInside, type Workspace, writeFile } from "./files.ts"
 import type { JobLogger } from "./logger.ts"
 import type { ProcessExecutor } from "./process.ts"
 
@@ -56,20 +56,16 @@ export class StepExecutor {
     const result: StepResult = { outcome: "skipped", conclusion: "skipped", outputs: {} }
     const label = step.name || (step.kind === "action" ? step.uses : id)
     try {
-      scope.environment = this.environment.snapshot(base)
-      const workflow = await this.expressions.environment(this.workflow.env, scope.expressionContext(), status)
-      scope.environment = this.environment.snapshot(workflow, base)
-      const job = await this.expressions.environment(this.job.env, scope.expressionContext(), status)
-      scope.environment = this.environment.snapshot(workflow, job, base)
+      scope.environment = await this.environment.resolve(scope, this.expressions, status, base)
       if (this.signal.aborted || !(await this.expressions.condition(step.if, scope.expressionContext(), status))) {
         await this.logger.emit(`Skipped ${label}`, displayId, "skipped")
         return result
       }
       const values = await this.expressions.environment(step.env, scope.expressionContext(), status)
       scope.environment = {
-        ...this.environment.snapshot(workflow, job, base),
+        ...scope.environment,
         ...values,
-        ...this.environment.protected,
+        ...this.environment.reservedEnvironment,
       }
       await this.logger.emit(`Run ${label}`, displayId)
       const minutes = Number(
@@ -130,7 +126,7 @@ export class StepExecutor {
     const script = join(this.workspace.temporary, `${crypto.randomUUID()}.${extension}`)
     await writeFile(script, stringify(await this.expressions.interpolate(step.run, scope.expressionContext(), status)))
     const command = shellCommand(shell, script)
-    const cwd = inside(
+    const cwd = await existingInside(
       this.workspace.source,
       stringify(
         await this.expressions.interpolate(

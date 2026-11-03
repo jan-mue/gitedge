@@ -151,6 +151,16 @@ class Settings(BaseSettings):
     ACTIONS_MAX_PARALLEL: int = 2
     ACTIONS_SERVER_URL: str = "http://host.docker.internal:8000"
     ACTIONS_VERCEL_REGION: str | None = None
+    ACTIONS_EGRESS_HOSTS: list[str] = [
+        "github.com",
+        "api.github.com",
+        "*.githubusercontent.com",
+        "registry.npmjs.org",
+        "pypi.org",
+        "files.pythonhosted.org",
+        "nodejs.org",
+        "astral.sh",
+    ]
     # Explicitly scoped by repository UUID. Values are never stored in workflow rows.
     ACTIONS_SECRETS: dict[str, dict[str, str]] = {}
 

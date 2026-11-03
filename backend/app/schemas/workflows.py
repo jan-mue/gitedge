@@ -153,7 +153,7 @@ class JobInput(BaseModel):
     restore_url: str
     report_url: str
     report_token: str
-    cache_url: str
+    cache_url: str | None = None
 
 
 class CompilerIssue(BaseModel):

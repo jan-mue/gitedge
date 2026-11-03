@@ -1,6 +1,6 @@
 import { join } from "node:path"
 import { gunzipSync } from "node:zlib"
-import { inside, readResponse, TRANSFER_LIMIT, writeFile } from "../runtime/files.ts"
+import { existingInside, inside, readResponse, TRANSFER_LIMIT, writeFile } from "../runtime/files.ts"
 
 export class ArtifactState {
   private restoration: Promise<void> | undefined
@@ -45,7 +45,7 @@ export class ArtifactState {
       onlyFiles: true,
       followSymlinks: false,
     })) {
-      const file = Bun.file(inside(directory, path))
+      const file = Bun.file(await existingInside(directory, path))
       size += file.size
       if (size > TRANSFER_LIMIT) throw new Error("Artifacts exceed 32 MiB")
       files[path] = await file.bytes()

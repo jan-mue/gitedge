@@ -1,7 +1,7 @@
 import { join } from "node:path"
 import { z } from "zod"
 import { type Action, parseAction } from "../domain/workflow.ts"
-import { inside, readJson } from "../runtime/files.ts"
+import { existingInside, readJson } from "../runtime/files.ts"
 
 export interface ResolvedAction {
   directory: string
@@ -26,7 +26,7 @@ export class ActionResolver {
     let reference = ""
     if (uses.startsWith("./")) {
       repositoryRoot = this.workspace
-      directory = inside(this.workspace, uses)
+      directory = await existingInside(this.workspace, uses)
     } else {
       const match = uses.match(/^([\w.-]+\/[\w.-]+)(\/[\w./-]+)?@([^\s]+)$/)
       if (!match || match[2]?.split("/").includes("..")) throw new Error(`Unsupported action: ${uses}`)
@@ -35,13 +35,19 @@ export class ActionResolver {
       this.manifest ??= readJson(join(this.prepared, "manifest.json"), z.record(z.string(), z.string()))
       const tree = (await this.manifest)[`${repository}@${reference}`]
       if (!tree) throw new Error(`Action ${uses} is not prepared in this image; rebuild the image before dispatch`)
-      repositoryRoot = inside(this.prepared, tree)
-      directory = inside(repositoryRoot, `.${match[2] || ""}`)
+      repositoryRoot = await existingInside(this.prepared, tree)
+      directory = await existingInside(repositoryRoot, `.${match[2] || ""}`)
     }
     for (const name of ["action.yml", "action.yaml"]) {
       const file = Bun.file(join(directory, name))
       if (await file.exists())
-        return { directory, repositoryRoot, repository, reference, definition: parseAction(await file.text()) }
+        return {
+          directory,
+          repositoryRoot,
+          repository,
+          reference,
+          definition: parseAction(await Bun.file(await existingInside(repositoryRoot, join(directory, name))).text()),
+        }
     }
     throw new Error(`Missing action metadata: ${uses}`)
   }

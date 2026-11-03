@@ -45,7 +45,7 @@ jobs:
       },
       timeout: 10000,
     })
-    assert.equal(await readFile(join(root, "exit-code"), "utf8"), "0")
+    assert.equal(await Bun.file(join(root, "exit-code")).exists(), false)
     assert.match(await readFile(join(root, "log.jsonl"), "utf8"), /Bytecode launcher executed/)
   } finally {
     await rm(directory, { recursive: true, force: true })

@@ -56,11 +56,14 @@ def build_job_input(
             "GITHUB_SERVER_URL": server,
             "GITHUB_API_URL": server + "/api/v1",
         },
-        secrets={**secrets, "GITHUB_TOKEN": issue_capability(run, job, attempt, "git:read")},
+        secrets={
+            **({} if run.event_name == "pull_request" else secrets),
+            "GITHUB_TOKEN": issue_capability(run, job, attempt, "git:read"),
+        },
         restore_url=_callback(run, job, attempt, "state"),
         report_url=f"{server}/api/v1/actions/attempts/{attempt.id}",
         report_token=issue_capability(run, job, attempt, "actions:report"),
-        cache_url=_callback(run, job, attempt, "cache"),
+        cache_url=None if run.event_name == "pull_request" else _callback(run, job, attempt, "cache"),
     )
     return {"input.json": payload.model_dump_json(by_alias=True, exclude_none=True).encode()}
 

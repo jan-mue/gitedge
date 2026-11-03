@@ -6,13 +6,20 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from app.exceptions import ActionsUnavailableError, ConflictError, PermissionDeniedError, RedisUnavailableError
+from app.exceptions import (
+    ActionsUnavailableError,
+    ConflictError,
+    PermissionDeniedError,
+    RedisUnavailableError,
+    WorkflowError,
+)
 from app.schemas.action_logs import LogChunk, LogEnd, LogRecord
-from app.services.actions.logs import ActionsLogService
+from app.services.actions.logs import MAX_LOG_BYTES, ActionsLogService
 from tests.unit.services.test_actions_dispatch import (
     Execution,
     add_run,
     completion,
+    observe_exit,
     pending,
 )
 from tests.unit.services.test_actions_dispatch import execution as execution  # noqa: PLC0414 — pytest fixture re-export
@@ -135,6 +142,7 @@ async def test_completion_waits_for_logs_and_replay_stops_at_the_last_sequence(
     assert run.jobs[0]["status"] == "running"
     await upload(execution, logs, chunk(execution, 1, ["one", "two"]))
     await service.complete(attempt_id, authorization, json.dumps(result).encode())
+    await observe_exit(execution)
     fake_stores.redis.streams.clear()
     events = [event async for event in logs.stream(run.repo_id, run.id, attempt_id, 1)]
     assert events == [LogRecord(seq=2, msg="two", step_id="hello"), LogEnd(last_seq=2)]
@@ -199,3 +207,16 @@ async def test_unexpected_redis_errors_propagate(
     mocker.patch.object(fake_stores.redis, "stream_read", side_effect=RuntimeError("bug"))
     with pytest.raises(RuntimeError, match="bug"):
         await logs.page(run.repo_id, run.id, data.id, 0)
+
+
+async def test_backend_log_budget_is_enforced_before_object_storage(
+    execution: Execution, reporting: Reporting, fake_stores: FakeStores
+) -> None:
+    logs, indexes, _ = reporting
+    data = chunk(execution, 1, ["too much"])
+    execution[1].attempts[data.id].log_bytes = MAX_LOG_BYTES
+    before = dict(fake_stores.blob.objects)
+    with pytest.raises(WorkflowError, match="logs exceed"):
+        await upload(execution, logs, data)
+    assert fake_stores.blob.objects == before
+    assert not indexes.indexes

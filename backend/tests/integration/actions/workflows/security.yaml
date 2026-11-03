@@ -1,0 +1,34 @@
+name: Untrusted job boundary
+on: workflow_dispatch
+jobs:
+  attacker:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bun {0}
+        run: |
+          await Bun.write("/gitedge/result.json", JSON.stringify({status: "success", steps: {}, outputs: {}}))
+          await Bun.write("/gitedge/exit-code", "0")
+          for (const url of ["http://169.254.169.254/latest/meta-data/", process.env.GITHUB_SERVER_URL]) {
+            try {
+              await fetch(url, {proxy: false, signal: AbortSignal.timeout(1000)})
+              throw new Error("Direct network escape succeeded")
+            } catch (error) {
+              if (error.message === "Direct network escape succeeded") throw error
+            }
+          }
+          const registry = await fetch("https://registry.npmjs.org", {signal: AbortSignal.timeout(15000)})
+          if (!registry.ok) throw new Error("Allowed registry is unreachable")
+          try {
+            await fetch("https://example.com", {signal: AbortSignal.timeout(1000)})
+            throw new Error("Unlisted destination was reachable")
+          } catch (error) {
+            if (error.message === "Unlisted destination was reachable") throw error
+          }
+          console.log("Forged markers written; network isolation verified")
+          await Bun.sleep(15000)
+          process.exit(7)
+  dependent:
+    needs: attacker
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Must be skipped"
