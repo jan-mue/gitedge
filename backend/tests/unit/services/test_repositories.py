@@ -18,7 +18,7 @@ from fastapi import HTTPException
 import app.clients.git.repositories as repository_module
 from app.clients.git.blob_backend import BlobBackend
 from app.entities.users import User
-from app.exceptions import RepositoryNotFoundError
+from app.exceptions import RepositoryNotFoundError, WorkflowError
 from app.schemas.repositories import FileContent, RepositoryUpdate, TreeListing
 from app.services.repositories import RepositoryService, ensure_repository
 from app.types import PackContents
@@ -784,6 +784,5 @@ async def test_workflow_symlinks_resolve_only_inside_the_pinned_repository(
     if target == "config.yaml":
         assert await service.get_raw(OWNER, REPO, commit.id.decode(), "ci.yaml", follow_symlinks=True) == source.data
     else:
-        with pytest.raises(HTTPException) as error:
+        with pytest.raises(WorkflowError, match="Workflow symlink"):
             await service.get_raw(OWNER, REPO, commit.id.decode(), "ci.yaml", follow_symlinks=True)
-        assert error.value.status_code == 422

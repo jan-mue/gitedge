@@ -30,6 +30,7 @@ from app.clients.git.diffs import enrich_diff
 from app.clients.git.http import handle_http
 from app.clients.git.refs import GitRefStore
 from app.config import settings
+from app.exceptions import WorkflowError
 from app.schemas.releases import TagInfo, TagsPublic
 from app.schemas.repositories import (
     BlameContent,
@@ -790,11 +791,11 @@ class GitClient:
             try:
                 target = blob.data.decode("utf-8")
             except UnicodeDecodeError as error:
-                raise HTTPException(status_code=422, detail="Workflow symlink target must be UTF-8") from error
+                raise WorkflowError("Workflow symlink target must be UTF-8") from error
             file_path = posixpath.normpath(posixpath.join(posixpath.dirname(file_path), target))
             if target.startswith("/") or file_path == ".." or file_path.startswith("../"):
-                raise HTTPException(status_code=422, detail="Workflow symlink must stay inside its repository")
-        raise HTTPException(status_code=422, detail="Workflow symlink chain is cyclic or too deep")
+                raise WorkflowError("Workflow symlink must stay inside its repository")
+        raise WorkflowError("Workflow symlink chain is cyclic or too deep")
 
     async def get_source(self, owner: str, name: str, ref: str, path: str) -> TreeListing | FileContent:
         """Resolve a source path in one request, avoiding a failed tree request in the browser."""
@@ -1459,3 +1460,29 @@ class GitClient:
     async def handle_http(self, request: GitHttpRequest) -> GitHttpResponse:
         """Run synchronous protocol processing off the event loop."""
         return await run_in_threadpool(handle_http, self.backend, request)
+
+    async def action_revision(self, owner: str, name: str, ref: str) -> tuple[str, str]:
+        """Resolve an Actions source commit and its canonical ref without a moving-ref race."""
+        repo = await self.load_repository(owner, name)
+        sha = self._resolve_ref(repo, ref).decode()
+        if ref == "HEAD":
+            target = repo.refs.read_loose_ref(Ref(b"HEAD"))
+            canonical = target.removeprefix(b"ref: ").decode() if target else ref
+        elif Ref(ref.encode()) in repo.refs:
+            canonical = ref
+        elif Ref(f"refs/heads/{ref}".encode()) in repo.refs:
+            canonical = f"refs/heads/{ref}"
+        elif Ref(f"refs/tags/{ref}".encode()) in repo.refs:
+            canonical = f"refs/tags/{ref}"
+        else:
+            canonical = ref
+        return sha, canonical
+
+    async def action_refs(self, owner: str, name: str) -> dict[str, str]:
+        """Snapshot branch/tag tips around a Git push for Actions event delivery."""
+        repo = await self.load_repository(owner, name)
+        return {
+            key.decode(): value.decode()
+            for key, value in repo.refs.as_dict().items()
+            if key.startswith((b"refs/heads/", b"refs/tags/"))
+        }

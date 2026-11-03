@@ -7,17 +7,16 @@ import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from qstash.errors import QStashError
 
 from app.api.main import api_router
 from app.api.routes import git
 from app.config import settings
 from app.exceptions import (
-    ActionsUnavailableError,
     CompilerUnavailableError,
     EmailDeliveryError,
-    InvalidDeliveryError,
     NotFoundError,
+    PermissionDeniedError,
+    ServiceUnavailableError,
     WorkflowError,
 )
 from app.lifespan import lifespan
@@ -75,27 +74,24 @@ async def workflow_exception_handler(_request: Request, exc: WorkflowError) -> J
     return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 
+@app.exception_handler(PermissionDeniedError)
+async def permission_denied_handler(_request: Request, exc: PermissionDeniedError) -> JSONResponse:
+    """Map domain authorization failures without coupling services to HTTP."""
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(ServiceUnavailableError)
+async def service_unavailable_handler(_request: Request, exc: ServiceUnavailableError) -> JSONResponse:
+    """Return a retryable response for a temporarily unavailable service."""
+    logger.warning("Service unavailable: %s", exc)
+    return JSONResponse(status_code=503, content={"detail": str(exc)}, headers={"Retry-After": "1"})
+
+
 @app.exception_handler(CompilerUnavailableError)
 async def compiler_exception_handler(request: Request, exc: CompilerUnavailableError) -> JSONResponse:
     """Return a retryable status without exposing compiler credentials."""
     logger.error("Workflow compiler unavailable - %s", request.url.path, exc_info=exc)
     return JSONResponse(status_code=503, content={"detail": "Workflow compiler is unavailable"})
-
-
-@app.exception_handler(ActionsUnavailableError)
-@app.exception_handler(QStashError)
-async def actions_unavailable_handler(_request: Request, exc: ActionsUnavailableError | QStashError) -> JSONResponse:
-    """Return a retryable response for a temporary delivery failure."""
-    logger.warning("Actions delivery will retry: %s", exc)
-    return JSONResponse(
-        status_code=503, content={"detail": "Actions delivery must be retried"}, headers={"Retry-After": "1"}
-    )
-
-
-@app.exception_handler(InvalidDeliveryError)
-async def invalid_delivery_handler(_request: Request, _exc: InvalidDeliveryError) -> JSONResponse:
-    """Reject unauthenticated queue callbacks."""
-    return JSONResponse(status_code=403, content={"detail": "Invalid QStash signature"})
 
 
 app.add_middleware(
