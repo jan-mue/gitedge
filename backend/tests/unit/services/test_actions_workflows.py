@@ -1,4 +1,6 @@
 import json
+import re
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -37,3 +39,16 @@ def test_workflow_discovery_only_selects_direct_yaml_children() -> None:
     assert workflow_paths(
         ["README.md", ".gitedge/workflow/ci.yaml", ".gitedge/workflow/nested/invalid.yaml", ".github/workflows/ci.yaml"]
     ) == [".gitedge/workflow/ci.yaml"]
+
+
+def test_every_repository_action_has_an_integration_workflow_and_is_prepared() -> None:
+    root = Path(__file__).resolve().parents[4]
+    references = set()
+    for workflow in (root / ".github/workflows").glob("*.yaml"):
+        references.update(re.findall(r"uses:\s*([^\s#]+)", workflow.read_text()))
+    examples = set()
+    for workflow in (root / "backend/tests/integration/actions/workflows").glob("*.yaml"):
+        examples.update(re.findall(r"uses:\s*([^\s#]+)", workflow.read_text()))
+    prepared = set((root / "packages/actions-runner/actions.txt").read_text().splitlines())
+    assert references <= examples
+    assert references <= prepared

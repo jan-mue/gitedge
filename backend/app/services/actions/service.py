@@ -42,7 +42,7 @@ if TYPE_CHECKING:
     from app.entities.repositories import Repository as RepositoryEntity
     from app.entities.users import User
     from app.services.authorization import AuthorizationService
-    from app.schemas.actions_cache import CacheEntry, CacheIdentity
+    from app.schemas.actions import CacheEntry, CacheIdentity
     from app.services.actions.cache import ActionsCacheService
     from app.services.repositories import RepositoryService
 
@@ -353,7 +353,7 @@ class ActionsService:
 
     def _cache_service(self) -> ActionsCacheService:
         if self.cache is None:
-            raise HTTPException(status_code=503, detail="Actions cache is unavailable")
+            raise ServiceUnavailableError("Actions cache is unavailable")
         return self.cache
 
     async def lookup_cache(self, token: str, identity: CacheIdentity, restore_keys: list[str]) -> CacheEntry | None:
@@ -371,7 +371,7 @@ class ActionsService:
         repo_id = self.cache_scope(token)
         payload = await self._cache_service().download(repo_id, payload_id)
         if payload is None:
-            raise HTTPException(status_code=404, detail="Cache entry expired or was evicted")
+            raise NotFoundError("Cache entry expired or was evicted")
         return payload
 
     async def cancel_repository(self, owner: str, name: str, user: User) -> uuid.UUID:

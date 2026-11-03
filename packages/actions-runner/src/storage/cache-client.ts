@@ -14,7 +14,6 @@ export interface CacheClient {
   download(id: string): Promise<Uint8Array>
 }
 
-/** A job capability scopes access to its repository; provider credentials never enter the VM. */
 export class ControllerCacheClient implements CacheClient {
   constructor(
     private readonly endpoint: string | undefined,
