@@ -26,7 +26,7 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
   - repo: https://github.com/astral-sh/ty-pre-commit
-    rev: e84180232410a0a6ea910822b02146e3d0c6de64 # frozen: v0.0.93
+    rev: 70aae47092a06c153286d0ff6c87b282ed865be8 # frozen: v0.0.94
     hooks:
       - id: ty
   - repo: https://github.com/codespell-project/codespell
