@@ -19,7 +19,12 @@ from app.clients.comments import CommentStore
 from app.clients.database import CrudStore
 from app.clients.email import EmailClient
 from app.clients.issues import IssueStore
-from app.clients.notifications import NotificationPage, NotificationStore, notification_thread
+from app.clients.notifications import (
+    NotificationDeliveryPreference,
+    NotificationPage,
+    NotificationStore,
+    notification_thread,
+)
 from app.clients.organizations import OrganizationStore
 from app.clients.pull_requests import PullRequestStore
 from app.clients.redis import AbstractRedisClient
@@ -933,6 +938,25 @@ class FakeNotificationStore(FakeCrudStore[Notification], NotificationStore):
         self.repository_preferences: dict[tuple[uuid.UUID, uuid.UUID], list[str]] = {}
         self.muted: set[tuple[uuid.UUID, uuid.UUID, str]] = set()
         self.subscribed: set[tuple[uuid.UUID, uuid.UUID, str]] = set()
+
+    @override
+    async def delivery_preferences(
+        self, user_ids: list[uuid.UUID], activity: Activity
+    ) -> dict[uuid.UUID, NotificationDeliveryPreference]:
+        assert activity.repo_id is not None
+        return {
+            user_id: NotificationDeliveryPreference(
+                categories=await self.categories(user_id, activity.repo_id),
+                muted=(activity.repo_id, notification_thread(activity)) in await self.muted_threads(user_id),
+                email=await self.email_enabled(user_id),
+            )
+            for user_id in user_ids
+        }
+
+    @override
+    async def add_many(self, notifications: list[Notification]) -> None:
+        for notification in notifications:
+            self.persist(notification)
 
     @override
     async def audience(self, activity: Activity, mentions: set[str]) -> list[tuple[User, str]]:

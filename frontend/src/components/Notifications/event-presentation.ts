@@ -20,8 +20,5 @@ const events: Record<ActivityKind, { label: string; description: string }> = {
 }
 
 export const notificationEvent = (notification: NotificationPublic) => {
-  if (notification.reason === "review requested")
-    return { label: "Review requested", description: "Requested your review on this pull request" }
-  if (notification.reason === "assigned") return { label: "Assigned", description: "Assigned this discussion to you" }
   return events[notification.kind]
 }

@@ -26,14 +26,15 @@ const notification: NotificationPublic = {
   unsubscribed: false,
 }
 
-const setup = (initial = "/notifications") => {
-  let entry = { ...notification }
+const setup = (initial = "/notifications", reason = notification.reason) => {
+  let entry = { ...notification, reason }
   server.use(
     handleNotificationsListNotifications(({ request }) => {
       const params = new URL(request.url).searchParams
       const included =
         entry.is_archived === (params.get("view") === "archived") &&
-        (params.get("read") !== "unread" || !entry.is_read || params.get("focus") === entry.id)
+        (params.get("read") !== "unread" || !entry.is_read || params.get("focus") === entry.id) &&
+        (!params.get("reason") || params.get("reason") === entry.reason)
       return HttpResponse.json({
         data: included ? [entry] : [],
         count: included ? 1 : 0,
@@ -42,7 +43,7 @@ const setup = (initial = "/notifications") => {
         archived_count: entry.is_archived ? 1 : 0,
         repositories: included ? [entry.repo] : [],
         repository_counts: { [entry.repo]: 1 },
-        reasons: { author: 1 },
+        reasons: { [entry.reason]: 1 },
       })
     }),
     handleNotificationsUpdateNotifications(async ({ request }) => {
@@ -78,6 +79,20 @@ const setup = (initial = "/notifications") => {
 }
 
 describe("notification center", () => {
+  test.each([
+    ["mentioned", "Mentioned"],
+    ["author", "Authored"],
+    ["participating", "Participating"],
+    ["reaction", "Reactions"],
+    ["subscribed", "Watching"],
+  ])("filters %s notifications using a backend reason", async (reason, label) => {
+    const { user, router } = setup("/notifications", reason)
+    await user.click((await screen.findAllByRole("button", { name: new RegExp(label) }))[0])
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ reason }))
+    expect(await screen.findByRole("link", { name: /A real notification #12/ })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /Assigned|Review requested/ })).not.toBeInTheDocument()
+  })
+
   test("opening a notification from email marks it read", async () => {
     const { user } = setup(`/owner/demo/issues/12?from=notifications&n=${notification.id}`)
     await user.click(await screen.findByRole("link", { name: "Back to notifications" }))

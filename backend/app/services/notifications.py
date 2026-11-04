@@ -81,6 +81,8 @@ class NotificationService:
             return
         mentions = mentioned_users(text) - mentioned_users(previous_text)
         audience = await self.store.audience(activity, mentions)
+        preferences = await self.store.delivery_preferences([user.id for user, _ in audience], activity)
+        deliveries = []
         for user, reason in audience:
             category: NotificationCategory = (
                 "mention"
@@ -93,14 +95,17 @@ class NotificationService:
                 if activity.target_type == "release"
                 else "repository"
             )
-            if category not in await self.store.categories(user.id, activity.repo_id):
+            preference = preferences[user.id]
+            if category not in preference.categories:
                 continue
-            if (activity.repo_id, notification_thread(activity)) in await self.store.muted_threads(user.id):
+            if preference.muted:
                 continue
             notification = Notification(user_id=user.id, activity_id=activity.id, reason=reason, category=category)
             notification.activity = activity
-            await self.store.add(notification)
-            if settings.emails_enabled and await self.store.email_enabled(user.id):
+            deliveries.append((user, notification, preference.email))
+        await self.store.add_many([notification for _, notification, _ in deliveries])
+        for user, notification, email in deliveries:
+            if settings.emails_enabled and email:
                 subject, html = self._email_content(activity, notification.id)
                 self.background_tasks.add_task(self._send_email, user.email, subject, html, notification.id)
 

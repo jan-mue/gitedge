@@ -323,3 +323,32 @@ def test_smtp_rejection_is_reported(mocker: MockerFixture) -> None:
     message.return_value.send.return_value.status_code = 550
     with pytest.raises(RuntimeError, match="SMTP delivery failed with status 550"):
         SMTPClient().send_email("recipient@example.com", "Notification", "<p>Activity</p>")
+
+
+def test_audience_preferences_and_notifications_are_processed_once(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    fake_stores: FakeStores,
+    mocker: MockerFixture,
+) -> None:
+    from app.entities.users import User
+    from app.entities.watchers import Watcher
+
+    first = client.post(f"{REPO}/issues", headers=normal_user_token_headers, json={"title": "Initial event"})
+    assert first.status_code == 201
+    repository = next(repo for repo in fake_stores.repository.items.values() if repo.name == "notifications-test")
+    for index in range(10):
+        user = User(
+            name=f"batch-recipient-{index}", email=f"batch-recipient-{index}@example.com", hashed_password="unused"
+        )
+        fake_stores.users.persist(user)
+        fake_stores.watchers.persist(Watcher(user_id=user.id, repo_id=repository.id))
+    preferences = mocker.spy(fake_stores.notifications, "delivery_preferences")
+    batch = mocker.spy(fake_stores.notifications, "add_many")
+    response = client.post(f"{REPO}/issues", headers=normal_user_token_headers, json={"title": "Batched event"})
+    assert response.status_code == 201
+    preferences.assert_awaited_once()
+    batch.assert_awaited_once()
+    assert len(preferences.call_args.args[0]) == 11
+    assert len(batch.call_args.args[0]) == 11

@@ -1,6 +1,8 @@
 """Login and authentication routes."""
 
+import logging
 from datetime import timedelta
+from smtplib import SMTPException
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, status
@@ -22,6 +24,8 @@ from app.utils.email import (
     verify_password_reset_token,
 )
 from app.utils.security import create_access_token, get_password_hash
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["login"])
 
@@ -62,11 +66,14 @@ async def recover_password(email: str, crud_service: CrudServiceDep, email_clien
     if user:
         password_reset_token = generate_password_reset_token(email=email)
         email_data = generate_reset_password_email(email_to=user.email, email=email, token=password_reset_token)
-        email_client.send_email(
-            email_to=user.email,
-            subject=email_data.subject,
-            html_content=email_data.html_content,
-        )
+        try:
+            email_client.send_email(
+                email_to=user.email,
+                subject=email_data.subject,
+                html_content=email_data.html_content,
+            )
+        except RuntimeError, SMTPException, OSError:
+            logger.exception("Password recovery email delivery failed")
 
 
 @router.post("/reset-password/", status_code=status.HTTP_204_NO_CONTENT)

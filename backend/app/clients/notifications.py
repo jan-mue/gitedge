@@ -46,6 +46,15 @@ def notification_thread(activity: Activity) -> str:
 
 
 @dataclass
+class NotificationDeliveryPreference:
+    """Delivery settings for one recipient of the current event."""
+
+    categories: list[str]
+    muted: bool = False
+    email: bool = False
+
+
+@dataclass
 class NotificationPage:
     """A bounded inbox page and aggregate navigation counts."""
 
@@ -64,6 +73,16 @@ class NotificationStore(CrudStore[Notification], ABC):
     @abstractmethod
     async def audience(self, activity: Activity, mentions: set[str]) -> list[tuple[User, str]]:
         """Find owners, watchers, discussion participants, and explicit mentions."""
+
+    @abstractmethod
+    async def delivery_preferences(
+        self, user_ids: list[uuid.UUID], activity: Activity
+    ) -> dict[uuid.UUID, NotificationDeliveryPreference]:
+        """Load all recipients' delivery settings in a bounded number of queries."""
+
+    @abstractmethod
+    async def add_many(self, notifications: list[Notification]) -> None:
+        """Persist the event's notifications together, populating their IDs."""
 
     @abstractmethod
     async def list_for_user(self, user: User, ids: list[uuid.UUID] | None = None) -> list[Notification]:
@@ -151,6 +170,47 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
             for user in users
             if user.id != activity.actor_id and (not repo.is_private or user.id == repo.owner_id or user.is_superuser)
         ]
+
+    @override
+    async def delivery_preferences(
+        self, user_ids: list[uuid.UUID], activity: Activity
+    ) -> dict[uuid.UUID, NotificationDeliveryPreference]:
+        """Read category, thread, and email preferences once for the whole audience."""
+        preferences = {user_id: NotificationDeliveryPreference(list(NOTIFICATION_CATEGORIES)) for user_id in user_ids}
+        if not user_ids:
+            return preferences
+        categories = await self.db.execute(
+            select(NotificationRepositoryPreference.user_id, NotificationRepositoryPreference.categories).where(
+                NotificationRepositoryPreference.user_id.in_(user_ids),
+                NotificationRepositoryPreference.repo_id == activity.repo_id,
+            )
+        )
+        for user_id, enabled in categories:
+            preferences[user_id].categories = enabled
+        subscriptions = await self.db.execute(
+            select(NotificationSubscription.user_id, NotificationSubscription.muted).where(
+                NotificationSubscription.user_id.in_(user_ids),
+                NotificationSubscription.repo_id == activity.repo_id,
+                NotificationSubscription.thread == notification_thread(activity),
+            )
+        )
+        for user_id, muted in subscriptions:
+            preferences[user_id].muted = muted
+        emails = await self.db.execute(
+            select(NotificationPreference.user_id, NotificationPreference.email).where(
+                NotificationPreference.user_id.in_(user_ids)
+            )
+        )
+        for user_id, email in emails:
+            preferences[user_id].email = email
+        return preferences
+
+    @override
+    async def add_many(self, notifications: list[Notification]) -> None:
+        """Use SQLAlchemy's batched insert and a single commit for this activity."""
+        if notifications:
+            self.db.add_all(notifications)
+            await self.db.commit()
 
     @staticmethod
     def _inbox_query(user: User) -> Select[Notification]:

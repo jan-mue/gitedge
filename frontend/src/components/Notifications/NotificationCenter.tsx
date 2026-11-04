@@ -8,11 +8,11 @@ import {
   BellOff,
   Check,
   CheckCheck,
-  CircleDot,
-  GitPullRequest,
   Inbox,
+  MessageSquare,
   Pin,
   Settings2,
+  SmilePlus,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { NotificationPublic, NotificationUpdate } from "@/client"
@@ -45,9 +45,9 @@ import { categoryMeta, RepositoryNotificationPreferences } from "./RepositoryNot
 import type { NotificationSearch } from "./search"
 
 const reasons = [
-  { id: "assigned", label: "Assigned", icon: CircleDot },
   { id: "mentioned", label: "Mentioned", icon: AtSign },
-  { id: "review requested", label: "Review requested", icon: GitPullRequest },
+  { id: "participating", label: "Participating", icon: MessageSquare },
+  { id: "reaction", label: "Reactions", icon: SmilePlus },
   { id: "author", label: "Authored", icon: Pin },
   { id: "subscribed", label: "Watching", icon: Bell },
 ]

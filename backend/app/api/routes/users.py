@@ -1,6 +1,8 @@
 """User management routes."""
 
+import logging
 import uuid
+from smtplib import SMTPException
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -17,6 +19,8 @@ from app.schemas.users import (
 )
 from app.utils.email import generate_new_account_email
 from app.utils.security import get_password_hash, verify_password
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -45,11 +49,14 @@ async def create_user(*, crud_service: CrudServiceDep, user_in: UserCreate, emai
         email_data = generate_new_account_email(
             email_to=user_in.email, username=user_in.email, password=user_in.password
         )
-        email_client.send_email(
-            email_to=user_in.email,
-            subject=email_data.subject,
-            html_content=email_data.html_content,
-        )
+        try:
+            email_client.send_email(
+                email_to=user_in.email,
+                subject=email_data.subject,
+                html_content=email_data.html_content,
+            )
+        except RuntimeError, SMTPException, OSError:
+            logger.exception("New account email delivery failed")
     return user
 
 

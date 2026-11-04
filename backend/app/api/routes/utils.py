@@ -1,13 +1,17 @@
 """Utility routes for health checks and email testing."""
 
+import logging
+from smtplib import SMTPException
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic.networks import EmailStr
 
 from app.api.dependencies import EmailClientDep, check_database_connection, get_current_active_superuser
 from app.utils.email import generate_test_email
 from app.utils.markdown import render_markdown
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/utils", tags=["utils"])
 
@@ -26,11 +30,15 @@ async def preview_markdown(body: Annotated[str, Body(embed=True, max_length=2000
 async def test_email(email_to: EmailStr, email_client: EmailClientDep) -> None:
     """Test emails."""
     email_data = generate_test_email(email_to=email_to)
-    email_client.send_email(
-        email_to=email_to,
-        subject=email_data.subject,
-        html_content=email_data.html_content,
-    )
+    try:
+        email_client.send_email(
+            email_to=email_to,
+            subject=email_data.subject,
+            html_content=email_data.html_content,
+        )
+    except (RuntimeError, SMTPException, OSError) as exc:
+        logger.exception("Test email delivery failed")
+        raise HTTPException(status_code=502, detail="Email delivery failed") from exc
 
 
 @router.get(path="/health-check/")
