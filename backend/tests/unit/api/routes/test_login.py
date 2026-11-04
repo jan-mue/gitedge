@@ -57,7 +57,7 @@ async def test_recovery_password(
     app.dependency_overrides[get_email_client] = FakeEmailClient
     # Mock the email generation since templates don't exist
     mocker.patch(
-        "app.services.crud.generate_reset_password_email",
+        "app.api.routes.login.generate_reset_password_email",
         return_value=mocker.MagicMock(subject="Test", html_content="<html>Test</html>"),
     )
     email = "test@example.com"

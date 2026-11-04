@@ -4,13 +4,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.dependencies import (
-    CrudServiceDep,
-    CurrentUser,
-    EmailClientDep,
-    UserStoreDep,
-    get_current_active_superuser,
-)
+from app.api.dependencies import CrudServiceDep, CurrentUser, EmailClientDep, UserStoreDep, get_current_active_superuser
 from app.config import settings
 from app.schemas.users import (
     UpdatePassword,
@@ -21,6 +15,7 @@ from app.schemas.users import (
     UserUpdate,
     UserUpdateMe,
 )
+from app.utils.email import generate_new_account_email
 from app.utils.security import get_password_hash, verify_password
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -45,7 +40,17 @@ async def create_user(*, crud_service: CrudServiceDep, user_in: UserCreate, emai
             detail="The user with this email already exists in the system.",
         )
 
-    return await crud_service.create_user(user_create=user_in, email_client=email_client)
+    user = await crud_service.create_user(user_create=user_in)
+    if settings.emails_enabled and user_in.email:
+        email_data = generate_new_account_email(
+            email_to=user_in.email, username=user_in.email, password=user_in.password
+        )
+        email_client.send_email(
+            email_to=user_in.email,
+            subject=email_data.subject,
+            html_content=email_data.html_content,
+        )
+    return user
 
 
 @router.patch("/me")
