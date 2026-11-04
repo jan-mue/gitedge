@@ -115,8 +115,10 @@ class NotificationService:
         """Deliver in the background without interrupting remaining notification tasks."""
         try:
             self.email_client.send_email(email_to, subject, html_content)
-        except EmailDeliveryError:
-            logger.exception("Notification email delivery failed")
+        except EmailDeliveryError as exc:
+            logger.exception(
+                "Notification email delivery failed: recipient=%r subject=%r error=%s", email_to, subject, exc
+            )
 
     @staticmethod
     def _email_content(activity: Activity, notification_id: uuid.UUID) -> tuple[str, str]:
