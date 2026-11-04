@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
@@ -17,6 +16,8 @@ from app.services.actions.runtime import finish_job, redact, update_logs
 from app.services.actions.scheduler import TERMINAL, RunScheduler
 
 if TYPE_CHECKING:
+    import uuid
+
     from app.clients.actions import ActionsStore, RunState
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.qstash import ActionsQueue
@@ -84,13 +85,14 @@ class ActionsDispatcher:
             if message.kind == "dispatch" and attempt.status != "queued":
                 state.acknowledged.append(message.id)
                 return None
-            if attempt.lease_until and attempt.lease_until > now:
+            same_inspection = message.kind == "inspect" and attempt.claim == message.id
+            if attempt.lease_until and attempt.lease_until > now and not same_inspection:
                 raise ActionsUnavailableError("Job operation is leased")
             if attempt.status == "starting":
                 self.scheduler.fail(state, attempt, "Sandbox provisioning lease expired")
                 state.acknowledged.append(message.id)
                 return None
-            claim = uuid.uuid4()
+            claim = message.id
             attempt.claim, attempt.lease_until = claim, now + timedelta(seconds=settings.ACTIONS_PROVISION_LEASE)
             files = {}
             if message.kind == "dispatch":

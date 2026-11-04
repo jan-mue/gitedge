@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlparse
@@ -17,8 +18,11 @@ from app.services.actions.workflows import instantiate_jobs
 from tests.unit.utils.actions import FakeActionsQueue, FakeActionsStore, FakeWorkflowCompiler, compiled_fixture
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from pytest_mock import AsyncMockType, MockerFixture
 
+    from app.clients.actions import RunState
     from app.entities.actions import WorkflowOutbox
     from tests.unit.utils.fakes import FakeStores
 
@@ -120,6 +124,47 @@ async def test_lost_publish_is_recovered_from_the_committed_outbox(execution: Ex
     await service.dispatcher.reconcile()
     assert command.published_at is not None
     assert publish.call_args.args[1].id == command.id
+
+
+async def test_inspection_retry_resumes_its_lease_after_a_database_lock_failure(
+    execution: Execution, mocker: MockerFixture
+) -> None:
+    service, store, sandbox, _ = execution
+    run = await add_run(execution)
+    await service.dispatcher.deliver(pending(store, "dispatch")[0])
+    command = min(pending(store, "inspect"), key=lambda item: item.due_at)
+    transaction = store.transaction
+    calls = 0
+
+    @asynccontextmanager
+    async def fail_after_observation(
+        run_id: uuid.UUID, repo_id: uuid.UUID | None = None
+    ) -> AsyncGenerator[RunState | None]:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise ActionsUnavailableError("Workflow transition is busy")
+        async with transaction(run_id, repo_id) as state:
+            yield state
+
+    mocker.patch.object(store, "transaction", side_effect=fail_after_observation)
+    with pytest.raises(ActionsUnavailableError, match="Workflow transition is busy"):
+        await service.dispatcher.deliver(command)
+    attempt = store.attempts[command.attempt_id]
+    assert attempt.lease_until is not None
+    assert attempt.lease_until > datetime.now(UTC)
+    other = next(item for item in pending(store, "inspect") if item.id != command.id)
+    with pytest.raises(ActionsUnavailableError, match="Job operation is leased"):
+        await service.dispatcher.deliver(other)
+    assert sandbox.inspect.await_count == 1
+
+    await service.dispatcher.deliver(command)
+
+    assert sandbox.inspect.await_count == 2
+    assert command.acknowledged_at is not None
+    assert attempt.claim is None
+    assert attempt.lease_until is None
+    assert run.status == "running"
 
 
 async def test_cancel_during_provisioning_revokes_callbacks_and_destroys_a_late_sandbox(execution: Execution) -> None:
