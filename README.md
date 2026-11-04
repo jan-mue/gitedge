@@ -492,16 +492,12 @@ attempt capabilities, but no repository secrets or shared cache capability.
 Push and manual jobs are trusted repository code and can read configured secrets.
 Git transport authorization is implemented separately by the PyCasbin stack.
 
-`ACTIONS_EGRESS_HOSTS` is an operator-managed HTTPS allowlist. It defaults to
-GitHub, npm, PyPI, Node and uv release endpoints. The controller is also allowed.
-Vercel applies this policy outside the microVM and denies private, loopback,
-metadata and IPv6 destinations. Docker requires Engine 28 or newer: each job
-uses an internal bridge with an isolated gateway and a separate job-scoped
-proxy container from the same preloaded image. Only that proxy has external
-connectivity; it resolves and pins allowed public IPv4 destinations, plus the
-exact controller origin and port. Removing proxy variables cannot grant direct
-egress. The proxy receives no job credentials and is deleted with the job.
-Tools that do not support HTTP proxies fail closed in local Docker jobs.
+`ACTIONS_EGRESS_HOSTS` is an operator-managed HTTPS allowlist for Vercel
+sandboxes. It defaults to GitHub, npm, PyPI, Node and uv release endpoints.
+The controller is also allowed. Vercel applies this policy outside the microVM
+and denies private, loopback, metadata and IPv6 destinations. Docker is used
+for local testing with ordinary container networking and a host gateway for
+the local backend.
 
 Provider lifetimes and backend deadlines bound the whole sandbox, including
 descendants that escape a process group. Internal cancellation closes output

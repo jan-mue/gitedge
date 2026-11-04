@@ -548,7 +548,7 @@ def test_live_logs_replay_after_disconnect_and_redis_loss(
     assert "First live record" in client.get(history + "/download").text
 
 
-def test_forged_completion_waits_for_provider_exit_and_network_policy_is_enforced(
+def test_forged_completion_waits_for_provider_exit(
     actions_repo: tuple[httpx.Client, Path, str], infrastructure: dict[str, str]
 ) -> None:
     client, _, path = actions_repo
@@ -559,7 +559,7 @@ def test_forged_completion_waits_for_provider_exit_and_network_policy_is_enforce
     deadline = time.monotonic() + 180
     while time.monotonic() < deadline:
         run = next(run for run in client.get(f"{path}/runs").json() if run["id"] == run_id)
-        if "Forged markers written; network isolation verified" in job_log(client, path, run):
+        if "Forged completion markers written" in job_log(client, path, run):
             break
         assert run["status"] in {"queued", "running"}, json.dumps(run)
         time.sleep(0.1)

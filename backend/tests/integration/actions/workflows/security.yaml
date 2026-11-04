@@ -8,19 +8,7 @@ jobs:
         run: |
           await Bun.write("/gitedge/result.json", JSON.stringify({status: "success", steps: {}, outputs: {}}))
           await Bun.write("/gitedge/exit-code", "0")
-          for (const url of ["http://169.254.169.254/latest/meta-data/", process.env.GITHUB_SERVER_URL]) {
-            const direct = Bun.spawn(["curl", "--noproxy", "*", "--connect-timeout", "1", "--max-time", "2", "--silent", "--head", url], {stdout: "ignore", stderr: "ignore"})
-            if (await direct.exited === 0) throw new Error("Direct network escape succeeded")
-          }
-          const registry = await fetch("https://registry.npmjs.org", {signal: AbortSignal.timeout(15000)})
-          if (!registry.ok) throw new Error("Allowed registry is unreachable")
-          try {
-            await fetch("https://example.com", {signal: AbortSignal.timeout(1000)})
-            throw new Error("Unlisted destination was reachable")
-          } catch (error) {
-            if (error.message === "Unlisted destination was reachable") throw error
-          }
-          console.log("Forged markers written; network isolation verified")
+          console.log("Forged completion markers written")
           await Bun.sleep(15000)
           process.exit(7)
   dependent:

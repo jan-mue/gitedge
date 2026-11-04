@@ -44,17 +44,9 @@ class SandboxExecution:
 class AbstractSandboxClient(ABC):
     """Implement this contract to add another sandbox provider."""
 
-    def __init__(
-        self,
-        images: Mapping[LinuxRunner, RunnerImage],
-        *,
-        controller_url: str = "https://gitedge.invalid",
-        egress_hosts: Sequence[str] = (),
-    ) -> None:
+    def __init__(self, images: Mapping[LinuxRunner, RunnerImage]) -> None:
         """Use only operator-configured, prebuilt runner images."""
         self.images = images
-        self.controller_url = controller_url
-        self.egress_hosts = tuple(egress_hosts)
 
     def _image(self, runner: LinuxRunner) -> RunnerImage:
         image = self.images.get(runner)
@@ -117,29 +109,19 @@ class DockerSandboxClient(AbstractSandboxClient):
                 "/usr/local/bin/gitedge-launch",
             ],
             "User": "10001:10001",
-            "Env": [
-                f"GITEDGE_JOB={files['input.json'].decode()}",
-                "HTTP_PROXY=http://gitedge-egress:3128",
-                "HTTPS_PROXY=http://gitedge-egress:3128",
-                "http_proxy=http://gitedge-egress:3128",
-                "https_proxy=http://gitedge-egress:3128",
-                "NO_PROXY=127.0.0.1,localhost",
-                "no_proxy=127.0.0.1,localhost",
-                "NODE_USE_ENV_PROXY=1",
-            ],
+            "Env": [f"GITEDGE_JOB={files['input.json'].decode()}"],
             "HostConfig": {
                 "Memory": 2 * 1024**3,
                 "NanoCpus": 2_000_000_000,
                 "PidsLimit": 512,
                 "CapDrop": ["ALL"],
                 "SecurityOpt": ["no-new-privileges:true"],
-                "NetworkMode": f"{name}-network",
+                "ExtraHosts": ["host.docker.internal:host-gateway"],
             },
             "Labels": {"gitedge.actions": "true"},
         }
         try:
             async with Docker(api_version="v1.45") as client:
-                await self._egress(client, name, runner, lifetime)
                 try:
                     container = await client.containers.create(config=config, name=name)
                 except DockerError as exc:
@@ -151,58 +133,6 @@ class DockerSandboxClient(AbstractSandboxClient):
                 await container.start()
         except DockerError as exc:
             raise SandboxError(f"Docker sandbox start failed: {exc}") from exc
-
-    async def _egress(self, client: Docker, name: str, runner: LinuxRunner, lifetime: int) -> None:
-        network_name = f"{name}-network"
-        try:
-            network = await client.networks.get(network_name)
-        except DockerError as exc:
-            if exc.status != HTTPStatus.NOT_FOUND:
-                raise
-            network = await client.networks.create(
-                {
-                    "Name": network_name,
-                    "Internal": True,
-                    "Driver": "bridge",
-                    "Options": {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"},
-                }
-            )
-        try:
-            proxy = await client.containers.create(
-                config={
-                    "Image": self._image(runner).image,
-                    "User": "10001:10001",
-                    "Cmd": [
-                        "timeout",
-                        "--signal=KILL",
-                        str(lifetime + CLEANUP_GRACE_SECONDS),
-                        "bun",
-                        "/usr/local/bin/gitedge-egress.mjs",
-                    ],
-                    "Env": [
-                        f"GITEDGE_CONTROLLER={self.controller_url}",
-                        f"GITEDGE_EGRESS_HOSTS={json.dumps(self.egress_hosts)}",
-                    ],
-                    "HostConfig": {
-                        "NetworkMode": "bridge",
-                        "Memory": 128 * 1024**2,
-                        "PidsLimit": 32,
-                        "CapDrop": ["ALL"],
-                        "SecurityOpt": ["no-new-privileges:true"],
-                        "ReadonlyRootfs": True,
-                        "ExtraHosts": ["host.docker.internal:host-gateway"],
-                    },
-                    "Labels": {"gitedge.actions": "true"},
-                },
-                name=f"{name}-egress",
-            )
-        except DockerError as exc:
-            if exc.status != HTTPStatus.CONFLICT:
-                raise
-            proxy = await client.containers.get(f"{name}-egress")
-        if (await proxy.show())["State"]["Status"] == "created":
-            await network.connect({"Container": proxy.id, "EndpointConfig": {"Aliases": ["gitedge-egress"]}})
-            await proxy.start()
 
     @override
     async def status(self, name: str) -> SandboxExecution:
@@ -222,16 +152,9 @@ class DockerSandboxClient(AbstractSandboxClient):
         """Remove the container and its anonymous volumes with aiodocker."""
         try:
             async with Docker(api_version="v1.45") as client:
-                for handle in (name, f"{name}-egress"):
-                    try:
-                        container = await client.containers.get(handle)
-                        await container.delete(force=True, v=True)
-                    except DockerError as exc:
-                        if exc.status != HTTPStatus.NOT_FOUND:
-                            raise
                 try:
-                    network = await client.networks.get(f"{name}-network")
-                    await network.delete()
+                    container = await client.containers.get(name)
+                    await container.delete(force=True, v=True)
                 except DockerError as exc:
                     if exc.status != HTTPStatus.NOT_FOUND:
                         raise
@@ -251,7 +174,9 @@ class VercelSandboxClient(AbstractSandboxClient):
         egress_hosts: Sequence[str] = (),
     ) -> None:
         """Use prebuilt VCR images or matching snapshots for each Linux release."""
-        super().__init__(images, controller_url=controller_url, egress_hosts=egress_hosts)
+        super().__init__(images)
+        self.controller_url = controller_url
+        self.egress_hosts = tuple(egress_hosts)
         self.region = region
 
     @override

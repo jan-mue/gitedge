@@ -1,13 +1,9 @@
-import { once } from "node:events"
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
-import { request } from "node:http"
-import type { Socket } from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { expect, test } from "vitest"
 import { ActionResolver } from "../../../actions-runner/src/actions/resolver.ts"
 import { jobSchema, type LogEntry } from "../../../actions-runner/src/domain/job.ts"
-import { allowedTarget, publicAddress, startEgress } from "../../../actions-runner/src/egress.ts"
 import { COMMAND_FILE_BYTES, CommandFiles, OutputCommands } from "../../../actions-runner/src/runtime/commands.ts"
 import { JobEnvironment } from "../../../actions-runner/src/runtime/environment.ts"
 import { existingInside, Workspace } from "../../../actions-runner/src/runtime/files.ts"
@@ -103,50 +99,5 @@ test("total job log output is capped with one truncation notice", async () => {
     expect(Buffer.byteLength(output)).toBeLessThan(9 * 1024 * 1024)
   } finally {
     await rm(root, { recursive: true, force: true })
-  }
-})
-
-test.each(["127.0.0.1", "10.0.0.1", "169.254.169.254", "172.16.0.1", "192.168.1.1", "::1", "::ffff:127.0.0.1"])(
-  "egress denies private and metadata address %s",
-  (address) => expect(publicAddress(address)).toBe(false),
-)
-
-test("egress allows only configured HTTPS hosts and the exact controller origin", async () => {
-  const backend = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("controller") })
-  const controller = new URL(`http://127.0.0.1:${backend.port}`)
-  const proxy = startEgress(controller, ["registry.npmjs.org", "localhost"], 0)
-  const sockets = new Set<Socket>()
-  proxy.on("connection", (socket) => {
-    sockets.add(socket)
-    socket.on("close", () => sockets.delete(socket))
-  })
-  await once(proxy, "listening")
-  const address = proxy.address()
-  if (!address || typeof address === "string") throw new Error("Missing proxy address")
-  try {
-    expect(publicAddress("1.1.1.1")).toBe(true)
-    expect(allowedTarget(new URL("https://registry.npmjs.org/package"), controller, ["registry.npmjs.org"])).toBe(true)
-    expect(allowedTarget(new URL("https://attacker.test"), controller, [])).toBe(false)
-    const get = (path: string) =>
-      new Promise<{ status: number | undefined; body: string }>((resolve, reject) => {
-        request({ host: "127.0.0.1", port: address.port, path, headers: { Connection: "close" } }, (response) => {
-          let body = ""
-          response.on("data", (part) => {
-            body += part.toString()
-          })
-          response.on("end", () => resolve({ status: response.statusCode, body }))
-          response.on("error", reject)
-        })
-          .on("error", reject)
-          .end()
-      })
-    expect(await get(controller.href)).toEqual({ status: 200, body: "controller" })
-    expect((await get("http://169.254.169.254/latest/meta-data")).status).toBe(403)
-    expect((await get(`http://127.0.0.1:${Number(backend.port) + 1}`)).status).toBe(403)
-    expect((await get("https://localhost")).status).toBe(403)
-  } finally {
-    for (const socket of sockets) socket.destroy()
-    await new Promise<void>((resolve) => proxy.close(() => resolve()))
-    await backend.stop(true)
   }
 })

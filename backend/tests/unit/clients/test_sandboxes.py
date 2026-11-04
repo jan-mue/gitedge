@@ -34,13 +34,7 @@ async def test_docker_provisioning_does_not_pull_images_or_upload_source(
     sdk.__aenter__.return_value = sdk
     container = mocker.Mock()
     container.start = mocker.AsyncMock()
-    proxy = mocker.Mock(id="proxy")
-    proxy.show = mocker.AsyncMock(return_value={"State": {"Status": "created"}})
-    proxy.start = mocker.AsyncMock()
-    network = mocker.Mock(id="network", connect=mocker.AsyncMock())
-    sdk.networks.get = mocker.AsyncMock(side_effect=DockerError(404, "No such network"))
-    sdk.networks.create = mocker.AsyncMock(return_value=network)
-    sdk.containers.create = mocker.AsyncMock(side_effect=[proxy, container])
+    sdk.containers.create = mocker.AsyncMock(return_value=container)
     mocker.patch("app.clients.sandboxes.Docker", return_value=sdk)
     await DockerSandboxClient(images).start("job", {"input.json": b'{"job":"test"}'}, 60, runner=runner)
     sdk.images.pull.assert_not_called()
@@ -48,12 +42,11 @@ async def test_docker_provisioning_does_not_pull_images_or_upload_source(
     config = sdk.containers.create.call_args.kwargs["config"]
     assert config["Image"] == images[runner].image
     assert config["HostConfig"]["CapDrop"] == ["ALL"]
-    assert config["HostConfig"]["NetworkMode"] == "job-network"
     assert config["User"] == "10001:10001"
-    assert "ExtraHosts" not in config["HostConfig"]
-    assert sdk.networks.create.call_args.args[0]["Internal"]
-    assert sdk.networks.create.call_args.args[0]["Options"]["com.docker.network.bridge.gateway_mode_ipv4"] == "isolated"
-    assert "GITEDGE_JOB" not in " ".join(sdk.containers.create.call_args_list[0].kwargs["config"]["Env"])
+    assert config["HostConfig"]["ExtraHosts"] == ["host.docker.internal:host-gateway"]
+    assert "NetworkMode" not in config["HostConfig"]
+    sdk.containers.create.assert_awaited_once()
+    sdk.networks.create.assert_not_called()
     assert "Binds" not in config["HostConfig"]
     assert "Volumes" not in config
     assert not any(value.startswith("source=") for value in config["Env"])
@@ -145,7 +138,6 @@ async def test_docker_missing_container_cleanup_is_idempotent(
     sdk = mocker.MagicMock()
     sdk.__aenter__.return_value = sdk
     sdk.containers.get = mocker.AsyncMock(side_effect=DockerError(404, "No such container"))
-    sdk.networks.get = mocker.AsyncMock(side_effect=DockerError(404, "No such network"))
     mocker.patch("app.clients.sandboxes.Docker", return_value=sdk)
     await DockerSandboxClient(images).delete("absent")
     sdk.__aexit__.assert_awaited_once()

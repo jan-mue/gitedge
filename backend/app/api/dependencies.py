@@ -791,11 +791,7 @@ def get_sandbox_client() -> AbstractSandboxClient:
             controller_url=settings.ACTIONS_SERVER_URL,
             egress_hosts=settings.ACTIONS_EGRESS_HOSTS,
         )
-    return DockerSandboxClient(
-        settings.ACTIONS_RUNNERS,
-        controller_url=settings.ACTIONS_SERVER_URL,
-        egress_hosts=settings.ACTIONS_EGRESS_HOSTS,
-    )
+    return DockerSandboxClient(settings.ACTIONS_RUNNERS)
 
 
 SandboxClientDep = Annotated[AbstractSandboxClient, Depends(get_sandbox_client)]
