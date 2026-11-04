@@ -47,7 +47,6 @@ from app.schemas.token import TokenPayload
 from app.services.activity import ActivityService
 from app.services.comments import CommentService
 from app.services.crud import CrudService
-from app.services.email import EmailService
 from app.services.forks import ForkService
 from app.services.issues import IssueService
 from app.services.notifications import NotificationService
@@ -240,14 +239,6 @@ def get_email_client() -> EmailClient:
 
 
 EmailClientDep = Annotated[EmailClient, Depends(get_email_client)]
-
-
-def get_email_service(client: EmailClientDep) -> EmailService:
-    """Get the optional email delivery service."""
-    return EmailService(client)
-
-
-EmailServiceDep = Annotated[EmailService, Depends(get_email_service)]
 
 
 @cache
@@ -463,11 +454,11 @@ NotificationStoreDep = Annotated[NotificationStore, Depends(get_notification_sto
 def get_notification_service(
     store: NotificationStoreDep,
     repository_store: RepositoryStoreDep,
-    email_service: EmailServiceDep,
+    email_client: EmailClientDep,
     background_tasks: BackgroundTasks,
 ) -> NotificationService:
     """Get the activity delivery and inbox service."""
-    return NotificationService(store, repository_store, email_service, background_tasks)
+    return NotificationService(store, repository_store, email_client, background_tasks)
 
 
 NotificationServiceDep = Annotated[NotificationService, Depends(get_notification_service)]

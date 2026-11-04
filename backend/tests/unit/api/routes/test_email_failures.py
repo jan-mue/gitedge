@@ -26,11 +26,11 @@ def rejected_email(mocker: MockerFixture) -> Generator[MockType]:
     mocker.patch.object(settings, "SMTP_HOST", "smtp.example.test")
     mocker.patch.object(settings, "EMAILS_FROM_EMAIL", "noreply@example.test")
     for module, function in [
-        ("login", "generate_reset_password_email"),
-        ("users", "generate_new_account_email"),
-        ("utils", "generate_test_email"),
+        ("app.services.crud", "generate_reset_password_email"),
+        ("app.services.crud", "generate_new_account_email"),
+        ("app.api.routes.utils", "generate_test_email"),
     ]:
-        mocker.patch(f"app.api.routes.{module}.{function}", return_value=EmailData(subject="Test", html_content="Test"))
+        mocker.patch(f"{module}.{function}", return_value=EmailData(subject="Test", html_content="Test"))
     yield email
     app.dependency_overrides.pop(get_email_client, None)
 

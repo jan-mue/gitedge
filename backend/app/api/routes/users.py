@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.api.dependencies import (
     CrudServiceDep,
     CurrentUser,
-    EmailServiceDep,
+    EmailClientDep,
     UserStoreDep,
     get_current_active_superuser,
 )
@@ -21,7 +21,6 @@ from app.schemas.users import (
     UserUpdate,
     UserUpdateMe,
 )
-from app.utils.email import generate_new_account_email
 from app.utils.security import get_password_hash, verify_password
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -37,9 +36,7 @@ async def read_users(user_store: UserStoreDep, skip: int = 0, limit: int = 100) 
 
 
 @router.post("/", dependencies=[Depends(get_current_active_superuser)])
-async def create_user(
-    *, crud_service: CrudServiceDep, user_in: UserCreate, email_service: EmailServiceDep
-) -> UserPublic:
+async def create_user(*, crud_service: CrudServiceDep, user_in: UserCreate, email_client: EmailClientDep) -> UserPublic:
     """Create new user."""
     user = await crud_service.get_user_by_email(email=user_in.email)
     if user:
@@ -48,17 +45,7 @@ async def create_user(
             detail="The user with this email already exists in the system.",
         )
 
-    user = await crud_service.create_user(user_create=user_in)
-    if settings.emails_enabled and user_in.email:
-        email_data = generate_new_account_email(
-            email_to=user_in.email, username=user_in.email, password=user_in.password
-        )
-        email_service.send_best_effort(
-            email_to=user_in.email,
-            subject=email_data.subject,
-            html_content=email_data.html_content,
-        )
-    return user
+    return await crud_service.create_user(user_create=user_in, email_client=email_client)
 
 
 @router.patch("/me")

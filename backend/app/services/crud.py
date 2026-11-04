@@ -2,19 +2,26 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 
+from app.config import settings
 from app.entities.users import User
+from app.exceptions import EmailDeliveryError
 from app.schemas.users import UserCreate, UserPublic, UserUpdate, UserUpdateMe
+from app.utils.email import generate_new_account_email, generate_password_reset_token, generate_reset_password_email
 from app.utils.security import get_password_hash, verify_password
 
 if TYPE_CHECKING:
+    from app.clients.email import EmailClient
     from app.clients.organizations import OrganizationStore
     from app.clients.users import UserStore
+
+logger = logging.getLogger(__name__)
 
 # Dummy hash to use for timing attack prevention when user is not found
 # This is an Argon2 hash of a random password, used to ensure constant-time comparison
@@ -49,11 +56,12 @@ class CrudService:
             return True
         return await self.organization_store.find_by_name(name) is not None
 
-    async def create_user(self, user_create: UserCreate) -> UserPublic:
+    async def create_user(self, user_create: UserCreate, *, email_client: EmailClient | None = None) -> UserPublic:
         """Create a new user.
 
         Args:
             user_create: User creation data.
+            email_client: Transport for sending the optional welcome email.
 
         Returns:
             The created user's public data.
@@ -72,7 +80,29 @@ class CrudService:
             hashed_password=get_password_hash(user_create.password),
         )
         await self.user_store.add(user)
+        if email_client is not None and settings.emails_enabled:
+            email_data = generate_new_account_email(
+                email_to=user.email, username=user.email, password=user_create.password
+            )
+            try:
+                email_client.send_email(user.email, email_data.subject, email_data.html_content)
+            except EmailDeliveryError:
+                # The account is committed; delivery failure must not report creation failure.
+                logger.exception("Welcome email delivery failed")
         return UserPublic.model_validate(user)
+
+    async def recover_password(self, email: str, email_client: EmailClient) -> None:
+        """Send reset instructions without revealing whether an account exists."""
+        user = await self.user_store.get_by_email(email)
+        if user is None:
+            return
+        token = generate_password_reset_token(email=email)
+        email_data = generate_reset_password_email(email_to=user.email, email=email, token=token)
+        try:
+            email_client.send_email(user.email, email_data.subject, email_data.html_content)
+        except EmailDeliveryError:
+            # Existing and missing accounts must produce the same recovery response.
+            logger.exception("Password recovery email delivery failed")
 
     @staticmethod
     def _slug_from_email(email: str) -> str:

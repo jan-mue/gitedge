@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from html import escape
 from typing import TYPE_CHECKING, Literal, cast
@@ -12,6 +13,7 @@ from fastapi import HTTPException
 from app.clients.notifications import notification_thread
 from app.config import settings
 from app.entities.notifications import Notification
+from app.exceptions import EmailDeliveryError
 from app.schemas.notifications import (
     NotificationFilter,
     NotificationPreferencesPublic,
@@ -25,12 +27,14 @@ if TYPE_CHECKING:
 
     from fastapi import BackgroundTasks
 
+    from app.clients.email import EmailClient
     from app.clients.notifications import NotificationStore
     from app.clients.repositories import RepositoryStore
     from app.entities.activity import Activity
     from app.entities.users import User
     from app.schemas.notifications import NotificationCategory, NotificationUpdate
-    from app.services.email import EmailService
+
+logger = logging.getLogger(__name__)
 
 _MENTION = re.compile(r"(?<![\w@/])@([a-zA-Z0-9][a-zA-Z0-9_-]*)(?![\w-])")
 
@@ -63,13 +67,13 @@ class NotificationService:
         self,
         store: NotificationStore,
         repository_store: RepositoryStore,
-        email_service: EmailService,
+        email_client: EmailClient,
         background_tasks: BackgroundTasks,
     ) -> None:
         """Bind persistence and the existing SMTP transport."""
         self.store = store
         self.repository_store = repository_store
-        self.email_service = email_service
+        self.email_client = email_client
         self.background_tasks = background_tasks
 
     async def notify(self, activity: Activity, text: str = "", previous_text: str = "") -> None:
@@ -104,7 +108,14 @@ class NotificationService:
         for user, notification, email in deliveries:
             if settings.emails_enabled and email:
                 subject, html = self._email_content(activity, notification.id)
-                self.background_tasks.add_task(self.email_service.send_best_effort, user.email, subject, html)
+                self.background_tasks.add_task(self._send_email, user.email, subject, html)
+
+    def _send_email(self, email_to: str, subject: str, html_content: str) -> None:
+        """Deliver in the background without interrupting remaining notification tasks."""
+        try:
+            self.email_client.send_email(email_to, subject, html_content)
+        except EmailDeliveryError:
+            logger.exception("Notification email delivery failed")
 
     @staticmethod
     def _email_content(activity: Activity, notification_id: uuid.UUID) -> tuple[str, str]:
