@@ -173,11 +173,11 @@ async def test_inspection_retry_resumes_its_lease_after_a_database_lock_failure(
     other = next(item for item in pending(store, "inspect") if item.id != command.id)
     with pytest.raises(ActionsUnavailableError, match="Job operation is leased"):
         await service.dispatcher.deliver(other)
-    assert sandbox.is_running.await_count == 1
+    assert sandbox.status.await_count == 1
 
     await service.dispatcher.deliver(command)
 
-    assert sandbox.is_running.await_count == 2
+    assert sandbox.status.await_count == 2
     assert command.acknowledged_at is not None
     assert attempt.claim is None
     assert attempt.lease_until is None
