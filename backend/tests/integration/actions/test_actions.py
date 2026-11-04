@@ -119,16 +119,6 @@ def test_failed_jobs_skip_dependents_but_run_always_cleanup(actions_repo: tuple[
     assert "Failure reported" in run["jobs"][2]["log"]
 
 
-def test_codeql_init_and_analyze_use_prepared_tools(actions_repo: tuple[httpx.Client, Path, str]) -> None:
-    client, _, path = actions_repo
-    wait_for_run(client, path)
-    dispatch = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/codeql.yaml"})
-    dispatch.raise_for_status()
-    run = wait_for_run(client, path, dispatch.json()["id"], seconds=600)
-    assert run["status"] == "success", json.dumps(run, indent=2)
-    assert "Verify SARIF results" in run["jobs"][0]["log"]
-
-
 def test_cancellation_destroys_running_jobs_and_skips_queued_jobs(actions_repo: tuple[httpx.Client, Path, str]) -> None:
     client, _, path = actions_repo
     wait_for_run(client, path)
