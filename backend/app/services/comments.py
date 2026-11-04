@@ -9,7 +9,7 @@ from fastapi import HTTPException
 
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.comments import Comment
-from app.exceptions import IssueNotFoundError, PullRequestNotFoundError
+from app.exceptions import CommentNotFoundError, IssueNotFoundError, PullRequestNotFoundError
 from app.schemas.comments import (
     CommentCreate,
     CommentPublic,
@@ -211,7 +211,7 @@ class CommentService:
         """Protect private discussion reactions."""
         issue, repo = await self.comment_store.context(comment)
         if repo.is_private and repo.owner_id != user.id and not user.is_superuser:
-            raise HTTPException(status_code=404, detail="Comment not found")
+            raise CommentNotFoundError
         return issue, repo
 
     async def _find_issue(self, owner: str, name: str, number: int) -> Issue:
