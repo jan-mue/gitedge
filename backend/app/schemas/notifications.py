@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import Field
@@ -9,8 +10,15 @@ from pydantic import Field
 from app.entities.activity import ActivityKind
 from app.schemas.base import GitEdgeBaseModel
 
-NotificationCategory = Literal["issue", "pull", "mention", "release", "repository"]
-NOTIFICATION_CATEGORIES: tuple[NotificationCategory, ...] = ("issue", "pull", "mention", "release", "repository")
+
+class NotificationCategory(StrEnum):
+    """Categories of activity delivered to the notification center."""
+
+    ISSUE = "issue"
+    PULL = "pull"
+    MENTION = "mention"
+    RELEASE = "release"
+    REPOSITORY = "repository"
 
 
 class NotificationPublic(GitEdgeBaseModel):
@@ -69,7 +77,7 @@ class NotificationPreferencesPublic(NotificationPreferences):
 class RepositoryNotificationPreferences(GitEdgeBaseModel):
     """Allowed categories for future events from a repository."""
 
-    categories: list[NotificationCategory] = Field(default_factory=lambda: list(NOTIFICATION_CATEGORIES))
+    categories: list[NotificationCategory] = Field(default_factory=lambda: list(NotificationCategory))
 
 
 class NotificationFilter(GitEdgeBaseModel):

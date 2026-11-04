@@ -24,7 +24,7 @@ from app.entities.principals import Principal
 from app.entities.repositories import Repository
 from app.entities.users import User
 from app.entities.watchers import Watcher
-from app.schemas.notifications import NOTIFICATION_CATEGORIES, NotificationFilter
+from app.schemas.notifications import NotificationCategory, NotificationFilter
 
 if TYPE_CHECKING:
     import uuid
@@ -176,7 +176,7 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
         self, user_ids: list[uuid.UUID], activity: Activity
     ) -> dict[uuid.UUID, NotificationDeliveryPreference]:
         """Read category, thread, and email preferences once for the whole audience."""
-        preferences = {user_id: NotificationDeliveryPreference(list(NOTIFICATION_CATEGORIES)) for user_id in user_ids}
+        preferences = {user_id: NotificationDeliveryPreference(list(NotificationCategory)) for user_id in user_ids}
         if not user_ids:
             return preferences
         categories = await self.db.execute(
@@ -332,7 +332,7 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
                 NotificationRepositoryPreference.user_id == user_id, NotificationRepositoryPreference.repo_id == repo_id
             )
         )
-        return list(NOTIFICATION_CATEGORIES) if categories is None else categories
+        return list(NotificationCategory) if categories is None else categories
 
     @override
     async def set_categories(self, user_id: uuid.UUID, repo_id: uuid.UUID, categories: list[str]) -> None:

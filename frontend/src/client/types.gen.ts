@@ -958,6 +958,13 @@ export type NewPassword = {
 };
 
 /**
+ * NotificationCategory
+ *
+ * Categories of activity delivered to the notification center.
+ */
+export type NotificationCategory = 'issue' | 'pull' | 'mention' | 'release' | 'repository';
+
+/**
  * NotificationPreferences
  *
  * Email is opt-in; every delivered event also remains in the center.
@@ -1012,10 +1019,7 @@ export type NotificationPublic = {
      */
     title: string;
     kind: ActivityKind;
-    /**
-     * Category
-     */
-    category: 'issue' | 'pull' | 'mention' | 'release' | 'repository';
+    category: NotificationCategory;
     /**
      * Reason
      */
@@ -1791,7 +1795,7 @@ export type RepositoryNotificationPreferences = {
     /**
      * Categories
      */
-    categories?: Array<'issue' | 'pull' | 'mention' | 'release' | 'repository'>;
+    categories?: Array<NotificationCategory>;
 };
 
 /**

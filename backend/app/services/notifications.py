@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 from html import escape
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal
 from urllib.parse import quote
 
 from fastapi import HTTPException
@@ -15,6 +15,7 @@ from app.config import settings
 from app.entities.notifications import Notification
 from app.exceptions import EmailDeliveryError
 from app.schemas.notifications import (
+    NotificationCategory,
     NotificationFilter,
     NotificationPreferencesPublic,
     NotificationPublic,
@@ -32,7 +33,7 @@ if TYPE_CHECKING:
     from app.clients.repositories import RepositoryStore
     from app.entities.activity import Activity
     from app.entities.users import User
-    from app.schemas.notifications import NotificationCategory, NotificationUpdate
+    from app.schemas.notifications import NotificationUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -85,16 +86,16 @@ class NotificationService:
         preferences = await self.store.delivery_preferences([user.id for user, _ in audience], activity)
         deliveries = []
         for user, reason in audience:
-            category: NotificationCategory = (
-                "mention"
+            category = (
+                NotificationCategory.MENTION
                 if reason == "mentioned"
-                else "pull"
+                else NotificationCategory.PULL
                 if activity.target_type == "pull_request"
-                else "issue"
+                else NotificationCategory.ISSUE
                 if activity.target_type == "issue"
-                else "release"
+                else NotificationCategory.RELEASE
                 if activity.target_type == "release"
-                else "repository"
+                else NotificationCategory.REPOSITORY
             )
             preference = preferences[user.id]
             if category not in preference.categories:
@@ -184,7 +185,7 @@ class NotificationService:
             number=activity.target_number,
             title=activity.title or activity.kind.replace("_", " "),
             kind=activity.kind,
-            category=cast("NotificationCategory", n.category),
+            category=NotificationCategory(n.category),
             reason=n.reason,
             actor=activity.actor.name,
             url=activity_url(activity),

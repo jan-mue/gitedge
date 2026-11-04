@@ -58,7 +58,7 @@ from app.exceptions import (
     RepositoryNotFoundError,
 )
 from app.schemas.activity import ActivityTargetPreview
-from app.schemas.notifications import NOTIFICATION_CATEGORIES, NotificationFilter
+from app.schemas.notifications import NotificationCategory, NotificationFilter
 from app.utils.security import get_password_hash
 
 if TYPE_CHECKING:
@@ -1077,7 +1077,7 @@ class FakeNotificationStore(FakeCrudStore[Notification], NotificationStore):
 
     @override
     async def categories(self, user_id: uuid.UUID, repo_id: uuid.UUID) -> list[str]:
-        return self.repository_preferences.get((user_id, repo_id), list(NOTIFICATION_CATEGORIES))
+        return self.repository_preferences.get((user_id, repo_id), list(NotificationCategory))
 
     @override
     async def set_categories(self, user_id: uuid.UUID, repo_id: uuid.UUID, categories: list[str]) -> None:
