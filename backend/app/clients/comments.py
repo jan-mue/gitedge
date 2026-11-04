@@ -14,7 +14,7 @@ from app.entities.comments import Comment
 from app.entities.issues import Issue
 from app.entities.reactions import CommentReaction
 from app.entities.repositories import Repository
-from app.exceptions import NotFoundError
+from app.exceptions import NotFoundError, RepositoryNotFoundError
 
 if TYPE_CHECKING:
     import uuid
@@ -70,7 +70,7 @@ class SQLCommentStore(CommentStore, SQLStore[Comment]):
             select(Repository).options(selectinload(Repository.owner)).where(Repository.id == issue.repo_id)
         )
         if repo is None:
-            raise NotFoundError("Repository not found")
+            raise RepositoryNotFoundError
         return issue, repo
 
     @override

@@ -13,7 +13,7 @@ from fastapi import HTTPException
 from app.clients.notifications import notification_thread
 from app.config import settings
 from app.entities.notifications import Notification
-from app.exceptions import EmailDeliveryError
+from app.exceptions import EmailDeliveryError, RepositoryNotFoundError
 from app.schemas.notifications import (
     NotificationCategory,
     NotificationFilter,
@@ -239,7 +239,7 @@ class NotificationService:
         """Read category settings after checking repository visibility."""
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
         if repository.is_private and repository.owner_id != user.id and not user.is_superuser:
-            raise HTTPException(status_code=404, detail="Repository not found")
+            raise RepositoryNotFoundError
         return RepositoryNotificationPreferences.model_validate(
             {"categories": await self.store.categories(user.id, repository.id)}
         )
