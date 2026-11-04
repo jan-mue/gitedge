@@ -67,7 +67,9 @@ jobs:
             with redis.Redis.from_url(infrastructure["REDIS_URL"]) as cache:
                 cache.delete(f"actions:logs:{active['jobs'][0]['attempt_id']}")
             page.reload()
-            expect(page.get_by_text("Hello from the sandbox", exact=False).first).to_be_visible(timeout=180000)
+            logs = page.get_by_role("region", name="Job logs")
+            logs.get_by_text("Complete job log", exact=True).click()
+            expect(logs.locator("details pre")).to_contain_text("Hello from the sandbox", timeout=180000)
             expect(page.get_by_role("img", name="success", exact=True).first).to_be_visible(timeout=180000)
             page.get_by_role("button", name="success Say hello").click()
             expect(page.get_by_text("Live step finished", exact=False).first).to_be_visible()
