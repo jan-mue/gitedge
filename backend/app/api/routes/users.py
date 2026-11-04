@@ -1,12 +1,16 @@
 """User management routes."""
 
-import logging
 import uuid
-from smtplib import SMTPException
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.dependencies import CrudServiceDep, CurrentUser, EmailClientDep, UserStoreDep, get_current_active_superuser
+from app.api.dependencies import (
+    CrudServiceDep,
+    CurrentUser,
+    EmailServiceDep,
+    UserStoreDep,
+    get_current_active_superuser,
+)
 from app.config import settings
 from app.schemas.users import (
     UpdatePassword,
@@ -19,8 +23,6 @@ from app.schemas.users import (
 )
 from app.utils.email import generate_new_account_email
 from app.utils.security import get_password_hash, verify_password
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -35,7 +37,9 @@ async def read_users(user_store: UserStoreDep, skip: int = 0, limit: int = 100) 
 
 
 @router.post("/", dependencies=[Depends(get_current_active_superuser)])
-async def create_user(*, crud_service: CrudServiceDep, user_in: UserCreate, email_client: EmailClientDep) -> UserPublic:
+async def create_user(
+    *, crud_service: CrudServiceDep, user_in: UserCreate, email_service: EmailServiceDep
+) -> UserPublic:
     """Create new user."""
     user = await crud_service.get_user_by_email(email=user_in.email)
     if user:
@@ -49,14 +53,11 @@ async def create_user(*, crud_service: CrudServiceDep, user_in: UserCreate, emai
         email_data = generate_new_account_email(
             email_to=user_in.email, username=user_in.email, password=user_in.password
         )
-        try:
-            email_client.send_email(
-                email_to=user_in.email,
-                subject=email_data.subject,
-                html_content=email_data.html_content,
-            )
-        except RuntimeError, SMTPException, OSError:
-            logger.exception("New account email delivery failed")
+        email_service.send_best_effort(
+            email_to=user_in.email,
+            subject=email_data.subject,
+            html_content=email_data.html_content,
+        )
     return user
 
 

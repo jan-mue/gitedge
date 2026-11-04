@@ -58,3 +58,7 @@ class ReleaseNotFoundError(NotFoundError):
     """Raised when a release cannot be found."""
 
     default_detail = "Release not found"
+
+
+class EmailDeliveryError(Exception):
+    """Raised when the email transport cannot deliver a message."""

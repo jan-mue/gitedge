@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import logging
 import re
 from html import escape
-from smtplib import SMTPException
 from typing import TYPE_CHECKING, Literal, cast
 from urllib.parse import quote
 
@@ -27,14 +25,13 @@ if TYPE_CHECKING:
 
     from fastapi import BackgroundTasks
 
-    from app.clients.email import EmailClient
     from app.clients.notifications import NotificationStore
     from app.clients.repositories import RepositoryStore
     from app.entities.activity import Activity
     from app.entities.users import User
     from app.schemas.notifications import NotificationCategory, NotificationUpdate
+    from app.services.email import EmailService
 
-logger = logging.getLogger(__name__)
 _MENTION = re.compile(r"(?<![\w@/])@([a-zA-Z0-9][a-zA-Z0-9_-]*)(?![\w-])")
 
 
@@ -66,13 +63,13 @@ class NotificationService:
         self,
         store: NotificationStore,
         repository_store: RepositoryStore,
-        email_client: EmailClient,
+        email_service: EmailService,
         background_tasks: BackgroundTasks,
     ) -> None:
         """Bind persistence and the existing SMTP transport."""
         self.store = store
         self.repository_store = repository_store
-        self.email_client = email_client
+        self.email_service = email_service
         self.background_tasks = background_tasks
 
     async def notify(self, activity: Activity, text: str = "", previous_text: str = "") -> None:
@@ -107,7 +104,7 @@ class NotificationService:
         for user, notification, email in deliveries:
             if settings.emails_enabled and email:
                 subject, html = self._email_content(activity, notification.id)
-                self.background_tasks.add_task(self._send_email, user.email, subject, html, notification.id)
+                self.background_tasks.add_task(self.email_service.send_best_effort, user.email, subject, html)
 
     @staticmethod
     def _email_content(activity: Activity, notification_id: uuid.UUID) -> tuple[str, str]:
@@ -129,13 +126,6 @@ class NotificationService:
             f'<p><a href="{escape(settings.FRONTEND_HOST.rstrip("/"), quote=True)}/settings?tab=notifications">Notification preferences</a></p>'
         )
         return subject, html
-
-    def _send_email(self, email: str, subject: str, html: str, notification_id: uuid.UUID) -> None:
-        """Send after the response, preserving the inbox if SMTP fails."""
-        try:
-            self.email_client.send_email(email, subject, html)
-        except SMTPException, OSError, RuntimeError:
-            logger.exception("Notification email delivery failed for notification %s", notification_id)
 
     async def list_notifications(
         self,

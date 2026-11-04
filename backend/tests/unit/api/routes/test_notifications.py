@@ -11,6 +11,9 @@ from app.api.dependencies import get_email_client
 from app.clients.email import SMTPClient
 from app.config import settings
 from app.entities.repositories import Repository
+from app.entities.users import User
+from app.entities.watchers import Watcher
+from app.exceptions import EmailDeliveryError
 from app.index import app
 from app.services.notifications import mentioned_users
 from tests.unit.utils.git import seed_merge_repository
@@ -233,7 +236,7 @@ def test_email_is_opt_in_and_keeps_inbox(
         assert "from=notifications" in html
         assert inbox(client, superuser_token_headers)["count"] == 2
         assert client.get(f"{URL}/preferences", headers=normal_user_token_headers).json()["email"] is False
-        email.send_email.side_effect = RuntimeError("SMTP unavailable")
+        email.send_email.side_effect = EmailDeliveryError("SMTP unavailable")
         assert (
             client.post(f"{REPO}/issues", headers=normal_user_token_headers, json={"title": "SMTP failure"}).status_code
             == 201
@@ -321,20 +324,17 @@ def test_smtp_rejection_is_reported(mocker: MockerFixture) -> None:
     message = mocker.patch("app.clients.email.Message")
     message.return_value.send.return_value.success = False
     message.return_value.send.return_value.status_code = 550
-    with pytest.raises(RuntimeError, match="SMTP delivery failed with status 550"):
+    with pytest.raises(EmailDeliveryError, match="SMTP delivery failed with status 550"):
         SMTPClient().send_email("recipient@example.com", "Notification", "<p>Activity</p>")
 
 
+@pytest.mark.usefixtures("superuser_token_headers")
 def test_audience_preferences_and_notifications_are_processed_once(
     client: TestClient,
-    superuser_token_headers: dict[str, str],
     normal_user_token_headers: dict[str, str],
     fake_stores: FakeStores,
     mocker: MockerFixture,
 ) -> None:
-    from app.entities.users import User
-    from app.entities.watchers import Watcher
-
     first = client.post(f"{REPO}/issues", headers=normal_user_token_headers, json={"title": "Initial event"})
     assert first.status_code == 201
     repository = next(repo for repo in fake_stores.repository.items.values() if repo.name == "notifications-test")

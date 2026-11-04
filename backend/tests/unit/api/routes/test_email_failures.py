@@ -7,6 +7,7 @@ import pytest
 from app.api.dependencies import get_email_client
 from app.clients.email import EmailClient
 from app.config import settings
+from app.exceptions import EmailDeliveryError
 from app.index import app
 from app.utils.email import EmailData
 
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 @pytest.fixture
 def rejected_email(mocker: MockerFixture) -> Generator[MockType]:
     email = mocker.Mock(spec=EmailClient)
-    email.send_email.side_effect = RuntimeError("SMTP delivery failed with status 550")
+    email.send_email.side_effect = EmailDeliveryError("SMTP delivery failed with status 550")
     app.dependency_overrides[get_email_client] = lambda: email
     mocker.patch.object(settings, "SMTP_HOST", "smtp.example.test")
     mocker.patch.object(settings, "EMAILS_FROM_EMAIL", "noreply@example.test")
@@ -34,8 +35,9 @@ def rejected_email(mocker: MockerFixture) -> Generator[MockType]:
     app.dependency_overrides.pop(get_email_client, None)
 
 
+@pytest.mark.usefixtures("superuser_token_headers")
 def test_recovery_does_not_reveal_existing_account_when_smtp_rejects(
-    client: TestClient, superuser_token_headers: dict[str, str], rejected_email: MockType
+    client: TestClient, rejected_email: MockType
 ) -> None:
     existing = client.post(f"{settings.API_V1_STR}/password-recovery/{settings.FIRST_SUPERUSER}")
     missing = client.post(f"{settings.API_V1_STR}/password-recovery/not-an-account@example.com")
@@ -70,5 +72,14 @@ def test_email_diagnostics_reports_delivery_failure(
         headers=superuser_token_headers,
         params={"email_to": "recipient@example.com"},
     )
-    assert response.status_code == 502
+    assert response.status_code == 500
     assert response.json() == {"detail": "Email delivery failed"}
+
+    rejected_email.send_email.assert_called_once()
+
+
+@pytest.mark.usefixtures("superuser_token_headers")
+def test_optional_email_does_not_swallow_programming_errors(client: TestClient, rejected_email: MockType) -> None:
+    rejected_email.send_email.side_effect = RuntimeError("Unexpected programming error")
+    with pytest.raises(RuntimeError, match="Unexpected programming error"):
+        client.post(f"{settings.API_V1_STR}/password-recovery/{settings.FIRST_SUPERUSER}")
