@@ -1,8 +1,8 @@
 """add notification center preferences subscriptions and comment reactions
 
-Revision ID: da70b2e6a25d
-Revises: ddd0affd774f
-Create Date: 2026-10-15 16:22:38.083816
+Revision ID: c45f8528cc79
+Revises: c1e7092e3487
+Create Date: 2026-11-04 23:21:51.872418
 
 """
 
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "da70b2e6a25d"
-down_revision: str | None = "ddd0affd774f"
+revision: str = "c45f8528cc79"
+down_revision: str | None = "c1e7092e3487"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
