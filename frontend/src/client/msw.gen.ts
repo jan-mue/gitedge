@@ -2,7 +2,7 @@
 
 import { http, type HttpHandler, HttpResponse, type HttpResponseResolver, type RequestHandlerOptions as RequestHandlerOptions2 } from 'msw';
 
-import type { activityGetFeedResponses, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsResponses, ClientOptions, commentsAddReactionData, commentsAddReactionResponses, commentsCreateCommentData, commentsCreateCommentResponses, commentsDeleteCommentResponses, commentsListCommentsResponses, commentsListReactionsResponses, commentsRemoveReactionData, commentsRemoveReactionResponses, commentsUpdateCommentData, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryResponses, forksListForksResponses, gitGetHeadResponses, gitGetInfoPacksResponses, gitGetInfoRefsResponses, gitGetLooseObjectResponses, gitGetPackFileResponses, gitGitReceivePackResponses, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenResponses, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordResponses, loginTestTokenResponses, notificationsArchiveRepositoryResponses, notificationsGetPreferencesResponses, notificationsGetRepositoryPreferencesResponses, notificationsListNotificationsResponses, notificationsMarkAllReadResponses, notificationsSetPreferencesData, notificationsSetPreferencesResponses, notificationsSetRepositoryPreferencesData, notificationsSetRepositoryPreferencesResponses, notificationsUpdateNotificationsData, notificationsUpdateNotificationsResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationResponses, organizationsListOrganizationsResponses, privateCreateUserData, privateCreateUserResponses, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseResponses, releasesGetReleaseResponses, releasesListReleasesResponses, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseResponses, repositoriesCompareRevisionsResponses, repositoriesCreateIssueData, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryResponses, repositoriesGetBlameResponses, repositoriesGetBlobResponses, repositoriesGetCommitResponses, repositoriesGetDiffFileResponses, repositoriesGetFileIndexResponses, repositoriesGetIssueResponses, repositoriesGetPullRequestCommitsResponses, repositoriesGetPullRequestEventsResponses, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestMergeabilityResponses, repositoriesGetPullRequestResponses, repositoriesGetRawResponses, repositoriesGetReadmeResponses, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceResponses, repositoriesGetStatisticsResponses, repositoriesGetTreeResponses, repositoriesListBranchesResponses, repositoriesListCommitsResponses, repositoriesListIssuesResponses, repositoriesListPullRequestsResponses, repositoriesListRepositoriesResponses, repositoriesMergePullRequestData, repositoriesMergePullRequestResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryResponses, reviewsGetCommentContextResponses, reviewsGetWorkspaceResponses, reviewsListReviewsResponses, reviewsMarkReviewedData, reviewsMarkReviewedResponses, reviewsReplyToReviewData, reviewsReplyToReviewResponses, reviewsSaveDraftData, reviewsSaveDraftResponses, reviewsSubmitReviewData, reviewsSubmitReviewResponses, starsGetStarStateResponses, starsListStargazersResponses, starsListStarredRepositoriesResponses, starsStarRepositoryResponses, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserResponses, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeResponses, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserMeData, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckResponses, utilsPreviewMarkdownData, utilsPreviewMarkdownResponses, utilsTestEmailResponses, watchersGetWatchStateResponses, watchersListWatchersResponses, watchersUnwatchRepositoryResponses, watchersWatchRepositoryResponses } from './types.gen';
+import type { actionsCancelRunResponses, actionsDispatchWorkflowData, actionsDispatchWorkflowResponses, actionsGetPullRequestChecksResponses, actionsListRunsResponses, actionsListWorkflowsResponses, activityGetFeedResponses, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsResponses, ClientOptions, commentsAddReactionData, commentsAddReactionResponses, commentsCreateCommentData, commentsCreateCommentResponses, commentsDeleteCommentResponses, commentsListCommentsResponses, commentsListReactionsResponses, commentsRemoveReactionData, commentsRemoveReactionResponses, commentsUpdateCommentData, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryResponses, forksListForksResponses, gitGetHeadResponses, gitGetInfoPacksResponses, gitGetInfoRefsResponses, gitGetLooseObjectResponses, gitGetPackFileResponses, gitGitReceivePackResponses, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenResponses, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordResponses, loginTestTokenResponses, notificationsArchiveRepositoryResponses, notificationsGetPreferencesResponses, notificationsGetRepositoryPreferencesResponses, notificationsListNotificationsResponses, notificationsMarkAllReadResponses, notificationsSetPreferencesData, notificationsSetPreferencesResponses, notificationsSetRepositoryPreferencesData, notificationsSetRepositoryPreferencesResponses, notificationsUpdateNotificationsData, notificationsUpdateNotificationsResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationResponses, organizationsListOrganizationsResponses, privateCreateUserData, privateCreateUserResponses, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseResponses, releasesGetReleaseResponses, releasesListReleasesResponses, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseResponses, repositoriesCompareRevisionsResponses, repositoriesCreateIssueData, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryResponses, repositoriesGetBlameResponses, repositoriesGetBlobResponses, repositoriesGetCommitResponses, repositoriesGetDiffFileResponses, repositoriesGetFileIndexResponses, repositoriesGetIssueResponses, repositoriesGetPullRequestCommitsResponses, repositoriesGetPullRequestEventsResponses, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestMergeabilityResponses, repositoriesGetPullRequestResponses, repositoriesGetRawResponses, repositoriesGetReadmeResponses, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceResponses, repositoriesGetStatisticsResponses, repositoriesGetTreeResponses, repositoriesListBranchesResponses, repositoriesListCommitsResponses, repositoriesListIssuesResponses, repositoriesListPullRequestsResponses, repositoriesListRepositoriesResponses, repositoriesMergePullRequestData, repositoriesMergePullRequestResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryResponses, reviewsGetCommentContextResponses, reviewsGetWorkspaceResponses, reviewsListReviewsResponses, reviewsMarkReviewedData, reviewsMarkReviewedResponses, reviewsReplyToReviewData, reviewsReplyToReviewResponses, reviewsSaveDraftData, reviewsSaveDraftResponses, reviewsSubmitReviewData, reviewsSubmitReviewResponses, starsGetStarStateResponses, starsListStargazersResponses, starsListStarredRepositoriesResponses, starsStarRepositoryResponses, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserResponses, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeResponses, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserMeData, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckResponses, utilsPreviewMarkdownData, utilsPreviewMarkdownResponses, utilsTestEmailResponses, watchersGetWatchStateResponses, watchersListWatchersResponses, watchersUnwatchRepositoryResponses, watchersWatchRepositoryResponses } from './types.gen';
 
 export type RequestHandlerOptions = RequestHandlerOptions2 & {
     baseUrl?: ClientOptions['baseUrl'];
@@ -226,6 +226,175 @@ export function handleNotificationsArchiveRepository(response?: HandleNotificati
         owner: string;
         repo: string;
     }, never>(`${options?.baseUrl ?? '*'}/api/v1/notifications/repositories/:owner/:repo/archive`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return new HttpResponse(body, { status: response?.status ?? 204 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleActionsListWorkflowsResponse = {
+    body: actionsListWorkflowsResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/repositories/{owner}/{repo}/actions/workflows` operation.
+ */
+export function handleActionsListWorkflows(response?: HandleActionsListWorkflowsResponse | HttpResponseResolver<{
+    owner: string;
+    repo: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        owner: string;
+        repo: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/repositories/:owner/:repo/actions/workflows`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleActionsListRunsResponse = {
+    body: actionsListRunsResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/repositories/{owner}/{repo}/actions/runs` operation.
+ */
+export function handleActionsListRuns(response?: HandleActionsListRunsResponse | HttpResponseResolver<{
+    owner: string;
+    repo: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        owner: string;
+        repo: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/repositories/:owner/:repo/actions/runs`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleActionsGetPullRequestChecksResponse = {
+    body: actionsGetPullRequestChecksResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/repositories/{owner}/{repo}/pulls/{number}/checks` operation.
+ */
+export function handleActionsGetPullRequestChecks(response?: HandleActionsGetPullRequestChecksResponse | HttpResponseResolver<{
+    owner: string;
+    repo: string;
+    number: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        owner: string;
+        repo: string;
+        number: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/repositories/:owner/:repo/pulls/:number/checks`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleActionsDispatchWorkflowResponse = {
+    body: actionsDispatchWorkflowResponses[201];
+    status?: 201;
+};
+
+/**
+ * Handler for the `POST /api/v1/repositories/{owner}/{repo}/actions/dispatch` operation.
+ */
+export function handleActionsDispatchWorkflow(response?: HandleActionsDispatchWorkflowResponse | HttpResponseResolver<{
+    owner: string;
+    repo: string;
+}, actionsDispatchWorkflowData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.post<{
+        owner: string;
+        repo: string;
+    }, actionsDispatchWorkflowData['body']>(`${options?.baseUrl ?? '*'}/api/v1/repositories/:owner/:repo/actions/dispatch`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 201 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleActionsCancelRunResponse = {
+    body: actionsCancelRunResponses[204];
+    status?: 204;
+};
+
+/**
+ * Handler for the `POST /api/v1/repositories/{owner}/{repo}/actions/runs/{run_id}/cancel` operation.
+ */
+export function handleActionsCancelRun(response?: HandleActionsCancelRunResponse | HttpResponseResolver<{
+    owner: string;
+    repo: string;
+    run_id: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.post<{
+        owner: string;
+        repo: string;
+        run_id: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/repositories/:owner/:repo/actions/runs/:run_id/cancel`, info => {
         if (typeof response === 'function') {
             return response(info);
         }
@@ -3308,6 +3477,26 @@ export type MswHandlerFactories = {
      */
     notificationsArchiveRepository: typeof handleNotificationsArchiveRepository;
     /**
+     * Handler for the `GET /api/v1/repositories/{owner}/{repo}/actions/workflows` operation.
+     */
+    actionsListWorkflows: typeof handleActionsListWorkflows;
+    /**
+     * Handler for the `GET /api/v1/repositories/{owner}/{repo}/actions/runs` operation.
+     */
+    actionsListRuns: typeof handleActionsListRuns;
+    /**
+     * Handler for the `GET /api/v1/repositories/{owner}/{repo}/pulls/{number}/checks` operation.
+     */
+    actionsGetPullRequestChecks: typeof handleActionsGetPullRequestChecks;
+    /**
+     * Handler for the `POST /api/v1/repositories/{owner}/{repo}/actions/dispatch` operation.
+     */
+    actionsDispatchWorkflow: typeof handleActionsDispatchWorkflow;
+    /**
+     * Handler for the `POST /api/v1/repositories/{owner}/{repo}/actions/runs/{run_id}/cancel` operation.
+     */
+    actionsCancelRun: typeof handleActionsCancelRun;
+    /**
      * Handler for the `POST /api/v1/login/access-token` operation.
      */
     loginLoginAccessToken: typeof handleLoginLoginAccessToken;
@@ -3712,6 +3901,11 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
         notificationsSetRepositoryPreferences: wrap(handleNotificationsSetRepositoryPreferences),
         notificationsMarkAllRead: wrap(handleNotificationsMarkAllRead),
         notificationsArchiveRepository: wrap(handleNotificationsArchiveRepository),
+        actionsListWorkflows: wrap(handleActionsListWorkflows),
+        actionsListRuns: wrap(handleActionsListRuns),
+        actionsGetPullRequestChecks: wrap(handleActionsGetPullRequestChecks),
+        actionsDispatchWorkflow: wrap(handleActionsDispatchWorkflow),
+        actionsCancelRun: wrap(handleActionsCancelRun),
         loginLoginAccessToken: wrap(handleLoginLoginAccessToken),
         loginTestToken: wrap(handleLoginTestToken),
         loginRecoverPassword: wrap(handleLoginRecoverPassword),
@@ -3820,6 +4014,8 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
         return [
             invoke(pick.reviewsGetCommentContext, overrides.reviewsGetCommentContext),
             invoke(pick.reviewsReplyToReview, overrides.reviewsReplyToReview),
+            invoke(pick.actionsCancelRun, overrides.actionsCancelRun),
+            invoke(pick.actionsGetPullRequestChecks, overrides.actionsGetPullRequestChecks),
             invoke(pick.commentsListComments, overrides.commentsListComments),
             invoke(pick.commentsCreateComment, overrides.commentsCreateComment),
             invoke(pick.repositoriesGetPullRequestEvents, overrides.repositoriesGetPullRequestEvents),
@@ -3833,6 +4029,9 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.reviewsSaveDraft, overrides.reviewsSaveDraft),
             invoke(pick.reviewsMarkReviewed, overrides.reviewsMarkReviewed),
             invoke(pick.notificationsArchiveRepository, overrides.notificationsArchiveRepository),
+            invoke(pick.actionsListWorkflows, overrides.actionsListWorkflows),
+            invoke(pick.actionsListRuns, overrides.actionsListRuns),
+            invoke(pick.actionsDispatchWorkflow, overrides.actionsDispatchWorkflow),
             invoke(pick.activityGetRepositoryActivityStatistics, overrides.activityGetRepositoryActivityStatistics),
             invoke(pick.releasesGetRelease, overrides.releasesGetRelease),
             invoke(pick.releasesUpdateRelease, overrides.releasesUpdateRelease),

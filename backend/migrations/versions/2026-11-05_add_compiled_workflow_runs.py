@@ -1,8 +1,8 @@
-"""add compiled workflow runs
+"""Add compiled workflow runs
 
 Revision ID: 4e443e0e9a40
-Revises: c1e7092e3487
-Create Date: 2026-10-25 10:14:58.369821
+Revises: c45f8528cc79
+Create Date: 2026-11-05 00:14:53.278517
 
 """
 
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "4e443e0e9a40"
-down_revision: str | None = "c1e7092e3487"
+down_revision: str | None = "c45f8528cc79"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
