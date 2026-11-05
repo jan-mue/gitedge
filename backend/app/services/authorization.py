@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import casbin
-from casbin.persist.adapters.asyncio import AsyncFileAdapter
 
 from app.entities.authorization import OrganizationMember, RepositoryCollaborator, Team, TeamMember
 from app.entities.principals import PrincipalType
@@ -19,7 +19,7 @@ from app.exceptions import (
     PermissionDeniedError,
     UserNotFoundError,
 )
-from app.schemas.authorization import CollaboratorPublic, MemberPublic, RepositoryRole
+from app.schemas.authorization import CollaboratorPublic, MemberPublic, RepositoryPermissions, RepositoryRole
 
 if TYPE_CHECKING:
     import uuid
@@ -36,14 +36,20 @@ if TYPE_CHECKING:
 POLICY_DIRECTORY = Path(__file__).resolve().parents[2] / "resources" / "authorization"
 
 
-async def new_enforcer() -> casbin.AsyncEnforcer:
-    """Create an isolated enforcer; never share mutable request policies."""
-    enforcer = casbin.AsyncEnforcer(
-        str(POLICY_DIRECTORY / "model.conf"), AsyncFileAdapter(str(POLICY_DIRECTORY / "policy.csv"))
-    )
+@cache
+def policy_enforcer() -> casbin.Enforcer:
+    """Load deployment-static policy once per process; never add user grants here."""
+    enforcer = casbin.Enforcer(str(POLICY_DIRECTORY / "model.conf"), str(POLICY_DIRECTORY / "policy.csv"))
     enforcer.enable_auto_save(False)
-    await enforcer.load_policy()
     return enforcer
+
+
+@cache
+def permitted_roles(permission: str) -> frozenset[str]:
+    """Compile the immutable role-to-permission relation, never an actor's access."""
+    enforcer = policy_enforcer()
+    roles = {rule[0] for rule in enforcer.get_policy()}
+    return frozenset(role for role in roles if enforcer.enforce({role}, permission))
 
 
 class AuthorizationService:
@@ -64,54 +70,68 @@ class AuthorizationService:
 
     async def can(self, repository: Repository, user: User | None, permission: str = "repository:read") -> bool:
         """Evaluate a permission in a repository's UUID domain."""
-        enforcer = await new_enforcer()
-        domain = f"repository:{repository.id}"
-        subject = f"user:{user.id}" if user else "anonymous"
-        if not repository.is_private:
-            await enforcer.add_grouping_policy(subject, "read", domain)
-        if user is not None:
-            if not user.is_active:
-                return False
-            if user.is_superuser or repository.owner_id == user.id:
-                await enforcer.add_grouping_policy(subject, "owner", domain)
-            members = await self.store.members(repository.owner_id)
-            member = next((member for member in members if member.user_id == user.id), None)
-            if member is not None and member.is_admin:
-                await enforcer.add_grouping_policy(subject, "owner", domain)
-            for collaborator in await self.store.collaborators(repository.id):
-                if collaborator.user_id == user.id:
-                    await enforcer.add_grouping_policy(subject, collaborator.role, domain)
-                elif collaborator.team_id is not None and member is not None:
-                    teams = await self.store.teams(repository.owner_id)
-                    if any(team.id == collaborator.team_id for team in teams):
-                        team_members = await self.store.team_members(collaborator.team_id)
-                        if any(team_member.user_id == user.id for team_member in team_members):
-                            team_subject = f"team:{collaborator.team_id}"
-                            await enforcer.add_grouping_policy(subject, team_subject, domain)
-                            await enforcer.add_grouping_policy(team_subject, collaborator.role, domain)
-        return bool(enforcer.enforce(subject, domain, permission))
+        roles = await self._repository_roles([repository], user)
+        return bool(roles[repository.id] & permitted_roles(permission))
+
+    async def _repository_roles(self, repositories: list[Repository], user: User | None) -> dict[uuid.UUID, set[str]]:
+        """Resolve fresh grants for a batch, without caching mutable identity facts."""
+        roles: dict[uuid.UUID, set[str]] = {repository.id: set() for repository in repositories}
+        if user is not None and not user.is_active:
+            return roles
+        pending = []
+        for repository in repositories:
+            if not repository.is_private:
+                roles[repository.id].add("read")
+            if user is not None:
+                if user.is_superuser or repository.owner_id == user.id:
+                    roles[repository.id].add("owner")
+                else:
+                    pending.append(repository.id)
+        if user is not None and pending:
+            for repository_id, granted in (await self.store.repository_roles(user.id, pending)).items():
+                roles[repository_id].update(granted)
+        return roles
+
+    async def visible_repositories(self, repositories: list[Repository], user: User | None) -> list[Repository]:
+        """Filter a listing with one batch query, regardless of its repository count."""
+        roles = await self._repository_roles(repositories, user)
+        readable = permitted_roles("repository:read")
+        return [repository for repository in repositories if roles[repository.id] & readable]
+
+    async def permissions(self, repository: Repository, user: User | None) -> RepositoryPermissions:
+        """Derive every permission from one fresh set of repository grants."""
+        roles = (await self._repository_roles([repository], user))[repository.id]
+        return RepositoryPermissions(
+            **{
+                permission: bool(roles & permitted_roles(f"repository:{permission}"))
+                for permission in ("read", "write", "admin", "owner")
+            }
+        )
 
     async def require(self, repository: Repository, user: User | None, permission: str = "repository:read") -> None:
         """Require a permission before any repository content or storage access."""
         if not await self.can(repository, user, permission):
-            if user is None:
-                raise AuthenticationError(detail="Authentication required", challenge="Bearer")
-            raise PermissionDeniedError(detail="Insufficient repository permission")
+            self.deny(user)
+
+    @staticmethod
+    def deny(user: User | None) -> None:
+        """Report a denied repository decision using the actor's authentication state."""
+        if user is None:
+            raise AuthenticationError(detail="Authentication required", challenge="Bearer")
+        raise PermissionDeniedError(detail="Insufficient repository permission")
 
     async def organization(self, name: str, user: User, permission: str = "organization:admin") -> Organization:
         """Resolve an organization and enforce its membership policy."""
         organization = await self.organizations.get_by_name(name)
         if organization is None:
             raise OrganizationNotFoundError()
-        enforcer = await new_enforcer()
-        domain = f"organization:{organization.id}"
-        subject = f"user:{user.id}"
+        roles = set()
         if user.is_superuser:
-            await enforcer.add_grouping_policy(subject, "org_admin", domain)
+            roles.add("org_admin")
         for member in await self.store.members(organization.id):
             if member.user_id == user.id:
-                await enforcer.add_grouping_policy(subject, "org_admin" if member.is_admin else "org_member", domain)
-        if not user.is_active or not enforcer.enforce(subject, domain, permission):
+                roles.add("org_admin" if member.is_admin else "org_member")
+        if not user.is_active or not roles & permitted_roles(permission):
             raise PermissionDeniedError(detail="Insufficient organization permission")
         return organization
 

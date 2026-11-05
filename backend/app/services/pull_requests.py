@@ -303,8 +303,6 @@ class PullRequestService:
             await self.authorization.require(repository, current_user)
             if pull_request.author_id != current_user.id:
                 await self.authorization.require(repository, current_user, "repository:write")
-            if body.state == IssueState.MERGED:
-                await self.authorization.require(repository, current_user, "repository:write")
         elif pull_request.author_id != current_user.id and not current_user.is_superuser:
             raise PermissionDeniedError(detail="Only authors or maintainers can edit discussions")
 

@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 
 from app.api.dependencies import AuthorizationServiceDep, CurrentUser, OptionalUser
 from app.api.permissions import require_permission
@@ -29,16 +29,16 @@ async def get_permissions(
     owner: str,
     repo: str,
     authorization: AuthorizationServiceDep,
-    current_user: Annotated[User | None, Depends(require_permission("repository:read", user_dep=OptionalUser))],
+    current_user: OptionalUser,
+    response: Response,
 ) -> RepositoryPermissions:
     """Return effective permissions for the current viewer."""
     repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
-    return RepositoryPermissions(
-        **{
-            permission: await authorization.can(repository, current_user, f"repository:{permission}")
-            for permission in ("read", "write", "admin", "owner")
-        }
-    )
+    permissions = await authorization.permissions(repository, current_user)
+    if not permissions.read:
+        authorization.deny(current_user)
+    response.headers["Cache-Control"] = "private, no-store"
+    return permissions
 
 
 @router.get(

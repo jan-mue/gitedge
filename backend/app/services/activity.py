@@ -209,16 +209,19 @@ class ActivityService:
                 return ActivitiesPublic(data=[], count=0)
             activities = await self.activity_store.list_recent(offset, limit)
         if self.authorization is not None:
-            visible = []
+            repositories = {}
             for activity in activities:
-                repository = (
-                    await self.repository_store.find(activity.repo_id) if activity.repo_id is not None else None
+                if activity.repo_id is not None and activity.repo_id not in repositories:
+                    repositories[activity.repo_id] = await self.repository_store.find(activity.repo_id)
+            visible_ids = {
+                repository.id
+                for repository in await self.authorization.visible_repositories(
+                    [repository for repository in repositories.values() if repository is not None], user
                 )
-                if (repository is None and activity.repo_id is None) or (
-                    repository is not None and await self.authorization.can(repository, user)
-                ):
-                    visible.append(activity)
-            activities = visible
+            }
+            activities = [
+                activity for activity in activities if activity.repo_id is None or activity.repo_id in visible_ids
+            ]
         previews = await self.activity_store.get_target_previews(activities)
         public = [
             self._to_public(activity).model_copy(update={"preview": previews.get(activity.id)})

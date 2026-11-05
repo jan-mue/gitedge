@@ -132,7 +132,7 @@ class ForkService:
             return ForksPublic(data=[], count=0)
         forks = await self.repository_store.list_by_fork_of(source.id, offset, limit)
         if self.authorization is not None:
-            forks = [fork for fork in forks if await self.authorization.can(fork, user)]
+            forks = await self.authorization.visible_repositories(forks, user)
         return ForksPublic(data=[await self._to_public(fork) for fork in forks], count=len(forks))
 
     async def _to_public(self, fork: Repository) -> ForkPublic:

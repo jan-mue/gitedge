@@ -5,9 +5,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, override
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, literal, select, union_all
 
 from app.entities.authorization import OrganizationMember, RepositoryCollaborator, Team, TeamMember
+from app.entities.repositories import Repository
 
 if TYPE_CHECKING:
     import uuid
@@ -21,6 +22,10 @@ type AccessEntity = OrganizationMember | Team | TeamMember | RepositoryCollabora
 
 class AuthorizationStore(ABC):
     """Store contract for the facts used in authorization decisions."""
+
+    @abstractmethod
+    async def repository_roles(self, user_id: uuid.UUID, repository_ids: list[uuid.UUID]) -> dict[uuid.UUID, set[str]]:
+        """Fetch the actor's direct, team, and organization-admin roles in one batch."""
 
     @abstractmethod
     async def members(self, organization_id: uuid.UUID, *, for_update: bool = False) -> list[OrganizationMember]:
@@ -57,6 +62,41 @@ class SQLAuthorizationStore(AuthorizationStore):
     def __init__(self, db: AsyncSession) -> None:
         """Bind the store to the request's database session."""
         self.db = db
+
+    @override
+    async def repository_roles(self, user_id: uuid.UUID, repository_ids: list[uuid.UUID]) -> dict[uuid.UUID, set[str]]:
+        """Resolve scoped roles in one query, requiring current team and org membership."""
+        if not repository_ids:
+            return {}
+        direct = select(RepositoryCollaborator.repository_id, RepositoryCollaborator.role).where(
+            RepositoryCollaborator.repository_id.in_(repository_ids), RepositoryCollaborator.user_id == user_id
+        )
+        teams = (
+            select(RepositoryCollaborator.repository_id, RepositoryCollaborator.role)
+            .join(Team, Team.id == RepositoryCollaborator.team_id)
+            .join(Repository, Repository.id == RepositoryCollaborator.repository_id)
+            .join(TeamMember, TeamMember.team_id == Team.id)
+            .join(OrganizationMember, OrganizationMember.organization_id == Team.organization_id)
+            .where(
+                RepositoryCollaborator.repository_id.in_(repository_ids),
+                Repository.owner_id == Team.organization_id,
+                TeamMember.user_id == user_id,
+                OrganizationMember.user_id == user_id,
+            )
+        )
+        admins = (
+            select(Repository.id, literal("owner"))
+            .join(OrganizationMember, OrganizationMember.organization_id == Repository.owner_id)
+            .where(
+                Repository.id.in_(repository_ids),
+                OrganizationMember.user_id == user_id,
+                OrganizationMember.is_admin.is_(True),
+            )
+        )
+        roles: dict[uuid.UUID, set[str]] = {}
+        for repository_id, role in await self.db.execute(union_all(direct, teams, admins)):
+            roles.setdefault(repository_id, set()).add(role)
+        return roles
 
     @override
     async def members(self, organization_id: uuid.UUID, *, for_update: bool = False) -> list[OrganizationMember]:

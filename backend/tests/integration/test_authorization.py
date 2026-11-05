@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -20,12 +21,16 @@ from app.schemas.authorization import CollaboratorInput, RepositoryRole
 from app.services.authorization import AuthorizationService
 from tests.conftest import _run_async
 
+if TYPE_CHECKING:
+    from pytest_mock import MockerFixture
+    from sqlalchemy.ext.asyncio import AsyncSession
 
-def test_authorization_persistence(infrastructure: dict[str, str]) -> None:
-    _run_async(check_authorization_persistence(infrastructure["DATABASE_URL"]))
+
+def test_authorization_persistence(infrastructure: dict[str, str], mocker: MockerFixture) -> None:
+    _run_async(check_authorization_persistence(infrastructure["DATABASE_URL"], mocker))
 
 
-async def check_authorization_persistence(database_url: str) -> None:
+async def check_authorization_persistence(database_url: str, mocker: MockerFixture) -> None:
     engine = create_async_engine(database_url)
     try:
         async with create_session_factory(engine)() as db:
@@ -72,10 +77,15 @@ async def check_authorization_persistence(database_url: str) -> None:
             await db.reset()
             repository = await repositories.get(repository_id)
             assert await authorization.can(repository, member, "repository:write")
+            await check_batched_repository_roles(db, authorization, repository, admin, member, team.id, mocker)
             await repositories.update(repository, {"name": "renamed"})
             assert await authorization.can(repository, member, "repository:write")
             await authorization.remove_member(organization.name, member.id, admin)
             assert not await facts.team_members(team.id)
+            stale_team_member = TeamMember(team_id=team.id, user_id=member.id)
+            await facts.save(stale_team_member)
+            assert not await authorization.can(repository, member)
+            await facts.remove(stale_team_member)
             assert not await authorization.can(repository, member)
             await authorization.set_member(organization.name, member.id, False, admin)
             assert not await authorization.can(repository, member)
@@ -96,3 +106,46 @@ async def check_authorization_persistence(database_url: str) -> None:
             await users.delete(await users.get(admin.id))
     finally:
         await engine.dispose()
+
+
+async def check_batched_repository_roles(
+    db: AsyncSession,
+    authorization: AuthorizationService,
+    repository: Repository,
+    admin: User,
+    member: User,
+    team_id: uuid.UUID,
+    mocker: MockerFixture,
+) -> None:
+    """A 10k-row batch uses one query and preserves all grant scope boundaries."""
+    suffix = uuid.uuid4().hex
+    other_org = Organization(name=f"other-{suffix}", lower_name=f"other-{suffix}")
+    await authorization.store.create_organization(other_org, admin.id)
+    sibling = Repository(name="sibling", owner_id=repository.owner_id, is_private=True)
+    direct = Repository(name=f"direct-{suffix}", owner_id=admin.id, is_private=True)
+    foreign = Repository(name="foreign", owner_id=other_org.id, is_private=True)
+    db.add_all([sibling, direct, foreign])
+    await db.commit()
+    await authorization.store.save(RepositoryCollaborator(repository_id=direct.id, user_id=member.id, role="read"))
+    # A corrupt cross-organization team grant must still fail closed at read time.
+    await authorization.store.save(RepositoryCollaborator(repository_id=foreign.id, team_id=team_id, role="write"))
+    candidates = [repository, sibling, direct, foreign] + [
+        Repository(id=uuid.uuid4(), name=f"candidate-{index}", owner_id=other_org.id, is_private=True)
+        for index in range(9996)
+    ]
+    query = mocker.spy(db, "execute")
+    try:
+        visible = await authorization.visible_repositories(candidates, member)
+        assert {item.id for item in visible} == {repository.id, direct.id}
+        query.assert_awaited_once()
+    finally:
+        mocker.stop(query)
+    # Organization administration remains scoped to the owning organization.
+    roles = await authorization.store.repository_roles(admin.id, [repository.id, sibling.id, direct.id, foreign.id])
+    assert roles == {repository.id: {"owner"}, sibling.id: {"owner"}, foreign.id: {"owner"}}
+    permissions = await authorization.permissions(repository, member)
+    assert permissions.model_dump() == {"read": True, "write": True, "admin": False, "owner": False}
+    await authorization.repositories.delete(sibling)
+    await authorization.repositories.delete(direct)
+    await authorization.repositories.delete(foreign)
+    await authorization.organizations.delete(other_org)

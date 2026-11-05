@@ -796,7 +796,7 @@ async def get_git_user(
     if basic is not None:
         if basic.password.startswith("gitedge_pat_"):
             return await tokens.authenticate(basic.password, scope, basic.username)
-        user = await users.get_by_name(basic.username)
+        user = await users.find_by_name(basic.username)
         if user is not None and security.verify_password(basic.password, user.hashed_password)[0] and user.is_active:
             return user
         raise InvalidPersonalAccessTokenError()

@@ -948,9 +948,32 @@ class FakeReviewStore(ReviewStore):
 class FakeAuthorizationStore(AuthorizationStore):
     """In-memory authorization facts with production-equivalent revocation."""
 
-    def __init__(self, organizations: FakeOrganizationStore) -> None:
+    def __init__(self, organizations: FakeOrganizationStore, repositories: FakeRepositoryStore) -> None:
+        self.repositories = repositories
         self.items: dict[uuid.UUID, AccessEntity] = {}
         self.organizations = organizations
+
+    @override
+    async def repository_roles(self, user_id: uuid.UUID, repository_ids: list[uuid.UUID]) -> dict[uuid.UUID, set[str]]:
+        roles: dict[uuid.UUID, set[str]] = {}
+        for repository_id in repository_ids:
+            repository = self.repositories.items.get(repository_id)
+            if repository is None:
+                continue
+            members = await self.members(repository.owner_id)
+            member = next((item for item in members if item.user_id == user_id), None)
+            if member is not None and member.is_admin:
+                roles.setdefault(repository_id, set()).add("owner")
+            teams = {team.id for team in await self.teams(repository.owner_id)}
+            for collaborator in await self.collaborators(repository_id):
+                if collaborator.user_id == user_id or (
+                    member is not None
+                    and collaborator.team_id is not None
+                    and collaborator.team_id in teams
+                    and any(item.user_id == user_id for item in await self.team_members(collaborator.team_id))
+                ):
+                    roles.setdefault(repository_id, set()).add(collaborator.role)
+        return roles
 
     @override
     async def members(self, organization_id: uuid.UUID, *, for_update: bool = False) -> list[OrganizationMember]:
@@ -1282,7 +1305,7 @@ def build_fake_stores() -> FakeStores:
         reviews=FakeReviewStore(comments),
         repository=repository,
         organizations=organizations,
-        authorization=FakeAuthorizationStore(organizations),
+        authorization=FakeAuthorizationStore(organizations, repository),
         personal_access_tokens=FakePersonalAccessTokenStore(),
         stars=FakeStarStore(users),
         watchers=FakeWatcherStore(users),

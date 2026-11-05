@@ -11,11 +11,12 @@ from app.entities.organizations import Organization
 from app.entities.repositories import Repository
 from app.entities.users import User
 from app.services.authorization import AuthorizationService
-from app.utils.security import create_access_token
+from app.utils.security import create_access_token, get_password_hash
 from tests.unit.utils.git import seed_merge_repository
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
+    from pytest_mock import MockerFixture
 
     from tests.unit.utils.fakes import FakeStores
 
@@ -395,3 +396,78 @@ async def test_private_reactions_follow_current_repository_grants(client: TestCl
     assert client.put(url, headers=headers(reader), json={"emoji": "👍"}).status_code == 200
     await fake_stores.authorization.remove(grant)
     assert client.get(url, headers=headers(reader)).status_code == 404
+
+
+@pytest.mark.parametrize("count", [1, 100, 10000])
+async def test_listing_batches_grants_and_anonymous_needs_no_lookup(
+    fake_stores: FakeStores, mocker: MockerFixture, count: int
+) -> None:
+    owner = add_user(fake_stores, "owner")
+    reader = add_user(fake_stores, "reader")
+    repositories = [add_repository(fake_stores, owner, f"repo-{index}") for index in range(count)]
+    repositories[-1].is_private = False
+    await fake_stores.authorization.save(
+        RepositoryCollaborator(repository_id=repositories[0].id, user_id=reader.id, role="write")
+    )
+    authorization = service(fake_stores)
+    lookup = mocker.spy(fake_stores.authorization, "repository_roles")
+    visible = await authorization.visible_repositories(repositories, reader)
+    assert {repo.id for repo in visible} == {repositories[0].id, repositories[-1].id}
+    lookup.assert_awaited_once()
+    assert len(lookup.call_args.args[1]) == count
+    lookup.reset_mock()
+    assert await authorization.visible_repositories(repositories, None) == [repositories[-1]]
+    lookup.assert_not_called()
+
+
+def test_permissions_resolves_grants_once_and_preserves_denials(
+    client: TestClient, fake_stores: FakeStores, mocker: MockerFixture
+) -> None:
+    owner = add_user(fake_stores, "owner")
+    reader = add_user(fake_stores, "reader")
+    repo = add_repository(fake_stores, owner)
+    grant = RepositoryCollaborator(repository_id=repo.id, user_id=reader.id, role="write")
+    fake_stores.authorization.items[repo.id] = grant
+    lookup = mocker.spy(fake_stores.authorization, "repository_roles")
+    url = f"{API}/repositories/owner/repo/permissions"
+    response = client.get(url, headers=headers(reader))
+    assert response.status_code == 200
+    assert response.json() == {"read": True, "write": True, "admin": False, "owner": False}
+    assert response.headers["cache-control"] == "private, no-store"
+    lookup.assert_awaited_once()
+    fake_stores.authorization.items.clear()
+    assert client.get(url, headers=headers(reader)).status_code == 403
+    response = client.get(url)
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+async def test_warm_policy_does_not_cache_grants_between_services(fake_stores: FakeStores) -> None:
+    owner = add_user(fake_stores, "owner")
+    reader = add_user(fake_stores, "reader")
+    outsider = add_user(fake_stores, "outsider")
+    repo = add_repository(fake_stores, owner)
+    grant = RepositoryCollaborator(repository_id=repo.id, user_id=reader.id, role="read")
+    await fake_stores.authorization.save(grant)
+    first, second = service(fake_stores), service(fake_stores)
+    assert await first.can(repo, reader)
+    assert not await second.can(repo, outsider)
+    await fake_stores.authorization.remove(grant)
+    assert not await first.can(repo, reader)
+    assert not await second.can(repo, reader)
+
+
+@pytest.mark.parametrize("private", [True, False])
+def test_unknown_basic_username_matches_wrong_password_response(
+    client: TestClient, fake_stores: FakeStores, *, private: bool
+) -> None:
+    owner = add_user(fake_stores, "owner")
+    owner.hashed_password = get_password_hash("correct-password")
+    add_repository(fake_stores, owner, private=private)
+    url = f"{API}/owner/repo.git/info/refs?service=git-upload-pack"
+    unknown = client.get(url, auth=("unknown-user", "wrong-password"))
+    incorrect = client.get(url, auth=(owner.name, "wrong-password"))
+    for response in (unknown, incorrect):
+        assert response.status_code == 401
+        assert response.headers["www-authenticate"] == 'Basic realm="GitEdge"'
+        assert response.json() == {"detail": "Invalid personal access token"}

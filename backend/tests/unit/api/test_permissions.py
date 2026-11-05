@@ -15,7 +15,7 @@ from app.api.exception_handlers import application_exception_handler
 from app.api.permissions import require_permission
 from app.entities.users import User
 from app.exceptions import ApplicationError
-from app.services.authorization import new_enforcer
+from app.services.authorization import policy_enforcer
 from tests.unit.api.routes.test_authorization import add_repository, add_user, service
 
 if TYPE_CHECKING:
@@ -106,14 +106,15 @@ def test_optional_user_allows_anonymous_public_reads_but_not_private_reads(fake_
         assert private.headers["www-authenticate"] == "Bearer"
 
 
-async def test_async_enforcers_load_policy_without_sharing_request_grants() -> None:
-    first = await new_enforcer()
-    second = await new_enforcer()
-    await first.add_grouping_policy("alice", "owner", "repository:one")
-    assert first.enforce("alice", "repository:one", "repository:read")
-    assert first.enforce("alice", "repository:one", "repository:owner")
-    assert not first.enforce("alice", "repository:two", "repository:read")
-    assert not second.enforce("alice", "repository:one", "repository:read")
+def test_static_policy_reuses_enforcer_without_retaining_request_roles() -> None:
+    enforcer = policy_enforcer()
+    assert enforcer is policy_enforcer()
+    assert enforcer.enforce({"owner"}, "repository:read")
+    assert enforcer.enforce({"owner"}, "repository:owner")
+    assert not enforcer.enforce(set(), "repository:read")
+    assert not enforcer.enforce({"org_admin"}, "repository:read")
+    assert not enforcer.enforce({"owner"}, "organization:read")
+    assert enforcer.enforce({"org_admin"}, "organization:read")
 
 
 def test_rejects_invalid_authentication_dependency() -> None:

@@ -144,10 +144,10 @@ class StarService:
         entities = []
         for star in stars:
             repository = await self.repository_store.find(star.repo_id)
-            if repository is not None and (
-                self.authorization is None or await self.authorization.can(repository, viewer)
-            ):
+            if repository is not None:
                 entities.append(repository)
+        if self.authorization is not None:
+            entities = await self.authorization.visible_repositories(entities, viewer)
 
         ids = [entity.id for entity in entities]
         star_counts = await self.star_store.count_by_repos(ids)

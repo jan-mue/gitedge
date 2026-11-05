@@ -193,7 +193,7 @@ class RepositoryService:
         """
         entities = await self.repository_store.get_all(offset=0, limit=10000)
         if self.authorization is not None:
-            entities = [entity for entity in entities if await self.authorization.can(entity, user)]
+            entities = await self.authorization.visible_repositories(entities, user)
         data = await self._to_schemas(entities)
         return RepositoriesPublic(data=data, count=len(data))
 
@@ -213,7 +213,7 @@ class RepositoryService:
         """
         entities = await self.repository_store.get_by_owner(owner_id, offset, limit)
         if self.authorization is not None:
-            entities = [entity for entity in entities if await self.authorization.can(entity, user)]
+            entities = await self.authorization.visible_repositories(entities, user)
         data = await self._to_schemas(entities)
         return RepositoriesPublic(data=data, count=len(data))
 

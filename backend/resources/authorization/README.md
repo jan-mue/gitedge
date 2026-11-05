@@ -26,13 +26,27 @@ The database stores facts, not the static permission definitions:
 - `team_member`: team membership; users must also belong to its organization.
 - `repository_collaborator`: a user or team granted a repository role.
 
-The service creates an isolated `casbin.AsyncEnforcer` from the files and current
-facts. Policy loading and role grants are awaited; the in-memory `enforce()`
-decision uses PyCasbin's synchronous API. Automatic persistence is disabled, so
-request-specific grants cannot modify the declarative policy files.
-Repository and organization UUIDs are separate authorization domains. Grants
-survive renames, and grants on one repository cannot authorize another. No
-cross-request authorization cache is used; revocations apply on the next request.
+The service caches the deployment-static Casbin model and policy once per warm
+process, and compiles their role-to-permission relation into immutable sets.
+Casbin only evaluates role names and actions: user IDs, team memberships, and
+repository grants never enter the shared enforcer. `FastEnforcer` is a synchronous
+policy-filter optimization; the installed PyCasbin version has no async cached
+enforcer. `AsyncEnforcer` makes adapter/policy management async, while `enforce()`
+is synchronous. Static in-memory evaluation does not need an async adapter.
+
+Current actor roles come from asynchronous PostgreSQL queries scoped to repository
+UUIDs. A single batch query combines direct grants, organization administration,
+and team grants with both current organization membership and matching ownership.
+Repository listings, starred profiles, forks, and feeds batch these lookups;
+anonymous listings need no authorization query. The permissions endpoint resolves
+roles once and derives all four flags from the static permission relation.
+
+No user grants or access decisions are cached across requests or authorization
+operations. Revocations are visible on the next check, including in another warm
+instance; no distributed invalidation, background watcher, or persistent worker
+is required. Cold starts rebuild the small static policy; warm invocations reuse
+it. Role resolution for one repository or organization cannot authorize another,
+and UUID-scoped grants survive renames. Automatic policy persistence is disabled.
 
 | Role | Permissions |
 | --- | --- |
