@@ -141,9 +141,9 @@ class CommentService:
         comment = await self.comment_store.get(comment_id)
         if self.authorization is not None:
             repository = await self.repository_store.get(comment.issue.repo_id)
-            await self.authorization.require(repository, current_user)
+            await self.authorization.require(repository, current_user, "comments:write")
             if comment.author_id != current_user.id:
-                await self.authorization.require(repository, current_user, "repository:write")
+                await self.authorization.require(repository, current_user, "comments:moderate")
         elif comment.author_id != current_user.id and not current_user.is_superuser:
             raise PermissionDeniedError(detail="You can only edit your own comments")
 
@@ -180,9 +180,9 @@ class CommentService:
         comment = await self.comment_store.get(comment_id)
         if self.authorization is not None:
             repository = await self.repository_store.get(comment.issue.repo_id)
-            await self.authorization.require(repository, current_user)
+            await self.authorization.require(repository, current_user, "comments:write")
             if comment.author_id != current_user.id:
-                await self.authorization.require(repository, current_user, "repository:write")
+                await self.authorization.require(repository, current_user, "comments:moderate")
         elif comment.author_id != current_user.id and not current_user.is_superuser:
             raise PermissionDeniedError(detail="You can only delete your own comments")
 
@@ -210,7 +210,7 @@ class CommentService:
     async def react(self, comment_id: uuid.UUID, emoji: str, current_user: User, *, enabled: bool) -> ReactionsPublic:
         """Add or remove a reaction; only new reactions create activity."""
         comment = await self.comment_store.get(comment_id)
-        issue, repository = await self._reaction_context(comment, current_user)
+        issue, repository = await self._reaction_context(comment, current_user, "comments:write")
         added = await self.comment_store.set_reaction(comment_id, current_user.id, emoji, enabled=enabled)
         if added:
             await self.activity_service.record(
@@ -224,11 +224,13 @@ class CommentService:
             )
         return await self.list_reactions(comment_id, current_user)
 
-    async def _reaction_context(self, comment: Comment, user: User) -> tuple[Issue, Repository]:
+    async def _reaction_context(
+        self, comment: Comment, user: User, operation: str = "repository:read"
+    ) -> tuple[Issue, Repository]:
         """Protect private discussion reactions."""
         issue, repo = await self.comment_store.context(comment)
         if self.authorization is not None:
-            if not await self.authorization.can(repo, user):
+            if not await self.authorization.can(repo, user, operation):
                 raise CommentNotFoundError
         elif repo.is_private and repo.owner_id != user.id and not user.is_superuser:
             raise CommentNotFoundError

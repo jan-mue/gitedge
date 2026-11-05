@@ -8,8 +8,8 @@ from fastapi.params import Depends as Dependency
 
 from app.api.dependencies import AuthorizationServiceDep, CommentStoreDep, OptionalUser, RepositoryUser
 from app.entities.users import User
-from app.exceptions import AuthenticationError
-from app.permissions import operation_policy
+from app.exceptions import AuthenticationError, PermissionDeniedError
+from app.permissions import permitted_roles
 from app.services.personal_access_tokens import AuthenticatedToken
 
 if TYPE_CHECKING:
@@ -42,10 +42,9 @@ def require_permission(
     ) -> PermissionUser:
         repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
         action = operation if isinstance(operation, str) else operation(request)
-        policy = operation_policy(action)
         require_token_access(request, repository.id, action)
         try:
-            await authorization.require(repository, current_user, policy.permission)
+            await authorization.require(repository, current_user, action)
         except AuthenticationError as error:
             error.challenge = challenge
             raise
@@ -64,15 +63,13 @@ def token_authentication(request: Request) -> AuthenticatedToken | None:
 
 def require_token_access(request: Request, repository_id: uuid.UUID, operation: str) -> None:
     """Intersect a token's repository selection and operation permissions."""
-    policy = operation_policy(operation)
     authenticated = token_authentication(request)
     if authenticated is not None:
-        authenticated.require(repository_id, policy.token_scope)
+        authenticated.require(repository_id, operation)
 
 
 def require_comment_permission(operation: str) -> Callable[..., Awaitable[User]]:
     """Resolve UUID-only comment routes before applying repository token restrictions."""
-    operation_policy(operation)
 
     async def authorize(
         comment_id: uuid.UUID,
@@ -80,6 +77,8 @@ def require_comment_permission(operation: str) -> Callable[..., Awaitable[User]]
         comments: CommentStoreDep,
         user: RepositoryUser,
     ) -> User:
+        if not permitted_roles(operation):
+            raise PermissionDeniedError("Unsupported repository operation")
         if token_authentication(request) is not None:
             comment = await comments.get(comment_id)
             _, repository = await comments.context(comment)

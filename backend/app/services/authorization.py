@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-from functools import cache
-from pathlib import Path
 from typing import TYPE_CHECKING
-
-import casbin
 
 from app.entities.authorization import OrganizationMember, RepositoryCollaborator, Team, TeamMember
 from app.entities.principals import PrincipalType
@@ -19,6 +15,7 @@ from app.exceptions import (
     PermissionDeniedError,
     UserNotFoundError,
 )
+from app.permissions import permitted_roles
 from app.schemas.authorization import CollaboratorPublic, MemberPublic, RepositoryPermissions, RepositoryRole
 
 if TYPE_CHECKING:
@@ -32,24 +29,6 @@ if TYPE_CHECKING:
     from app.entities.repositories import Repository
     from app.entities.users import User
     from app.schemas.authorization import CollaboratorInput
-
-POLICY_DIRECTORY = Path(__file__).resolve().parents[2] / "resources" / "authorization"
-
-
-@cache
-def policy_enforcer() -> casbin.Enforcer:
-    """Load deployment-static policy once per process; never add user grants here."""
-    enforcer = casbin.Enforcer(str(POLICY_DIRECTORY / "model.conf"), str(POLICY_DIRECTORY / "policy.csv"))
-    enforcer.enable_auto_save(False)
-    return enforcer
-
-
-@cache
-def permitted_roles(permission: str) -> frozenset[str]:
-    """Compile the immutable role-to-permission relation, never an actor's access."""
-    enforcer = policy_enforcer()
-    roles = {rule[0] for rule in enforcer.get_policy()}
-    return frozenset(role for role in roles if enforcer.enforce({role}, permission))
 
 
 class AuthorizationService:
@@ -102,10 +81,10 @@ class AuthorizationService:
         """Derive every permission from one fresh set of repository grants."""
         roles = (await self._repository_roles([repository], user))[repository.id]
         return RepositoryPermissions(
-            **{
-                permission: bool(roles & permitted_roles(f"repository:{permission}"))
-                for permission in ("read", "write", "admin", "owner")
-            }
+            read=bool(roles & permitted_roles("repository:read")),
+            write=bool(roles & permitted_roles("git:write")),
+            admin=bool(roles & permitted_roles("repository:write")),
+            owner=bool(roles & permitted_roles("repository:delete")),
         )
 
     async def require(self, repository: Repository, user: User | None, permission: str = "repository:read") -> None:
@@ -211,7 +190,7 @@ class AuthorizationService:
         self, repository: Repository, body: CollaboratorInput, actor: User
     ) -> RepositoryCollaborator:
         """Grant a scoped role; only owners can grant or change an owner role."""
-        await self.require(repository, actor, "repository:admin")
+        await self.require(repository, actor, "collaborators:write")
         if body.user_id is not None and await self.users.find(body.user_id) is None:
             raise UserNotFoundError()
         if body.team_id is not None and not any(
@@ -227,7 +206,7 @@ class AuthorizationService:
             None,
         )
         if body.role == RepositoryRole.OWNER or (existing is not None and existing.role == RepositoryRole.OWNER):
-            await self.require(repository, actor, "repository:owner")
+            await self.require(repository, actor, "collaborators:owner")
         collaborator = existing or RepositoryCollaborator(
             repository_id=repository.id, user_id=body.user_id, team_id=body.team_id
         )
@@ -237,14 +216,14 @@ class AuthorizationService:
 
     async def remove_collaborator(self, repository: Repository, collaborator_id: uuid.UUID, actor: User) -> None:
         """Revoke a collaborator without allowing admins to revoke owners."""
-        await self.require(repository, actor, "repository:admin")
+        await self.require(repository, actor, "collaborators:write")
         collaborator = next(
             (item for item in await self.store.collaborators(repository.id) if item.id == collaborator_id), None
         )
         if collaborator is None:
             raise NotFoundError(detail="Collaborator not found")
         if collaborator.role == RepositoryRole.OWNER:
-            await self.require(repository, actor, "repository:owner")
+            await self.require(repository, actor, "collaborators:owner")
         await self.store.remove(collaborator)
 
     async def collaborator_public(

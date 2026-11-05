@@ -24,7 +24,8 @@ from app.exceptions import (
     TokenNotFoundError,
     TokenRevokedError,
 )
-from app.schemas.personal_access_tokens import PersonalAccessTokenIssued, PersonalAccessTokenPublic, TokenScope
+from app.permissions import permitted_token_scopes
+from app.schemas.personal_access_tokens import PersonalAccessTokenIssued, PersonalAccessTokenPublic
 
 if TYPE_CHECKING:
     import uuid
@@ -50,17 +51,19 @@ class AuthenticatedToken:
     user: User
     token: PersonalAccessToken
 
-    def require(self, repository_id: uuid.UUID, scope: TokenScope | None) -> None:
+    def require(self, repository_id: uuid.UUID, operation: str) -> None:
         """Require both the repository allowlist and an explicit operation permission."""
         if str(repository_id) not in self.token.repository_ids:
             raise InsufficientTokenRepositoryError()
-        self.require_scope(scope)
+        self.require_scope(operation)
 
-    def require_scope(self, scope: TokenScope | None) -> None:
-        """Git write includes fetch; all other operations require an exact grant."""
-        if scope is None or (
-            scope not in self.token.scopes and not (scope == TokenScope.READ and TokenScope.WRITE in self.token.scopes)
-        ):
+    def allows(self, operation: str) -> bool:
+        """Let Casbin evaluate this credential's scopes against the operation."""
+        return bool(set(self.token.scopes) & permitted_token_scopes(operation))
+
+    def require_scope(self, operation: str) -> None:
+        """Deny operations absent from the token policy, including account-only actions."""
+        if not self.allows(operation):
             raise InsufficientTokenScopeError()
 
 

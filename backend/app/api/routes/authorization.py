@@ -9,7 +9,6 @@ from app.api.dependencies import AuthorizationServiceDep, CurrentUser, OptionalR
 from app.api.permissions import require_permission, require_token_access, token_authentication
 from app.entities.users import User
 from app.exceptions import NotFoundError
-from app.permissions import operation_policy
 from app.schemas.authorization import (
     CollaboratorInput,
     CollaboratorPublic,
@@ -44,9 +43,9 @@ async def get_permissions(
     if authenticated is not None:
         permissions = RepositoryPermissions(
             read=permissions.read,
-            write=permissions.write and operation_policy("git:write").token_scope in authenticated.token.scopes,
-            admin=permissions.admin and operation_policy("repository:write").token_scope in authenticated.token.scopes,
-            owner=permissions.owner and operation_policy("repository:delete").token_scope in authenticated.token.scopes,
+            write=permissions.write and authenticated.allows("git:write"),
+            admin=permissions.admin and authenticated.allows("repository:write"),
+            owner=permissions.owner and authenticated.allows("repository:delete"),
         )
     response.headers["Cache-Control"] = "private, no-store"
     return permissions

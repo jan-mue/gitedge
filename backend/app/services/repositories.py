@@ -234,7 +234,7 @@ class RepositoryService:
         return await self._to_schema(entity)
 
     async def _editable_repository(
-        self, owner: str, name: str, user: User, permission: str = "repository:admin"
+        self, owner: str, name: str, user: User, permission: str = "repository:write"
     ) -> RepositoryEntity:
         """Resolve a repository and require its owner or an administrator."""
         entity = await self.repository_store.get_by_owner_and_name(owner, name)
@@ -246,7 +246,7 @@ class RepositoryService:
 
     async def delete_repository(self, owner: str, name: str, user: User) -> None:
         """Delete repository data and metadata, retaining independent forks."""
-        entity = await self._editable_repository(owner, name, user, "repository:owner")
+        entity = await self._editable_repository(owner, name, user, "repository:delete")
         owner = entity.owner.name
         forks = await self.repository_store.list_by_fork_of(entity.id, limit=10000)
         await self.git.delete_repository(owner, name)

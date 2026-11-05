@@ -19,7 +19,7 @@ from app.entities.authorization import RepositoryCollaborator
 from app.entities.personal_access_tokens import PersonalAccessToken
 from app.entities.users import User
 from app.exceptions import ApplicationError
-from app.services.authorization import policy_enforcer
+from app.permissions import policy_enforcer
 from app.services.personal_access_tokens import AuthenticatedToken
 from tests.unit.api.routes.test_authorization import add_repository, add_user, service
 
@@ -114,12 +114,12 @@ def test_optional_user_allows_anonymous_public_reads_but_not_private_reads(fake_
 def test_static_policy_reuses_enforcer_without_retaining_request_roles() -> None:
     enforcer = policy_enforcer()
     assert enforcer is policy_enforcer()
-    assert enforcer.enforce({"owner"}, "repository:read")
-    assert enforcer.enforce({"owner"}, "repository:owner")
-    assert not enforcer.enforce(set(), "repository:read")
-    assert not enforcer.enforce({"org_admin"}, "repository:read")
-    assert not enforcer.enforce({"owner"}, "organization:read")
-    assert enforcer.enforce({"org_admin"}, "organization:read")
+    assert enforcer.enforce("owner", "repository:read", "account")
+    assert enforcer.enforce("owner", "repository:delete", "account")
+    assert not enforcer.enforce("anonymous", "repository:read", "account")
+    assert not enforcer.enforce("org_admin", "repository:read", "account")
+    assert not enforcer.enforce("owner", "organization:read", "account")
+    assert enforcer.enforce("org_admin", "organization:read", "account")
 
 
 def test_rejects_invalid_authentication_dependency() -> None:

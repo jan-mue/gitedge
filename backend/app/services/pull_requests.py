@@ -225,7 +225,7 @@ class PullRequestService:
         """Apply an enabled Git strategy, then record the immutable merge and timeline event."""
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
         if self.authorization is not None:
-            await self.authorization.require(repository, current_user, "repository:write")
+            await self.authorization.require(repository, current_user, "pull_requests:merge")
         elif current_user.id != repository.owner_id and not current_user.is_superuser:
             raise PermissionDeniedError(detail="Only the repository owner can merge pull requests")
         pull = await self.pull_request_store.get_for_merge(repository.id, number)
@@ -300,9 +300,9 @@ class PullRequestService:
         pull_request = await self._find_pull_request(owner, name, number)
         if self.authorization is not None:
             repository = await self.repository_store.get_by_owner_and_name(owner, name)
-            await self.authorization.require(repository, current_user)
+            await self.authorization.require(repository, current_user, "pull_requests:write")
             if pull_request.author_id != current_user.id:
-                await self.authorization.require(repository, current_user, "repository:write")
+                await self.authorization.require(repository, current_user, "pull_requests:moderate")
         elif pull_request.author_id != current_user.id and not current_user.is_superuser:
             raise PermissionDeniedError(detail="Only authors or maintainers can edit discussions")
 

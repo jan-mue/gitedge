@@ -20,13 +20,15 @@ handlers keep their normal path arguments. There is no signature rewriting,
 argument-name mapping, or decorator library. Endpoints that do not consume the
 user declare the permission in the router's `dependencies` list.
 
-Routes declare one operation. The central `app/permissions.py` policy maps that
-operation to both the account's Casbin permission and its PAT scope. For example,
-`issues:write` requires repository read access plus the token's issue-write scope;
-`repository:write` requires repository admin access plus the repository-write
-scope. `git:read` and `git:write` map to their own token scopes. Session-only
-operations such as collaborator management have no token scope, and unknown
-operations are denied. There is no separate per-route `token_scope` declaration.
+Routes declare one operation. Casbin's `policy.csv` grants that operation directly
+to account roles and marks whether tokens may use it. Token scopes use the same
+operation names. The model checks account roles against the policy's role column,
+and token scopes against its operation column. Both use Casbin's `g` relation:
+`owner > admin > write > read` for roles, and `git:write > git:read` for scopes.
+For example, `issues:write` is available to readers with that token scope, while
+`repository:write` requires an admin and that token scope. Account-only actions
+have no token admission; unknown operations have no matching policy and are denied.
+There is no Python permission/scope translation table or per-route `token_scope`.
 
 The database stores facts, not the static permission definitions:
 
@@ -36,8 +38,8 @@ The database stores facts, not the static permission definitions:
 - `repository_collaborator`: a user or team granted a repository role.
 
 The service caches the deployment-static Casbin model and policy once per warm
-process, and compiles their role-to-permission relation into immutable sets.
-Casbin only evaluates role names and actions: user IDs, team memberships, and
+process, and compiles Casbin’s static role/scope grant relations into immutable
+sets. Casbin evaluates role/scope names, operations, and credential kind: user IDs, team memberships, and
 repository grants never enter the shared enforcer. `FastEnforcer` is a synchronous
 policy-filter optimization; the installed PyCasbin version has no async cached
 enforcer. `AsyncEnforcer` makes adapter/policy management async, while `enforce()`

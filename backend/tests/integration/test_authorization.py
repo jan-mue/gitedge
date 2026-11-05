@@ -76,10 +76,10 @@ async def check_authorization_persistence(database_url: str, mocker: MockerFixtu
             repository_id = repository.id
             await db.reset()
             repository = await repositories.get(repository_id)
-            assert await authorization.can(repository, member, "repository:write")
+            assert await authorization.can(repository, member, "git:write")
             await check_batched_repository_roles(db, authorization, repository, admin, member, team.id, mocker)
             await repositories.update(repository, {"name": "renamed"})
-            assert await authorization.can(repository, member, "repository:write")
+            assert await authorization.can(repository, member, "git:write")
             await authorization.remove_member(organization.name, member.id, admin)
             assert not await facts.team_members(team.id)
             stale_team_member = TeamMember(team_id=team.id, user_id=member.id)
@@ -90,7 +90,7 @@ async def check_authorization_persistence(database_url: str, mocker: MockerFixtu
             await authorization.set_member(organization.name, member.id, False, admin)
             assert not await authorization.can(repository, member)
             await authorization.set_team_member(organization.name, team.id, member.id, admin)
-            assert await authorization.can(repository, member, "repository:write")
+            assert await authorization.can(repository, member, "git:write")
             team = await authorization.team(organization.name, team.id, admin)
             await facts.remove(team)
             assert await db.scalar(select(RepositoryCollaborator).where(RepositoryCollaborator.id == grant_id)) is None

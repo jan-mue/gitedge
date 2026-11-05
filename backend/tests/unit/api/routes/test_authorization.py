@@ -56,10 +56,10 @@ def service(stores: FakeStores) -> AuthorizationService:
 @pytest.mark.parametrize(
     ("role", "allowed"),
     [
-        ("read", {"read"}),
-        ("write", {"read", "write"}),
-        ("admin", {"read", "write", "admin"}),
-        ("owner", {"read", "write", "admin", "owner"}),
+        ("read", {"repository:read"}),
+        ("write", {"repository:read", "git:write"}),
+        ("admin", {"repository:read", "git:write", "repository:write"}),
+        ("owner", {"repository:read", "git:write", "repository:write", "repository:delete"}),
     ],
 )
 async def test_role_hierarchy_is_scoped(fake_stores: FakeStores, role: str, allowed: set[str]) -> None:
@@ -70,9 +70,9 @@ async def test_role_hierarchy_is_scoped(fake_stores: FakeStores, role: str, allo
     grant = RepositoryCollaborator(repository_id=repo.id, user_id=collaborator.id, role=role)
     await fake_stores.authorization.save(grant)
     authorization = service(fake_stores)
-    for permission in ["read", "write", "admin", "owner"]:
-        assert await authorization.can(repo, collaborator, f"repository:{permission}") == (permission in allowed)
-        assert not await authorization.can(other, collaborator, f"repository:{permission}")
+    for permission in ["repository:read", "git:write", "repository:write", "repository:delete"]:
+        assert await authorization.can(repo, collaborator, permission) == (permission in allowed)
+        assert not await authorization.can(other, collaborator, permission)
     await fake_stores.authorization.remove(grant)
     assert not await authorization.can(repo, collaborator)
     assert not await authorization.can(repo, collaborator, "unknown:permission")
@@ -164,8 +164,8 @@ async def test_team_and_org_admin_inheritance_and_revocation(client: TestClient,
     assert client.put(f"{url}/teams/{team_id}/members/{member.id}", headers=headers(admin)).status_code == 204
     grant_url = f"{API}/repositories/org/repo/collaborators"
     assert client.put(grant_url, json={"team_id": team_id, "role": "write"}, headers=headers(admin)).status_code == 200
-    assert await service(fake_stores).can(repo, admin, "repository:owner")
-    assert await service(fake_stores).can(repo, member, "repository:write")
+    assert await service(fake_stores).can(repo, admin, "repository:delete")
+    assert await service(fake_stores).can(repo, member, "git:write")
     assert client.delete(f"{url}/members/{admin.id}", headers=headers(admin)).status_code == 409
     assert client.put(f"{url}/members/{admin.id}", json={"is_admin": False}, headers=headers(admin)).status_code == 409
     assert client.delete(f"{url}/members/{member.id}", headers=headers(admin)).status_code == 204

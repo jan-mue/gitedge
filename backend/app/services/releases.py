@@ -60,7 +60,7 @@ class ReleaseService:
         if repository is None:
             return ReleasesPublic(data=[], count=0)
         if include_drafts and self.authorization is not None:
-            await self.authorization.require(repository, user, "repository:write")
+            await self.authorization.require(repository, user, "releases:drafts")
         releases = [release for release in repository.releases if include_drafts or not release.is_draft]
         return ReleasesPublic(data=[self._to_public(release, owner, name) for release in releases], count=len(releases))
 
@@ -82,7 +82,7 @@ class ReleaseService:
         release = await self._find_release(owner, name, tag_name)
         if release.is_draft and self.authorization is not None:
             repository = await self.repository_store.get_by_owner_and_name(owner, name)
-            await self.authorization.require(repository, user, "repository:write")
+            await self.authorization.require(repository, user, "releases:drafts")
         return self._to_public(release, owner, name)
 
     async def create_release(self, owner: str, name: str, body: ReleaseCreate, current_user: User) -> ReleasePublic:
@@ -150,7 +150,7 @@ class ReleaseService:
         release = await self._find_release(owner, name, tag_name)
         if self.authorization is not None:
             repository = await self.repository_store.get_by_owner_and_name(owner, name)
-            await self.authorization.require(repository, current_user, "repository:write")
+            await self.authorization.require(repository, current_user, "releases:write")
         elif release.author_id != current_user.id and not current_user.is_superuser:
             raise PermissionDeniedError(detail="You can only edit your own releases")
 

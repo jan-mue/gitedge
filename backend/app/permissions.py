@@ -1,44 +1,37 @@
-"""One repository operation determines both account and credential requirements."""
+"""Casbin evaluates account roles and token scopes against the same operations."""
 
-from dataclasses import dataclass
+from functools import cache
+from pathlib import Path
+from typing import Literal
 
-from app.exceptions import PermissionDeniedError
-from app.schemas.personal_access_tokens import TokenScope
+import casbin
 
-
-@dataclass(frozen=True)
-class OperationPolicy:
-    """The account permission and optional token scope required for an operation."""
-
-    permission: str
-    token_scope: TokenScope | None = None
+POLICY_DIRECTORY = Path(__file__).resolve().parents[1] / "resources" / "authorization"
+type SubjectKind = Literal["account", "token"]
 
 
-REPOSITORY_OPERATIONS: dict[str, OperationPolicy] = {
-    "repository:read": OperationPolicy("repository:read", TokenScope.REPOSITORY_READ),
-    "repository:write": OperationPolicy("repository:admin", TokenScope.REPOSITORY_WRITE),
-    "repository:delete": OperationPolicy("repository:owner", TokenScope.REPOSITORY_DELETE),
-    "git:read": OperationPolicy("repository:read", TokenScope.READ),
-    "git:write": OperationPolicy("repository:write", TokenScope.WRITE),
-    "issues:write": OperationPolicy("repository:read", TokenScope.ISSUES_WRITE),
-    "pull_requests:write": OperationPolicy("repository:read", TokenScope.PULL_REQUESTS_WRITE),
-    "pull_requests:merge": OperationPolicy("repository:write", TokenScope.PULL_REQUESTS_MERGE),
-    "comments:write": OperationPolicy("repository:read", TokenScope.COMMENTS_WRITE),
-    "reviews:write": OperationPolicy("repository:read", TokenScope.REVIEWS_WRITE),
-    "releases:write": OperationPolicy("repository:write", TokenScope.RELEASES_WRITE),
-    "collaborators:read": OperationPolicy("repository:admin"),
-    "collaborators:write": OperationPolicy("repository:admin"),
-    "repository:fork": OperationPolicy("repository:read"),
-    "stars:read": OperationPolicy("repository:read"),
-    "stars:write": OperationPolicy("repository:read"),
-    "watchers:read": OperationPolicy("repository:read"),
-    "watchers:write": OperationPolicy("repository:read"),
-}
+@cache
+def policy_enforcer() -> casbin.Enforcer:
+    """Load deployment-static rules once; never add request-specific identity facts."""
+    enforcer = casbin.Enforcer(str(POLICY_DIRECTORY / "model.conf"), str(POLICY_DIRECTORY / "policy.csv"))
+    enforcer.enable_auto_save(False)
+    return enforcer
 
 
-def operation_policy(operation: str) -> OperationPolicy:
-    """Reject unregistered operations rather than inferring permissive defaults."""
-    policy = REPOSITORY_OPERATIONS.get(operation)
-    if policy is None:
-        raise PermissionDeniedError("Unsupported repository operation")
-    return policy
+@cache
+def permitted_subjects(operation: str, kind: SubjectKind) -> frozenset[str]:
+    """Compile Casbin's immutable grant relation, without caching an actor's access."""
+    enforcer = policy_enforcer()
+    subjects = set(enforcer.get_all_subjects()) | set(enforcer.get_all_actions())
+    subjects.update(subject for relation in enforcer.get_grouping_policy() for subject in relation)
+    return frozenset(subject for subject in subjects if enforcer.enforce(subject, operation, kind))
+
+
+def permitted_roles(operation: str) -> frozenset[str]:
+    """Find account roles allowed by Casbin for this operation."""
+    return permitted_subjects(operation, "account")
+
+
+def permitted_token_scopes(operation: str) -> frozenset[str]:
+    """Find token scopes allowed by Casbin, including scope inheritance."""
+    return permitted_subjects(operation, "token")

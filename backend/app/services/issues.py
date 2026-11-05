@@ -143,9 +143,9 @@ class IssueService:
         issue = await self._find_issue(owner, name, number)
         if self.authorization is not None:
             repository = await self.repository_store.get_by_owner_and_name(owner, name)
-            await self.authorization.require(repository, current_user)
+            await self.authorization.require(repository, current_user, "issues:write")
             if issue.author_id != current_user.id:
-                await self.authorization.require(repository, current_user, "repository:write")
+                await self.authorization.require(repository, current_user, "issues:moderate")
         elif issue.author_id != current_user.id and not current_user.is_superuser:
             raise PermissionDeniedError(detail="Only authors or maintainers can edit discussions")
 
