@@ -35,6 +35,10 @@ class RepositoryStore(CrudStore[Repository], ABC):
     """Abstract repository store with additional repository-specific methods."""
 
     @abstractmethod
+    async def get_by_ids(self, repository_ids: list[uuid.UUID]) -> list[Repository]:
+        """Fetch a repository selection in one batch."""
+
+    @abstractmethod
     async def get_by_owner_and_name(self, owner: str, name: str, *, include_releases: bool = False) -> Repository:
         """Get a repository by its owner name (user or organization) and name, raising when absent."""
 
@@ -128,6 +132,11 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         """Get all repositories with their owners loaded."""
         result = await self.db.scalars(select(Repository).options(*self._owner_options()).offset(offset).limit(limit))
         return list(result.all())
+
+    @override
+    async def get_by_ids(self, repository_ids: list[uuid.UUID]) -> list[Repository]:
+        """Resolve a token's explicit repository selection without per-ID queries."""
+        return list(await self.db.scalars(select(Repository).where(Repository.id.in_(repository_ids))))
 
     @override
     async def find_by_owner_and_name(

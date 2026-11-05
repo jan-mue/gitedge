@@ -20,7 +20,7 @@ const tabsConfig = [
 export const Route = createFileRoute("/_layout/settings")({
   component: UserSettings,
   validateSearch: z.object({
-    tab: z.enum(["my-profile", "notifications", "password", "danger-zone"]).optional().catch(undefined),
+    tab: z.enum(["my-profile", "notifications", "password", "tokens", "danger-zone"]).optional().catch(undefined),
   }),
   head: () => ({
     meta: [
@@ -52,7 +52,7 @@ function UserSettings() {
       <Tabs
         value={tab ?? "my-profile"}
         onValueChange={(value) =>
-          navigate({ search: { tab: value as "my-profile" | "notifications" | "password" | "danger-zone" } })
+          navigate({ search: { tab: value as "my-profile" | "notifications" | "password" | "tokens" | "danger-zone" } })
         }
       >
         <TabsList>

@@ -835,13 +835,6 @@ export type ForksPublic = {
 };
 
 /**
- * GitScope
- *
- * Operations a personal access token can authorize.
- */
-export type GitScope = 'git:read' | 'git:write';
-
-/**
  * HTTPValidationError
  */
 export type HTTPValidationError = {
@@ -1290,7 +1283,7 @@ export type OrganizationsPublic = {
 /**
  * PersonalAccessTokenCreate
  *
- * User-specified token name, expiry, and restricted Git scopes.
+ * User-specified token name, expiry, repository selection, and operations.
  */
 export type PersonalAccessTokenCreate = {
     /**
@@ -1300,7 +1293,11 @@ export type PersonalAccessTokenCreate = {
     /**
      * Scopes
      */
-    scopes: Array<GitScope>;
+    scopes: Array<TokenScope>;
+    /**
+     * Repository Ids
+     */
+    repository_ids: Array<string>;
     /**
      * Expires At
      */
@@ -1340,7 +1337,11 @@ export type PersonalAccessTokenIssued = {
     /**
      * Scopes
      */
-    scopes: Array<GitScope>;
+    scopes: Array<TokenScope>;
+    /**
+     * Repository Ids
+     */
+    repository_ids: Array<string>;
     /**
      * Created At
      */
@@ -1400,7 +1401,11 @@ export type PersonalAccessTokenPublic = {
     /**
      * Scopes
      */
-    scopes: Array<GitScope>;
+    scopes: Array<TokenScope>;
+    /**
+     * Repository Ids
+     */
+    repository_ids: Array<string>;
     /**
      * Created At
      */
@@ -2521,6 +2526,33 @@ export type Token = {
 };
 
 /**
+ * TokenRepositoryOption
+ *
+ * A repository the account can select for a token.
+ */
+export type TokenRepositoryOption = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Owner
+     */
+    owner: string;
+};
+
+/**
+ * TokenScope
+ *
+ * Operations a personal access token can authorize.
+ */
+export type TokenScope = 'git:read' | 'git:write' | 'repository:read' | 'repository:write' | 'repository:delete' | 'issues:write' | 'pull_requests:write' | 'pull_requests:merge' | 'comments:write' | 'reviews:write' | 'releases:write';
+
+/**
  * TreeEntry
  *
  * A single entry in a Git tree (file or directory).
@@ -3166,6 +3198,24 @@ export type loginRecoverPasswordHtmlContentResponses = {
      */
     200: unknown;
 };
+
+export type personalAccessTokensRepositoryOptionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/users/me/personal-access-tokens/repositories';
+};
+
+export type personalAccessTokensRepositoryOptionsResponses = {
+    /**
+     * Response Personal-Access-Tokens-Repository Options
+     *
+     * Successful Response
+     */
+    200: Array<TokenRepositoryOption>;
+};
+
+export type personalAccessTokensRepositoryOptionsResponse = personalAccessTokensRepositoryOptionsResponses[keyof personalAccessTokensRepositoryOptionsResponses];
 
 export type personalAccessTokensListTokensData = {
     body?: never;

@@ -3,10 +3,10 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 
-from app.api.dependencies import AuthorizationServiceDep, CurrentUser, OptionalUser
-from app.api.permissions import require_permission
+from app.api.dependencies import AuthorizationServiceDep, CurrentUser, OptionalRepositoryUser, OptionalUser
+from app.api.permissions import require_permission, require_token_access, token_authentication
 from app.entities.users import User
 from app.exceptions import NotFoundError
 from app.schemas.authorization import (
@@ -19,6 +19,7 @@ from app.schemas.authorization import (
     TeamInput,
     TeamPublic,
 )
+from app.schemas.personal_access_tokens import TokenScope
 from app.schemas.users import ProfilePublic
 
 router = APIRouter(tags=["authorization"])
@@ -29,14 +30,24 @@ async def get_permissions(
     owner: str,
     repo: str,
     authorization: AuthorizationServiceDep,
-    current_user: OptionalUser,
+    current_user: OptionalRepositoryUser,
     response: Response,
+    request: Request,
 ) -> RepositoryPermissions:
     """Return effective permissions for the current viewer."""
     repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
+    require_token_access(request, repository.id, TokenScope.REPOSITORY_READ)
     permissions = await authorization.permissions(repository, current_user)
     if not permissions.read:
         authorization.deny(current_user)
+    authenticated = token_authentication(request)
+    if authenticated is not None:
+        permissions = RepositoryPermissions(
+            read=permissions.read,
+            write=permissions.write and TokenScope.WRITE in authenticated.token.scopes,
+            admin=permissions.admin and TokenScope.REPOSITORY_WRITE in authenticated.token.scopes,
+            owner=permissions.owner and TokenScope.REPOSITORY_DELETE in authenticated.token.scopes,
+        )
     response.headers["Cache-Control"] = "private, no-store"
     return permissions
 

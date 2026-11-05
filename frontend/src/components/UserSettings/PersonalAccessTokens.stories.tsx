@@ -4,6 +4,7 @@ import type { PersonalAccessTokenCreate, PersonalAccessTokenPublic } from "@/cli
 import {
   handlePersonalAccessTokensCreateToken,
   handlePersonalAccessTokensListTokens,
+  handlePersonalAccessTokensRepositoryOptions,
   handlePersonalAccessTokensRevokeToken,
   handlePersonalAccessTokensRotateToken,
 } from "@/client/msw.gen"
@@ -18,6 +19,7 @@ const initialToken: PersonalAccessTokenPublic = {
   key_id: "a".repeat(24),
   secret_last4: "demo",
   scopes: ["git:read", "git:write"],
+  repository_ids: ["00000000-0000-0000-0000-000000000003"],
   created_at: "2026-10-01T12:00:00Z",
   expires_at: null,
   last_used_at: "2026-10-12T12:00:00Z",
@@ -41,6 +43,9 @@ const issue = (body: PersonalAccessTokenCreate) => {
   )
 }
 const handlers = [
+  handlePersonalAccessTokensRepositoryOptions({
+    body: [{ id: "00000000-0000-0000-0000-000000000003", owner: "jan", name: "gitedge" }],
+  }),
   handlePersonalAccessTokensListTokens(() => HttpResponse.json(tokens)),
   handlePersonalAccessTokensCreateToken(async ({ request }) => issue(await request.json())),
   handlePersonalAccessTokensRotateToken(async ({ request, params }) => {

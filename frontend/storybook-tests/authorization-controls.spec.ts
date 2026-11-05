@@ -80,8 +80,8 @@ test("token controls preserve scopes, expiry, and show-once secrets", async ({ p
     `/iframe.html?id=patterns-account-personal-access-tokens--tokens&viewMode=story&globals=theme:${themeFor(testInfo.project.name)}`,
   )
   await page.getByLabel("Token name").fill("Workstation")
-  await page.getByRole("combobox", { name: "Git access" }).click()
-  await page.getByRole("option", { name: "Read and write — clone, fetch, and push" }).click()
+  await page.getByRole("checkbox", { name: "jan/gitedge" }).check()
+  await page.getByRole("checkbox", { name: "Push commits (includes clone and fetch)" }).check()
   await page.getByRole("combobox", { name: "Expiration" }).click()
   await page.getByRole("option", { name: "No expiration" }).click()
   const created = page.waitForResponse((response) => response.request().method() === "POST")
@@ -90,7 +90,8 @@ test("token controls preserve scopes, expiry, and show-once secrets", async ({ p
   expect(response.status()).toBe(201)
   expect(response.request().postDataJSON()).toEqual({
     name: "Workstation",
-    scopes: ["git:read", "git:write"],
+    scopes: ["repository:read", "git:write"],
+    repository_ids: ["00000000-0000-0000-0000-000000000003"],
     expires_at: null,
   })
   const issued = page.getByLabel("New personal access token")

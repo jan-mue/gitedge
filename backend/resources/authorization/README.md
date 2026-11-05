@@ -108,7 +108,8 @@ a site superuser must assign their initial admins with the membership endpoint.
 
 ## Personal access tokens
 
-Account Settings → Access tokens supports issuance, safe metadata listings,
+Account Settings → Access tokens supports an explicit repository selection and operation permissions,
+issuance, safe metadata listings,
 revocation, and atomic rotation. Copy each token when it is issued; it is shown
 once. The account settings API requires an ordinary signed-in session, so PATs
 cannot mint other tokens or access account management endpoints.
@@ -121,6 +122,11 @@ creation/expiry/last-use/revocation timestamps, and optional revocation reason.
 Plaintext secrets appear only in issuance/rotation responses, which carry
 `Cache-Control: private, no-store`. Hashing and verification run in a thread pool.
 
+Repository API clients use `Authorization: Bearer <PAT>` or `X-API-Key: <PAT>`.
+Only repository endpoints that explicitly declare a token operation accept PATs.
+Account settings, organization administration, token management, and repository
+creation require an account session. Tokens cannot mint other tokens.
+
 Git clients can use their account username with the PAT as the HTTP Basic
 password. Automation can instead use `Authorization: Bearer <PAT>` or
 `X-API-Key: <PAT>`; the latter uses FastAPI's named `APIKeyHeader` security scheme.
@@ -129,11 +135,41 @@ unknown PAT versions before querying token storage. Invalid supplied credentials
 never fall back to anonymous reads. Existing account-password and session-token
 Git authentication remain supported.
 
-`git:read` permits clone/fetch, and `git:write` permits read plus push, including
-receive-pack discovery. Scopes do not replace repository roles: both the token
-scope and the owner's current repository permission must allow the operation.
+Each token has a nonempty, explicit `repository_ids` selection (up to 1,000 UUIDs).
+There is no implicit “all repositories” or wildcard selection. The same operation
+permissions apply to every selected repository. UUIDs preserve access across a
+rename; newly created repositories are not included. Unselected repositories,
+including public ones, are denied when a token is supplied. Deleted repositories
+cannot become new grants through name reuse.
+
+| Operation permission | Allowed operations |
+| --- | --- |
+| `repository:read` | Read repository contents, issues, pull requests, comments, releases, and activity |
+| `git:read` | Clone and fetch |
+| `git:write` | Push, clone, and fetch |
+| `issues:write` | Create and update issues |
+| `pull_requests:write` | Create and update pull requests |
+| `pull_requests:merge` | Merge pull requests |
+| `comments:write` | Create, edit, delete, and react to comments |
+| `reviews:write` | Submit reviews/replies and manage private review drafts and viewed files |
+| `releases:write` | Create and update releases |
+| `repository:write` | Rename repositories and update settings |
+| `repository:delete` | Delete repositories |
+
+Permissions are independent except that Git write includes Git read. Review
+endpoints also require `repository:read`. The older PATCH-to-merged endpoint
+requires both pull-request write and merge permissions. Token permissions never
+replace RBAC: the owner's current repository role must also allow each operation.
+Removing a repository role immediately removes the token's corresponding access.
 Expired/revoked tokens and inactive accounts cannot authenticate. Revocation is
 checked again after secret verification.
+
+The generated migration gives existing tokens an empty repository selection,
+which denies all repository access. Rotate those tokens in account settings,
+choosing repositories and operations, to enable access. Rotation atomically
+replaces both selections and revokes the old credential. Selection validation and
+repository-role resolution use batch queries rather than one query per selected
+repository.
 
 Each valid public token identifier is limited to 60 authentication attempts per
 minute by an atomic PostgreSQL update shared across workers. Incorrect-secret
@@ -144,10 +180,11 @@ with FastAPI background tasks, and successful use updates `last_used_at`.
 
 Token management API (relative to `/api/v1`):
 
+- `GET /users/me/personal-access-tokens/repositories` (selectable repository identities)
 - `GET|POST /users/me/personal-access-tokens/`
 - `POST /users/me/personal-access-tokens/{token_id}/revoke`
 - `POST /users/me/personal-access-tokens/{token_id}/rotate`
 
-Issuance/rotation input uses `name`, `scopes`, and optional `expires_at` (a future
+Issuance/rotation input uses `name`, `repository_ids`, `scopes`, and optional `expires_at` (a future
 ISO timestamp or null). Revocation input uses optional `reason`. Rotation
 revokes the old token only when its replacement is persisted successfully.

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import secrets
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -15,6 +16,7 @@ from pwdlib.hashers.argon2 import Argon2Hasher
 
 from app.entities.personal_access_tokens import PersonalAccessToken
 from app.exceptions import (
+    InsufficientTokenRepositoryError,
     InsufficientTokenScopeError,
     InvalidPersonalAccessTokenError,
     TokenAuthenticationLimitError,
@@ -22,7 +24,7 @@ from app.exceptions import (
     TokenNotFoundError,
     TokenRevokedError,
 )
-from app.schemas.personal_access_tokens import GitScope, PersonalAccessTokenIssued, PersonalAccessTokenPublic
+from app.schemas.personal_access_tokens import PersonalAccessTokenIssued, PersonalAccessTokenPublic, TokenScope
 
 if TYPE_CHECKING:
     import uuid
@@ -39,6 +41,27 @@ PAT_FORMAT_PREFIX = "gitedge_pat_live_v1_"
 TOKEN_PATTERN = re.compile(r"gitedge_pat_live_v1_([0-9a-f]{24})\.([A-Za-z0-9_-]{43})\Z")
 TOKEN_HASH = PasswordHash((Argon2Hasher(memory_cost=19456, time_cost=2, parallelism=1),))
 ISSUANCE_ATTEMPTS = 5
+
+
+@dataclass(frozen=True)
+class AuthenticatedToken:
+    """A verified credential and its owner, confined to one authentication operation."""
+
+    user: User
+    token: PersonalAccessToken
+
+    def require(self, repository_id: uuid.UUID, scope: TokenScope | None) -> None:
+        """Require both the repository allowlist and an explicit operation permission."""
+        if str(repository_id) not in self.token.repository_ids:
+            raise InsufficientTokenRepositoryError()
+        self.require_scope(scope)
+
+    def require_scope(self, scope: TokenScope | None) -> None:
+        """Git write includes fetch; all other operations require an exact grant."""
+        if scope is None or (
+            scope not in self.token.scopes and not (scope == TokenScope.READ and TokenScope.WRITE in self.token.scopes)
+        ):
+            raise InsufficientTokenScopeError()
 
 
 class PersonalAccessTokenService:
@@ -89,6 +112,7 @@ class PersonalAccessTokenService:
                 secret_last4=secret[-4:],
                 scopes=[str(scope) for scope in body.scopes],
                 expires_at=body.expires_at,
+                repository_ids=[str(repository_id) for repository_id in body.repository_ids],
                 created_at=datetime.now(UTC),
             )
             if await self.store.issue(token, replacing):
@@ -116,7 +140,9 @@ class PersonalAccessTokenService:
             raise TokenRevokedError()
         return await self.issue(body, user, token)
 
-    async def authenticate(self, presented: str, scope: GitScope, username: str | None = None) -> User:
+    async def authenticate(
+        self, presented: str, scope: TokenScope | None = None, username: str | None = None
+    ) -> AuthenticatedToken:
         """Verify format, state, Argon2id hash, owner, and operation scope."""
         match = TOKEN_PATTERN.fullmatch(presented)
         if match is None:
@@ -147,11 +173,12 @@ class PersonalAccessTokenService:
         await self.store.refresh(token)
         if token.revoked_at is not None or (token.expires_at is not None and token.expires_at <= datetime.now(UTC)):
             raise InvalidPersonalAccessTokenError()
-        if scope not in token.scopes and not (scope == GitScope.READ and GitScope.WRITE in token.scopes):
-            raise InsufficientTokenScopeError()
+        authenticated = AuthenticatedToken(user, token)
+        if scope is not None:
+            authenticated.require_scope(scope)
         token.last_used_at = now
         if updated_hash is not None:
             token.secret_hash = updated_hash
         await self.store.update(token)
         self.audit(f"authenticated scope={scope}", key_id, user.id)
-        return user
+        return authenticated

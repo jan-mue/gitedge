@@ -46,7 +46,7 @@ from app.clients.watchers import SQLWatcherStore, WatcherStore
 from app.config import settings
 from app.entities.users import User
 from app.exceptions import AuthenticationError, InvalidPersonalAccessTokenError, PermissionDeniedError
-from app.schemas.personal_access_tokens import GitScope
+from app.schemas.personal_access_tokens import TokenScope
 from app.schemas.token import TokenPayload
 from app.services.activity import ActivityService
 from app.services.authorization import AuthorizationService
@@ -774,6 +774,43 @@ personal_access_token_header = APIKeyHeader(name="X-API-Key", scheme_name="Perso
 git_basic_auth = HTTPBasic(auto_error=False)
 
 
+async def get_optional_repository_user(
+    request: Request,
+    users: UserStoreDep,
+    tokens: PersonalAccessTokenServiceDep,
+    bearer: Annotated[str | None, Depends(optional_oauth2)],
+    presented_key: Annotated[str | None, Depends(personal_access_token_header)],
+) -> User | None:
+    """Accept account sessions or scoped tokens only on repository endpoints."""
+    if presented_key is not None and bearer is not None:
+        raise InvalidPersonalAccessTokenError(challenge="Bearer")
+    if presented_key is not None or (bearer is not None and bearer.startswith("gitedge_pat_")):
+        credential = presented_key if presented_key is not None else bearer
+        if credential is None:
+            raise InvalidPersonalAccessTokenError(challenge="Bearer")
+        try:
+            authenticated = await tokens.authenticate(credential)
+        except AuthenticationError as error:
+            error.challenge = "Bearer"
+            raise
+        request.state.personal_access_token = authenticated
+        return authenticated.user
+    return await get_optional_user(request, users, bearer)
+
+
+OptionalRepositoryUser = Annotated[User | None, Depends(get_optional_repository_user)]
+
+
+async def get_repository_user(user: OptionalRepositoryUser) -> User:
+    """Require authentication for repository mutations."""
+    if user is None:
+        raise AuthenticationError()
+    return user
+
+
+RepositoryUser = Annotated[User, Depends(get_repository_user)]
+
+
 async def get_git_user(
     request: Request,
     users: UserStoreDep,
@@ -786,16 +823,22 @@ async def get_git_user(
     if sum(value is not None for value in (presented_key, bearer, basic)) > 1:
         raise InvalidPersonalAccessTokenError()
     push = request.url.path.endswith("/git-receive-pack") or request.query_params.get("service") == "git-receive-pack"
-    scope = GitScope.WRITE if push else GitScope.READ
+    scope = TokenScope.WRITE if push else TokenScope.READ
     if presented_key is not None:
-        return await tokens.authenticate(presented_key, scope)
+        authenticated = await tokens.authenticate(presented_key, scope)
+        request.state.personal_access_token = authenticated
+        return authenticated.user
     if bearer is not None:
         if bearer.startswith("gitedge_pat_"):
-            return await tokens.authenticate(bearer, scope)
+            authenticated = await tokens.authenticate(bearer, scope)
+            request.state.personal_access_token = authenticated
+            return authenticated.user
         return await get_current_user(users, bearer)
     if basic is not None:
         if basic.password.startswith("gitedge_pat_"):
-            return await tokens.authenticate(basic.password, scope, basic.username)
+            authenticated = await tokens.authenticate(basic.password, scope, basic.username)
+            request.state.personal_access_token = authenticated
+            return authenticated.user
         user = await users.find_by_name(basic.username)
         if user is not None and security.verify_password(basic.password, user.hashed_password)[0] and user.is_active:
             return user

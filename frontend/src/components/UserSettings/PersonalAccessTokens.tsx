@@ -3,10 +3,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { type Control, useForm } from "react-hook-form"
 import { z } from "zod"
-import type { PersonalAccessTokenCreate, PersonalAccessTokenIssued, PersonalAccessTokenPublic } from "@/client"
+import type {
+  PersonalAccessTokenCreate,
+  PersonalAccessTokenIssued,
+  PersonalAccessTokenPublic,
+  TokenScope,
+} from "@/client"
 import {
   personalAccessTokensCreateTokenMutation,
   personalAccessTokensListTokensOptions,
+  personalAccessTokensRepositoryOptionsOptions,
   personalAccessTokensRevokeTokenMutation,
   personalAccessTokensRotateTokenMutation,
 } from "@/client/@tanstack/react-query.gen"
@@ -28,10 +34,12 @@ import {
 } from "@/components/design-system"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
+import { TokenChoices } from "./TokenChoices"
 
 const schema = z.object({
   name: z.string().trim().min(1, "Enter a token name").max(120),
-  access: z.enum(["read", "write"]),
+  scopes: z.array(z.custom<TokenScope>()).min(1, "Select at least one operation"),
+  repository_ids: z.array(z.string()).min(1, "Select at least one repository"),
   expiry: z.enum(["30", "90", "365", "never"]),
 })
 type TokenForm = z.infer<typeof schema>
@@ -44,7 +52,7 @@ const TokenSelect = ({
   options,
 }: {
   control: Control<TokenForm>
-  name: "access" | "expiry"
+  name: "expiry"
   label: string
   busy: boolean
   options: { value: string; label: string }[]
@@ -70,6 +78,21 @@ const TokenSelect = ({
   />
 )
 
+const scopeOptions: { value: TokenScope; label: string }[] = [
+  { value: "repository:read", label: "Read repository contents and discussions" },
+  { value: "git:read", label: "Clone and fetch commits" },
+  { value: "git:write", label: "Push commits (includes clone and fetch)" },
+  { value: "issues:write", label: "Create and update issues" },
+  { value: "pull_requests:write", label: "Create and update pull requests" },
+  { value: "pull_requests:merge", label: "Merge pull requests" },
+  { value: "comments:write", label: "Create, edit, and delete comments and reactions" },
+  { value: "reviews:write", label: "Submit reviews and manage review drafts" },
+  { value: "releases:write", label: "Create and update releases" },
+  { value: "repository:write", label: "Rename repositories and update settings" },
+  { value: "repository:delete", label: "Delete repositories" },
+]
+const defaults: TokenForm = { name: "", scopes: ["repository:read"], repository_ids: [], expiry: "30" }
+
 const tokenStatus = (token: PersonalAccessTokenPublic) => {
   if (token.revoked_at) return "Revoked"
   if (token.expires_at && new Date(token.expires_at) <= new Date()) return "Expired"
@@ -82,14 +105,15 @@ const PersonalAccessTokens = () => {
   const [issued, setIssued] = useState<PersonalAccessTokenIssued | null>(null)
   const [rotating, setRotating] = useState<PersonalAccessTokenPublic | null>(null)
   const tokens = useQuery(personalAccessTokensListTokensOptions())
+  const repositories = useQuery(personalAccessTokensRepositoryOptionsOptions())
   const form = useForm<TokenForm>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", access: "read", expiry: "30" },
+    defaultValues: defaults,
   })
   const showIssued = async (token: PersonalAccessTokenIssued) => {
     setIssued(token)
     setRotating(null)
-    form.reset({ name: "", access: "read", expiry: "30" })
+    form.reset(defaults)
     await queryClient.invalidateQueries({ queryKey: personalAccessTokensListTokensOptions().queryKey })
   }
   const create = useMutation({
@@ -121,7 +145,8 @@ const PersonalAccessTokens = () => {
   const submit = (values: TokenForm) => {
     const body: PersonalAccessTokenCreate = {
       name: values.name,
-      scopes: values.access === "write" ? ["git:read", "git:write"] : ["git:read"],
+      scopes: values.scopes,
+      repository_ids: values.repository_ids,
       expires_at:
         values.expiry === "never" ? null : new Date(Date.now() + Number(values.expiry) * 86400000).toISOString(),
     }
@@ -133,8 +158,8 @@ const PersonalAccessTokens = () => {
       <div>
         <h3 className="text-lg font-semibold">Personal access tokens</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Use your username and a token as the password when Git asks for credentials. Tokens grant only the selected
-          Git operations, within your existing repository access.
+          Choose exactly which repositories and operations each token can access. Tokens also require your account’s
+          current repository permissions. Use a token with Git or as a Bearer credential for the repository API.
         </p>
       </div>
       {issued && (
@@ -186,16 +211,57 @@ const PersonalAccessTokens = () => {
                 )}
               />
             </div>
-            <TokenSelect
-              control={form.control}
-              name="access"
-              label="Git access"
-              busy={busy}
-              options={[
-                { value: "read", label: "Read — clone and fetch" },
-                { value: "write", label: "Read and write — clone, fetch, and push" },
-              ]}
-            />
+            <div className="sm:col-span-2">
+              <FormField
+                control={form.control}
+                name="repository_ids"
+                render={({ field }) => (
+                  <FormItem>
+                    {repositories.isPending ? (
+                      <p role="status">Loading repositories…</p>
+                    ) : repositories.isError ? (
+                      <Alert variant="destructive">
+                        <AlertDescription>Unable to load repositories.</AlertDescription>
+                        <Button type="button" onClick={() => repositories.refetch()}>
+                          Retry
+                        </Button>
+                      </Alert>
+                    ) : (
+                      <TokenChoices
+                        label="Repositories"
+                        searchable
+                        options={repositories.data.map((repository) => ({
+                          value: repository.id,
+                          label: `${repository.owner}/${repository.name}`,
+                        }))}
+                        selected={field.value}
+                        onChange={field.onChange}
+                        disabled={busy}
+                      />
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <FormField
+                control={form.control}
+                name="scopes"
+                render={({ field }) => (
+                  <FormItem>
+                    <TokenChoices
+                      label="Allowed operations"
+                      options={scopeOptions}
+                      selected={field.value}
+                      onChange={field.onChange}
+                      disabled={busy}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <TokenSelect
               control={form.control}
               name="expiry"
@@ -209,7 +275,12 @@ const PersonalAccessTokens = () => {
               ]}
             />
             <div className="flex gap-2 sm:col-span-2">
-              <LoadingButton variant="success" type="submit" loading={busy} disabled={Boolean(issued)}>
+              <LoadingButton
+                variant="success"
+                type="submit"
+                loading={busy}
+                disabled={Boolean(issued) || !repositories.data?.length}
+              >
                 {rotating ? "Create replacement" : "Create token"}
               </LoadingButton>
               {rotating && (
@@ -264,7 +335,20 @@ const PersonalAccessTokens = () => {
                     </Badge>
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Ending in {token.secret_last4} · {token.scopes.includes("git:write") ? "Read and write" : "Read"}
+                    Ending in {token.secret_last4} · {token.repository_ids.length} repositories
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {token.scopes
+                      .map((scope) => scopeOptions.find((option) => option.value === scope)?.label ?? scope)
+                      .join(" · ")}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {token.repository_ids
+                      .map((id) => {
+                        const repository = repositories.data?.find((item) => item.id === id)
+                        return repository ? `${repository.owner}/${repository.name}` : "Unavailable repository"
+                      })
+                      .join(", ") || "No repositories selected — rotate this token to enable access."}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Created {new Date(token.created_at).toLocaleDateString()} ·{" "}
@@ -282,7 +366,10 @@ const PersonalAccessTokens = () => {
                         setRotating(token)
                         form.reset({
                           name: token.name,
-                          access: token.scopes.includes("git:write") ? "write" : "read",
+                          scopes: token.scopes,
+                          repository_ids: token.repository_ids.filter((id) =>
+                            repositories.data?.some((repository) => repository.id === id),
+                          ),
                           expiry: "30",
                         })
                       }}

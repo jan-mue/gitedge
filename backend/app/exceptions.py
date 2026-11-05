@@ -115,7 +115,7 @@ class TokenAuthenticationLimitError(RateLimitError):
 class InsufficientTokenScopeError(PermissionDeniedError):
     """A token does not permit the requested Git operation."""
 
-    default_detail = "Token lacks the required Git scope"
+    default_detail = "Token lacks the required operation permission"
 
 
 class RepositoryNotFoundError(NotFoundError):
@@ -168,3 +168,9 @@ class ReleaseNotFoundError(NotFoundError):
 
 class EmailDeliveryError(Exception):
     """Raised when the email transport cannot deliver a message."""
+
+
+class InsufficientTokenRepositoryError(PermissionDeniedError):
+    """A token does not include the requested repository."""
+
+    default_detail = "Token does not have access to this repository"

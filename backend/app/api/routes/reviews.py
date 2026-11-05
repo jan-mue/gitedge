@@ -5,8 +5,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Response
 
-from app.api.dependencies import CurrentUser, OptionalUser, ReviewServiceDep
+from app.api.dependencies import OptionalRepositoryUser, RepositoryUser, ReviewServiceDep
 from app.api.permissions import require_permission
+from app.schemas.personal_access_tokens import TokenScope
 from app.schemas.repositories import DiffHunk
 from app.schemas.reviews import (
     ReviewDraft,
@@ -19,7 +20,13 @@ from app.schemas.reviews import (
 )
 
 router = APIRouter(
-    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalUser))],
+    dependencies=[
+        Depends(
+            require_permission(
+                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
+            )
+        )
+    ],
     prefix="/repositories/{owner}/{repo}/pulls/{number}",
     tags=["reviews"],
 )
@@ -33,7 +40,7 @@ async def list_reviews(owner: str, repo: str, number: int, service: ReviewServic
 
 @router.get("/review-workspace")
 async def get_workspace(
-    owner: str, repo: str, number: int, response: Response, service: ReviewServiceDep, current_user: CurrentUser
+    owner: str, repo: str, number: int, response: Response, service: ReviewServiceDep, current_user: RepositoryUser
 ) -> ReviewWorkspacePublic:
     """Read only the authenticated user's private draft and viewed status."""
     response.headers["Cache-Control"] = "private, no-store"
@@ -53,7 +60,13 @@ async def get_comment_context(
     return await service.get_comment_context(owner, repo, number, review_id, comment_index)
 
 
-@router.post("/reviews/{review_id}/replies", status_code=201)
+@router.post(
+    "/reviews/{review_id}/replies",
+    status_code=201,
+    dependencies=[
+        Depends(require_permission("repository:read", user_dep=RepositoryUser, token_scope=TokenScope.REVIEWS_WRITE))
+    ],
+)
 async def reply_to_review(
     owner: str,
     repo: str,
@@ -61,31 +74,52 @@ async def reply_to_review(
     review_id: uuid.UUID,
     body: ReviewReplyCreate,
     service: ReviewServiceDep,
-    current_user: CurrentUser,
+    current_user: RepositoryUser,
 ) -> ReviewReplyPublic:
     """Reply to a published line comment or overall review comment."""
     return await service.reply(owner, repo, number, review_id, body, current_user)
 
 
-@router.put("/review-draft")
+@router.put(
+    "/review-draft",
+    dependencies=[
+        Depends(require_permission("repository:read", user_dep=RepositoryUser, token_scope=TokenScope.REVIEWS_WRITE))
+    ],
+)
 async def save_draft(
-    owner: str, repo: str, number: int, body: ReviewDraft, service: ReviewServiceDep, current_user: CurrentUser
+    owner: str, repo: str, number: int, body: ReviewDraft, service: ReviewServiceDep, current_user: RepositoryUser
 ) -> ReviewWorkspacePublic:
     """Save a private review draft, including line comments."""
     return await service.save_draft(owner, repo, number, body, current_user)
 
 
-@router.put("/reviewed-files")
+@router.put(
+    "/reviewed-files",
+    dependencies=[
+        Depends(require_permission("repository:read", user_dep=RepositoryUser, token_scope=TokenScope.REVIEWS_WRITE))
+    ],
+)
 async def mark_reviewed(
-    owner: str, repo: str, number: int, body: ReviewedFileUpdate, service: ReviewServiceDep, current_user: CurrentUser
+    owner: str,
+    repo: str,
+    number: int,
+    body: ReviewedFileUpdate,
+    service: ReviewServiceDep,
+    current_user: RepositoryUser,
 ) -> ReviewWorkspacePublic:
     """Update a file's reviewed state for the authenticated user."""
     return await service.mark_reviewed(owner, repo, number, body, current_user)
 
 
-@router.post("/reviews", status_code=201)
+@router.post(
+    "/reviews",
+    status_code=201,
+    dependencies=[
+        Depends(require_permission("repository:read", user_dep=RepositoryUser, token_scope=TokenScope.REVIEWS_WRITE))
+    ],
+)
 async def submit_review(
-    owner: str, repo: str, number: int, body: ReviewSubmit, service: ReviewServiceDep, current_user: CurrentUser
+    owner: str, repo: str, number: int, body: ReviewSubmit, service: ReviewServiceDep, current_user: RepositoryUser
 ) -> ReviewPublic:
     """Publish a review with a comment, approval or request-changes outcome."""
     return await service.submit(owner, repo, number, body, current_user)

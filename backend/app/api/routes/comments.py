@@ -7,8 +7,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 
-from app.api.dependencies import CommentServiceDep, CurrentUser, OptionalUser
-from app.api.permissions import require_permission
+from app.api.dependencies import CommentServiceDep, OptionalRepositoryUser, RepositoryUser
+from app.api.permissions import require_comment_permission, require_permission
 from app.entities.users import User
 from app.schemas.comments import (
     CommentCreate,
@@ -18,6 +18,7 @@ from app.schemas.comments import (
     ReactionCreate,
     ReactionsPublic,
 )
+from app.schemas.personal_access_tokens import TokenScope
 
 router = APIRouter(prefix="/repositories", tags=["comments"])
 comment_router = APIRouter(prefix="/comments", tags=["comments"])
@@ -25,7 +26,13 @@ comment_router = APIRouter(prefix="/comments", tags=["comments"])
 
 @router.get(
     "/{owner}/{repo}/issues/{number}/comments",
-    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalUser))],
+    dependencies=[
+        Depends(
+            require_permission(
+                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
+            )
+        )
+    ],
 )
 async def list_comments(
     owner: str,
@@ -44,7 +51,10 @@ async def create_comment(
     number: int,
     body: CommentCreate,
     comment_service: CommentServiceDep,
-    current_user: Annotated[User, Depends(require_permission("repository:read", user_dep=CurrentUser))],
+    current_user: Annotated[
+        User,
+        Depends(require_permission("repository:read", user_dep=RepositoryUser, token_scope=TokenScope.COMMENTS_WRITE)),
+    ],
 ) -> CommentPublic:
     """Create a comment on an issue or pull request."""
     return await comment_service.create_comment(owner, repo, number, body, current_user)
@@ -52,21 +62,30 @@ async def create_comment(
 
 @comment_router.patch("/{comment_id}")
 async def update_comment(
-    comment_id: uuid.UUID, body: CommentUpdate, comment_service: CommentServiceDep, current_user: CurrentUser
+    comment_id: uuid.UUID,
+    body: CommentUpdate,
+    comment_service: CommentServiceDep,
+    current_user: Annotated[User, Depends(require_comment_permission(TokenScope.COMMENTS_WRITE))],
 ) -> CommentPublic:
     """Update a comment."""
     return await comment_service.update_comment(comment_id, body, current_user)
 
 
 @comment_router.delete("/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_comment(comment_id: uuid.UUID, comment_service: CommentServiceDep, current_user: CurrentUser) -> None:
+async def delete_comment(
+    comment_id: uuid.UUID,
+    comment_service: CommentServiceDep,
+    current_user: Annotated[User, Depends(require_comment_permission(TokenScope.COMMENTS_WRITE))],
+) -> None:
     """Delete a comment."""
     await comment_service.delete_comment(comment_id, current_user)
 
 
 @comment_router.get("/{comment_id}/reactions")
 async def list_reactions(
-    comment_id: uuid.UUID, comment_service: CommentServiceDep, current_user: CurrentUser
+    comment_id: uuid.UUID,
+    comment_service: CommentServiceDep,
+    current_user: Annotated[User, Depends(require_comment_permission(TokenScope.REPOSITORY_READ))],
 ) -> ReactionsPublic:
     """List comment reactions."""
     return await comment_service.list_reactions(comment_id, current_user)
@@ -74,7 +93,10 @@ async def list_reactions(
 
 @comment_router.put("/{comment_id}/reactions")
 async def add_reaction(
-    comment_id: uuid.UUID, body: ReactionCreate, comment_service: CommentServiceDep, current_user: CurrentUser
+    comment_id: uuid.UUID,
+    body: ReactionCreate,
+    comment_service: CommentServiceDep,
+    current_user: Annotated[User, Depends(require_comment_permission(TokenScope.COMMENTS_WRITE))],
 ) -> ReactionsPublic:
     """Add a reaction once per user and emoji."""
     return await comment_service.react(comment_id, body.emoji, current_user, enabled=True)
@@ -82,7 +104,10 @@ async def add_reaction(
 
 @comment_router.delete("/{comment_id}/reactions")
 async def remove_reaction(
-    comment_id: uuid.UUID, body: ReactionCreate, comment_service: CommentServiceDep, current_user: CurrentUser
+    comment_id: uuid.UUID,
+    body: ReactionCreate,
+    comment_service: CommentServiceDep,
+    current_user: Annotated[User, Depends(require_comment_permission(TokenScope.COMMENTS_WRITE))],
 ) -> ReactionsPublic:
     """Remove the current user's reaction."""
     return await comment_service.react(comment_id, body.emoji, current_user, enabled=False)

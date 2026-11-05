@@ -145,7 +145,13 @@ async def test_receive_pack_persists_objects_and_refs(
         issued = client.post(
             f"{settings.API_V1_STR}/users/me/personal-access-tokens/",
             headers=superuser_token_headers,
-            json={"name": "Git push", "scopes": ["git:write"]},
+            json={
+                "name": "Git push",
+                "scopes": ["git:write"],
+                "repository_ids": [
+                    str(next(repo.id for repo in fake_stores.repository.items.values() if repo.name == "push"))
+                ],
+            },
         )
         assert issued.status_code == 201
         headers["Authorization"] = f"Bearer {issued.json()['token']}"

@@ -14,8 +14,12 @@ from app.clients.database import create_session_factory
 from app.clients.personal_access_tokens import AUTHENTICATION_LIMIT, SQLPersonalAccessTokenStore
 from app.clients.users import SQLUserStore
 from app.entities.users import User
-from app.exceptions import InvalidPersonalAccessTokenError
-from app.schemas.personal_access_tokens import GitScope, PersonalAccessTokenCreate
+from app.exceptions import (
+    InsufficientTokenRepositoryError,
+    InsufficientTokenScopeError,
+    InvalidPersonalAccessTokenError,
+)
+from app.schemas.personal_access_tokens import PersonalAccessTokenCreate, TokenScope
 from app.services.personal_access_tokens import PersonalAccessTokenService
 from tests.conftest import _run_async
 
@@ -45,19 +49,29 @@ async def check_personal_access_tokens(database_url: str) -> None:
             owner_id = owner.id
             store = SQLPersonalAccessTokenStore(db)
             service = PersonalAccessTokenService(store, users)
-            body = PersonalAccessTokenCreate(name="Workstation", scopes=[GitScope.WRITE])
+            body = PersonalAccessTokenCreate(
+                name="Workstation", scopes=[TokenScope.WRITE], repository_ids=[uuid.uuid4()]
+            )
             issued = await service.issue(body, owner)
             first_id, first_key_id = issued.id, issued.key_id
             row = await store.get(first_id)
             assert row.secret_hash.startswith("$argon2id$")
             assert row.secret_last4 == issued.token[-4:]
-            assert await service.authenticate(issued.token, GitScope.READ) is owner
+            authenticated = await service.authenticate(issued.token, TokenScope.READ)
+            assert authenticated.user is owner
+            assert issued.repository_ids == body.repository_ids
+            assert row.repository_ids == [str(repository_id) for repository_id in body.repository_ids]
+            authenticated.require(body.repository_ids[0], TokenScope.WRITE)
+            with pytest.raises(InsufficientTokenRepositoryError):
+                authenticated.require(uuid.uuid4(), TokenScope.READ)
+            with pytest.raises(InsufficientTokenScopeError):
+                authenticated.require(body.repository_ids[0], TokenScope.ISSUES_WRITE)
             assert row.last_used_at is not None
             replacement = await service.rotate(first_id, body, owner)
             replacement_id = replacement.id
             assert (await store.get(first_id)).revoked_reason == "Rotated"
             with pytest.raises(InvalidPersonalAccessTokenError):
-                await service.authenticate(issued.token, GitScope.READ)
+                await service.authenticate(issued.token, TokenScope.READ)
 
             class CollidingStore(SQLPersonalAccessTokenStore):
                 """Force one genuine unique-index collision during issuance."""

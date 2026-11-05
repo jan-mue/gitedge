@@ -7,13 +7,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies import (
-    CurrentUser,
-    OptionalUser,
+    OptionalRepositoryUser,
     ReleaseServiceDep,
     RepositoryServiceDep,
+    RepositoryUser,
 )
 from app.api.permissions import require_permission
 from app.entities.users import User
+from app.schemas.personal_access_tokens import TokenScope
 from app.schemas.releases import ReleaseCreate, ReleasePublic, ReleasesPublic, ReleaseUpdate, TagsPublic
 
 router = APIRouter(prefix="/repositories", tags=["releases"])
@@ -24,7 +25,14 @@ async def list_releases(
     owner: str,
     repo: str,
     release_service: ReleaseServiceDep,
-    current_user: Annotated[User | None, Depends(require_permission("repository:read", user_dep=OptionalUser))],
+    current_user: Annotated[
+        User | None,
+        Depends(
+            require_permission(
+                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
+            )
+        ),
+    ],
     include_drafts: bool = False,
 ) -> ReleasesPublic:
     """List releases for a repository."""
@@ -37,7 +45,10 @@ async def create_release(
     repo: str,
     body: ReleaseCreate,
     release_service: ReleaseServiceDep,
-    current_user: Annotated[User, Depends(require_permission("repository:write", user_dep=CurrentUser))],
+    current_user: Annotated[
+        User,
+        Depends(require_permission("repository:write", user_dep=RepositoryUser, token_scope=TokenScope.RELEASES_WRITE)),
+    ],
 ) -> ReleasePublic:
     """Create a release."""
     return await release_service.create_release(owner, repo, body, current_user)
@@ -49,7 +60,14 @@ async def get_release(
     repo: str,
     tag_name: str,
     release_service: ReleaseServiceDep,
-    current_user: Annotated[User | None, Depends(require_permission("repository:read", user_dep=OptionalUser))],
+    current_user: Annotated[
+        User | None,
+        Depends(
+            require_permission(
+                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
+            )
+        ),
+    ],
 ) -> ReleasePublic:
     """Get a single release by tag name."""
     return await release_service.get_release(owner, repo, tag_name, current_user)
@@ -62,14 +80,24 @@ async def update_release(
     tag_name: str,
     body: ReleaseUpdate,
     release_service: ReleaseServiceDep,
-    current_user: Annotated[User, Depends(require_permission("repository:write", user_dep=CurrentUser))],
+    current_user: Annotated[
+        User,
+        Depends(require_permission("repository:write", user_dep=RepositoryUser, token_scope=TokenScope.RELEASES_WRITE)),
+    ],
 ) -> ReleasePublic:
     """Update a release."""
     return await release_service.update_release(owner, repo, tag_name, body, current_user)
 
 
 @router.get(
-    "/{owner}/{repo}/tags", dependencies=[Depends(require_permission("repository:read", user_dep=OptionalUser))]
+    "/{owner}/{repo}/tags",
+    dependencies=[
+        Depends(
+            require_permission(
+                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
+            )
+        )
+    ],
 )
 async def list_tags(
     owner: str,

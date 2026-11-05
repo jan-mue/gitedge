@@ -405,6 +405,10 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
         raise OwnerNotFoundError
 
     @override
+    async def get_by_ids(self, repository_ids: list[uuid.UUID]) -> list[Repository]:
+        return [self._hydrate(repository) for repository in self.items.values() if repository.id in repository_ids]
+
+    @override
     async def get_by_owner(self, owner_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
         """Get all repositories owned by a principal."""
         repositories = [repository for repository in self.items.values() if repository.owner_id == owner_id]
