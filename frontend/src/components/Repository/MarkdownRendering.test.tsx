@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest"
 
 import {
   handleCommentsListComments,
+  handleCommentsListReactions,
   handleRepositoriesGetIssue,
   handleRepositoriesGetPullRequest,
   handleRepositoriesGetPullRequestFiles,
@@ -16,6 +17,7 @@ import IssueDetail from "./IssueDetail"
 import PullRequestDetail from "./PullRequestDetail"
 
 vi.mock("@tanstack/react-router", () => ({
+  useSearch: () => ({}),
   useParams: () => ({ owner: "owner", repo: "repo", number: "1" }),
   Link: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }))
@@ -35,6 +37,7 @@ describe("Markdown descriptions and comments", () => {
   beforeEach(() => {
     server.use(
       handleCommentsListComments({ body: { data: [], count: 0 } }),
+      handleCommentsListReactions({ body: { data: [] } }),
       handleRepositoriesGetPullRequestFiles({ body: { files: [], additions: 0, deletions: 0 } }),
       handleReviewsListReviews({ body: [] }),
       handleRepositoriesGetIssue({ body: { ...issue, body, body_html: bodyHtml } }),

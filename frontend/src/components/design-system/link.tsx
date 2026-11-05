@@ -3,6 +3,12 @@ import type { ComponentProps } from "react"
 import { cn } from "@/lib/utils"
 
 const appearances = {
+  notificationReturn:
+    "flex items-center gap-1.5 px-2.5 py-1 rounded border border-border bg-background text-foreground hover:bg-accent shrink-0 font-medium",
+  notificationNav: "relative p-1.5 rounded text-foreground hover:bg-accent transition-colors",
+  notificationTarget: "flex-1 min-w-0 group",
+  notificationRepository: "text-sm font-semibold text-foreground hover:text-primary truncate",
+
   avatar:
     "flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-foreground",
   author: "font-semibold hover:text-primary",
@@ -49,6 +55,8 @@ const appearances = {
   recovery: "ml-auto text-sm underline-offset-4 hover:underline",
   action:
     "inline-flex h-8 items-center justify-center gap-2 rounded-md border border-border bg-secondary px-3 text-sm text-foreground hover:bg-accent",
+  splitCount:
+    "inline-flex h-8 min-w-10 items-center justify-center border border-r-0 border-border bg-secondary px-2.5 text-sm font-medium text-foreground hover:bg-accent",
   count:
     "inline-flex h-8 min-w-10 items-center justify-center rounded-r border border-border bg-secondary px-2.5 text-sm font-medium text-foreground hover:bg-accent",
   stat: "inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary",

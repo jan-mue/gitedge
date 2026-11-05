@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from app.api.main import api_router
 from app.api.routes import git
 from app.config import settings
-from app.exceptions import NotFoundError
+from app.exceptions import EmailDeliveryError, NotFoundError
 from app.lifespan import lifespan
 from app.utils.setup_logging import setup_logging
 
@@ -46,6 +46,13 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     """Handle all unhandled exceptions, logging them with a stack trace."""
     logger.error("Unhandled exception - %s %s", request.method, request.url.path, exc_info=exc)
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+
+@app.exception_handler(EmailDeliveryError)
+async def email_delivery_exception_handler(request: Request, exc: EmailDeliveryError) -> JSONResponse:
+    """Log delivery failures without exposing SMTP details to the caller."""
+    logger.error("Email delivery failed - %s %s", request.method, request.url.path, exc_info=exc)
+    return JSONResponse(status_code=500, content={"detail": "Email delivery failed"})
 
 
 @app.exception_handler(NotFoundError)

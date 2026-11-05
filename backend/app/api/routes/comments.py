@@ -7,7 +7,14 @@ import uuid
 from fastapi import APIRouter, status
 
 from app.api.dependencies import CommentServiceDep, CurrentUser
-from app.schemas.comments import CommentCreate, CommentPublic, CommentsPublic, CommentUpdate
+from app.schemas.comments import (
+    CommentCreate,
+    CommentPublic,
+    CommentsPublic,
+    CommentUpdate,
+    ReactionCreate,
+    ReactionsPublic,
+)
 
 router = APIRouter(prefix="/repositories", tags=["comments"])
 comment_router = APIRouter(prefix="/comments", tags=["comments"])
@@ -44,3 +51,27 @@ async def update_comment(
 async def delete_comment(comment_id: uuid.UUID, comment_service: CommentServiceDep, current_user: CurrentUser) -> None:
     """Delete a comment."""
     await comment_service.delete_comment(comment_id, current_user)
+
+
+@comment_router.get("/{comment_id}/reactions")
+async def list_reactions(
+    comment_id: uuid.UUID, comment_service: CommentServiceDep, current_user: CurrentUser
+) -> ReactionsPublic:
+    """List comment reactions."""
+    return await comment_service.list_reactions(comment_id, current_user)
+
+
+@comment_router.put("/{comment_id}/reactions")
+async def add_reaction(
+    comment_id: uuid.UUID, body: ReactionCreate, comment_service: CommentServiceDep, current_user: CurrentUser
+) -> ReactionsPublic:
+    """Add a reaction once per user and emoji."""
+    return await comment_service.react(comment_id, body.emoji, current_user, enabled=True)
+
+
+@comment_router.delete("/{comment_id}/reactions")
+async def remove_reaction(
+    comment_id: uuid.UUID, body: ReactionCreate, comment_service: CommentServiceDep, current_user: CurrentUser
+) -> ReactionsPublic:
+    """Remove the current user's reaction."""
+    return await comment_service.react(comment_id, body.emoji, current_user, enabled=False)

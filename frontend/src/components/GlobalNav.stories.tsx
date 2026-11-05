@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { HttpResponse } from "msw"
 import {
+  handleNotificationsListNotifications,
   handleOrganizationsListOrganizations,
   handleRepositoriesCreateRepository,
   handleUsersReadUserMe,
@@ -26,6 +27,18 @@ export const RepositoryOwner: Story = {
   parameters: {
     msw: {
       handlers: [
+        handleNotificationsListNotifications({
+          body: {
+            data: [],
+            count: 0,
+            unread_count: 0,
+            inbox_count: 0,
+            archived_count: 0,
+            repositories: [],
+            repository_counts: {},
+            reasons: {},
+          },
+        }),
         handleUsersReadUserMe({
           body: storybookUser,
         }),

@@ -2,11 +2,13 @@
 
 import logging
 from abc import ABC, abstractmethod
+from smtplib import SMTPException
 from typing import override
 
 from emails.message import Message
 
 from app.config import settings
+from app.exceptions import EmailDeliveryError
 
 logger = logging.getLogger(__name__)
 
@@ -50,16 +52,21 @@ class SMTPClient(EmailClient):
             html_content: Email body in HTML format.
 
         Raises:
-            RuntimeError: If email settings are not configured.
+            EmailDeliveryError: If email settings are not configured or the server rejects delivery.
         """
         from_name = settings.EMAILS_FROM_NAME
         from_email = settings.EMAILS_FROM_EMAIL
         if settings.SMTP_HOST is None or from_name is None or from_email is None:
-            raise RuntimeError("No provided configuration for email variables")
+            raise EmailDeliveryError("No provided configuration for email variables")
         message = Message(
             subject=subject,
             html=html_content,
             mail_from=(from_name, str(from_email)),
         )
-        response = message.send(to=email_to, smtp=self.smtp_options)
-        logger.info("send email result: %s", response)
+        try:
+            response = message.send(to=email_to, smtp=self.smtp_options)
+        except (SMTPException, OSError) as exc:
+            raise EmailDeliveryError("SMTP transport failed") from exc
+        if not response.success:
+            raise EmailDeliveryError(f"SMTP delivery failed with status {response.status_code}")
+        logger.info("Email delivered successfully")

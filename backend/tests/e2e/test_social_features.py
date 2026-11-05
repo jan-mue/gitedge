@@ -8,6 +8,7 @@ user profiles, and empty repositories.
 
 from __future__ import annotations
 
+import re
 import tempfile
 import uuid
 from datetime import UTC, datetime
@@ -57,7 +58,7 @@ class TestStarAndWatch:
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         page.goto(f"{app_url}/admin/starrepo")
 
-        star_button = page.get_by_test_id("star-button").get_by_role("button")
+        star_button = page.get_by_test_id("star-button").get_by_role("button", name=re.compile(r"^Star(?:red)?$"))
         expect(star_button).to_have_text("Star")
         expect(page.get_by_test_id("star-count")).to_have_text("0")
 
@@ -80,7 +81,9 @@ class TestStarAndWatch:
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
         page.goto(f"{app_url}/admin/watchrepo")
 
-        watch_button = page.get_by_test_id("watch-button").get_by_role("button")
+        watch_button = page.get_by_test_id("watch-button").get_by_role(
+            "button", name=re.compile(r"^(?:Watch|Unwatch)$")
+        )
         expect(watch_button).to_have_text("Watch")
         expect(page.get_by_test_id("watch-count")).to_have_text("0")
 
@@ -536,7 +539,7 @@ class TestActivityAndFeed:
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/activityrepo")
-        page.get_by_test_id("star-button").get_by_role("button").click()
+        page.get_by_test_id("star-button").get_by_role("button", name=re.compile(r"^Star(?:red)?$")).click()
         expect(page.get_by_test_id("star-count")).to_have_text("1", timeout=10000)
 
         page.goto(f"{app_url}/admin/activityrepo/activity")
@@ -621,8 +624,8 @@ class TestSocialListings:
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/peoplelistrepo")
-        page.get_by_test_id("star-button").get_by_role("button").click()
-        page.get_by_test_id("watch-button").get_by_role("button").click()
+        page.get_by_test_id("star-button").get_by_role("button", name=re.compile(r"^Star(?:red)?$")).click()
+        page.get_by_test_id("watch-button").get_by_role("button", name=re.compile(r"^(?:Watch|Unwatch)$")).click()
         expect(page.get_by_test_id("star-count")).to_have_text("1", timeout=10000)
         expect(page.get_by_test_id("watch-count")).to_have_text("1")
 
@@ -688,7 +691,7 @@ class TestProfile:
         log_in_user(page, app_url, SUPERUSER_EMAIL, SUPERUSER_PASSWORD)
 
         page.goto(f"{app_url}/admin/profilerepo")
-        page.get_by_test_id("star-button").get_by_role("button").click()
+        page.get_by_test_id("star-button").get_by_role("button", name=re.compile(r"^Star(?:red)?$")).click()
         expect(page.get_by_test_id("star-count")).to_have_text("1", timeout=10000)
 
         page.goto(f"{app_url}/profile/{SUPERUSER_USERNAME}")

@@ -10,6 +10,7 @@ import {
   starsUnstarRepositoryMutation,
 } from "@/client/@tanstack/react-query.gen"
 import { Button, Link as RouterLink } from "@/components/design-system"
+import { StarListMenu } from "./StarListMenu"
 
 interface StarButtonProps {
   owner: string
@@ -33,6 +34,14 @@ const StarButton = ({ owner, repo }: StarButtonProps) => {
     },
   })
 
+  const star = useMutation({
+    ...starsStarRepositoryMutation(),
+    onSuccess: (next) => {
+      queryClient.setQueryData(starsGetStarStateQueryKey({ path: { owner, repo } }), next)
+      queryClient.invalidateQueries({ queryKey: starsListStargazersQueryKey({ path: { owner, repo } }) })
+      queryClient.invalidateQueries({ queryKey: repositoriesListRepositoriesQueryKey() })
+    },
+  })
   const isStarred = state?.is_starred ?? false
   const count = state?.stars_count ?? 0
 
@@ -50,7 +59,7 @@ const StarButton = ({ owner, repo }: StarButtonProps) => {
         type="button"
         onClick={handleClick}
         aria-pressed={isStarred}
-        disabled={mutation.isPending}
+        disabled={mutation.isPending || star.isPending || !state}
         variant="repository"
         size="compact"
         shape="start"
@@ -63,9 +72,20 @@ const StarButton = ({ owner, repo }: StarButtonProps) => {
         />
         <span>{isStarred ? "Starred" : "Star"}</span>
       </Button>
-      <RouterLink to="/$owner/$repo/stars" params={{ owner, repo }} data-testid="star-count" appearance="count">
+      <RouterLink
+        to="/$owner/$repo/stars"
+        params={{ owner, repo }}
+        aria-label="View stargazers"
+        data-testid="star-count"
+        appearance="splitCount"
+      >
         {count}
       </RouterLink>
+      <StarListMenu
+        repository={`${owner}/${repo}`}
+        disabled={mutation.isPending || star.isPending || !state}
+        ensureStarred={() => (isStarred ? Promise.resolve() : star.mutateAsync({ path: { owner, repo } }))}
+      />
     </div>
   )
 }

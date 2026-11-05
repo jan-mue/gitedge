@@ -103,6 +103,7 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
         result = await self.db.scalars(
             select(Activity)
             .options(*_ACTIVITY_OPTIONS)
+            .where(Activity.kind != ActivityKind.REACTION)
             .order_by(Activity.created_at.desc())
             .offset(offset)
             .limit(limit)
@@ -117,7 +118,10 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
         result = await self.db.scalars(
             select(Activity)
             .options(*_ACTIVITY_OPTIONS)
-            .where(or_(Activity.repo_id.in_(owned), Activity.repo_id.in_(starred)))
+            .where(
+                Activity.kind != ActivityKind.REACTION,
+                or_(Activity.repo_id.in_(owned), Activity.repo_id.in_(starred)),
+            )
             .order_by(Activity.created_at.desc(), Activity.id.desc())
             .offset(offset)
             .limit(limit)
@@ -137,7 +141,10 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
         if not event_ids:
             return {}
         comments = select(func.count()).where(Comment.issue_id == Issue.id).correlate(Issue).scalar_subquery()
-        body = case((Activity.kind == ActivityKind.COMMENT, Comment.body), else_=Issue.body)
+        body = case(
+            (Activity.kind.in_((ActivityKind.COMMENT, ActivityKind.COMMENT_EDIT, ActivityKind.REACTION)), Comment.body),
+            else_=Issue.body,
+        )
         rows = await self.db.execute(
             select(
                 Activity.id,
@@ -170,7 +177,7 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
         result = await self.db.scalars(
             select(Activity)
             .options(*_ACTIVITY_OPTIONS)
-            .where(Activity.repo_id == repo_id)
+            .where(Activity.repo_id == repo_id, Activity.kind != ActivityKind.REACTION)
             .order_by(Activity.created_at.desc())
             .offset(offset)
             .limit(limit)

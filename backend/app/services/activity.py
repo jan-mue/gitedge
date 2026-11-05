@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from app.clients.stars import StarStore
     from app.entities.repositories import Repository
     from app.entities.users import User
+    from app.services.notifications import NotificationService
     from app.services.repositories import RepositoryService
 
 
@@ -31,6 +32,7 @@ class ActivityService:
         activity_store: ActivityStore,
         repository_store: RepositoryStore,
         star_store: StarStore,
+        notification_service: NotificationService | None = None,
     ) -> None:
         """Initialize the activity service.
 
@@ -38,10 +40,12 @@ class ActivityService:
             activity_store: Activity store.
             repository_store: Repository store.
             star_store: Star store used to build a personalized feed.
+            notification_service: Optional notification delivery service.
         """
         self.activity_store = activity_store
         self.repository_store = repository_store
         self.star_store = star_store
+        self.notification_service = notification_service
 
     async def repository_statistics(
         self, owner: str, name: str, repository_service: RepositoryService, days: int = 7
@@ -124,6 +128,8 @@ class ActivityService:
         target_type: ActivityTargetType | None = None,
         target_number: int | None = None,
         comment_id: uuid.UUID | None = None,
+        text: str = "",
+        previous_text: str = "",
     ) -> Activity:
         """Record an activity event.
 
@@ -135,6 +141,8 @@ class ActivityService:
             target_type: Optional target type.
             target_number: Optional target number within the repository.
             comment_id: The specific comment referenced by a comment event.
+            text: Description or comment text containing mentions.
+            previous_text: Original text, used to avoid repeating old mentions on edits.
 
         Returns:
             The persisted activity entity.
@@ -149,6 +157,10 @@ class ActivityService:
             comment_id=comment_id,
         )
         await self.activity_store.add(activity)
+        activity.actor = actor
+        activity.repo = repo
+        if self.notification_service is not None:
+            await self.notification_service.notify(activity, text, previous_text)
         return activity
 
     async def repo_activity(self, owner: str, name: str, offset: int = 0, limit: int = 50) -> ActivitiesPublic:

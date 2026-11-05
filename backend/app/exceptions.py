@@ -48,6 +48,12 @@ class IssueNotFoundError(NotFoundError):
     default_detail = "Issue not found"
 
 
+class CommentNotFoundError(NotFoundError):
+    """Raised when a comment cannot be found or accessed."""
+
+    default_detail = "Comment not found"
+
+
 class PullRequestNotFoundError(NotFoundError):
     """Raised when a pull request cannot be found."""
 
@@ -58,3 +64,7 @@ class ReleaseNotFoundError(NotFoundError):
     """Raised when a release cannot be found."""
 
     default_detail = "Release not found"
+
+
+class EmailDeliveryError(Exception):
+    """Raised when the email transport cannot deliver a message."""
