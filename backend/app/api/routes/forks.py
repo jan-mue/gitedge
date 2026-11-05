@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.dependencies import CurrentUser, ForkServiceDep, OptionalRepositoryUser
 from app.api.permissions import require_permission, token_authentication
@@ -24,16 +25,17 @@ async def list_forks(
         User | None,
         Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser)),
     ],
-    offset: int = 0,
-    limit: int = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=0)] = 100,
 ) -> ForksPublic:
     """List forks of a repository."""
-    result = await fork_service.list_forks(owner, repo, offset, limit, current_user)
     authenticated = token_authentication(request)
-    if authenticated is not None:
-        result.data = [fork for fork in result.data if str(fork.id) in authenticated.token.repository_ids]
-        result.count = len(result.data)
-    return result
+    allowed_ids = (
+        [UUID(repository_id) for repository_id in authenticated.token.repository_ids]
+        if authenticated is not None
+        else None
+    )
+    return await fork_service.list_forks(owner, repo, offset, limit, current_user, allowed_repository_ids=allowed_ids)
 
 
 @router.post("/{owner}/{repo}/forks", status_code=201)

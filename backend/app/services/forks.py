@@ -15,6 +15,9 @@ from app.exceptions import (
 from app.schemas.social import ForkCreate, ForkPublic, ForksPublic
 
 if TYPE_CHECKING:
+    import uuid
+    from collections.abc import Sequence
+
     from app.clients.repositories import RepositoryStore
     from app.clients.stars import StarStore
     from app.entities.users import User
@@ -113,11 +116,19 @@ class ForkService:
         return await self._to_public(fork)
 
     async def list_forks(
-        self, owner: str, name: str, offset: int = 0, limit: int = 100, user: User | None = None
+        self,
+        owner: str,
+        name: str,
+        offset: int = 0,
+        limit: int = 100,
+        user: User | None = None,
+        *,
+        allowed_repository_ids: Sequence[uuid.UUID] | None = None,
     ) -> ForksPublic:
         """List forks of a repository.
 
         Args:
+            allowed_repository_ids: Credential repository selection, or unrestricted for account sessions.
             user: Authenticated viewer, or anonymous for public reads.
             owner: Owner name.
             name: Repository name.
@@ -125,15 +136,19 @@ class ForkService:
             limit: Maximum number of forks.
 
         Returns:
-            ForksPublic with the forks.
+            ForksPublic with the requested page and total accessible forks before pagination.
         """
         source = await self.repository_store.find_by_owner_and_name(owner, name)
         if source is None:
             return ForksPublic(data=[], count=0)
-        forks = await self.repository_store.list_by_fork_of(source.id, offset, limit)
+        forks = await self.repository_store.list_by_fork_of(
+            source.id, limit=None, allowed_repository_ids=allowed_repository_ids
+        )
         if self.authorization is not None:
             forks = await self.authorization.visible_repositories(forks, user)
-        return ForksPublic(data=[await self._to_public(fork) for fork in forks], count=len(forks))
+        return ForksPublic(
+            data=[await self._to_public(fork) for fork in forks[offset : offset + limit]], count=len(forks)
+        )
 
     async def _to_public(self, fork: Repository) -> ForkPublic:
         """Convert a fork entity to its public representation.

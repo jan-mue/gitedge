@@ -415,10 +415,23 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
         return [self._hydrate(repository) for repository in repositories[offset : offset + limit]]
 
     @override
-    async def list_by_fork_of(self, fork_of_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
-        """Get all repositories forked from a given repository."""
-        repositories = [repository for repository in self.items.values() if repository.fork_of_id == fork_of_id]
-        return [self._hydrate(repository) for repository in repositories[offset : offset + limit]]
+    async def list_by_fork_of(
+        self,
+        fork_of_id: uuid.UUID,
+        offset: int = 0,
+        limit: int | None = 100,
+        *,
+        allowed_repository_ids: Sequence[uuid.UUID] | None = None,
+    ) -> list[Repository]:
+        repositories = [
+            repository
+            for repository in self.items.values()
+            if repository.fork_of_id == fork_of_id
+            and (allowed_repository_ids is None or repository.id in allowed_repository_ids)
+        ]
+        repositories.sort(key=lambda repository: (repository.created_at, repository.id), reverse=True)
+        page = repositories[offset:] if limit is None else repositories[offset : offset + limit]
+        return [self._hydrate(repository) for repository in page]
 
     @override
     async def count_by_fork_of(self, fork_of_id: uuid.UUID) -> int:

@@ -57,8 +57,15 @@ class RepositoryStore(CrudStore[Repository], ABC):
         """Get all repositories owned by a principal."""
 
     @abstractmethod
-    async def list_by_fork_of(self, fork_of_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
-        """Get all repositories forked from a given repository."""
+    async def list_by_fork_of(
+        self,
+        fork_of_id: uuid.UUID,
+        offset: int = 0,
+        limit: int | None = 100,
+        *,
+        allowed_repository_ids: Sequence[uuid.UUID] | None = None,
+    ) -> list[Repository]:
+        """List forks, restricting repository IDs before applying pagination."""
 
     @abstractmethod
     async def count_by_fork_of(self, fork_of_id: uuid.UUID) -> int:
@@ -180,16 +187,24 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         return list(result.all())
 
     @override
-    async def list_by_fork_of(self, fork_of_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
-        """Get all repositories forked from a given repository."""
-        result = await self.db.scalars(
+    async def list_by_fork_of(
+        self,
+        fork_of_id: uuid.UUID,
+        offset: int = 0,
+        limit: int | None = 100,
+        *,
+        allowed_repository_ids: Sequence[uuid.UUID] | None = None,
+    ) -> list[Repository]:
+        """List allowed forks before pagination; an empty allowlist matches nothing."""
+        statement = (
             select(Repository)
             .options(*self._owner_options())
             .where(Repository.fork_of_id == fork_of_id)
-            .order_by(Repository.created_at.desc())
-            .offset(offset)
-            .limit(limit)
+            .order_by(Repository.created_at.desc(), Repository.id.desc())
         )
+        if allowed_repository_ids is not None:
+            statement = statement.where(Repository.id.in_(allowed_repository_ids))
+        result = await self.db.scalars(statement.offset(offset).limit(limit))
         return list(result.all())
 
     @override
