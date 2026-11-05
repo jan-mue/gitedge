@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.repositories import Repository
+from app.exceptions import (
+    ConflictError,
+    InvalidInputError,
+    PermissionDeniedError,
+    RepositoryNotFoundError,
+)
 from app.schemas.social import ForkCreate, ForkPublic, ForksPublic
 
 if TYPE_CHECKING:
@@ -58,7 +62,7 @@ class ForkService:
             The created fork.
 
         Raises:
-            HTTPException: If the source is not found or the target already exists.
+            ApplicationError: If the source is not found or the target already exists.
         """
         source = await self.repository_store.get_by_owner_and_name(owner, name)
 
@@ -69,21 +73,21 @@ class ForkService:
             await self.authorization.require(source, current_user)
             await self.authorization.require_creation(dest_owner, current_user)
         elif source.is_private and source.owner_id != current_user.id and not current_user.is_superuser:
-            raise HTTPException(status_code=404, detail="Repository not found")
+            raise RepositoryNotFoundError()
         if (
             self.authorization is None
             and dest_owner.lower() != current_user.name.lower()
             and not current_user.is_superuser
         ):
-            raise HTTPException(status_code=403, detail="You can only fork into your own account")
+            raise PermissionDeniedError(detail="You can only fork into your own account")
 
         if dest_owner.lower() == source.owner.name.lower():
-            raise HTTPException(status_code=400, detail="Cannot fork a repository into the same owner")
+            raise InvalidInputError(detail="Cannot fork a repository into the same owner")
 
         owner_id, _ = await self.repository_store.resolve_owner(dest_owner)
 
         if await self.repository_store.find_by_owner_and_name(dest_owner, dest_name) is not None:
-            raise HTTPException(status_code=409, detail="A repository with that name already exists")
+            raise ConflictError(detail="A repository with that name already exists")
 
         fork = Repository(
             name=dest_name,

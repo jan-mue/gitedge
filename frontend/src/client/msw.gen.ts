@@ -2,12 +2,246 @@
 
 import { http, type HttpHandler, HttpResponse, type HttpResponseResolver, type RequestHandlerOptions as RequestHandlerOptions2 } from 'msw';
 
-import type { activityGetFeedResponses, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsResponses, authorizationCreateTeamData, authorizationCreateTeamResponses, authorizationDeleteTeamResponses, authorizationGetOrganizationPermissionsResponses, authorizationGetPermissionsResponses, authorizationListCollaboratorsResponses, authorizationListCollaboratorTeamsResponses, authorizationListMembersResponses, authorizationListTeamMembersResponses, authorizationListTeamsResponses, authorizationRemoveCollaboratorResponses, authorizationRemoveMemberResponses, authorizationRemoveTeamMemberResponses, authorizationSearchCollaboratorCandidatesResponses, authorizationSearchMemberCandidatesResponses, authorizationSetCollaboratorData, authorizationSetCollaboratorResponses, authorizationSetMemberData, authorizationSetMemberResponses, authorizationSetTeamMemberResponses, ClientOptions, commentsCreateCommentData, commentsCreateCommentResponses, commentsDeleteCommentResponses, commentsListCommentsResponses, commentsUpdateCommentData, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryResponses, forksListForksResponses, gitGetHeadResponses, gitGetInfoPacksResponses, gitGetInfoRefsResponses, gitGetLooseObjectResponses, gitGetPackFileResponses, gitGitReceivePackResponses, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenResponses, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordResponses, loginTestTokenResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationResponses, organizationsListOrganizationsResponses, personalAccessTokensCreateTokenData, personalAccessTokensCreateTokenResponses, personalAccessTokensListTokensResponses, personalAccessTokensRevokeTokenData, personalAccessTokensRevokeTokenResponses, personalAccessTokensRotateTokenData, personalAccessTokensRotateTokenResponses, privateCreateUserData, privateCreateUserResponses, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseResponses, releasesGetReleaseResponses, releasesListReleasesResponses, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseResponses, repositoriesCompareRevisionsResponses, repositoriesCreateIssueData, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryResponses, repositoriesGetBlameResponses, repositoriesGetBlobResponses, repositoriesGetCommitResponses, repositoriesGetDiffFileResponses, repositoriesGetFileIndexResponses, repositoriesGetIssueResponses, repositoriesGetPullRequestCommitsResponses, repositoriesGetPullRequestEventsResponses, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestMergeabilityResponses, repositoriesGetPullRequestResponses, repositoriesGetRawResponses, repositoriesGetReadmeResponses, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceResponses, repositoriesGetStatisticsResponses, repositoriesGetTreeResponses, repositoriesListBranchesResponses, repositoriesListCommitsResponses, repositoriesListIssuesResponses, repositoriesListPullRequestsResponses, repositoriesListRepositoriesResponses, repositoriesMergePullRequestData, repositoriesMergePullRequestResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryResponses, reviewsGetCommentContextResponses, reviewsGetWorkspaceResponses, reviewsListReviewsResponses, reviewsMarkReviewedData, reviewsMarkReviewedResponses, reviewsReplyToReviewData, reviewsReplyToReviewResponses, reviewsSaveDraftData, reviewsSaveDraftResponses, reviewsSubmitReviewData, reviewsSubmitReviewResponses, starsGetStarStateResponses, starsListStargazersResponses, starsListStarredRepositoriesResponses, starsStarRepositoryResponses, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserResponses, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeResponses, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserMeData, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckResponses, utilsPreviewMarkdownData, utilsPreviewMarkdownResponses, utilsTestEmailResponses, watchersGetWatchStateResponses, watchersListWatchersResponses, watchersUnwatchRepositoryResponses, watchersWatchRepositoryResponses } from './types.gen';
+import type { activityGetFeedResponses, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsResponses, authorizationCreateTeamData, authorizationCreateTeamResponses, authorizationDeleteTeamResponses, authorizationGetOrganizationPermissionsResponses, authorizationGetPermissionsResponses, authorizationListCollaboratorsResponses, authorizationListCollaboratorTeamsResponses, authorizationListMembersResponses, authorizationListTeamMembersResponses, authorizationListTeamsResponses, authorizationRemoveCollaboratorResponses, authorizationRemoveMemberResponses, authorizationRemoveTeamMemberResponses, authorizationSearchCollaboratorCandidatesResponses, authorizationSearchMemberCandidatesResponses, authorizationSetCollaboratorData, authorizationSetCollaboratorResponses, authorizationSetMemberData, authorizationSetMemberResponses, authorizationSetTeamMemberResponses, ClientOptions, commentsAddReactionData, commentsAddReactionResponses, commentsCreateCommentData, commentsCreateCommentResponses, commentsDeleteCommentResponses, commentsListCommentsResponses, commentsListReactionsResponses, commentsRemoveReactionData, commentsRemoveReactionResponses, commentsUpdateCommentData, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryResponses, forksListForksResponses, gitGetHeadResponses, gitGetInfoPacksResponses, gitGetInfoRefsResponses, gitGetLooseObjectResponses, gitGetPackFileResponses, gitGitReceivePackResponses, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenResponses, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordResponses, loginTestTokenResponses, notificationsArchiveRepositoryResponses, notificationsGetPreferencesResponses, notificationsGetRepositoryPreferencesResponses, notificationsListNotificationsResponses, notificationsMarkAllReadResponses, notificationsSetPreferencesData, notificationsSetPreferencesResponses, notificationsSetRepositoryPreferencesData, notificationsSetRepositoryPreferencesResponses, notificationsUpdateNotificationsData, notificationsUpdateNotificationsResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationResponses, organizationsListOrganizationsResponses, personalAccessTokensCreateTokenData, personalAccessTokensCreateTokenResponses, personalAccessTokensListTokensResponses, personalAccessTokensRevokeTokenData, personalAccessTokensRevokeTokenResponses, personalAccessTokensRotateTokenData, personalAccessTokensRotateTokenResponses, privateCreateUserData, privateCreateUserResponses, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseResponses, releasesGetReleaseResponses, releasesListReleasesResponses, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseResponses, repositoriesCompareRevisionsResponses, repositoriesCreateIssueData, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryResponses, repositoriesGetBlameResponses, repositoriesGetBlobResponses, repositoriesGetCommitResponses, repositoriesGetDiffFileResponses, repositoriesGetFileIndexResponses, repositoriesGetIssueResponses, repositoriesGetPullRequestCommitsResponses, repositoriesGetPullRequestEventsResponses, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestMergeabilityResponses, repositoriesGetPullRequestResponses, repositoriesGetRawResponses, repositoriesGetReadmeResponses, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceResponses, repositoriesGetStatisticsResponses, repositoriesGetTreeResponses, repositoriesListBranchesResponses, repositoriesListCommitsResponses, repositoriesListIssuesResponses, repositoriesListPullRequestsResponses, repositoriesListRepositoriesResponses, repositoriesMergePullRequestData, repositoriesMergePullRequestResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryResponses, reviewsGetCommentContextResponses, reviewsGetWorkspaceResponses, reviewsListReviewsResponses, reviewsMarkReviewedData, reviewsMarkReviewedResponses, reviewsReplyToReviewData, reviewsReplyToReviewResponses, reviewsSaveDraftData, reviewsSaveDraftResponses, reviewsSubmitReviewData, reviewsSubmitReviewResponses, starsGetStarStateResponses, starsListStargazersResponses, starsListStarredRepositoriesResponses, starsStarRepositoryResponses, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserResponses, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeResponses, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserMeData, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckResponses, utilsPreviewMarkdownData, utilsPreviewMarkdownResponses, utilsTestEmailResponses, watchersGetWatchStateResponses, watchersListWatchersResponses, watchersUnwatchRepositoryResponses, watchersWatchRepositoryResponses } from './types.gen';
 
 export type RequestHandlerOptions = RequestHandlerOptions2 & {
     baseUrl?: ClientOptions['baseUrl'];
     responseFallback?: 'error' | 'passthrough';
 };
+
+export type HandleNotificationsListNotificationsResponse = {
+    body: notificationsListNotificationsResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/notifications/` operation.
+ */
+export function handleNotificationsListNotifications(response?: HandleNotificationsListNotificationsResponse | HttpResponseResolver<never, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<never, never>(`${options?.baseUrl ?? '*'}/api/v1/notifications/`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleNotificationsUpdateNotificationsResponse = {
+    body: notificationsUpdateNotificationsResponses[204];
+    status?: 204;
+};
+
+/**
+ * Handler for the `PATCH /api/v1/notifications/` operation.
+ */
+export function handleNotificationsUpdateNotifications(response?: HandleNotificationsUpdateNotificationsResponse | HttpResponseResolver<never, notificationsUpdateNotificationsData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.patch<never, notificationsUpdateNotificationsData['body']>(`${options?.baseUrl ?? '*'}/api/v1/notifications/`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return new HttpResponse(body, { status: response?.status ?? 204 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleNotificationsGetPreferencesResponse = {
+    body: notificationsGetPreferencesResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/notifications/preferences` operation.
+ */
+export function handleNotificationsGetPreferences(response?: HandleNotificationsGetPreferencesResponse | HttpResponseResolver<never, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<never, never>(`${options?.baseUrl ?? '*'}/api/v1/notifications/preferences`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleNotificationsSetPreferencesResponse = {
+    body: notificationsSetPreferencesResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `PUT /api/v1/notifications/preferences` operation.
+ */
+export function handleNotificationsSetPreferences(response?: HandleNotificationsSetPreferencesResponse | HttpResponseResolver<never, notificationsSetPreferencesData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.put<never, notificationsSetPreferencesData['body']>(`${options?.baseUrl ?? '*'}/api/v1/notifications/preferences`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleNotificationsGetRepositoryPreferencesResponse = {
+    body: notificationsGetRepositoryPreferencesResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/notifications/repositories/{owner}/{repo}` operation.
+ */
+export function handleNotificationsGetRepositoryPreferences(response?: HandleNotificationsGetRepositoryPreferencesResponse | HttpResponseResolver<{
+    owner: string;
+    repo: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        owner: string;
+        repo: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/notifications/repositories/:owner/:repo`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleNotificationsSetRepositoryPreferencesResponse = {
+    body: notificationsSetRepositoryPreferencesResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `PUT /api/v1/notifications/repositories/{owner}/{repo}` operation.
+ */
+export function handleNotificationsSetRepositoryPreferences(response?: HandleNotificationsSetRepositoryPreferencesResponse | HttpResponseResolver<{
+    owner: string;
+    repo: string;
+}, notificationsSetRepositoryPreferencesData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.put<{
+        owner: string;
+        repo: string;
+    }, notificationsSetRepositoryPreferencesData['body']>(`${options?.baseUrl ?? '*'}/api/v1/notifications/repositories/:owner/:repo`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleNotificationsMarkAllReadResponse = {
+    body: notificationsMarkAllReadResponses[204];
+    status?: 204;
+};
+
+/**
+ * Handler for the `POST /api/v1/notifications/read-all` operation.
+ */
+export function handleNotificationsMarkAllRead(response?: HandleNotificationsMarkAllReadResponse | HttpResponseResolver<never, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.post<never, never>(`${options?.baseUrl ?? '*'}/api/v1/notifications/read-all`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return new HttpResponse(body, { status: response?.status ?? 204 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleNotificationsArchiveRepositoryResponse = {
+    body: notificationsArchiveRepositoryResponses[204];
+    status?: 204;
+};
+
+/**
+ * Handler for the `POST /api/v1/notifications/repositories/{owner}/{repo}/archive` operation.
+ */
+export function handleNotificationsArchiveRepository(response?: HandleNotificationsArchiveRepositoryResponse | HttpResponseResolver<{
+    owner: string;
+    repo: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.post<{
+        owner: string;
+        repo: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/notifications/repositories/:owner/:repo/archive`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return new HttpResponse(body, { status: response?.status ?? 204 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
 
 export type HandleLoginLoginAccessTokenResponse = {
     body: loginLoginAccessTokenResponses[200];
@@ -1856,6 +2090,99 @@ export function handleCommentsUpdateComment(response?: HandleCommentsUpdateComme
     }, options);
 }
 
+export type HandleCommentsRemoveReactionResponse = {
+    body: commentsRemoveReactionResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `DELETE /api/v1/comments/{comment_id}/reactions` operation.
+ */
+export function handleCommentsRemoveReaction(response?: HandleCommentsRemoveReactionResponse | HttpResponseResolver<{
+    comment_id: string;
+}, commentsRemoveReactionData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.delete<{
+        comment_id: string;
+    }, commentsRemoveReactionData['body']>(`${options?.baseUrl ?? '*'}/api/v1/comments/:comment_id/reactions`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleCommentsListReactionsResponse = {
+    body: commentsListReactionsResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/comments/{comment_id}/reactions` operation.
+ */
+export function handleCommentsListReactions(response?: HandleCommentsListReactionsResponse | HttpResponseResolver<{
+    comment_id: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        comment_id: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/comments/:comment_id/reactions`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleCommentsAddReactionResponse = {
+    body: commentsAddReactionResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `PUT /api/v1/comments/{comment_id}/reactions` operation.
+ */
+export function handleCommentsAddReaction(response?: HandleCommentsAddReactionResponse | HttpResponseResolver<{
+    comment_id: string;
+}, commentsAddReactionData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.put<{
+        comment_id: string;
+    }, commentsAddReactionData['body']>(`${options?.baseUrl ?? '*'}/api/v1/comments/:comment_id/reactions`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
 export type HandleReleasesListReleasesResponse = {
     body: releasesListReleasesResponses[200];
     status?: 200;
@@ -3636,6 +3963,38 @@ export function handlePrivateCreateUser(response?: HandlePrivateCreateUserRespon
 
 export type MswHandlerFactories = {
     /**
+     * Handler for the `GET /api/v1/notifications/` operation.
+     */
+    notificationsListNotifications: typeof handleNotificationsListNotifications;
+    /**
+     * Handler for the `PATCH /api/v1/notifications/` operation.
+     */
+    notificationsUpdateNotifications: typeof handleNotificationsUpdateNotifications;
+    /**
+     * Handler for the `GET /api/v1/notifications/preferences` operation.
+     */
+    notificationsGetPreferences: typeof handleNotificationsGetPreferences;
+    /**
+     * Handler for the `PUT /api/v1/notifications/preferences` operation.
+     */
+    notificationsSetPreferences: typeof handleNotificationsSetPreferences;
+    /**
+     * Handler for the `GET /api/v1/notifications/repositories/{owner}/{repo}` operation.
+     */
+    notificationsGetRepositoryPreferences: typeof handleNotificationsGetRepositoryPreferences;
+    /**
+     * Handler for the `PUT /api/v1/notifications/repositories/{owner}/{repo}` operation.
+     */
+    notificationsSetRepositoryPreferences: typeof handleNotificationsSetRepositoryPreferences;
+    /**
+     * Handler for the `POST /api/v1/notifications/read-all` operation.
+     */
+    notificationsMarkAllRead: typeof handleNotificationsMarkAllRead;
+    /**
+     * Handler for the `POST /api/v1/notifications/repositories/{owner}/{repo}/archive` operation.
+     */
+    notificationsArchiveRepository: typeof handleNotificationsArchiveRepository;
+    /**
      * Handler for the `POST /api/v1/login/access-token` operation.
      */
     loginLoginAccessToken: typeof handleLoginLoginAccessToken;
@@ -3872,6 +4231,18 @@ export type MswHandlerFactories = {
      */
     commentsUpdateComment: typeof handleCommentsUpdateComment;
     /**
+     * Handler for the `DELETE /api/v1/comments/{comment_id}/reactions` operation.
+     */
+    commentsRemoveReaction: typeof handleCommentsRemoveReaction;
+    /**
+     * Handler for the `GET /api/v1/comments/{comment_id}/reactions` operation.
+     */
+    commentsListReactions: typeof handleCommentsListReactions;
+    /**
+     * Handler for the `PUT /api/v1/comments/{comment_id}/reactions` operation.
+     */
+    commentsAddReaction: typeof handleCommentsAddReaction;
+    /**
      * Handler for the `GET /api/v1/repositories/{owner}/{repo}/releases` operation.
      */
     releasesListReleases: typeof handleReleasesListReleases;
@@ -4104,6 +4475,14 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
         return (response, options) => handler(response, { ...config, ...options });
     }
     const pick: CreateMswHandlersResult['pick'] = {
+        notificationsListNotifications: wrap(handleNotificationsListNotifications),
+        notificationsUpdateNotifications: wrap(handleNotificationsUpdateNotifications),
+        notificationsGetPreferences: wrap(handleNotificationsGetPreferences),
+        notificationsSetPreferences: wrap(handleNotificationsSetPreferences),
+        notificationsGetRepositoryPreferences: wrap(handleNotificationsGetRepositoryPreferences),
+        notificationsSetRepositoryPreferences: wrap(handleNotificationsSetRepositoryPreferences),
+        notificationsMarkAllRead: wrap(handleNotificationsMarkAllRead),
+        notificationsArchiveRepository: wrap(handleNotificationsArchiveRepository),
         loginLoginAccessToken: wrap(handleLoginLoginAccessToken),
         loginTestToken: wrap(handleLoginTestToken),
         loginRecoverPassword: wrap(handleLoginRecoverPassword),
@@ -4163,6 +4542,9 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
         commentsCreateComment: wrap(handleCommentsCreateComment),
         commentsDeleteComment: wrap(handleCommentsDeleteComment),
         commentsUpdateComment: wrap(handleCommentsUpdateComment),
+        commentsRemoveReaction: wrap(handleCommentsRemoveReaction),
+        commentsListReactions: wrap(handleCommentsListReactions),
+        commentsAddReaction: wrap(handleCommentsAddReaction),
         releasesListReleases: wrap(handleReleasesListReleases),
         releasesCreateRelease: wrap(handleReleasesCreateRelease),
         releasesGetRelease: wrap(handleReleasesGetRelease),
@@ -4246,6 +4628,7 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.reviewsMarkReviewed, overrides.reviewsMarkReviewed),
             invoke(pick.personalAccessTokensRevokeToken, overrides.personalAccessTokensRevokeToken),
             invoke(pick.personalAccessTokensRotateToken, overrides.personalAccessTokensRotateToken),
+            invoke(pick.notificationsArchiveRepository, overrides.notificationsArchiveRepository),
             invoke(pick.authorizationListTeamMembers, overrides.authorizationListTeamMembers),
             invoke(pick.activityGetRepositoryActivityStatistics, overrides.activityGetRepositoryActivityStatistics),
             invoke(pick.authorizationRemoveCollaborator, overrides.authorizationRemoveCollaborator),
@@ -4259,6 +4642,8 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.gitGetInfoPacks, overrides.gitGetInfoPacks),
             invoke(pick.gitGetPackFile, overrides.gitGetPackFile),
             invoke(pick.gitGetLooseObject, overrides.gitGetLooseObject),
+            invoke(pick.notificationsGetRepositoryPreferences, overrides.notificationsGetRepositoryPreferences),
+            invoke(pick.notificationsSetRepositoryPreferences, overrides.notificationsSetRepositoryPreferences),
             invoke(pick.authorizationRemoveMember, overrides.authorizationRemoveMember),
             invoke(pick.authorizationSetMember, overrides.authorizationSetMember),
             invoke(pick.authorizationDeleteTeam, overrides.authorizationDeleteTeam),
@@ -4309,6 +4694,9 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.authorizationCreateTeam, overrides.authorizationCreateTeam),
             invoke(pick.authorizationSearchMemberCandidates, overrides.authorizationSearchMemberCandidates),
             invoke(pick.authorizationGetOrganizationPermissions, overrides.authorizationGetOrganizationPermissions),
+            invoke(pick.commentsRemoveReaction, overrides.commentsRemoveReaction),
+            invoke(pick.commentsListReactions, overrides.commentsListReactions),
+            invoke(pick.commentsAddReaction, overrides.commentsAddReaction),
             invoke(pick.profilesListUserRepositories, overrides.profilesListUserRepositories),
             invoke(pick.profilesListUserStarredRepositories, overrides.profilesListUserStarredRepositories),
             invoke(pick.repositoriesDeleteRepository, overrides.repositoriesDeleteRepository),
@@ -4317,6 +4705,9 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.gitGetHead, overrides.gitGetHead),
             invoke(pick.gitGitUploadPack, overrides.gitGitUploadPack),
             invoke(pick.gitGitReceivePack, overrides.gitGitReceivePack),
+            invoke(pick.notificationsGetPreferences, overrides.notificationsGetPreferences),
+            invoke(pick.notificationsSetPreferences, overrides.notificationsSetPreferences),
+            invoke(pick.notificationsMarkAllRead, overrides.notificationsMarkAllRead),
             invoke(pick.loginLoginAccessToken, overrides.loginLoginAccessToken),
             invoke(pick.loginTestToken, overrides.loginTestToken),
             invoke(pick.usersDeleteUserMe, overrides.usersDeleteUserMe),
@@ -4334,6 +4725,8 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.commentsDeleteComment, overrides.commentsDeleteComment),
             invoke(pick.commentsUpdateComment, overrides.commentsUpdateComment),
             invoke(pick.profilesReadUserByUsername, overrides.profilesReadUserByUsername),
+            invoke(pick.notificationsListNotifications, overrides.notificationsListNotifications),
+            invoke(pick.notificationsUpdateNotifications, overrides.notificationsUpdateNotifications),
             invoke(pick.loginResetPassword, overrides.loginResetPassword),
             invoke(pick.usersReadUsers, overrides.usersReadUsers),
             invoke(pick.usersCreateUser, overrides.usersCreateUser),

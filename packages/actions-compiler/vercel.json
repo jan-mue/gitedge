@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "bunVersion": "1.4.x",
+  "buildCommand": "",
+  "installCommand": "bun install --frozen-lockfile",
+  "functions": {
+    "api/compile.ts": {
+      "maxDuration": 10
+    }
+  }
+}

@@ -13,12 +13,19 @@ from dulwich.object_format import DEFAULT_OBJECT_FORMAT
 from dulwich.objects import Blob, Commit, ObjectID, ShaFile, Tree
 from dulwich.pack import write_pack
 from dulwich.refs import SYMREF, Ref
-from fastapi import HTTPException
 
 import app.clients.git.repositories as repository_module
 from app.clients.git.blob_backend import BlobBackend
 from app.entities.users import User
-from app.exceptions import RepositoryNotFoundError
+from app.exceptions import (
+    ApplicationError,
+    ConflictError,
+    InvalidInputError,
+    NotFoundError,
+    PayloadTooLargeError,
+    PermissionDeniedError,
+    RepositoryNotFoundError,
+)
 from app.schemas.repositories import FileContent, RepositoryUpdate, TreeListing
 from app.services.repositories import RepositoryService, ensure_repository
 from app.types import PackContents
@@ -244,7 +251,7 @@ async def test_get_repository_not_found(service: RepositoryService) -> None:
 
 
 async def test_load_repository_not_found(service: RepositoryService) -> None:
-    with pytest.raises(HTTPException):
+    with pytest.raises(ApplicationError):
         await service.git.load_repository(OWNER, "missing")
 
 
@@ -345,7 +352,7 @@ async def test_source_last_commits_follow_unchanged_merge_parents(service: Repos
 async def test_get_tree_unknown_ref(service: RepositoryService) -> None:
     _populate_repo(service.git.backend)
 
-    with pytest.raises(HTTPException):
+    with pytest.raises(ApplicationError):
         await service.get_tree(OWNER, REPO, "missing", "")
 
 
@@ -368,21 +375,21 @@ async def test_get_blob_binary(service: RepositoryService) -> None:
 
 
 async def test_get_blob_requires_file_path(service: RepositoryService) -> None:
-    with pytest.raises(HTTPException):
+    with pytest.raises(ApplicationError):
         await service.get_blob(OWNER, REPO, "main", "")
 
 
 async def test_get_blob_not_a_file(service: RepositoryService) -> None:
     _populate_repo(service.git.backend)
 
-    with pytest.raises(HTTPException):
+    with pytest.raises(ApplicationError):
         await service.get_blob(OWNER, REPO, "main", "src")
 
 
 async def test_get_blob_not_found(service: RepositoryService) -> None:
     _populate_repo(service.git.backend)
 
-    with pytest.raises(HTTPException):
+    with pytest.raises(ApplicationError):
         await service.get_blob(OWNER, REPO, "main", "missing.py")
 
 
@@ -419,7 +426,7 @@ async def test_get_readme(service: RepositoryService) -> None:
 async def test_get_readme_not_found(service: RepositoryService) -> None:
     _populate_single_file(service.git.backend, "owner/noreadme.git", "file.txt", b"content")
 
-    with pytest.raises(HTTPException):
+    with pytest.raises(ApplicationError):
         await service.get_readme(OWNER, "noreadme", "main", "")
 
 
@@ -468,7 +475,7 @@ async def test_get_commit(service: RepositoryService) -> None:
 async def test_get_commit_not_found(service: RepositoryService) -> None:
     _populate_repo(service.git.backend)
 
-    with pytest.raises(HTTPException):
+    with pytest.raises(ApplicationError):
         await service.get_commit(OWNER, REPO, "0" * 40)
 
 
@@ -632,17 +639,17 @@ async def test_blame_tracks_lines_across_commits_and_renames(service: Repository
 @pytest.mark.parametrize("data", [b"\0binary", b"\xff", b"x" * (1024 * 1024 + 1)])
 async def test_blame_rejects_unrenderable_files(service: RepositoryService, data: bytes) -> None:
     _populate_single_file(service.git.backend, "owner/repo.git", "file.txt", data)
-    with pytest.raises(HTTPException) as error:
+    with pytest.raises(ApplicationError) as error:
         await service.get_blame(OWNER, REPO, "main", "file.txt")
-    assert error.value.status_code in (400, 413)
+    assert isinstance(error.value, (InvalidInputError, PayloadTooLargeError))
 
 
 async def test_blame_empty_and_missing_files(service: RepositoryService) -> None:
     _populate_single_file(service.git.backend, "owner/repo.git", "empty.txt", b"")
     assert (await service.get_blame(OWNER, REPO, "main", "empty.txt")).lines == []
-    with pytest.raises(HTTPException) as error:
+    with pytest.raises(ApplicationError) as error:
         await service.get_blame(OWNER, REPO, "main", "missing.txt")
-    assert error.value.status_code == 404
+    assert isinstance(error.value, NotFoundError)
 
 
 async def test_settings_rename_preserves_git_and_updates_head(service: RepositoryService) -> None:
@@ -683,9 +690,9 @@ async def test_settings_reject_invalid_branch_or_duplicate_name(service: Reposit
         (RepositoryUpdate(default_branch="bad..name"), 400),
         (RepositoryUpdate(name="taken"), 409),
     ]:
-        with pytest.raises(HTTPException) as error:
+        with pytest.raises(ApplicationError) as error:
             await service.update_repository(OWNER, REPO, body, user)
-        assert error.value.status_code == status
+        assert isinstance(error.value, {400: InvalidInputError, 409: ConflictError}[status])
     assert entity.name == REPO
     assert entity.default_branch == "main"
 
@@ -693,12 +700,12 @@ async def test_settings_reject_invalid_branch_or_duplicate_name(service: Reposit
 async def test_settings_and_deletion_require_owner(service: RepositoryService) -> None:
     await service.create_repository(OWNER, REPO)
     outsider = User(id=uuid.uuid4(), name="outsider", email="out@example.com", hashed_password="x", is_superuser=False)
-    with pytest.raises(HTTPException) as error:
+    with pytest.raises(ApplicationError) as error:
         await service.update_repository(OWNER, REPO, RepositoryUpdate(description="changed"), outsider)
-    assert error.value.status_code == 403
-    with pytest.raises(HTTPException) as error:
+    assert isinstance(error.value, PermissionDeniedError)
+    with pytest.raises(ApplicationError) as error:
         await service.delete_repository(OWNER, REPO, outsider)
-    assert error.value.status_code == 403
+    assert isinstance(error.value, PermissionDeniedError)
     assert service.git.backend.repository_exists("owner/repo.git")
 
 
@@ -716,7 +723,7 @@ async def test_delete_evicts_storage_and_cache_without_deleting_neighbor(service
     assert not await service.git.storage.blob.list_keys("owner/repo.git/")
     assert await service.repository_store.find_by_owner_and_name(OWNER, REPO) is None
     assert await service.repository_store.find_by_owner_and_name(OWNER, "repo-other") is not None
-    with pytest.raises(HTTPException):
+    with pytest.raises(ApplicationError):
         await service.get_statistics(OWNER, REPO, "main")
 
 
@@ -743,12 +750,12 @@ async def test_compact_commit_skips_highlighting_and_lazy_files_are_cached(
 async def test_lazy_diff_rejects_unchanged_paths_directories_and_missing_revisions(service: RepositoryService) -> None:
     commit_id = _populate_repo(service.git.backend).decode()
     for path in ("src/main.py", "missing.py", "src"):
-        with pytest.raises(HTTPException) as error:
+        with pytest.raises(ApplicationError) as error:
             await service.get_diff_file(OWNER, REPO, commit_id, path, commit_id)
-        assert error.value.status_code == 404
-    with pytest.raises(HTTPException) as error:
+        assert isinstance(error.value, NotFoundError)
+    with pytest.raises(ApplicationError) as error:
         await service.get_diff_file(OWNER, REPO, "0" * 40, "src/main.py")
-    assert error.value.status_code == 404
+    assert isinstance(error.value, NotFoundError)
 
 
 async def test_pr_commit_range_excludes_base_ancestors_and_paginates(service: RepositoryService) -> None:

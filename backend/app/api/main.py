@@ -9,6 +9,7 @@ from app.api.routes import (
     forks,
     git,
     login,
+    notifications,
     organizations,
     personal_access_tokens,
     private,
@@ -24,6 +25,7 @@ from app.api.routes import (
 from app.config import settings
 
 api_router = APIRouter()
+api_router.include_router(notifications.router)
 api_router.include_router(login.router)
 api_router.include_router(personal_access_tokens.router)
 api_router.include_router(users.router)

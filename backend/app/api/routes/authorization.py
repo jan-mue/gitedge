@@ -3,11 +3,12 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
 from app.api.dependencies import AuthorizationServiceDep, CurrentUser, OptionalUser
 from app.api.permissions import require_permission
 from app.entities.users import User
+from app.exceptions import NotFoundError
 from app.schemas.authorization import (
     CollaboratorInput,
     CollaboratorPublic,
@@ -125,7 +126,7 @@ async def remove_team_member(
         (member for member in await authorization.store.team_members(team.id) if member.user_id == user_id), None
     )
     if member is None:
-        raise HTTPException(status_code=404, detail="Team member not found")
+        raise NotFoundError(detail="Team member not found")
     await authorization.store.remove(member)
 
 

@@ -7,7 +7,7 @@ from functools import cache
 from typing import TYPE_CHECKING, Annotated
 
 import jwt
-from fastapi import BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import BackgroundTasks, Depends, Request
 from fastapi.security import APIKeyHeader, HTTPBasic, HTTPBasicCredentials, OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
@@ -32,6 +32,7 @@ from app.clients.git.merges import GitMergeClient
 from app.clients.git.repositories import GitClient
 from app.clients.git.storage import RepositoryStorage
 from app.clients.issues import IssueStore, SQLIssueStore
+from app.clients.notifications import NotificationStore, SQLNotificationStore
 from app.clients.organizations import OrganizationStore, SQLOrganizationStore
 from app.clients.personal_access_tokens import PersonalAccessTokenStore, SQLPersonalAccessTokenStore
 from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
@@ -44,6 +45,7 @@ from app.clients.users import SQLUserStore, UserStore
 from app.clients.watchers import SQLWatcherStore, WatcherStore
 from app.config import settings
 from app.entities.users import User
+from app.exceptions import AuthenticationError, InvalidPersonalAccessTokenError, PermissionDeniedError
 from app.schemas.personal_access_tokens import GitScope
 from app.schemas.token import TokenPayload
 from app.services.activity import ActivityService
@@ -52,8 +54,9 @@ from app.services.comments import CommentService
 from app.services.crud import CrudService
 from app.services.forks import ForkService
 from app.services.issues import IssueService
+from app.services.notifications import NotificationService
 from app.services.organizations import OrganizationService
-from app.services.personal_access_tokens import PersonalAccessTokenService, invalid_token
+from app.services.personal_access_tokens import PersonalAccessTokenService
 from app.services.pull_requests import PullRequestService
 from app.services.releases import ReleaseService
 from app.services.repositories import RepositoryService
@@ -146,35 +149,23 @@ async def get_current_user(user_store: UserStoreDep, token: TokenDep) -> User:
         The authenticated user.
 
     Raises:
-        HTTPException: If authentication fails.
+        ApplicationError: If authentication fails.
     """
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[security.ALGORITHM])
         token_data = TokenPayload(**payload)
     except (InvalidTokenError, ValidationError) as e:
         logger.error("Token decode error: %s", str(e))
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        ) from e
+        raise AuthenticationError(detail="Could not validate credentials", challenge="Bearer") from e
     if not token_data.sub:
         logger.error("Token has no sub claim")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise AuthenticationError(detail="Could not validate credentials", challenge="Bearer")
     user = await user_store.find(token_data.sub)
     if not user:
         logger.error("User not found for id: %s", token_data.sub)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise AuthenticationError(detail="Could not validate credentials", challenge="Bearer")
     if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
+        raise PermissionDeniedError(detail="Inactive user")
     return user
 
 
@@ -191,9 +182,7 @@ async def get_optional_user(
     if token is not None:
         return await get_current_user(user_store, token)
     if request.headers.get("Authorization"):
-        raise HTTPException(
-            status_code=401, detail="Invalid authentication scheme", headers={"WWW-Authenticate": "Bearer"}
-        )
+        raise AuthenticationError(detail="Invalid authentication scheme", challenge="Bearer")
     return None
 
 
@@ -231,10 +220,10 @@ def get_current_active_superuser(current_user: CurrentUser) -> User:
         The superuser.
 
     Raises:
-        HTTPException: If user is not a superuser.
+        ApplicationError: If user is not a superuser.
     """
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="The user doesn't have enough privileges")
+        raise PermissionDeniedError(detail="The user doesn't have enough privileges")
     return current_user
 
 
@@ -487,11 +476,33 @@ def get_activity_store(session: SessionDep) -> ActivityStore:
 ActivityStoreDep = Annotated[ActivityStore, Depends(get_activity_store)]
 
 
+def get_notification_store(session: SessionDep) -> NotificationStore:
+    """Get notification persistence for the request."""
+    return SQLNotificationStore(session)
+
+
+NotificationStoreDep = Annotated[NotificationStore, Depends(get_notification_store)]
+
+
+def get_notification_service(
+    store: NotificationStoreDep,
+    repository_store: RepositoryStoreDep,
+    email_client: EmailClientDep,
+    background_tasks: BackgroundTasks,
+) -> NotificationService:
+    """Get the activity delivery and inbox service."""
+    return NotificationService(store, repository_store, email_client, background_tasks)
+
+
+NotificationServiceDep = Annotated[NotificationService, Depends(get_notification_service)]
+
+
 def get_activity_service(
     activity_store: ActivityStoreDep,
     repository_store: RepositoryStoreDep,
     star_store: StarStoreDep,
     authorization: AuthorizationServiceDep,
+    notification_service: NotificationServiceDep,
 ) -> ActivityService:
     """Get the activity service dependency.
 
@@ -500,11 +511,12 @@ def get_activity_service(
         activity_store: Activity store dependency.
         repository_store: Repository store dependency.
         star_store: Star store dependency.
+        notification_service: Notification delivery service.
 
     Returns:
         Activity service instance.
     """
-    return ActivityService(activity_store, repository_store, star_store, authorization)
+    return ActivityService(activity_store, repository_store, star_store, notification_service, authorization)
 
 
 ActivityServiceDep = Annotated[ActivityService, Depends(get_activity_service)]
@@ -772,7 +784,7 @@ async def get_git_user(
 ) -> User | None:
     """Authenticate Git credentials and constrain PATs to the requested Git operation."""
     if sum(value is not None for value in (presented_key, bearer, basic)) > 1:
-        raise invalid_token()
+        raise InvalidPersonalAccessTokenError()
     push = request.url.path.endswith("/git-receive-pack") or request.query_params.get("service") == "git-receive-pack"
     scope = GitScope.WRITE if push else GitScope.READ
     if presented_key is not None:
@@ -787,9 +799,9 @@ async def get_git_user(
         user = await users.get_by_name(basic.username)
         if user is not None and security.verify_password(basic.password, user.hashed_password)[0] and user.is_active:
             return user
-        raise invalid_token()
+        raise InvalidPersonalAccessTokenError()
     if request.headers.get("Authorization") or request.headers.get("X-API-Key") is not None:
-        raise invalid_token()
+        raise InvalidPersonalAccessTokenError()
     return None
 
 

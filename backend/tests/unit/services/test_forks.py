@@ -6,11 +6,16 @@ from typing import TYPE_CHECKING
 import pytest
 from dulwich.objects import Blob, Commit, Tree
 from dulwich.refs import Ref
-from fastapi import HTTPException
 
 from app.clients.git.blob_backend import BlobBackend
 from app.entities.repositories import Repository
 from app.entities.users import User
+from app.exceptions import (
+    ApplicationError,
+    ConflictError,
+    InvalidInputError,
+    PermissionDeniedError,
+)
 from app.schemas.social import ForkCreate
 from app.services.activity import ActivityService
 from app.services.forks import ForkService
@@ -81,10 +86,10 @@ async def test_fork_repository_with_name_collision() -> None:
     existing = Repository(name="repo", owner_id=alice.id)
     await repository_store.add(existing)
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(ApplicationError) as exc_info:
         await fork_service.fork("owner", "repo", ForkCreate(), alice)
 
-    assert exc_info.value.status_code == 409
+    assert isinstance(exc_info.value, ConflictError)
 
 
 async def test_fork_repository_into_same_owner() -> None:
@@ -93,10 +98,10 @@ async def test_fork_repository_into_same_owner() -> None:
     source = Repository(name="repo", owner_id=owner.id)
     await repository_store.add(source)
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(ApplicationError) as exc_info:
         await fork_service.fork("owner", "repo", ForkCreate(name="repo-fork"), owner)
 
-    assert exc_info.value.status_code == 400
+    assert isinstance(exc_info.value, InvalidInputError)
 
 
 async def test_fork_copies_persisted_objects_and_refs() -> None:
@@ -127,7 +132,7 @@ async def test_fork_rejects_other_destination_owner() -> None:
     await repository_store.add(Repository(name="repo", owner_id=owner.id))
     bob = User(name="bob", lower_name="bob", email="bob@example.com", hashed_password="x")
     users.persist(bob)
-    with pytest.raises(HTTPException) as error:
+    with pytest.raises(ApplicationError) as error:
         await fork_service.fork("owner", "repo", ForkCreate(owner="bob"), alice)
-    assert error.value.status_code == 403
+    assert isinstance(error.value, PermissionDeniedError)
     assert await repository_store.find_by_owner_and_name("bob", "repo") is None

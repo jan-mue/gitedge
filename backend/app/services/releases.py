@@ -5,11 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.releases import Release
-from app.exceptions import ReleaseNotFoundError
+from app.exceptions import ConflictError, PermissionDeniedError, ReleaseNotFoundError
 from app.schemas.releases import ReleaseCreate, ReleasePublic, ReleasesPublic, ReleaseUpdate
 from app.services.repositories import ensure_repository
 
@@ -100,11 +98,11 @@ class ReleaseService:
             The created release.
 
         Raises:
-            HTTPException: If a release for the tag already exists.
+            ApplicationError: If a release for the tag already exists.
         """
         repository = await ensure_repository(self.repository_store, owner, name, include_releases=True)
         if any(release.tag_name == body.tag_name for release in repository.releases):
-            raise HTTPException(status_code=409, detail="A release for this tag already exists")
+            raise ConflictError(detail="A release for this tag already exists")
 
         release = Release(
             repo_id=repository.id,
@@ -119,13 +117,15 @@ class ReleaseService:
         )
         await self.release_store.add(release)
         release.author = current_user
-        await self.activity_service.record(
-            actor=current_user,
-            repo=repository,
-            kind=ActivityKind.RELEASE,
-            title=body.name or body.tag_name,
-            target_type=ActivityTargetType.RELEASE,
-        )
+        if not release.is_draft:
+            await self.activity_service.record(
+                actor=current_user,
+                repo=repository,
+                kind=ActivityKind.RELEASE,
+                title=body.name or body.tag_name,
+                target_type=ActivityTargetType.RELEASE,
+                text=release.body or "",
+            )
         return self._to_public(release, owner, name)
 
     async def update_release(
@@ -145,15 +145,16 @@ class ReleaseService:
 
         Raises:
             ReleaseNotFoundError: If the release is not found.
-            HTTPException: If the user is not allowed to edit the release.
+            ApplicationError: If the user is not allowed to edit the release.
         """
         release = await self._find_release(owner, name, tag_name)
         if self.authorization is not None:
             repository = await self.repository_store.get_by_owner_and_name(owner, name)
             await self.authorization.require(repository, current_user, "repository:write")
         elif release.author_id != current_user.id and not current_user.is_superuser:
-            raise HTTPException(status_code=403, detail="You can only edit your own releases")
+            raise PermissionDeniedError(detail="You can only edit your own releases")
 
+        was_draft = release.is_draft
         if body.name is not None:
             release.name = body.name
         if body.body is not None:
@@ -167,6 +168,16 @@ class ReleaseService:
 
         release.updated_at = datetime.now(UTC)
         await self.release_store.update(release)
+        if was_draft and not release.is_draft:
+            repository = await self.repository_store.get_by_owner_and_name(owner, name)
+            await self.activity_service.record(
+                actor=current_user,
+                repo=repository,
+                kind=ActivityKind.RELEASE,
+                title=release.name or release.tag_name,
+                target_type=ActivityTargetType.RELEASE,
+                text=release.body or "",
+            )
         return self._to_public(release, owner, name)
 
     async def _find_release(self, owner: str, name: str, tag_name: str) -> Release:

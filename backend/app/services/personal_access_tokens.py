@@ -8,17 +8,26 @@ import secrets
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from fastapi import BackgroundTasks, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from pwdlib import PasswordHash
 from pwdlib.exceptions import UnknownHashError
 from pwdlib.hashers.argon2 import Argon2Hasher
 
 from app.entities.personal_access_tokens import PersonalAccessToken
+from app.exceptions import (
+    InsufficientTokenScopeError,
+    InvalidPersonalAccessTokenError,
+    TokenAuthenticationLimitError,
+    TokenIssuanceError,
+    TokenNotFoundError,
+    TokenRevokedError,
+)
 from app.schemas.personal_access_tokens import GitScope, PersonalAccessTokenIssued, PersonalAccessTokenPublic
 
 if TYPE_CHECKING:
     import uuid
+
+    from fastapi import BackgroundTasks
 
     from app.clients.personal_access_tokens import PersonalAccessTokenStore
     from app.clients.users import UserStore
@@ -30,13 +39,6 @@ PAT_FORMAT_PREFIX = "gitedge_pat_live_v1_"
 TOKEN_PATTERN = re.compile(r"gitedge_pat_live_v1_([0-9a-f]{24})\.([A-Za-z0-9_-]{43})\Z")
 TOKEN_HASH = PasswordHash((Argon2Hasher(memory_cost=19456, time_cost=2, parallelism=1),))
 ISSUANCE_ATTEMPTS = 5
-
-
-def invalid_token() -> HTTPException:
-    """Return a generic authentication error without credential details."""
-    return HTTPException(
-        status_code=401, detail="Invalid personal access token", headers={"WWW-Authenticate": 'Basic realm="GitEdge"'}
-    )
 
 
 class PersonalAccessTokenService:
@@ -66,7 +68,7 @@ class PersonalAccessTokenService:
         """Resolve a token only within its owner's account."""
         token = await self.store.find(token_id)
         if token is None or token.owner_id != user.id:
-            raise HTTPException(status_code=404, detail="Token not found")
+            raise TokenNotFoundError()
         return token
 
     async def issue(
@@ -94,7 +96,7 @@ class PersonalAccessTokenService:
                 return PersonalAccessTokenIssued.from_token(
                     PersonalAccessTokenPublic.model_validate(token), f"{PAT_FORMAT_PREFIX}{key_id}.{secret}"
                 )
-        raise HTTPException(status_code=503, detail="Could not issue a token; try again")
+        raise TokenIssuanceError()
 
     async def revoke(self, token_id: uuid.UUID, user: User, reason: str | None) -> None:
         """Revoke a credential idempotently, retaining its audit metadata."""
@@ -111,14 +113,14 @@ class PersonalAccessTokenService:
         """Issue a replacement and revoke the old credential atomically."""
         token = await self.owned_token(token_id, user)
         if token.revoked_at is not None:
-            raise HTTPException(status_code=409, detail="Token is already revoked")
+            raise TokenRevokedError()
         return await self.issue(body, user, token)
 
     async def authenticate(self, presented: str, scope: GitScope, username: str | None = None) -> User:
         """Verify format, state, Argon2id hash, owner, and operation scope."""
         match = TOKEN_PATTERN.fullmatch(presented)
         if match is None:
-            raise invalid_token()
+            raise InvalidPersonalAccessTokenError()
         key_id, secret = match.groups()
         token = await self.store.find_by_key_id(key_id)
         now = datetime.now(UTC)
@@ -128,27 +130,25 @@ class PersonalAccessTokenService:
             or token.revoked_at is not None
             or (token.expires_at is not None and token.expires_at <= now)
         ):
-            raise invalid_token()
+            raise InvalidPersonalAccessTokenError()
         if not await self.store.reserve_authentication(token, now):
-            raise HTTPException(
-                status_code=429, detail="Token authentication limit reached", headers={"Retry-After": "60"}
-            )
+            raise TokenAuthenticationLimitError()
         try:
             verified, updated_hash = await run_in_threadpool(TOKEN_HASH.verify_and_update, secret, token.secret_hash)
         except UnknownHashError:
             logger.error("PAT hash invalid key_id=%s", key_id)
-            raise invalid_token() from None
+            raise InvalidPersonalAccessTokenError() from None
         if not verified:
-            raise invalid_token()
+            raise InvalidPersonalAccessTokenError()
         user = await self.users.find(token.owner_id)
         if user is None or not user.is_active or (username is not None and username.lower() != user.lower_name):
-            raise invalid_token()
+            raise InvalidPersonalAccessTokenError()
         # Recheck revocation after hash verification, which runs outside the transaction.
         await self.store.refresh(token)
         if token.revoked_at is not None or (token.expires_at is not None and token.expires_at <= datetime.now(UTC)):
-            raise invalid_token()
+            raise InvalidPersonalAccessTokenError()
         if scope not in token.scopes and not (scope == GitScope.READ and GitScope.WRITE in token.scopes):
-            raise HTTPException(status_code=403, detail="Token lacks the required Git scope")
+            raise InsufficientTokenScopeError()
         token.last_used_at = now
         if updated_hash is not None:
             token.secret_hash = updated_hash

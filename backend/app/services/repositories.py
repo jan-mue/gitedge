@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from fastapi import HTTPException
-
 from app.config import settings
 from app.entities.repositories import Repository as RepositoryEntity
+from app.exceptions import ConflictError, InvalidInputError, PermissionDeniedError
 from app.schemas.repositories import (
     BlameContent,
     BranchInfo,
@@ -242,7 +241,7 @@ class RepositoryService:
         if self.authorization is not None:
             await self.authorization.require(entity, user, permission)
         elif entity.owner_id != user.id and not user.is_superuser:
-            raise HTTPException(status_code=403, detail="Only the repository owner can change settings")
+            raise PermissionDeniedError(detail="Only the repository owner can change settings")
         return entity
 
     async def delete_repository(self, owner: str, name: str, user: User) -> None:
@@ -288,13 +287,13 @@ class RepositoryService:
         """Save settings, keeping Git storage and the default HEAD in sync."""
         entity = await self._editable_repository(owner, name, user)
         if body.is_private is False and entity.fork_of is not None and entity.fork_of.is_private:
-            raise HTTPException(status_code=400, detail="Forks of private repositories must remain private")
+            raise InvalidInputError(detail="Forks of private repositories must remain private")
         owner = entity.owner.name
         new_name = body.name or name
         if new_name in (".", "..") or new_name.endswith(".git"):
-            raise HTTPException(status_code=400, detail="Invalid repository name")
+            raise InvalidInputError(detail="Invalid repository name")
         if new_name != name and await self.repository_store.find_by_owner_and_name(owner, new_name) is not None:
-            raise HTTPException(status_code=409, detail="A repository with that name already exists")
+            raise ConflictError(detail="A repository with that name already exists")
         if body.default_branch is not None and body.default_branch != entity.default_branch:
             await self.git.set_default_branch(owner, name, body.default_branch)
         if new_name != name:

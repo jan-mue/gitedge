@@ -5,12 +5,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 from app.clients.git.types import MergeRequest
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.issues import IssueState
 from app.entities.pull_requests import PullRequest
+from app.exceptions import ConflictError, InvalidInputError, PermissionDeniedError
 from app.schemas.repositories import (
     CommitsPublic,
     CompareResult,
@@ -131,6 +130,7 @@ class PullRequestService:
             title=pull_request.title,
             target_type=ActivityTargetType.PULL_REQUEST,
             target_number=pull_request.number,
+            text=f"{pull_request.title}\n{pull_request.body or ''}",
         )
 
         return self._to_public(pull_request, owner, name)
@@ -147,7 +147,7 @@ class PullRequestService:
             The pull request.
 
         Raises:
-            HTTPException: If the pull request is not found.
+            ApplicationError: If the pull request is not found.
         """
         pull_request = await self._find_pull_request(owner, name, number)
         return self._to_public(pull_request, owner, name)
@@ -181,7 +181,7 @@ class PullRequestService:
             CompareResult with the changed files and the resolved head commit.
 
         Raises:
-            HTTPException: If the pull request is not found.
+            ApplicationError: If the pull request is not found.
         """
         pull_request = await self._find_pull_request(owner, name, number)
         return await self.repository_service.compare(
@@ -227,12 +227,12 @@ class PullRequestService:
         if self.authorization is not None:
             await self.authorization.require(repository, current_user, "repository:write")
         elif current_user.id != repository.owner_id and not current_user.is_superuser:
-            raise HTTPException(status_code=403, detail="Only the repository owner can merge pull requests")
+            raise PermissionDeniedError(detail="Only the repository owner can merge pull requests")
         pull = await self.pull_request_store.get_for_merge(repository.id, number)
         if pull.state == IssueState.MERGED:
             return self._to_public(pull, owner, name)
         if pull.state != IssueState.OPEN:
-            raise HTTPException(status_code=409, detail="Only open pull requests can be merged")
+            raise ConflictError(detail="Only open pull requests can be merged")
         policies = MergeSettings.model_validate(repository, from_attributes=True)
         enabled, template = {
             "merge": (policies.allow_merge_commit, policies.merge_commit_message),
@@ -240,9 +240,9 @@ class PullRequestService:
             "rebase": (policies.allow_rebase_merge, policies.rebase_commit_message),
         }[body.method]
         if not enabled:
-            raise HTTPException(status_code=409, detail="This merge method is disabled in repository settings")
+            raise ConflictError(detail="This merge method is disabled in repository settings")
         if pull.head_branch == pull.base_branch:
-            raise HTTPException(status_code=409, detail="The PR must have different base and head branches")
+            raise ConflictError(detail="The PR must have different base and head branches")
         result = await self.git_merges.completed(owner, name, pull.id)
         if result is None:
             result = await self.git_merges.merge(
@@ -293,7 +293,7 @@ class PullRequestService:
             The updated pull request.
 
         Raises:
-            HTTPException: If the pull request is not found, the state is invalid, or the user is not allowed to edit.
+            ApplicationError: If the pull request is not found, the state is invalid, or the user is not allowed to edit.
         """
         if body.state == IssueState.MERGED:
             return await self.merge_pull_request(owner, name, number, PullRequestMerge(), current_user)
@@ -306,25 +306,27 @@ class PullRequestService:
             if body.state == IssueState.MERGED:
                 await self.authorization.require(repository, current_user, "repository:write")
         elif pull_request.author_id != current_user.id and not current_user.is_superuser:
-            raise HTTPException(status_code=403, detail="Only authors or maintainers can edit discussions")
+            raise PermissionDeniedError(detail="Only authors or maintainers can edit discussions")
 
         if pull_request.state == IssueState.MERGED and body.state is not None and body.state != IssueState.MERGED:
-            raise HTTPException(status_code=409, detail="A merged pull request cannot be reopened or closed")
+            raise ConflictError(detail="A merged pull request cannot be reopened or closed")
 
-        state_changed = body.state is not None and body.state != pull_request.state
+        previous_state = pull_request.state
+        previous_text = f"{pull_request.title}\n{pull_request.body or ''}"
+
         if body.title is not None:
             pull_request.title = body.title
         if body.body is not None:
             pull_request.body = body.body
         if body.state is not None:
             if body.state not in (IssueState.OPEN, IssueState.CLOSED, IssueState.MERGED):
-                raise HTTPException(status_code=400, detail="State must be 'open', 'closed', or 'merged'")
+                raise InvalidInputError(detail="State must be 'open', 'closed', or 'merged'")
             pull_request.state = body.state
 
         pull_request.updated_at = datetime.now(UTC)
         await self.pull_request_store.update(pull_request)
 
-        if state_changed:
+        if body.state is not None and body.state != previous_state:
             kind = {
                 IssueState.MERGED: ActivityKind.PULL_REQUEST_MERGE,
                 IssueState.CLOSED: ActivityKind.PULL_REQUEST_CLOSE,
@@ -337,6 +339,20 @@ class PullRequestService:
                 title=pull_request.title,
                 target_type=ActivityTargetType.PULL_REQUEST,
                 target_number=pull_request.number,
+            )
+
+        updated_text = f"{pull_request.title}\n{pull_request.body or ''}"
+        if updated_text != previous_text:
+            repository = await self.repository_store.get_by_owner_and_name(owner, name)
+            await self.activity_service.record(
+                actor=current_user,
+                repo=repository,
+                kind=ActivityKind.PULL_REQUEST_EDIT,
+                title=pull_request.title,
+                target_type=ActivityTargetType.PULL_REQUEST,
+                target_number=pull_request.number,
+                text=updated_text,
+                previous_text=previous_text,
             )
 
         return self._to_public(pull_request, owner, name)

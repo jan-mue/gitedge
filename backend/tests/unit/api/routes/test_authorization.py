@@ -377,3 +377,21 @@ async def test_member_list_includes_public_names_and_management_permission(
     assert client.get(f"{url}/permissions", headers=headers(admin)).json() == {"admin": True}
     assert client.get(f"{url}/permissions", headers=headers(member)).json() == {"admin": False}
     assert client.get(f"{url}/members", headers=headers(member)).json() == [response.json()]
+
+
+async def test_private_reactions_follow_current_repository_grants(client: TestClient, fake_stores: FakeStores) -> None:
+    owner = add_user(fake_stores, "owner")
+    reader = add_user(fake_stores, "reader")
+    repository = add_repository(fake_stores, owner)
+    base = f"{API}/repositories/owner/repo"
+    issue = client.post(f"{base}/issues", headers=headers(owner), json={"title": "Private"}).json()
+    comment = client.post(
+        f"{base}/issues/{issue['number']}/comments", headers=headers(owner), json={"body": "Reply"}
+    ).json()
+    url = f"{API}/comments/{comment['id']}/reactions"
+    assert client.get(url, headers=headers(reader)).status_code == 404
+    grant = RepositoryCollaborator(repository_id=repository.id, user_id=reader.id, role="read")
+    await fake_stores.authorization.save(grant)
+    assert client.put(url, headers=headers(reader), json={"emoji": "👍"}).status_code == 200
+    await fake_stores.authorization.remove(grant)
+    assert client.get(url, headers=headers(reader)).status_code == 404

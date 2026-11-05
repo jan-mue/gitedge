@@ -4,10 +4,10 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
-from fastapi import HTTPException
 
 from app.clients.personal_access_tokens import AUTHENTICATION_LIMIT
 from app.config import settings
+from app.exceptions import InvalidPersonalAccessTokenError, TokenIssuanceError
 from app.schemas.personal_access_tokens import GitScope, PersonalAccessTokenCreate
 from app.services.personal_access_tokens import ISSUANCE_ATTEMPTS, PAT_FORMAT_PREFIX, PersonalAccessTokenService
 from tests.unit.api.routes.test_authorization import add_repository, add_user, headers
@@ -171,9 +171,8 @@ async def test_format_rejected_before_database_lookup(
 ) -> None:
     store = fake_stores.personal_access_tokens
     lookup = mocker.spy(store, "find_by_key_id")
-    with pytest.raises(HTTPException) as caught:
+    with pytest.raises(InvalidPersonalAccessTokenError):
         await PersonalAccessTokenService(store, fake_stores.users).authenticate(credential, GitScope.READ)
-    assert caught.value.status_code == 401
     lookup.assert_not_called()
 
 
@@ -202,9 +201,8 @@ async def test_collision_retries_are_bounded_and_do_not_revoke_old_token(
     old = await service.issue(body, owner)
     row = await service.owned_token(old.id, owner)
     issue = mocker.patch.object(fake_stores.personal_access_tokens, "issue", return_value=False)
-    with pytest.raises(HTTPException) as caught:
+    with pytest.raises(TokenIssuanceError):
         await service.rotate(old.id, body, owner)
-    assert caught.value.status_code == 503
     assert issue.call_count == ISSUANCE_ATTEMPTS
     assert row.revoked_at is None
 

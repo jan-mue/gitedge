@@ -8,13 +8,13 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, override
 
 import pytest
-from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.clients.database import create_session_factory
 from app.clients.personal_access_tokens import AUTHENTICATION_LIMIT, SQLPersonalAccessTokenStore
 from app.clients.users import SQLUserStore
 from app.entities.users import User
+from app.exceptions import InvalidPersonalAccessTokenError
 from app.schemas.personal_access_tokens import GitScope, PersonalAccessTokenCreate
 from app.services.personal_access_tokens import PersonalAccessTokenService
 from tests.conftest import _run_async
@@ -56,9 +56,8 @@ async def check_personal_access_tokens(database_url: str) -> None:
             replacement = await service.rotate(first_id, body, owner)
             replacement_id = replacement.id
             assert (await store.get(first_id)).revoked_reason == "Rotated"
-            with pytest.raises(HTTPException) as revoked:
+            with pytest.raises(InvalidPersonalAccessTokenError):
                 await service.authenticate(issued.token, GitScope.READ)
-            assert revoked.value.status_code == 401
 
             class CollidingStore(SQLPersonalAccessTokenStore):
                 """Force one genuine unique-index collision during issuance."""

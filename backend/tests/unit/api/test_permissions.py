@@ -11,8 +11,10 @@ from app.api.dependencies import (
     get_current_user,
     get_optional_user,
 )
+from app.api.exception_handlers import application_exception_handler
 from app.api.permissions import require_permission
 from app.entities.users import User
+from app.exceptions import ApplicationError
 from app.services.authorization import new_enforcer
 from tests.unit.api.routes.test_authorization import add_repository, add_user, service
 
@@ -27,6 +29,7 @@ def test_chained_authentication_returns_user_and_uses_dependency_cache(
     owner = add_user(fake_stores, "owner")
     add_repository(fake_stores, owner)
     app = FastAPI()
+    app.add_exception_handler(ApplicationError, application_exception_handler)
     authentication_calls = []
     handler_calls = []
 
@@ -66,6 +69,7 @@ def test_chained_permission_denies_before_handler(fake_stores: FakeStores) -> No
     outsider = add_user(fake_stores, "outsider")
     add_repository(fake_stores, owner)
     app = FastAPI()
+    app.add_exception_handler(ApplicationError, application_exception_handler)
     app.dependency_overrides[get_current_user] = lambda: outsider
     app.dependency_overrides[get_authorization_service] = lambda: service(fake_stores)
     handler_calls = []
@@ -85,6 +89,7 @@ def test_optional_user_allows_anonymous_public_reads_but_not_private_reads(fake_
     add_repository(fake_stores, owner, "public", private=False)
     add_repository(fake_stores, owner, "private")
     app = FastAPI()
+    app.add_exception_handler(ApplicationError, application_exception_handler)
     app.dependency_overrides[get_optional_user] = lambda: None
     app.dependency_overrides[get_authorization_service] = lambda: service(fake_stores)
 

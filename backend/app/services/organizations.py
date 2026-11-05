@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 from app.entities.organizations import Organization
+from app.exceptions import ConflictError
 from app.schemas.organizations import OrganizationCreate, OrganizationPublic, OrganizationsPublic
 
 if TYPE_CHECKING:
@@ -47,13 +46,13 @@ class OrganizationService:
             The created organization.
 
         Raises:
-            HTTPException: If the name is already taken by a user or organization.
+            ApplicationError: If the name is already taken by a user or organization.
         """
         name = body.name.strip()
         if await self.user_store.find_by_name(name) is not None:
-            raise HTTPException(status_code=409, detail="An owner with that name already exists")
+            raise ConflictError(detail="An owner with that name already exists")
         if await self.organization_store.find_by_name(name) is not None:
-            raise HTTPException(status_code=409, detail="An owner with that name already exists")
+            raise ConflictError(detail="An owner with that name already exists")
 
         organization = Organization(
             name=name,

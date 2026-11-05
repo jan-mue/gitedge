@@ -18,6 +18,7 @@ import {
   MarkdownContent,
   Textarea,
 } from "@/components/design-system"
+import { CommentReactions } from "@/components/Repository/CommentReactions"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -101,7 +102,7 @@ const CommentsSection = ({
       id: comment.id,
       created_at: comment.created_at,
       content: (
-        <div data-testid={`comment-${comment.id}`}>
+        <div id={`comment-${comment.id}`} data-testid={`comment-${comment.id}`}>
           <ConversationCard
             author={comment.author_username}
             date={comment.created_at}
@@ -165,6 +166,7 @@ const CommentsSection = ({
             ) : (
               <MarkdownContent html={comment.body_html} />
             )}
+            <CommentReactions commentId={comment.id} />
           </ConversationCard>
         </div>
       ),

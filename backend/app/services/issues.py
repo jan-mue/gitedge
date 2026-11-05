@@ -5,10 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.issues import Issue, IssueState
+from app.exceptions import InvalidInputError, PermissionDeniedError
 from app.schemas.repositories import IssueCreate, IssuePublic, IssuesListPublic, IssueUpdate
 from app.services.repositories import ensure_repository
 from app.utils.markdown import render_markdown
@@ -101,6 +100,7 @@ class IssueService:
             title=issue.title,
             target_type=ActivityTargetType.ISSUE,
             target_number=issue.number,
+            text=f"{issue.title}\n{issue.body or ''}",
         )
 
         return self._to_public(issue, owner, name)
@@ -117,7 +117,7 @@ class IssueService:
             The issue.
 
         Raises:
-            HTTPException: If the issue is not found.
+            ApplicationError: If the issue is not found.
         """
         issue = await self._find_issue(owner, name, number)
         return self._to_public(issue, owner, name)
@@ -138,7 +138,7 @@ class IssueService:
             The updated issue.
 
         Raises:
-            HTTPException: If the issue is not found, the state is invalid, or the user is not allowed to edit.
+            ApplicationError: If the issue is not found, the state is invalid, or the user is not allowed to edit.
         """
         issue = await self._find_issue(owner, name, number)
         if self.authorization is not None:
@@ -147,7 +147,10 @@ class IssueService:
             if issue.author_id != current_user.id:
                 await self.authorization.require(repository, current_user, "repository:write")
         elif issue.author_id != current_user.id and not current_user.is_superuser:
-            raise HTTPException(status_code=403, detail="Only authors or maintainers can edit discussions")
+            raise PermissionDeniedError(detail="Only authors or maintainers can edit discussions")
+
+        previous_state = issue.state
+        previous_text = f"{issue.title}\n{issue.body or ''}"
 
         if body.title is not None:
             issue.title = body.title
@@ -155,13 +158,13 @@ class IssueService:
             issue.body = body.body
         if body.state is not None:
             if body.state not in (IssueState.OPEN, IssueState.CLOSED):
-                raise HTTPException(status_code=400, detail="State must be 'open' or 'closed'")
+                raise InvalidInputError(detail="State must be 'open' or 'closed'")
             issue.state = body.state
 
         issue.updated_at = datetime.now(UTC)
         await self.issue_store.update(issue)
 
-        if body.state is not None:
+        if body.state is not None and body.state != previous_state:
             kind = ActivityKind.ISSUE_CLOSE if body.state == IssueState.CLOSED else ActivityKind.ISSUE_REOPEN
             repository = await self.repository_store.get_by_owner_and_name(owner, name)
             await self.activity_service.record(
@@ -171,6 +174,20 @@ class IssueService:
                 title=issue.title,
                 target_type=ActivityTargetType.ISSUE,
                 target_number=issue.number,
+            )
+
+        updated_text = f"{issue.title}\n{issue.body or ''}"
+        if updated_text != previous_text:
+            repository = await self.repository_store.get_by_owner_and_name(owner, name)
+            await self.activity_service.record(
+                actor=current_user,
+                repo=repository,
+                kind=ActivityKind.ISSUE_EDIT,
+                title=issue.title,
+                target_type=ActivityTargetType.ISSUE,
+                target_number=issue.number,
+                text=updated_text,
+                previous_text=previous_text,
             )
 
         return self._to_public(issue, owner, name)

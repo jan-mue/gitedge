@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, Query, Response
 
 from app.api.dependencies import (
     AuthorizationServiceDep,
@@ -16,6 +16,7 @@ from app.api.dependencies import (
 )
 from app.api.permissions import require_permission
 from app.entities.users import User
+from app.exceptions import ConflictError, InvalidInputError
 from app.schemas.activity import ActivityPublic
 from app.schemas.repositories import (
     BlameContent,
@@ -92,9 +93,9 @@ async def create_repository(
     """Create a new empty Git repository."""
     await authorization.require_creation(body.owner, user)
     if body.name in (".", "..") or body.name.endswith(".git"):
-        raise HTTPException(status_code=400, detail="Invalid repository name")
+        raise InvalidInputError(detail="Invalid repository name")
     if await authorization.repositories.find_by_owner_and_name(body.owner, body.name) is not None:
-        raise HTTPException(status_code=409, detail="Repository already exists")
+        raise ConflictError(detail="Repository already exists")
     return await repository_service.create_repository(body.owner, body.name, is_private=body.is_private)
 
 

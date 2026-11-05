@@ -20,13 +20,13 @@ repos:
         args: [--markdown-linebreak-ext=md]
         exclude: ^frontend/src/client/.*
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: f368fb366ff7f2f808dd324b83a6d32267799e19 # frozen: v0.17.2
+    rev: 25bcf95026b96e2dd3c0aec3090c3d6ef6ca2e6c # frozen: v0.17.3
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
   - repo: https://github.com/astral-sh/ty-pre-commit
-    rev: ae754a05e63248249a242ce594d8eaa88cbb989d # frozen: v0.0.92
+    rev: 70aae47092a06c153286d0ff6c87b282ed865be8 # frozen: v0.0.94
     hooks:
       - id: ty
   - repo: https://github.com/codespell-project/codespell
@@ -60,7 +60,7 @@ repos:
         args: [--fix]
         exclude: CHANGELOG\.md
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: eeca16c54e09b4d9a848259e46bae14737944348 # frozen: 0.13.5
+    rev: 46787482b9fb2003c56e0f7592e312ef381829d9 # frozen: 0.13.6
     hooks:
       - id: uv-lock
   - repo: https://github.com/fpgmaas/deptry.git
@@ -124,7 +124,7 @@ repos:
         entry: bun run lint
         language: system
         types: [text]
-        files: ^frontend/
+        files: ^(frontend/|packages/actions-(runner|compiler)/)
         pass_filenames: false
 
       - id: fallow

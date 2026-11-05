@@ -7,10 +7,18 @@ from typing import TYPE_CHECKING
 
 import casbin
 from casbin.persist.adapters.asyncio import AsyncFileAdapter
-from fastapi import HTTPException
 
 from app.entities.authorization import OrganizationMember, RepositoryCollaborator, Team, TeamMember
 from app.entities.principals import PrincipalType
+from app.exceptions import (
+    AuthenticationError,
+    ConflictError,
+    InvalidInputError,
+    NotFoundError,
+    OrganizationNotFoundError,
+    PermissionDeniedError,
+    UserNotFoundError,
+)
 from app.schemas.authorization import CollaboratorPublic, MemberPublic, RepositoryRole
 
 if TYPE_CHECKING:
@@ -87,16 +95,14 @@ class AuthorizationService:
         """Require a permission before any repository content or storage access."""
         if not await self.can(repository, user, permission):
             if user is None:
-                raise HTTPException(
-                    status_code=401, detail="Authentication required", headers={"WWW-Authenticate": "Bearer"}
-                )
-            raise HTTPException(status_code=403, detail="Insufficient repository permission")
+                raise AuthenticationError(detail="Authentication required", challenge="Bearer")
+            raise PermissionDeniedError(detail="Insufficient repository permission")
 
     async def organization(self, name: str, user: User, permission: str = "organization:admin") -> Organization:
         """Resolve an organization and enforce its membership policy."""
         organization = await self.organizations.get_by_name(name)
         if organization is None:
-            raise HTTPException(status_code=404, detail="Organization not found")
+            raise OrganizationNotFoundError()
         enforcer = await new_enforcer()
         domain = f"organization:{organization.id}"
         subject = f"user:{user.id}"
@@ -106,7 +112,7 @@ class AuthorizationService:
             if member.user_id == user.id:
                 await enforcer.add_grouping_policy(subject, "org_admin" if member.is_admin else "org_member", domain)
         if not user.is_active or not enforcer.enforce(subject, domain, permission):
-            raise HTTPException(status_code=403, detail="Insufficient organization permission")
+            raise PermissionDeniedError(detail="Insufficient organization permission")
         return organization
 
     async def require_creation(self, owner: str, user: User) -> None:
@@ -115,7 +121,7 @@ class AuthorizationService:
         if owner_type == PrincipalType.ORGANIZATION:
             await self.organization(owner, user)
         elif owner_id != user.id and not user.is_superuser:
-            raise HTTPException(status_code=403, detail="Cannot create repositories for another user")
+            raise PermissionDeniedError(detail="Cannot create repositories for another user")
 
     async def member_public(self, member: OrganizationMember) -> MemberPublic:
         """Include public identity fields in the membership list."""
@@ -126,7 +132,7 @@ class AuthorizationService:
         """Add or update a member, preserving at least one organization admin."""
         organization = await self.organization(name, actor)
         if await self.users.find(user_id) is None:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise UserNotFoundError()
         members = await self.store.members(organization.id, for_update=True)
         member = next((member for member in members if member.user_id == user_id), None)
         if member is not None:
@@ -143,7 +149,7 @@ class AuthorizationService:
     ) -> None:
         """Prevent removing or demoting an organization's last administrator."""
         if member.is_admin and not is_admin and sum(item.is_admin for item in members) == 1:
-            raise HTTPException(status_code=409, detail="An organization must retain an administrator")
+            raise ConflictError(detail="An organization must retain an administrator")
 
     async def remove_member(self, name: str, user_id: uuid.UUID, actor: User) -> None:
         """Revoke organization and team membership."""
@@ -151,7 +157,7 @@ class AuthorizationService:
         members = await self.store.members(organization.id, for_update=True)
         member = next((member for member in members if member.user_id == user_id), None)
         if member is None:
-            raise HTTPException(status_code=404, detail="Member not found")
+            raise NotFoundError(detail="Member not found")
         self._protect_last_admin(member, members)
         await self.store.remove(member)
 
@@ -160,7 +166,7 @@ class AuthorizationService:
         organization = await self.organization(name, actor)
         normalized = team_name.lower()
         if any(team.name == normalized for team in await self.store.teams(organization.id)):
-            raise HTTPException(status_code=409, detail="Team already exists")
+            raise ConflictError(detail="Team already exists")
         team = Team(organization_id=organization.id, name=normalized)
         await self.store.save(team)
         return team
@@ -170,14 +176,14 @@ class AuthorizationService:
         organization = await self.organization(name, actor)
         team = next((team for team in await self.store.teams(organization.id) if team.id == team_id), None)
         if team is None:
-            raise HTTPException(status_code=404, detail="Team not found")
+            raise NotFoundError(detail="Team not found")
         return team
 
     async def set_team_member(self, name: str, team_id: uuid.UUID, user_id: uuid.UUID, actor: User) -> None:
         """Add an organization member to one of its teams."""
         team = await self.team(name, team_id, actor)
         if not any(member.user_id == user_id for member in await self.store.members(team.organization_id)):
-            raise HTTPException(status_code=400, detail="Team members must belong to the organization")
+            raise InvalidInputError(detail="Team members must belong to the organization")
         if not any(member.user_id == user_id for member in await self.store.team_members(team.id)):
             await self.store.save(TeamMember(team_id=team.id, user_id=user_id))
 
@@ -187,11 +193,11 @@ class AuthorizationService:
         """Grant a scoped role; only owners can grant or change an owner role."""
         await self.require(repository, actor, "repository:admin")
         if body.user_id is not None and await self.users.find(body.user_id) is None:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise UserNotFoundError()
         if body.team_id is not None and not any(
             team.id == body.team_id for team in await self.store.teams(repository.owner_id)
         ):
-            raise HTTPException(status_code=400, detail="Team must belong to the repository's organization")
+            raise InvalidInputError(detail="Team must belong to the repository's organization")
         existing = next(
             (
                 item
@@ -216,7 +222,7 @@ class AuthorizationService:
             (item for item in await self.store.collaborators(repository.id) if item.id == collaborator_id), None
         )
         if collaborator is None:
-            raise HTTPException(status_code=404, detail="Collaborator not found")
+            raise NotFoundError(detail="Collaborator not found")
         if collaborator.role == RepositoryRole.OWNER:
             await self.require(repository, actor, "repository:owner")
         await self.store.remove(collaborator)

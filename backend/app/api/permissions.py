@@ -2,11 +2,12 @@
 
 from typing import TYPE_CHECKING, Annotated, get_args
 
-from fastapi import Depends, HTTPException, Path, Request, Response, status
+from fastapi import Depends, Path, Request, Response
 from fastapi.params import Depends as Dependency
 
 from app.api.dependencies import AuthorizationServiceDep, OptionalUser
 from app.entities.users import User
+from app.exceptions import AuthenticationError
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -39,9 +40,8 @@ def require_permission(
         action = permission if isinstance(permission, str) else permission(request)
         try:
             await authorization.require(repository, current_user, action)
-        except HTTPException as error:
-            if error.status_code == status.HTTP_401_UNAUTHORIZED:
-                error.headers = {"WWW-Authenticate": challenge}
+        except AuthenticationError as error:
+            error.challenge = challenge
             raise
         if repository.is_private or current_user is not None:
             response.headers["Cache-Control"] = "private, no-store"
