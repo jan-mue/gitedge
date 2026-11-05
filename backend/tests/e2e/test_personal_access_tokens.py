@@ -5,6 +5,28 @@ from playwright.sync_api import Page, expect
 
 
 @pytest.mark.usefixtures("logged_in_superuser")
+@pytest.mark.parametrize("private", [True, False])
+def test_session_stays_authenticated_when_browsing_repository(page: Page, app_url: str, *, private: bool) -> None:
+    """Repository SDK requests must use the session without also presenting it as an API key."""
+    session = {"Authorization": f"Bearer {page.evaluate('localStorage.getItem("access_token")')}"}
+    api = f"{app_url}/api/v1"
+    owner = page.request.get(f"{api}/users/me", headers=session).json()["name"]
+    name = "session-private" if private else "session-public"
+    created = page.request.post(
+        f"{api}/repositories/", headers=session, data={"owner": owner, "name": name, "is_private": private}
+    )
+    assert created.status == 201
+    with page.expect_response(lambda response: response.url.endswith(f"/repositories/{owner}/{name}/info")) as response:
+        page.goto(f"{app_url}/{owner}/{name}")
+    assert response.value.status == 200
+    assert response.value.request.header_value("authorization") is not None
+    assert response.value.request.header_value("x-api-key") is None
+    expect(page.get_by_test_id("empty-repository")).to_be_visible()
+    assert page.evaluate("localStorage.getItem('access_token') !== null")
+    assert page.request.get(f"{api}/users/me", headers=session).status == 200
+
+
+@pytest.mark.usefixtures("logged_in_superuser")
 def test_repository_and_operation_selection_survive_rotation(page: Page, app_url: str) -> None:
     """Issue and rotate a token through the UI, then enforce its limits in PostgreSQL-backed APIs."""
     session = {"Authorization": f"Bearer {page.evaluate('localStorage.getItem("access_token")')}"}

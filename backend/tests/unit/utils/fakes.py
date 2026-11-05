@@ -61,6 +61,7 @@ from app.exceptions import (
     PullRequestNotFoundError,
     RepositoryNotFoundError,
 )
+from app.permissions import ScopeGrant, owner_domain, repository_domain, scoped_enforcer
 from app.schemas.activity import ActivityTargetPreview
 from app.schemas.notifications import NotificationCategory, NotificationFilter
 from app.utils.security import get_password_hash
@@ -419,24 +420,59 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
         self,
         fork_of_id: uuid.UUID,
         offset: int = 0,
-        limit: int | None = 100,
+        limit: int = 100,
         *,
         allowed_repository_ids: Sequence[uuid.UUID] | None = None,
+        user: User | None = None,
+        readable_roles: frozenset[str] | None = None,
     ) -> list[Repository]:
-        repositories = [
-            repository
-            for repository in self.items.values()
-            if repository.fork_of_id == fork_of_id
-            and (allowed_repository_ids is None or repository.id in allowed_repository_ids)
-        ]
+        repositories = await self._accessible_forks(fork_of_id, allowed_repository_ids, user, readable_roles)
         repositories.sort(key=lambda repository: (repository.created_at, repository.id), reverse=True)
-        page = repositories[offset:] if limit is None else repositories[offset : offset + limit]
-        return [self._hydrate(repository) for repository in page]
+        return [self._hydrate(repository) for repository in repositories[offset : offset + limit]]
 
     @override
-    async def count_by_fork_of(self, fork_of_id: uuid.UUID) -> int:
-        """Count repositories forked from a given repository."""
-        return sum(1 for repository in self.items.values() if repository.fork_of_id == fork_of_id)
+    async def count_by_fork_of(
+        self,
+        fork_of_id: uuid.UUID,
+        *,
+        allowed_repository_ids: Sequence[uuid.UUID] | None = None,
+        user: User | None = None,
+        readable_roles: frozenset[str] | None = None,
+    ) -> int:
+        """Count with the same visibility and credential scope as the page."""
+        return len(await self._accessible_forks(fork_of_id, allowed_repository_ids, user, readable_roles))
+
+    async def _accessible_forks(
+        self,
+        fork_of_id: uuid.UUID,
+        allowed_repository_ids: Sequence[uuid.UUID] | None,
+        user: User | None,
+        readable_roles: frozenset[str] | None,
+    ) -> list[Repository]:
+        result = []
+        for repository in self.items.values():
+            if repository.fork_of_id != fork_of_id:
+                continue
+            if allowed_repository_ids is not None and repository.id not in allowed_repository_ids:
+                continue
+            if readable_roles is not None:
+                if user is not None and not user.is_active:
+                    continue
+                roles = {"read"} if not repository.is_private else set()
+                if user is not None:
+                    if user.is_superuser or repository.owner_id == user.id:
+                        roles.add("owner")
+                    if self.stores is not None:
+                        enforcer = scoped_enforcer(await self.stores.authorization.scope_grants(user.id, [repository]))
+                        manager = enforcer.get_named_role_manager("g2")
+                        domain = repository_domain(repository.owner_id, repository.id)
+                        roles.update(
+                            role for role in readable_roles if manager.has_link(f"user:{user.id}", role, domain)
+                        )
+                if not roles & readable_roles:
+                    continue
+            result.append(repository)
+        return result
 
     @override
     async def count_forks_by_repos(self, repo_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
@@ -971,26 +1007,33 @@ class FakeAuthorizationStore(AuthorizationStore):
         self.organizations = organizations
 
     @override
-    async def repository_roles(self, user_id: uuid.UUID, repository_ids: list[uuid.UUID]) -> dict[uuid.UUID, set[str]]:
-        roles: dict[uuid.UUID, set[str]] = {}
-        for repository_id in repository_ids:
-            repository = self.repositories.items.get(repository_id)
-            if repository is None:
-                continue
+    async def scope_grants(self, user_id: uuid.UUID, repositories: list[Repository]) -> list[ScopeGrant]:
+        """Expose current membership edges to Casbin, preserving organization boundaries."""
+        subject = f"user:{user_id}"
+        grants: list[ScopeGrant] = []
+        for repository in repositories:
+            domain = repository_domain(repository.owner_id, repository.id)
             members = await self.members(repository.owner_id)
             member = next((item for item in members if item.user_id == user_id), None)
-            if member is not None and member.is_admin:
-                roles.setdefault(repository_id, set()).add("owner")
+            if member is not None:
+                role = "org_admin" if member.is_admin else "org_member"
+                parent = owner_domain(repository.owner_id)
+                grants.extend([(subject, role, parent), (subject, role, f"{parent}/*")])
             teams = {team.id for team in await self.teams(repository.owner_id)}
-            for collaborator in await self.collaborators(repository_id):
-                if collaborator.user_id == user_id or (
+            for collaborator in await self.collaborators(repository.id):
+                if collaborator.user_id == user_id:
+                    grants.append((subject, collaborator.role, domain))
+                elif (
                     member is not None
                     and collaborator.team_id is not None
                     and collaborator.team_id in teams
                     and any(item.user_id == user_id for item in await self.team_members(collaborator.team_id))
                 ):
-                    roles.setdefault(repository_id, set()).add(collaborator.role)
-        return roles
+                    team = f"team:{collaborator.team_id}"
+                    grants.extend(
+                        [(subject, team, f"{owner_domain(repository.owner_id)}/*"), (team, collaborator.role, domain)]
+                    )
+        return list(dict.fromkeys(grants))
 
     @override
     async def members(self, organization_id: uuid.UUID, *, for_update: bool = False) -> list[OrganizationMember]:

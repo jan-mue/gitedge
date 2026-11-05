@@ -9,7 +9,7 @@ from app.clients.git.types import MergeRequest
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.issues import IssueState
 from app.entities.pull_requests import PullRequest
-from app.exceptions import ConflictError, InvalidInputError, PermissionDeniedError
+from app.exceptions import ConflictError, InvalidInputError
 from app.schemas.repositories import (
     CommitsPublic,
     CompareResult,
@@ -46,7 +46,7 @@ class PullRequestService:
         repository_service: RepositoryService,
         activity_service: ActivityService,
         git_merges: GitMergeClient,
-        authorization: AuthorizationService | None = None,
+        authorization: AuthorizationService,
     ) -> None:
         """Initialize the pull request service.
 
@@ -224,10 +224,7 @@ class PullRequestService:
     ) -> PullRequestPublic:
         """Apply an enabled Git strategy, then record the immutable merge and timeline event."""
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
-        if self.authorization is not None:
-            await self.authorization.require(repository, current_user, "pull_requests:merge")
-        elif current_user.id != repository.owner_id and not current_user.is_superuser:
-            raise PermissionDeniedError(detail="Only the repository owner can merge pull requests")
+        await self.authorization.require(repository, current_user, "pull_requests:merge")
         pull = await self.pull_request_store.get_for_merge(repository.id, number)
         if pull.state == IssueState.MERGED:
             return self._to_public(pull, owner, name)
@@ -298,13 +295,10 @@ class PullRequestService:
         if body.state == IssueState.MERGED:
             return await self.merge_pull_request(owner, name, number, PullRequestMerge(), current_user)
         pull_request = await self._find_pull_request(owner, name, number)
-        if self.authorization is not None:
-            repository = await self.repository_store.get_by_owner_and_name(owner, name)
-            await self.authorization.require(repository, current_user, "pull_requests:write")
-            if pull_request.author_id != current_user.id:
-                await self.authorization.require(repository, current_user, "pull_requests:moderate")
-        elif pull_request.author_id != current_user.id and not current_user.is_superuser:
-            raise PermissionDeniedError(detail="Only authors or maintainers can edit discussions")
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        await self.authorization.require(repository, current_user, "pull_requests:write")
+        if pull_request.author_id != current_user.id:
+            await self.authorization.require(repository, current_user, "pull_requests:moderate")
 
         if pull_request.state == IssueState.MERGED and body.state is not None and body.state != IssueState.MERGED:
             raise ConflictError(detail="A merged pull request cannot be reopened or closed")

@@ -10,7 +10,6 @@ from app.entities.comments import Comment
 from app.exceptions import (
     CommentNotFoundError,
     IssueNotFoundError,
-    PermissionDeniedError,
     PullRequestNotFoundError,
 )
 from app.schemas.comments import (
@@ -48,7 +47,7 @@ class CommentService:
         pull_request_store: PullRequestStore,
         repository_store: RepositoryStore,
         activity_service: ActivityService,
-        authorization: AuthorizationService | None = None,
+        authorization: AuthorizationService,
     ) -> None:
         """Initialize the comment service.
 
@@ -139,13 +138,10 @@ class CommentService:
             ApplicationError: If the user is not allowed to edit the comment.
         """
         comment = await self.comment_store.get(comment_id)
-        if self.authorization is not None:
-            repository = await self.repository_store.get(comment.issue.repo_id)
-            await self.authorization.require(repository, current_user, "comments:write")
-            if comment.author_id != current_user.id:
-                await self.authorization.require(repository, current_user, "comments:moderate")
-        elif comment.author_id != current_user.id and not current_user.is_superuser:
-            raise PermissionDeniedError(detail="You can only edit your own comments")
+        repository = await self.repository_store.get(comment.issue.repo_id)
+        await self.authorization.require(repository, current_user, "comments:write")
+        if comment.author_id != current_user.id:
+            await self.authorization.require(repository, current_user, "comments:moderate")
 
         previous_body = comment.body
         comment.body = body.body
@@ -178,13 +174,10 @@ class CommentService:
             ApplicationError: If the user is not allowed to delete the comment.
         """
         comment = await self.comment_store.get(comment_id)
-        if self.authorization is not None:
-            repository = await self.repository_store.get(comment.issue.repo_id)
-            await self.authorization.require(repository, current_user, "comments:write")
-            if comment.author_id != current_user.id:
-                await self.authorization.require(repository, current_user, "comments:moderate")
-        elif comment.author_id != current_user.id and not current_user.is_superuser:
-            raise PermissionDeniedError(detail="You can only delete your own comments")
+        repository = await self.repository_store.get(comment.issue.repo_id)
+        await self.authorization.require(repository, current_user, "comments:write")
+        if comment.author_id != current_user.id:
+            await self.authorization.require(repository, current_user, "comments:moderate")
 
         await self.comment_store.delete(comment)
 
@@ -229,10 +222,7 @@ class CommentService:
     ) -> tuple[Issue, Repository]:
         """Protect private discussion reactions."""
         issue, repo = await self.comment_store.context(comment)
-        if self.authorization is not None:
-            if not await self.authorization.can(repo, user, operation):
-                raise CommentNotFoundError
-        elif repo.is_private and repo.owner_id != user.id and not user.is_superuser:
+        if not await self.authorization.can(repo, user, operation):
             raise CommentNotFoundError
         return issue, repo
 

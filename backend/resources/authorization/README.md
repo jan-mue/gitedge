@@ -37,20 +37,34 @@ The database stores facts, not the static permission definitions:
 - `team_member`: team membership; users must also belong to its organization.
 - `repository_collaborator`: a user or team granted a repository role.
 
-The service caches the deployment-static Casbin model and policy once per warm
-process, and compiles Casbin’s static role/scope grant relations into immutable
-sets. Casbin evaluates role/scope names, operations, and credential kind: user IDs, team memberships, and
-repository grants never enter the shared enforcer. `FastEnforcer` is a synchronous
-policy-filter optimization; the installed PyCasbin version has no async cached
-enforcer. `AsyncEnforcer` makes adapter/policy management async, while `enforce()`
-is synchronous. Static in-memory evaluation does not need an async adapter.
+GitEdge uses resource-specific roles as relationships (ReBAC): users own repositories,
+users belong to organizations and teams, and collaborators relate users or teams
+to a repository. `scoped_model.conf` lets Casbin traverse these relationships.
+The policy's `org_admin > owner` edge grants organization administrators repository
+ownership within their organization's UUID-based domain. Team membership reaches
+only repositories with an explicit grant to that team. Ordinary organization
+membership grants no implicit access to private repositories.
 
-Current actor roles come from asynchronous PostgreSQL queries scoped to repository
-UUIDs. A single batch query combines direct grants, organization administration,
-and team grants with both current organization membership and matching ownership.
-Repository listings, starred profiles, forks, and feeds batch these lookups;
-anonymous listings need no authorization query. The permissions endpoint resolves
-roles once and derives all four flags from the static permission relation.
+The service caches deployment-static Casbin models and policies once per warm
+process, and compiles Casbin's static role/scope grant relations into immutable
+sets. Each authorization operation builds a separate in-memory relationship graph
+from current PostgreSQL facts. User IDs, team memberships, and repository grants
+never enter the shared enforcer. The domain role manager uses Casbin's built-in
+`keyMatch2` function to inherit parent namespace relationships without crossing
+into sibling namespaces. Resource UUIDs preserve scope across renames.
+
+A single asynchronous batch query loads direct grants, current organization
+memberships, and valid team memberships for the requested repositories. The
+permissions endpoint evaluates all four flags against one fresh relationship
+graph. Fork pages and their separate SQL count query apply the same visibility
+and token-selection filters before pagination; counting never materializes all
+forks or feeds all fork IDs back into an authorization query. SQL selects grants
+using the roles allowed by Casbin's policy, rather than a second permission map.
+
+`AsyncEnforcer` makes adapter/policy management asynchronous, while `enforce()`
+is synchronous. These in-memory checks need no asynchronous adapter or globally
+cached identity state. Services require `AuthorizationService` explicitly;
+tests use the same service with in-memory fact stores.
 
 No user grants or access decisions are cached across requests or authorization
 operations. Revocations are visible on the next check, including in another warm
@@ -89,7 +103,8 @@ Only owners can grant, demote, or revoke owner roles; admins cannot promote
 themselves to owner. The structural repository owner always retains access.
 Visibility is editable by repository admins; a private-source fork must stay private.
 
-The API accepts Bearer access tokens. Git HTTP accepts Bearer access tokens or
+The browser sends session JWTs only using the Bearer security scheme; it never
+reuses them as `X-API-Key` credentials. The API accepts Bearer access tokens. Git HTTP accepts Bearer access tokens or
 HTTP Basic using the account username and password. Public clone/fetch is
 anonymous; receive-pack discovery and push require write permission. Git
 repositories must exist before cloning or pushing; unauthorized requests cannot

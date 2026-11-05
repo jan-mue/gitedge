@@ -15,11 +15,13 @@ from app.exceptions import (
     PermissionDeniedError,
     UserNotFoundError,
 )
-from app.permissions import permitted_roles
+from app.permissions import owner_domain, repository_domain, scoped_enforcer
 from app.schemas.authorization import CollaboratorPublic, MemberPublic, RepositoryPermissions, RepositoryRole
 
 if TYPE_CHECKING:
     import uuid
+
+    import casbin
 
     from app.clients.authorization import AuthorizationStore
     from app.clients.organizations import OrganizationStore
@@ -28,6 +30,7 @@ if TYPE_CHECKING:
     from app.entities.organizations import Organization
     from app.entities.repositories import Repository
     from app.entities.users import User
+    from app.permissions import ScopeGrant
     from app.schemas.authorization import CollaboratorInput
 
 
@@ -49,42 +52,55 @@ class AuthorizationService:
 
     async def can(self, repository: Repository, user: User | None, permission: str = "repository:read") -> bool:
         """Evaluate a permission in a repository's UUID domain."""
-        roles = await self._repository_roles([repository], user)
-        return bool(roles[repository.id] & permitted_roles(permission))
-
-    async def _repository_roles(self, repositories: list[Repository], user: User | None) -> dict[uuid.UUID, set[str]]:
-        """Resolve fresh grants for a batch, without caching mutable identity facts."""
-        roles: dict[uuid.UUID, set[str]] = {repository.id: set() for repository in repositories}
         if user is not None and not user.is_active:
-            return roles
-        pending = []
+            return False
+        enforcer = await self._repository_enforcer([repository], user)
+        return enforcer.enforce(self._subject(user), repository_domain(repository.owner_id, repository.id), permission)
+
+    @staticmethod
+    def _subject(user: User | None) -> str:
+        """Keep anonymous and authenticated identities distinct in the role graph."""
+        return f"user:{user.id}" if user is not None else "anonymous"
+
+    async def _repository_enforcer(self, repositories: list[Repository], user: User | None) -> casbin.Enforcer:
+        """Build a fresh scoped graph from a bounded batch of current database facts."""
+        subject = self._subject(user)
+        grants: list[ScopeGrant] = []
         for repository in repositories:
+            domain = repository_domain(repository.owner_id, repository.id)
             if not repository.is_private:
-                roles[repository.id].add("read")
-            if user is not None:
-                if user.is_superuser or repository.owner_id == user.id:
-                    roles[repository.id].add("owner")
-                else:
-                    pending.append(repository.id)
-        if user is not None and pending:
-            for repository_id, granted in (await self.store.repository_roles(user.id, pending)).items():
-                roles[repository_id].update(granted)
-        return roles
+                grants.append((subject, "read", domain))
+            if user is not None and (user.is_superuser or repository.owner_id == user.id):
+                grants.append((subject, "owner", domain))
+        if user is not None and not user.is_superuser:
+            grants.extend(await self.store.scope_grants(user.id, repositories))
+        return scoped_enforcer(grants)
 
     async def visible_repositories(self, repositories: list[Repository], user: User | None) -> list[Repository]:
         """Filter a listing with one batch query, regardless of its repository count."""
-        roles = await self._repository_roles(repositories, user)
-        readable = permitted_roles("repository:read")
-        return [repository for repository in repositories if roles[repository.id] & readable]
+        if not repositories or (user is not None and not user.is_active):
+            return []
+        enforcer = await self._repository_enforcer(repositories, user)
+        return [
+            repository
+            for repository in repositories
+            if enforcer.enforce(
+                self._subject(user), repository_domain(repository.owner_id, repository.id), "repository:read"
+            )
+        ]
 
     async def permissions(self, repository: Repository, user: User | None) -> RepositoryPermissions:
         """Derive every permission from one fresh set of repository grants."""
-        roles = (await self._repository_roles([repository], user))[repository.id]
+        if user is not None and not user.is_active:
+            return RepositoryPermissions(read=False, write=False, admin=False, owner=False)
+        enforcer = await self._repository_enforcer([repository], user)
+        subject = self._subject(user)
+        domain = repository_domain(repository.owner_id, repository.id)
         return RepositoryPermissions(
-            read=bool(roles & permitted_roles("repository:read")),
-            write=bool(roles & permitted_roles("git:write")),
-            admin=bool(roles & permitted_roles("repository:write")),
-            owner=bool(roles & permitted_roles("repository:delete")),
+            read=enforcer.enforce(subject, domain, "repository:read"),
+            write=enforcer.enforce(subject, domain, "git:write"),
+            admin=enforcer.enforce(subject, domain, "repository:write"),
+            owner=enforcer.enforce(subject, domain, "repository:delete"),
         )
 
     async def require(self, repository: Repository, user: User | None, permission: str = "repository:read") -> None:
@@ -104,13 +120,17 @@ class AuthorizationService:
         organization = await self.organizations.get_by_name(name)
         if organization is None:
             raise OrganizationNotFoundError()
-        roles = set()
+        subject = self._subject(user)
+        domain = owner_domain(organization.id)
+        grants: list[ScopeGrant] = []
         if user.is_superuser:
-            roles.add("org_admin")
-        for member in await self.store.members(organization.id):
-            if member.user_id == user.id:
-                roles.add("org_admin" if member.is_admin else "org_member")
-        if not user.is_active or not roles & permitted_roles(permission):
+            grants.append((subject, "org_admin", domain))
+        grants.extend(
+            (subject, "org_admin" if member.is_admin else "org_member", domain)
+            for member in await self.store.members(organization.id)
+            if member.user_id == user.id
+        )
+        if not user.is_active or not scoped_enforcer(grants).enforce(subject, domain, permission):
             raise PermissionDeniedError(detail="Insufficient organization permission")
         return organization
 

@@ -1,9 +1,11 @@
 """Account and credential authorization are both defined by Casbin policy."""
 
+from uuid import uuid4
+
 import casbin
 import pytest
 
-from app.permissions import POLICY_DIRECTORY, policy_enforcer
+from app.permissions import POLICY_DIRECTORY, owner_domain, policy_enforcer, repository_domain, scoped_enforcer
 
 
 @pytest.mark.parametrize(
@@ -40,3 +42,33 @@ def test_casbin_policy_changes_control_both_limits_without_python_translation() 
     enforcer.add_policy("write", "issues:write", "account")
     assert not enforcer.enforce("issues:write", "issues:write", "token")
     assert enforcer.enforce("owner", "issues:write", "account")
+
+
+def test_relationships_inherit_inside_their_resource_and_organization_only() -> None:
+    organization, sibling_organization, repository, sibling_repository = (uuid4() for _ in range(4))
+    parent = owner_domain(organization)
+    resource = repository_domain(organization, repository)
+    sibling = repository_domain(organization, sibling_repository)
+    foreign = repository_domain(sibling_organization, repository)
+    grants = [
+        ("user:admin", "org_admin", parent),
+        ("user:admin", "org_admin", f"{parent}/*"),
+        ("user:member", "org_member", parent),
+        ("user:member", "org_member", f"{parent}/*"),
+        ("user:writer", "team:engineering", f"{parent}/*"),
+        ("team:engineering", "write", resource),
+    ]
+    enforcer = scoped_enforcer(grants)
+    assert enforcer.enforce("user:admin", parent, "organization:admin")
+    assert enforcer.enforce("user:admin", resource, "repository:delete")
+    assert enforcer.enforce("user:admin", sibling, "repository:delete")
+    assert not enforcer.enforce("user:admin", foreign, "repository:read")
+    assert enforcer.enforce("user:member", parent, "organization:read")
+    assert not enforcer.enforce("user:member", parent, "organization:admin")
+    assert not enforcer.enforce("user:member", resource, "repository:read")
+    assert enforcer.enforce("user:writer", resource, "git:write")
+    assert not enforcer.enforce("user:writer", sibling, "repository:read")
+    assert not enforcer.enforce("user:writer", foreign, "repository:read")
+    assert not enforcer.enforce("user:writer", parent, "organization:admin")
+    assert not scoped_enforcer([]).enforce("user:writer", resource, "git:write")
+    assert not any("user:" in value for rule in policy_enforcer().get_grouping_policy() for value in rule)

@@ -25,7 +25,11 @@ import {
 } from "@/components/ui/table"
 import { component } from "./component"
 
-export const TableHeader = component(PrimitiveTableHeader, { access: "bg-secondary" }, "bg-transparent")
+export const TableHeader = component(
+  PrimitiveTableHeader,
+  { access: "bg-secondary", srOnly: "sr-only" },
+  "bg-transparent",
+)
 export const TableBody = component(PrimitiveTableBody, {})
 export const TableFooter = component(PrimitiveTableFooter, {})
 export const TableHead = component(

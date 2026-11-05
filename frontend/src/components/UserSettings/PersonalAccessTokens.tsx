@@ -78,19 +78,47 @@ const TokenSelect = ({
   />
 )
 
-const scopeOptions: { value: TokenScope; label: string }[] = [
-  { value: "repository:read", label: "Read repository contents and discussions" },
-  { value: "git:read", label: "Clone and fetch commits" },
-  { value: "git:write", label: "Push commits (includes clone and fetch)" },
-  { value: "issues:write", label: "Create and update issues" },
-  { value: "pull_requests:write", label: "Create and update pull requests" },
-  { value: "pull_requests:merge", label: "Merge pull requests" },
-  { value: "comments:write", label: "Create, edit, and delete comments and reactions" },
-  { value: "reviews:write", label: "Submit reviews and manage review drafts" },
-  { value: "releases:write", label: "Create and update releases" },
-  { value: "repository:write", label: "Rename repositories and update settings" },
-  { value: "repository:delete", label: "Delete repositories" },
+const scopeGroups: { label: string; options: { value: TokenScope; label: string }[] }[] = [
+  {
+    label: "Repository",
+    options: [
+      { value: "repository:read", label: "Read repository contents and discussions" },
+      { value: "repository:write", label: "Rename repositories and update settings" },
+      { value: "repository:delete", label: "Delete repositories" },
+    ],
+  },
+  {
+    label: "Git commits",
+    options: [
+      { value: "git:read", label: "Clone and fetch commits" },
+      { value: "git:write", label: "Push commits (includes clone and fetch)" },
+    ],
+  },
+  {
+    label: "Issues",
+    options: [{ value: "issues:write", label: "Create and update issues" }],
+  },
+  {
+    label: "Pull requests",
+    options: [
+      { value: "pull_requests:write", label: "Create and update pull requests" },
+      { value: "pull_requests:merge", label: "Merge pull requests" },
+    ],
+  },
+  {
+    label: "Comments and reactions",
+    options: [{ value: "comments:write", label: "Create, edit, and delete comments and reactions" }],
+  },
+  {
+    label: "Reviews",
+    options: [{ value: "reviews:write", label: "Submit reviews and manage review drafts" }],
+  },
+  {
+    label: "Releases",
+    options: [{ value: "releases:write", label: "Create and update releases" }],
+  },
 ]
+const scopeOptions = scopeGroups.flatMap((group) => group.options)
 const defaults: TokenForm = { name: "", scopes: ["repository:read"], repository_ids: [], expiry: "30" }
 
 const tokenStatus = (token: PersonalAccessTokenPublic) => {
@@ -250,13 +278,21 @@ const PersonalAccessTokens = () => {
                 name="scopes"
                 render={({ field }) => (
                   <FormItem>
-                    <TokenChoices
-                      label="Allowed operations"
-                      options={scopeOptions}
-                      selected={field.value}
-                      onChange={field.onChange}
-                      disabled={busy}
-                    />
+                    <fieldset disabled={busy} className="space-y-4">
+                      <legend className="mb-3 text-sm font-medium">Allowed operations</legend>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {scopeGroups.map((group) => (
+                          <TokenChoices
+                            key={group.label}
+                            label={group.label}
+                            options={group.options}
+                            selected={field.value}
+                            onChange={field.onChange}
+                            disabled={busy}
+                          />
+                        ))}
+                      </div>
+                    </fieldset>
                     <FormMessage />
                   </FormItem>
                 )}

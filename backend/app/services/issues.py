@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.issues import Issue, IssueState
-from app.exceptions import InvalidInputError, PermissionDeniedError
+from app.exceptions import InvalidInputError
 from app.schemas.repositories import IssueCreate, IssuePublic, IssuesListPublic, IssueUpdate
 from app.services.repositories import ensure_repository
 from app.utils.markdown import render_markdown
@@ -28,7 +28,7 @@ class IssueService:
         issue_store: IssueStore,
         repository_store: RepositoryStore,
         activity_service: ActivityService,
-        authorization: AuthorizationService | None = None,
+        authorization: AuthorizationService,
     ) -> None:
         """Initialize the issue service.
 
@@ -141,13 +141,10 @@ class IssueService:
             ApplicationError: If the issue is not found, the state is invalid, or the user is not allowed to edit.
         """
         issue = await self._find_issue(owner, name, number)
-        if self.authorization is not None:
-            repository = await self.repository_store.get_by_owner_and_name(owner, name)
-            await self.authorization.require(repository, current_user, "issues:write")
-            if issue.author_id != current_user.id:
-                await self.authorization.require(repository, current_user, "issues:moderate")
-        elif issue.author_id != current_user.id and not current_user.is_superuser:
-            raise PermissionDeniedError(detail="Only authors or maintainers can edit discussions")
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        await self.authorization.require(repository, current_user, "issues:write")
+        if issue.author_id != current_user.id:
+            await self.authorization.require(repository, current_user, "issues:moderate")
 
         previous_state = issue.state
         previous_text = f"{issue.title}\n{issue.body or ''}"

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.releases import Release
-from app.exceptions import ConflictError, PermissionDeniedError, ReleaseNotFoundError
+from app.exceptions import ConflictError, ReleaseNotFoundError
 from app.schemas.releases import ReleaseCreate, ReleasePublic, ReleasesPublic, ReleaseUpdate
 from app.services.repositories import ensure_repository
 
@@ -27,7 +27,7 @@ class ReleaseService:
         release_store: ReleaseStore,
         repository_store: RepositoryStore,
         activity_service: ActivityService,
-        authorization: AuthorizationService | None = None,
+        authorization: AuthorizationService,
     ) -> None:
         """Initialize the release service.
 
@@ -59,7 +59,7 @@ class ReleaseService:
         repository = await self.repository_store.find_by_owner_and_name(owner, name, include_releases=True)
         if repository is None:
             return ReleasesPublic(data=[], count=0)
-        if include_drafts and self.authorization is not None:
+        if include_drafts:
             await self.authorization.require(repository, user, "releases:drafts")
         releases = [release for release in repository.releases if include_drafts or not release.is_draft]
         return ReleasesPublic(data=[self._to_public(release, owner, name) for release in releases], count=len(releases))
@@ -80,7 +80,7 @@ class ReleaseService:
             ReleaseNotFoundError: If the release is not found.
         """
         release = await self._find_release(owner, name, tag_name)
-        if release.is_draft and self.authorization is not None:
+        if release.is_draft:
             repository = await self.repository_store.get_by_owner_and_name(owner, name)
             await self.authorization.require(repository, user, "releases:drafts")
         return self._to_public(release, owner, name)
@@ -148,11 +148,8 @@ class ReleaseService:
             ApplicationError: If the user is not allowed to edit the release.
         """
         release = await self._find_release(owner, name, tag_name)
-        if self.authorization is not None:
-            repository = await self.repository_store.get_by_owner_and_name(owner, name)
-            await self.authorization.require(repository, current_user, "releases:write")
-        elif release.author_id != current_user.id and not current_user.is_superuser:
-            raise PermissionDeniedError(detail="You can only edit your own releases")
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        await self.authorization.require(repository, current_user, "releases:write")
 
         was_draft = release.is_draft
         if body.name is not None:

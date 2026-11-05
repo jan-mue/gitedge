@@ -57,6 +57,7 @@ def require_permission(
 
 def token_authentication(request: Request) -> AuthenticatedToken | None:
     """Read only verified, request-local token authentication state."""
+    # TODO: Use a TypedDict for request state once https://github.com/fastapi/fastapi/pull/14863 is merged.
     authenticated = getattr(request.state, "personal_access_token", None)
     return authenticated if isinstance(authenticated, AuthenticatedToken) else None
 

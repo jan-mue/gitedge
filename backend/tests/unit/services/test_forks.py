@@ -18,12 +18,14 @@ from app.exceptions import (
 )
 from app.schemas.social import ForkCreate
 from app.services.activity import ActivityService
+from app.services.authorization import AuthorizationService
 from app.services.forks import ForkService
 
 if TYPE_CHECKING:
     from app.services.repositories import RepositoryService
 from tests.unit.utils.fakes import (
     FakeActivityStore,
+    FakeAuthorizationStore,
     FakeBlobStorageClient,
     FakeCacheClient,
     FakeOrganizationStore,
@@ -50,11 +52,14 @@ def _setup() -> tuple[FakeRepositoryStore, FakeUserStore, User, User, ForkServic
     alice.id = uuid.uuid4()
     users.persist(alice)
 
-    activity_service = ActivityService(activity_store, repository_store, star_store)
+    authorization = AuthorizationService(
+        FakeAuthorizationStore(organizations, repository_store), repository_store, organizations, users
+    )
+    activity_service = ActivityService(activity_store, repository_store, star_store, authorization)
     repository_service = build_repository_service(
         BlobBackend(), FakeBlobStorageClient(), FakeRedisClient(), FakeCacheClient(), repository_store, star_store
     )
-    fork_service = ForkService(repository_store, repository_service, activity_service, star_store)
+    fork_service = ForkService(repository_store, repository_service, activity_service, star_store, authorization)
     return repository_store, users, owner, alice, fork_service, repository_service
 
 

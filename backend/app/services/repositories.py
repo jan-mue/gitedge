@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Literal
 
 from app.config import settings
 from app.entities.repositories import Repository as RepositoryEntity
-from app.exceptions import ConflictError, InvalidInputError, PermissionDeniedError
+from app.exceptions import ConflictError, InvalidInputError
 from app.schemas.repositories import (
     BlameContent,
     BranchInfo,
@@ -81,7 +81,7 @@ class RepositoryService:
         cache_client: AbstractCacheClient,
         repository_store: RepositoryStore,
         star_store: StarStore,
-        authorization: AuthorizationService | None = None,
+        authorization: AuthorizationService,
     ) -> None:
         """Bind the Git client, metadata stores, and response cache."""
         self.git = git
@@ -192,8 +192,7 @@ class RepositoryService:
             RepositoriesPublic with the discovered repositories.
         """
         entities = await self.repository_store.get_all(offset=0, limit=10000)
-        if self.authorization is not None:
-            entities = await self.authorization.visible_repositories(entities, user)
+        entities = await self.authorization.visible_repositories(entities, user)
         data = await self._to_schemas(entities)
         return RepositoriesPublic(data=data, count=len(data))
 
@@ -212,8 +211,7 @@ class RepositoryService:
             RepositoriesPublic with the owner's repositories.
         """
         entities = await self.repository_store.get_by_owner(owner_id, offset, limit)
-        if self.authorization is not None:
-            entities = await self.authorization.visible_repositories(entities, user)
+        entities = await self.authorization.visible_repositories(entities, user)
         data = await self._to_schemas(entities)
         return RepositoriesPublic(data=data, count=len(data))
 
@@ -238,10 +236,7 @@ class RepositoryService:
     ) -> RepositoryEntity:
         """Resolve a repository and require its owner or an administrator."""
         entity = await self.repository_store.get_by_owner_and_name(owner, name)
-        if self.authorization is not None:
-            await self.authorization.require(entity, user, permission)
-        elif entity.owner_id != user.id and not user.is_superuser:
-            raise PermissionDeniedError(detail="Only the repository owner can change settings")
+        await self.authorization.require(entity, user, permission)
         return entity
 
     async def delete_repository(self, owner: str, name: str, user: User) -> None:

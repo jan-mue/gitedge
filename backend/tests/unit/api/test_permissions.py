@@ -117,7 +117,8 @@ def test_static_policy_reuses_enforcer_without_retaining_request_roles() -> None
     assert enforcer.enforce("owner", "repository:read", "account")
     assert enforcer.enforce("owner", "repository:delete", "account")
     assert not enforcer.enforce("anonymous", "repository:read", "account")
-    assert not enforcer.enforce("org_admin", "repository:read", "account")
+    # The policy grants organization admins ownership; request graphs scope that relationship to their org.
+    assert enforcer.enforce("org_admin", "repository:read", "account")
     assert not enforcer.enforce("owner", "organization:read", "account")
     assert enforcer.enforce("org_admin", "organization:read", "account")
 

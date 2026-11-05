@@ -410,7 +410,7 @@ async def test_listing_batches_grants_and_anonymous_needs_no_lookup(
         RepositoryCollaborator(repository_id=repositories[0].id, user_id=reader.id, role="write")
     )
     authorization = service(fake_stores)
-    lookup = mocker.spy(fake_stores.authorization, "repository_roles")
+    lookup = mocker.spy(fake_stores.authorization, "scope_grants")
     visible = await authorization.visible_repositories(repositories, reader)
     assert {repo.id for repo in visible} == {repositories[0].id, repositories[-1].id}
     lookup.assert_awaited_once()
@@ -428,7 +428,7 @@ def test_permissions_resolves_grants_once_and_preserves_denials(
     repo = add_repository(fake_stores, owner)
     grant = RepositoryCollaborator(repository_id=repo.id, user_id=reader.id, role="write")
     fake_stores.authorization.items[repo.id] = grant
-    lookup = mocker.spy(fake_stores.authorization, "repository_roles")
+    lookup = mocker.spy(fake_stores.authorization, "scope_grants")
     url = f"{API}/repositories/owner/repo/permissions"
     response = client.get(url, headers=headers(reader))
     assert response.status_code == 200

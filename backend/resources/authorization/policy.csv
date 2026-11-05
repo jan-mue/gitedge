@@ -31,4 +31,5 @@ g, owner, admin
 g, admin, write
 g, write, read
 g, org_admin, org_member
+g, org_admin, owner
 g, git:write, git:read

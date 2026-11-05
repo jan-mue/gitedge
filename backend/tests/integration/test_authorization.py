@@ -17,6 +17,7 @@ from app.entities.authorization import RepositoryCollaborator, TeamMember
 from app.entities.organizations import Organization
 from app.entities.repositories import Repository
 from app.entities.users import User
+from app.permissions import permitted_roles
 from app.schemas.authorization import CollaboratorInput, RepositoryRole
 from app.services.authorization import AuthorizationService
 from tests.conftest import _run_async
@@ -140,9 +141,25 @@ async def check_batched_repository_roles(
         query.assert_awaited_once()
     finally:
         mocker.stop(query)
+    # SQL pagination/counting must preserve the same relationship graph as Casbin.
+    parent = Repository(name=f"fork-parent-{suffix}", owner_id=admin.id, is_private=True)
+    await authorization.repositories.add(parent)
+    for candidate in [repository, sibling, direct, foreign]:
+        await authorization.repositories.update(candidate, {"fork_of_id": parent.id})
+    readable = permitted_roles("repository:read")
+    assert await authorization.repositories.count_by_fork_of(parent.id, user=member, readable_roles=readable) == 2
+    assert await authorization.repositories.count_by_fork_of(parent.id, user=admin, readable_roles=readable) == 4
+    assert await authorization.repositories.count_by_fork_of(parent.id, readable_roles=readable) == 0
+    page = await authorization.repositories.list_by_fork_of(parent.id, limit=1, user=member, readable_roles=readable)
+    assert len(page) == 1
+    assert page[0].id in {repository.id, direct.id}
+    assert not await authorization.repositories.list_by_fork_of(
+        parent.id, offset=2, limit=1, user=member, readable_roles=readable
+    )
+    await authorization.repositories.delete(parent)
     # Organization administration remains scoped to the owning organization.
-    roles = await authorization.store.repository_roles(admin.id, [repository.id, sibling.id, direct.id, foreign.id])
-    assert roles == {repository.id: {"owner"}, sibling.id: {"owner"}, foreign.id: {"owner"}}
+    for candidate in [repository, sibling, direct, foreign]:
+        assert await authorization.can(candidate, admin, "repository:delete")
     permissions = await authorization.permissions(repository, member)
     assert permissions.model_dump() == {"read": True, "write": True, "admin": False, "owner": False}
     await authorization.repositories.delete(sibling)

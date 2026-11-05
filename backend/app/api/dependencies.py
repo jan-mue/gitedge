@@ -515,7 +515,7 @@ def get_activity_service(
     Returns:
         Activity service instance.
     """
-    return ActivityService(activity_store, repository_store, star_store, notification_service, authorization)
+    return ActivityService(activity_store, repository_store, star_store, authorization, notification_service)
 
 
 ActivityServiceDep = Annotated[ActivityService, Depends(get_activity_service)]

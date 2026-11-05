@@ -111,25 +111,33 @@ export const AccessTable = ({
         </Alert>
       )}
       <div className="overflow-hidden rounded-md border border-border">
+        <AccessToolbar
+          id={id}
+          scope={scope}
+          query={query}
+          kind={kind}
+          roles={roles}
+          canManage={canManage}
+          busy={busy}
+          selectable={selectable}
+          selected={selected}
+          selection={selection}
+          allSelected={allSelected}
+          setSelected={setSelected}
+          setRemoving={setRemoving}
+          setKind={setKind}
+          setQuery={setQuery}
+          setPage={setPage}
+        />
         <Table scrollLabel="Access management" aria-label="Access management">
-          <AccessToolbar
-            id={id}
-            scope={scope}
-            query={query}
-            kind={kind}
-            roles={roles}
-            canManage={canManage}
-            busy={busy}
-            selectable={selectable}
-            selected={selected}
-            selection={selection}
-            allSelected={allSelected}
-            setSelected={setSelected}
-            setRemoving={setRemoving}
-            setKind={setKind}
-            setQuery={setQuery}
-            setPage={setPage}
-          />
+          <TableHeader appearance="srOnly">
+            <TableRow appearance="static">
+              <TableHead scope="col">Selection</TableHead>
+              <TableHead scope="col">Person</TableHead>
+              <TableHead scope="col">Role</TableHead>
+              <TableHead scope="col">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
           <TableBody>
             {loading || error || !visible.length ? (
               <AccessStatus
@@ -264,79 +272,71 @@ const AccessToolbar = ({
   setQuery: (query: string) => void
   setPage: (page: number) => void
 }) => (
-  <TableHeader appearance="access">
-    <TableRow appearance="static">
-      <TableHead colSpan={4} appearance="access">
-        <div className="flex flex-wrap items-center justify-between gap-3 py-3">
-          <div className="flex items-center gap-3">
-            <Checkbox
-              appearance="access"
-              id={`${id}-all`}
-              aria-label="Select all"
-              checked={
-                allSelected ? true : selectable.some((entry) => selected.has(entry.id)) ? "indeterminate" : false
-              }
-              disabled={!canManage || busy || !selectable.length}
-              onCheckedChange={(checked) =>
-                setSelected((current) => {
-                  const next = new Set(current)
-                  for (const entry of selectable) {
-                    if (checked === true) next.add(entry.id)
-                    else next.delete(entry.id)
-                  }
-                  return next
-                })
-              }
-            />
-            <Label htmlFor={`${id}-all`} appearance="inline">
-              {selection.length ? `${selection.length} selected` : "Select all"}
-            </Label>
-            {canManage && selection.length > 0 && (
-              <Button variant="textDanger" disabled={busy} onClick={() => setRemoving(selection)}>
-                Remove selected
-              </Button>
-            )}
-          </div>
-          <div className="flex flex-1 items-center justify-end gap-3">
-            <FilterDropdown
-              label="Type"
-              value={kind}
-              onChange={(value) => {
-                setKind(value)
-                setPage(0)
-              }}
-              defaultValue="all"
-              options={
-                scope === "repository"
-                  ? [
-                      { value: "all", label: "All" },
-                      { value: "user", label: "Users" },
-                      { value: "team", label: "Teams" },
-                    ]
-                  : [{ value: "all", label: "All roles" }, ...roles]
-              }
-            />
-            <div className="relative min-w-0 max-w-sm flex-1">
-              <Search
-                aria-hidden="true"
-                className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground"
-              />
-              <Input
-                appearance="accessSearch"
-                aria-label={scope === "repository" ? "Find a collaborator" : "Find a member"}
-                placeholder={scope === "repository" ? "Find a collaborator…" : "Find a member…"}
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value)
-                  setPage(0)
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      </TableHead>
-    </TableRow>
-  </TableHeader>
+  <fieldset
+    aria-label="Access controls"
+    className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-secondary px-5 py-3"
+  >
+    <div className="flex items-center gap-3">
+      <Checkbox
+        appearance="access"
+        id={`${id}-all`}
+        aria-label="Select all"
+        checked={allSelected ? true : selectable.some((entry) => selected.has(entry.id)) ? "indeterminate" : false}
+        disabled={!canManage || busy || !selectable.length}
+        onCheckedChange={(checked) =>
+          setSelected((current) => {
+            const next = new Set(current)
+            for (const entry of selectable) {
+              if (checked === true) next.add(entry.id)
+              else next.delete(entry.id)
+            }
+            return next
+          })
+        }
+      />
+      <Label htmlFor={`${id}-all`} appearance="inline">
+        {selection.length ? `${selection.length} selected` : "Select all"}
+      </Label>
+      {canManage && selection.length > 0 && (
+        <Button variant="textDanger" disabled={busy} onClick={() => setRemoving(selection)}>
+          Remove selected
+        </Button>
+      )}
+    </div>
+    <div className="flex w-full min-w-0 items-center justify-end gap-3 sm:w-auto">
+      <FilterDropdown
+        label="Type"
+        value={kind}
+        onChange={(value) => {
+          setKind(value)
+          setPage(0)
+        }}
+        defaultValue="all"
+        options={
+          scope === "repository"
+            ? [
+                { value: "all", label: "All" },
+                { value: "user", label: "Users" },
+                { value: "team", label: "Teams" },
+              ]
+            : [{ value: "all", label: "All roles" }, ...roles]
+        }
+      />
+      <div className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
+        <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground" />
+        <Input
+          appearance="accessSearch"
+          aria-label={scope === "repository" ? "Find a collaborator" : "Find a member"}
+          placeholder={scope === "repository" ? "Find a collaborator…" : "Find a member…"}
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value)
+            setPage(0)
+          }}
+        />
+      </div>
+    </div>
+  </fieldset>
 )
 
 const AccessTableEntry = ({

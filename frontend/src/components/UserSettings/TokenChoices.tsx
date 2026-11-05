@@ -48,7 +48,9 @@ export const TokenChoices = ({
         ))}
         {!visible.length && <p className="text-sm text-muted-foreground">No matching repositories.</p>}
       </div>
-      <p className="text-xs text-muted-foreground">{selected.length} selected</p>
+      <p className="text-xs text-muted-foreground">
+        {options.filter((option) => selected.includes(option.value)).length} selected
+      </p>
     </fieldset>
   )
 }

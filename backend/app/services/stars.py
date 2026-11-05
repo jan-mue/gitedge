@@ -29,7 +29,7 @@ class StarService:
         star_store: StarStore,
         repository_store: RepositoryStore,
         activity_service: ActivityService,
-        authorization: AuthorizationService | None = None,
+        authorization: AuthorizationService,
     ) -> None:
         """Initialize the star service.
 
@@ -146,8 +146,7 @@ class StarService:
             repository = await self.repository_store.find(star.repo_id)
             if repository is not None:
                 entities.append(repository)
-        if self.authorization is not None:
-            entities = await self.authorization.visible_repositories(entities, viewer)
+        entities = await self.authorization.visible_repositories(entities, viewer)
 
         ids = [entity.id for entity in entities]
         star_counts = await self.star_store.count_by_repos(ids)

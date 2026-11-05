@@ -9,9 +9,8 @@ from app.entities.repositories import Repository
 from app.exceptions import (
     ConflictError,
     InvalidInputError,
-    PermissionDeniedError,
-    RepositoryNotFoundError,
 )
+from app.permissions import permitted_roles
 from app.schemas.social import ForkCreate, ForkPublic, ForksPublic
 
 if TYPE_CHECKING:
@@ -35,7 +34,7 @@ class ForkService:
         repository_service: RepositoryService,
         activity_service: ActivityService,
         star_store: StarStore,
-        authorization: AuthorizationService | None = None,
+        authorization: AuthorizationService,
     ) -> None:
         """Initialize the fork service.
 
@@ -72,17 +71,8 @@ class ForkService:
         dest_owner = body.owner or current_user.name
         dest_name = body.name or source.name
 
-        if self.authorization is not None:
-            await self.authorization.require(source, current_user)
-            await self.authorization.require_creation(dest_owner, current_user)
-        elif source.is_private and source.owner_id != current_user.id and not current_user.is_superuser:
-            raise RepositoryNotFoundError()
-        if (
-            self.authorization is None
-            and dest_owner.lower() != current_user.name.lower()
-            and not current_user.is_superuser
-        ):
-            raise PermissionDeniedError(detail="You can only fork into your own account")
+        await self.authorization.require(source, current_user)
+        await self.authorization.require_creation(dest_owner, current_user)
 
         if dest_owner.lower() == source.owner.name.lower():
             raise InvalidInputError(detail="Cannot fork a repository into the same owner")
@@ -141,14 +131,19 @@ class ForkService:
         source = await self.repository_store.find_by_owner_and_name(owner, name)
         if source is None:
             return ForksPublic(data=[], count=0)
+        readable_roles = permitted_roles("repository:read")
         forks = await self.repository_store.list_by_fork_of(
-            source.id, limit=None, allowed_repository_ids=allowed_repository_ids
+            source.id,
+            offset,
+            limit,
+            allowed_repository_ids=allowed_repository_ids,
+            user=user,
+            readable_roles=readable_roles,
         )
-        if self.authorization is not None:
-            forks = await self.authorization.visible_repositories(forks, user)
-        return ForksPublic(
-            data=[await self._to_public(fork) for fork in forks[offset : offset + limit]], count=len(forks)
+        count = await self.repository_store.count_by_fork_of(
+            source.id, allowed_repository_ids=allowed_repository_ids, user=user, readable_roles=readable_roles
         )
+        return ForksPublic(data=[await self._to_public(fork) for fork in forks], count=count)
 
     async def _to_public(self, fork: Repository) -> ForkPublic:
         """Convert a fork entity to its public representation.

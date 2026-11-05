@@ -6,9 +6,10 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, cast, override
 
-from sqlalchemy import Table, delete, func, or_, select, update
+from sqlalchemy import Table, delete, false, func, or_, select, update
 from sqlalchemy.orm import selectinload
 
+from app.clients.authorization import repository_role_grants
 from app.clients.database import CrudStore, SQLStore
 from app.entities.activity import Activity
 from app.entities.comments import Comment
@@ -27,6 +28,9 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.sql.base import ExecutableOption
+    from sqlalchemy.sql.elements import ColumnElement
+
+    from app.entities.users import User
 
 logger = logging.getLogger(__name__)
 
@@ -61,15 +65,24 @@ class RepositoryStore(CrudStore[Repository], ABC):
         self,
         fork_of_id: uuid.UUID,
         offset: int = 0,
-        limit: int | None = 100,
+        limit: int = 100,
         *,
         allowed_repository_ids: Sequence[uuid.UUID] | None = None,
+        user: User | None = None,
+        readable_roles: frozenset[str] | None = None,
     ) -> list[Repository]:
         """List forks, restricting repository IDs before applying pagination."""
 
     @abstractmethod
-    async def count_by_fork_of(self, fork_of_id: uuid.UUID) -> int:
-        """Count repositories forked from a given repository."""
+    async def count_by_fork_of(
+        self,
+        fork_of_id: uuid.UUID,
+        *,
+        allowed_repository_ids: Sequence[uuid.UUID] | None = None,
+        user: User | None = None,
+        readable_roles: frozenset[str] | None = None,
+    ) -> int:
+        """Count forks using the same access filters as the requested page."""
 
     @abstractmethod
     async def count_forks_by_repos(self, repo_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
@@ -191,29 +204,67 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         self,
         fork_of_id: uuid.UUID,
         offset: int = 0,
-        limit: int | None = 100,
+        limit: int = 100,
         *,
         allowed_repository_ids: Sequence[uuid.UUID] | None = None,
+        user: User | None = None,
+        readable_roles: frozenset[str] | None = None,
     ) -> list[Repository]:
         """List allowed forks before pagination; an empty allowlist matches nothing."""
         statement = (
             select(Repository)
             .options(*self._owner_options())
-            .where(Repository.fork_of_id == fork_of_id)
+            .where(*self._fork_filters(fork_of_id, allowed_repository_ids, user, readable_roles))
             .order_by(Repository.created_at.desc(), Repository.id.desc())
         )
-        if allowed_repository_ids is not None:
-            statement = statement.where(Repository.id.in_(allowed_repository_ids))
         result = await self.db.scalars(statement.offset(offset).limit(limit))
         return list(result.all())
 
     @override
-    async def count_by_fork_of(self, fork_of_id: uuid.UUID) -> int:
-        """Count repositories forked from a given repository."""
+    async def count_by_fork_of(
+        self,
+        fork_of_id: uuid.UUID,
+        *,
+        allowed_repository_ids: Sequence[uuid.UUID] | None = None,
+        user: User | None = None,
+        readable_roles: frozenset[str] | None = None,
+    ) -> int:
+        """Count accessible forks in SQL without loading repositories or their owners."""
         result = await self.db.execute(
-            select(func.count()).select_from(Repository).where(Repository.fork_of_id == fork_of_id)
+            select(func.count())
+            .select_from(Repository)
+            .where(*self._fork_filters(fork_of_id, allowed_repository_ids, user, readable_roles))
         )
         return result.scalar_one()
+
+    @staticmethod
+    def _fork_filters(
+        fork_of_id: uuid.UUID,
+        allowed_repository_ids: Sequence[uuid.UUID] | None,
+        user: User | None,
+        readable_roles: frozenset[str] | None,
+    ) -> list[ColumnElement[bool]]:
+        """Apply current grants and Casbin's readable roles before pagination and counting."""
+        filters = [Repository.fork_of_id == fork_of_id]
+        if allowed_repository_ids is not None:
+            filters.append(Repository.id.in_(allowed_repository_ids))
+        if readable_roles is None:
+            return filters
+        if user is not None and not user.is_active:
+            return [*filters, false()]
+        if user is not None and user.is_superuser and "owner" in readable_roles:
+            return filters
+        visibility: list[ColumnElement[bool]] = [false()]
+        if "read" in readable_roles:
+            visibility.append(Repository.is_private.is_(False))
+        if user is not None:
+            if "owner" in readable_roles:
+                visibility.append(Repository.owner_id == user.id)
+            grants = repository_role_grants(user.id).subquery()
+            visibility.append(
+                Repository.id.in_(select(grants.c.repository_id).where(grants.c.role.in_(readable_roles)))
+            )
+        return [*filters, or_(*visibility)]
 
     @override
     async def count_forks_by_repos(self, repo_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
