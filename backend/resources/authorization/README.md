@@ -164,12 +164,10 @@ Removing a repository role immediately removes the token's corresponding access.
 Expired/revoked tokens and inactive accounts cannot authenticate. Revocation is
 checked again after secret verification.
 
-The generated migration gives existing tokens an empty repository selection,
-which denies all repository access. Rotate those tokens in account settings,
-choosing repositories and operations, to enable access. Rotation atomically
-replaces both selections and revokes the old credential. Selection validation and
-repository-role resolution use batch queries rather than one query per selected
-repository.
+New token records require a repository selection from creation. Rotation
+atomically replaces both selections and revokes the old credential. Selection
+validation and repository-role resolution use batch queries rather than one
+query per selected repository.
 
 Each valid public token identifier is limited to 60 authentication attempts per
 minute by an atomic PostgreSQL update shared across workers. Incorrect-secret

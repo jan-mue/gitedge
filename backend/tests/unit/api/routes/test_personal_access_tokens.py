@@ -414,20 +414,3 @@ def test_token_requires_explicit_accessible_repository_selection(
         body["repository_ids"] = selection
     assert client.post(TOKENS_URL, headers=headers(owner), json=body).status_code == (400 if selection else 422)
     assert not fake_stores.personal_access_tokens.items
-
-
-def test_legacy_empty_selection_denies_access_until_rotation(client: TestClient, fake_stores: FakeStores) -> None:
-    owner = add_user(fake_stores, "owner")
-    repo = add_repository(fake_stores, owner)
-    issued = create_token(client, headers(owner), repository_ids=[str(repo.id)])
-    row = next(iter(fake_stores.personal_access_tokens.items.values()))
-    row.repository_ids = []
-    url = f"{settings.API_V1_STR}/owner/repo.git/info/refs?service=git-upload-pack"
-    assert client.get(url, headers={"Authorization": f"Bearer {issued['token']}"}).status_code == 403
-    replacement = client.post(
-        f"{TOKENS_URL}{issued['id']}/rotate",
-        headers=headers(owner),
-        json={"name": "Selected", "scopes": ["git:read"], "repository_ids": [str(repo.id)]},
-    )
-    assert replacement.status_code == 201
-    assert client.get(url, headers={"Authorization": f"Bearer {replacement.json()['token']}"}).status_code == 200

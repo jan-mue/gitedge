@@ -1,8 +1,8 @@
-"""add organization memberships teams and repository collaborators
+"""Add organization memberships teams and repository collaborators
 
-Revision ID: 2972bf488ac1
-Revises: ddd0affd774f
-Create Date: 2026-10-12 22:15:08.260974
+Revision ID: 012aaecf031d
+Revises: c45f8528cc79
+Create Date: 2026-11-05 18:43:08.194126
 
 """
 
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "2972bf488ac1"
-down_revision: str | None = "ddd0affd774f"
+revision: str = "012aaecf031d"
+down_revision: str | None = "c45f8528cc79"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

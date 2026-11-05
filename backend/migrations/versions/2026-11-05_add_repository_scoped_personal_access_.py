@@ -1,8 +1,8 @@
-"""add personal access tokens
+"""Add repository scoped personal access tokens
 
-Revision ID: a84ff2412dbc
-Revises: 2972bf488ac1
-Create Date: 2026-10-13 20:25:43.228250
+Revision ID: 05b106a4cc76
+Revises: 012aaecf031d
+Create Date: 2026-11-05 18:43:08.329759
 
 """
 
@@ -13,8 +13,8 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "a84ff2412dbc"
-down_revision: str | None = "2972bf488ac1"
+revision: str = "05b106a4cc76"
+down_revision: str | None = "012aaecf031d"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -30,6 +30,7 @@ def upgrade() -> None:
         sa.Column("secret_hash", sa.String(length=512), nullable=False),
         sa.Column("secret_last4", sa.String(length=4), nullable=False),
         sa.Column("scopes", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("repository_ids", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_used_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),

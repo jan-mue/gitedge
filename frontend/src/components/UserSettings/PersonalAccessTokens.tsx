@@ -348,7 +348,7 @@ const PersonalAccessTokens = () => {
                         const repository = repositories.data?.find((item) => item.id === id)
                         return repository ? `${repository.owner}/${repository.name}` : "Unavailable repository"
                       })
-                      .join(", ") || "No repositories selected — rotate this token to enable access."}
+                      .join(", ")}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Created {new Date(token.created_at).toLocaleDateString()} ·{" "}
