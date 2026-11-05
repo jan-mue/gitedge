@@ -21,7 +21,7 @@ async def get_star_state(
     owner: str,
     repo: str,
     star_service: StarServiceDep,
-    current_user: Annotated[User, Depends(require_permission("repository:read", user_dep=CurrentUser))],
+    current_user: Annotated[User, Depends(require_permission("stars:read", user_dep=CurrentUser))],
 ) -> StarState:
     """Get the current user's star state for a repository."""
     return await star_service.state(owner, repo, current_user)
@@ -32,7 +32,7 @@ async def star_repository(
     owner: str,
     repo: str,
     star_service: StarServiceDep,
-    current_user: Annotated[User, Depends(require_permission("repository:read", user_dep=CurrentUser))],
+    current_user: Annotated[User, Depends(require_permission("stars:write", user_dep=CurrentUser))],
 ) -> StarState:
     """Star a repository."""
     return await star_service.star(owner, repo, current_user)
@@ -43,14 +43,14 @@ async def unstar_repository(
     owner: str,
     repo: str,
     star_service: StarServiceDep,
-    current_user: Annotated[User, Depends(require_permission("repository:read", user_dep=CurrentUser))],
+    current_user: Annotated[User, Depends(require_permission("stars:write", user_dep=CurrentUser))],
 ) -> StarState:
     """Remove a star from a repository."""
     return await star_service.unstar(owner, repo, current_user)
 
 
 @router.get(
-    "/{owner}/{repo}/stargazers", dependencies=[Depends(require_permission("repository:read", user_dep=OptionalUser))]
+    "/{owner}/{repo}/stargazers", dependencies=[Depends(require_permission("stars:read", user_dep=OptionalUser))]
 )
 async def list_stargazers(
     owner: str,

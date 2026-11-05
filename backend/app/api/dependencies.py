@@ -46,7 +46,6 @@ from app.clients.watchers import SQLWatcherStore, WatcherStore
 from app.config import settings
 from app.entities.users import User
 from app.exceptions import AuthenticationError, InvalidPersonalAccessTokenError, PermissionDeniedError
-from app.schemas.personal_access_tokens import TokenScope
 from app.schemas.token import TokenPayload
 from app.services.activity import ActivityService
 from app.services.authorization import AuthorizationService
@@ -819,24 +818,22 @@ async def get_git_user(
     bearer: Annotated[str | None, Depends(optional_oauth2)],
     basic: Annotated[HTTPBasicCredentials | None, Depends(git_basic_auth)],
 ) -> User | None:
-    """Authenticate Git credentials and constrain PATs to the requested Git operation."""
+    """Authenticate Git credentials; the permission dependency enforces the operation."""
     if sum(value is not None for value in (presented_key, bearer, basic)) > 1:
         raise InvalidPersonalAccessTokenError()
-    push = request.url.path.endswith("/git-receive-pack") or request.query_params.get("service") == "git-receive-pack"
-    scope = TokenScope.WRITE if push else TokenScope.READ
     if presented_key is not None:
-        authenticated = await tokens.authenticate(presented_key, scope)
+        authenticated = await tokens.authenticate(presented_key)
         request.state.personal_access_token = authenticated
         return authenticated.user
     if bearer is not None:
         if bearer.startswith("gitedge_pat_"):
-            authenticated = await tokens.authenticate(bearer, scope)
+            authenticated = await tokens.authenticate(bearer)
             request.state.personal_access_token = authenticated
             return authenticated.user
         return await get_current_user(users, bearer)
     if basic is not None:
         if basic.password.startswith("gitedge_pat_"):
-            authenticated = await tokens.authenticate(basic.password, scope, basic.username)
+            authenticated = await tokens.authenticate(basic.password, username=basic.username)
             request.state.personal_access_token = authenticated
             return authenticated.user
         user = await users.find_by_name(basic.username)

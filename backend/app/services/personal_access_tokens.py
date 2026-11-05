@@ -140,10 +140,8 @@ class PersonalAccessTokenService:
             raise TokenRevokedError()
         return await self.issue(body, user, token)
 
-    async def authenticate(
-        self, presented: str, scope: TokenScope | None = None, username: str | None = None
-    ) -> AuthenticatedToken:
-        """Verify format, state, Argon2id hash, owner, and operation scope."""
+    async def authenticate(self, presented: str, *, username: str | None = None) -> AuthenticatedToken:
+        """Verify format, state, Argon2id hash, and owner without authorizing an operation."""
         match = TOKEN_PATTERN.fullmatch(presented)
         if match is None:
             raise InvalidPersonalAccessTokenError()
@@ -174,11 +172,9 @@ class PersonalAccessTokenService:
         if token.revoked_at is not None or (token.expires_at is not None and token.expires_at <= datetime.now(UTC)):
             raise InvalidPersonalAccessTokenError()
         authenticated = AuthenticatedToken(user, token)
-        if scope is not None:
-            authenticated.require_scope(scope)
         token.last_used_at = now
         if updated_hash is not None:
             token.secret_hash = updated_hash
         await self.store.update(token)
-        self.audit(f"authenticated scope={scope}", key_id, user.id)
+        self.audit("authenticated", key_id, user.id)
         return authenticated

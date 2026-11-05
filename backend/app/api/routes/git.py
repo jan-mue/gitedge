@@ -12,7 +12,6 @@ from fastapi import APIRouter, Depends, Request, Response
 from app.api.dependencies import GitUser, RepositoryServiceDep
 from app.api.permissions import require_permission
 from app.clients.git.types import GitHttpRequest
-from app.schemas.personal_access_tokens import TokenScope
 from app.utils.cache_headers import CACHE_CONTROL_NO_STORE
 
 if TYPE_CHECKING:
@@ -21,15 +20,9 @@ if TYPE_CHECKING:
 router = APIRouter(tags=["git"])
 
 
-def git_token_scope(request: Request) -> TokenScope:
-    """Distinguish Git discovery and transport read/write operations."""
-    push = request.url.path.endswith("/git-receive-pack") or request.query_params.get("service") == "git-receive-pack"
-    return TokenScope.WRITE if push else TokenScope.READ
-
-
 def git_discovery_permission(request: Request) -> str:
     """Require write access when advertising receive-pack to a pushing client."""
-    return "repository:write" if request.query_params.get("service") == "git-receive-pack" else "repository:read"
+    return "git:write" if request.query_params.get("service") == "git-receive-pack" else "git:read"
 
 
 _NO_STORE_PATHS = frozenset({"/info/refs", "/HEAD", "/git-upload-pack", "/git-receive-pack"})
@@ -95,14 +88,7 @@ async def _handle_git_request(
 @router.get(
     "/{owner}/{repo}.git/info/refs",
     dependencies=[
-        Depends(
-            require_permission(
-                git_discovery_permission,
-                user_dep=GitUser,
-                challenge='Basic realm="GitEdge"',
-                token_scope=git_token_scope,
-            )
-        )
+        Depends(require_permission(git_discovery_permission, user_dep=GitUser, challenge='Basic realm="GitEdge"'))
     ],
 )
 async def get_info_refs(
@@ -127,13 +113,7 @@ async def get_info_refs(
 
 @router.get(
     "/{owner}/{repo}.git/HEAD",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"', token_scope=git_token_scope
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
 async def get_head(
     request: Request,
@@ -157,13 +137,7 @@ async def get_head(
 
 @router.get(
     "/{owner}/{repo}.git/objects/info/packs",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"', token_scope=git_token_scope
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
 async def get_info_packs(
     request: Request,
@@ -187,13 +161,7 @@ async def get_info_packs(
 
 @router.get(
     "/{owner}/{repo}.git/objects/{prefix:path}/{suffix}",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"', token_scope=git_token_scope
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
 async def get_loose_object(
     request: Request,
@@ -221,13 +189,7 @@ async def get_loose_object(
 
 @router.get(
     "/{owner}/{repo}.git/objects/pack/{pack_file}",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"', token_scope=git_token_scope
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
 async def get_pack_file(
     request: Request,
@@ -253,13 +215,7 @@ async def get_pack_file(
 
 @router.post(
     "/{owner}/{repo}.git/git-upload-pack",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=GitUser, challenge='Basic realm="GitEdge"', token_scope=git_token_scope
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
 async def git_upload_pack(
     request: Request,
@@ -283,13 +239,7 @@ async def git_upload_pack(
 
 @router.post(
     "/{owner}/{repo}.git/git-receive-pack",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:write", user_dep=GitUser, challenge='Basic realm="GitEdge"', token_scope=git_token_scope
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("git:write", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
 async def git_receive_pack(
     request: Request,

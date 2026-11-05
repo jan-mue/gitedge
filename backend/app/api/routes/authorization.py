@@ -9,6 +9,7 @@ from app.api.dependencies import AuthorizationServiceDep, CurrentUser, OptionalR
 from app.api.permissions import require_permission, require_token_access, token_authentication
 from app.entities.users import User
 from app.exceptions import NotFoundError
+from app.permissions import operation_policy
 from app.schemas.authorization import (
     CollaboratorInput,
     CollaboratorPublic,
@@ -19,7 +20,6 @@ from app.schemas.authorization import (
     TeamInput,
     TeamPublic,
 )
-from app.schemas.personal_access_tokens import TokenScope
 from app.schemas.users import ProfilePublic
 
 router = APIRouter(tags=["authorization"])
@@ -36,7 +36,7 @@ async def get_permissions(
 ) -> RepositoryPermissions:
     """Return effective permissions for the current viewer."""
     repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
-    require_token_access(request, repository.id, TokenScope.REPOSITORY_READ)
+    require_token_access(request, repository.id, "repository:read")
     permissions = await authorization.permissions(repository, current_user)
     if not permissions.read:
         authorization.deny(current_user)
@@ -44,9 +44,9 @@ async def get_permissions(
     if authenticated is not None:
         permissions = RepositoryPermissions(
             read=permissions.read,
-            write=permissions.write and TokenScope.WRITE in authenticated.token.scopes,
-            admin=permissions.admin and TokenScope.REPOSITORY_WRITE in authenticated.token.scopes,
-            owner=permissions.owner and TokenScope.REPOSITORY_DELETE in authenticated.token.scopes,
+            write=permissions.write and operation_policy("git:write").token_scope in authenticated.token.scopes,
+            admin=permissions.admin and operation_policy("repository:write").token_scope in authenticated.token.scopes,
+            owner=permissions.owner and operation_policy("repository:delete").token_scope in authenticated.token.scopes,
         )
     response.headers["Cache-Control"] = "private, no-store"
     return permissions
@@ -54,7 +54,7 @@ async def get_permissions(
 
 @router.get(
     "/repositories/{owner}/{repo}/collaborator-teams",
-    dependencies=[Depends(require_permission("repository:admin", user_dep=OptionalUser))],
+    dependencies=[Depends(require_permission("collaborators:read", user_dep=OptionalUser))],
 )
 async def list_collaborator_teams(owner: str, repo: str, authorization: AuthorizationServiceDep) -> list[TeamPublic]:
     """List teams eligible for grants on this repository."""
@@ -143,7 +143,7 @@ async def remove_team_member(
 
 @router.get(
     "/repositories/{owner}/{repo}/collaborators",
-    dependencies=[Depends(require_permission("repository:admin", user_dep=OptionalUser))],
+    dependencies=[Depends(require_permission("collaborators:read", user_dep=OptionalUser))],
 )
 async def list_collaborators(owner: str, repo: str, authorization: AuthorizationServiceDep) -> list[CollaboratorPublic]:
     """List explicit repository collaborators."""
@@ -160,7 +160,7 @@ async def set_collaborator(
     repo: str,
     body: CollaboratorInput,
     authorization: AuthorizationServiceDep,
-    current_user: Annotated[User, Depends(require_permission("repository:admin", user_dep=CurrentUser))],
+    current_user: Annotated[User, Depends(require_permission("collaborators:write", user_dep=CurrentUser))],
 ) -> CollaboratorPublic:
     """Add or update a user or team's repository role."""
     repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
@@ -175,7 +175,7 @@ async def remove_collaborator(
     repo: str,
     collaborator_id: uuid.UUID,
     authorization: AuthorizationServiceDep,
-    current_user: Annotated[User, Depends(require_permission("repository:admin", user_dep=CurrentUser))],
+    current_user: Annotated[User, Depends(require_permission("collaborators:write", user_dep=CurrentUser))],
 ) -> None:
     """Revoke an explicit repository role."""
     repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
@@ -187,7 +187,7 @@ async def search_collaborator_candidates(
     owner: str,
     repo: str,
     authorization: AuthorizationServiceDep,
-    user: Annotated[User, Depends(require_permission("repository:admin", user_dep=CurrentUser))],
+    user: Annotated[User, Depends(require_permission("collaborators:read", user_dep=CurrentUser))],
     q: Annotated[str, Query(min_length=1, max_length=255)],
 ) -> list[ProfilePublic]:
     """Search public identities for the repository's add-people dialog."""

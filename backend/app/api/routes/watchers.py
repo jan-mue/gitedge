@@ -19,7 +19,7 @@ async def get_watch_state(
     owner: str,
     repo: str,
     watcher_service: WatcherServiceDep,
-    current_user: Annotated[User, Depends(require_permission("repository:read", user_dep=CurrentUser))],
+    current_user: Annotated[User, Depends(require_permission("watchers:read", user_dep=CurrentUser))],
 ) -> WatcherState:
     """Get the current user's watch state for a repository."""
     return await watcher_service.state(owner, repo, current_user)
@@ -30,7 +30,7 @@ async def watch_repository(
     owner: str,
     repo: str,
     watcher_service: WatcherServiceDep,
-    current_user: Annotated[User, Depends(require_permission("repository:read", user_dep=CurrentUser))],
+    current_user: Annotated[User, Depends(require_permission("watchers:write", user_dep=CurrentUser))],
 ) -> WatcherState:
     """Watch a repository."""
     return await watcher_service.watch(owner, repo, current_user)
@@ -41,14 +41,14 @@ async def unwatch_repository(
     owner: str,
     repo: str,
     watcher_service: WatcherServiceDep,
-    current_user: Annotated[User, Depends(require_permission("repository:read", user_dep=CurrentUser))],
+    current_user: Annotated[User, Depends(require_permission("watchers:write", user_dep=CurrentUser))],
 ) -> WatcherState:
     """Stop watching a repository."""
     return await watcher_service.unwatch(owner, repo, current_user)
 
 
 @router.get(
-    "/{owner}/{repo}/watchers", dependencies=[Depends(require_permission("repository:read", user_dep=OptionalUser))]
+    "/{owner}/{repo}/watchers", dependencies=[Depends(require_permission("watchers:read", user_dep=OptionalUser))]
 )
 async def list_watchers(
     owner: str,

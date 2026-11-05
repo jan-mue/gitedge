@@ -7,17 +7,26 @@ permission checks with an explicit authentication dependency:
 ```python
 current_user: Annotated[
     User,
-    Depends(require_permission("repository:write", user_dep=CurrentUser)),
+    Depends(require_permission("issues:write", user_dep=RepositoryUser)),
 ]
 ```
 
 The dependency returns the authenticated user. `user_dep` accepts an Annotated
-alias (`CurrentUser`, `OptionalUser`, or `GitUser`) or its dependency callable.
+alias (`CurrentUser`, `OptionalUser`, `RepositoryUser`,
+`OptionalRepositoryUser`, or `GitUser`) or its dependency callable.
 FastAPI preserves dependency caching, overrides, and security metadata. `owner`
 and `repo` are explicit named path parameters in the permission dependency;
 handlers keep their normal path arguments. There is no signature rewriting,
 argument-name mapping, or decorator library. Endpoints that do not consume the
 user declare the permission in the router's `dependencies` list.
+
+Routes declare one operation. The central `app/permissions.py` policy maps that
+operation to both the account's Casbin permission and its PAT scope. For example,
+`issues:write` requires repository read access plus the token's issue-write scope;
+`repository:write` requires repository admin access plus the repository-write
+scope. `git:read` and `git:write` map to their own token scopes. Session-only
+operations such as collaborator management have no token scope, and unknown
+operations are denied. There is no separate per-route `token_scope` declaration.
 
 The database stores facts, not the static permission definitions:
 

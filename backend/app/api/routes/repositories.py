@@ -20,7 +20,6 @@ from app.api.permissions import require_permission, require_token_access
 from app.entities.users import User
 from app.exceptions import ConflictError, InvalidInputError
 from app.schemas.activity import ActivityPublic
-from app.schemas.personal_access_tokens import TokenScope
 from app.schemas.repositories import (
     BlameContent,
     BranchInfo,
@@ -104,13 +103,7 @@ async def create_repository(
 
 @router.get(
     "/{owner}/{repo}/source",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_source(
     owner: str,
@@ -128,13 +121,7 @@ async def get_source(
 
 @router.get(
     "/{owner}/{repo}/tree",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_tree(
     owner: str,
@@ -152,13 +139,7 @@ async def get_tree(
 
 @router.get(
     "/{owner}/{repo}/blob",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_blob(
     owner: str,
@@ -176,13 +157,7 @@ async def get_blob(
 
 @router.get(
     "/{owner}/{repo}/blame",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_blame(
     owner: str,
@@ -200,13 +175,7 @@ async def get_blame(
 
 @router.get(
     "/{owner}/{repo}/statistics",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_statistics(
     owner: str,
@@ -223,13 +192,7 @@ async def get_statistics(
 
 @router.get(
     "/{owner}/{repo}/files",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_file_index(
     owner: str,
@@ -246,13 +209,7 @@ async def get_file_index(
 
 @router.get(
     "/{owner}/{repo}/raw",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_raw(
     owner: str,
@@ -270,13 +227,7 @@ async def get_raw(
 
 @router.get(
     "/{owner}/{repo}/info",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_repository_info(
     owner: str,
@@ -293,13 +244,7 @@ async def get_repository_info(
 
 @router.get(
     "/{owner}/{repo}/readme",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_readme(
     owner: str,
@@ -317,13 +262,7 @@ async def get_readme(
 
 @router.get(
     "/{owner}/{repo}/branches",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def list_branches(
     owner: str,
@@ -339,13 +278,7 @@ async def list_branches(
 
 @router.get(
     "/{owner}/{repo}/commits",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def list_commits(
     owner: str,
@@ -365,13 +298,7 @@ async def list_commits(
 
 @router.get(
     "/{owner}/{repo}/commits/{sha}",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_commit(
     owner: str,
@@ -389,13 +316,7 @@ async def get_commit(
 
 @router.get(
     "/{owner}/{repo}/issues",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def list_issues(
     owner: str,
@@ -415,7 +336,7 @@ async def create_issue(
     issue_service: IssueServiceDep,
     current_user: Annotated[
         User,
-        Depends(require_permission("repository:read", user_dep=RepositoryUser, token_scope=TokenScope.ISSUES_WRITE)),
+        Depends(require_permission("issues:write", user_dep=RepositoryUser)),
     ],
 ) -> IssuePublic:
     """Create a new issue."""
@@ -424,13 +345,7 @@ async def create_issue(
 
 @router.get(
     "/{owner}/{repo}/issues/{number}",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_issue(
     owner: str,
@@ -451,7 +366,7 @@ async def update_issue(
     issue_service: IssueServiceDep,
     current_user: Annotated[
         User,
-        Depends(require_permission("repository:read", user_dep=RepositoryUser, token_scope=TokenScope.ISSUES_WRITE)),
+        Depends(require_permission("issues:write", user_dep=RepositoryUser)),
     ],
 ) -> IssuePublic:
     """Update an issue."""
@@ -460,13 +375,7 @@ async def update_issue(
 
 @router.get(
     "/{owner}/{repo}/pulls",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def list_pull_requests(
     owner: str,
@@ -486,9 +395,7 @@ async def create_pull_request(
     pull_request_service: PullRequestServiceDep,
     current_user: Annotated[
         User,
-        Depends(
-            require_permission("repository:read", user_dep=RepositoryUser, token_scope=TokenScope.PULL_REQUESTS_WRITE)
-        ),
+        Depends(require_permission("pull_requests:write", user_dep=RepositoryUser)),
     ],
 ) -> PullRequestPublic:
     """Create a new pull request."""
@@ -497,13 +404,7 @@ async def create_pull_request(
 
 @router.get(
     "/{owner}/{repo}/pulls/{number}",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_pull_request(
     owner: str,
@@ -517,13 +418,7 @@ async def get_pull_request(
 
 @router.get(
     "/{owner}/{repo}/pulls/{number}/events",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_pull_request_events(
     owner: str, repo: str, number: int, pull_request_service: PullRequestServiceDep
@@ -534,13 +429,7 @@ async def get_pull_request_events(
 
 @router.get(
     "/{owner}/{repo}/pulls/{number}/commits",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_pull_request_commits(
     owner: str,
@@ -556,13 +445,7 @@ async def get_pull_request_commits(
 
 @router.get(
     "/{owner}/{repo}/pulls/{number}/files",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_pull_request_files(
     owner: str,
@@ -577,13 +460,7 @@ async def get_pull_request_files(
 
 @router.get(
     "/{owner}/{repo}/pulls/{number}/mergeability",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_pull_request_mergeability(
     owner: str,
@@ -605,9 +482,7 @@ async def merge_pull_request(
     pull_request_service: PullRequestServiceDep,
     current_user: Annotated[
         User,
-        Depends(
-            require_permission("repository:write", user_dep=RepositoryUser, token_scope=TokenScope.PULL_REQUESTS_MERGE)
-        ),
+        Depends(require_permission("pull_requests:merge", user_dep=RepositoryUser)),
     ],
 ) -> PullRequestPublic:
     """Merge Git history and record the PR state only after successful publication."""
@@ -625,27 +500,19 @@ async def update_pull_request(
     pull_request_service: PullRequestServiceDep,
     current_user: Annotated[
         User,
-        Depends(
-            require_permission("repository:read", user_dep=RepositoryUser, token_scope=TokenScope.PULL_REQUESTS_WRITE)
-        ),
+        Depends(require_permission("pull_requests:write", user_dep=RepositoryUser)),
     ],
 ) -> PullRequestPublic:
     """Update a pull request."""
     if body.state == "merged":
         repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
-        require_token_access(request, repository.id, TokenScope.PULL_REQUESTS_MERGE)
+        require_token_access(request, repository.id, "pull_requests:merge")
     return await pull_request_service.update_pull_request(owner, repo, number, body, current_user)
 
 
 @router.get(
     "/{owner}/{repo}/compare",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def compare_revisions(
     owner: str,
@@ -665,13 +532,7 @@ async def compare_revisions(
 
 @router.get(
     "/{owner}/{repo}/diff-file",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_diff_file(
     owner: str,
@@ -690,13 +551,7 @@ async def get_diff_file(
 
 @router.get(
     "/{owner}/{repo}",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def get_repository(
     owner: str,
@@ -718,9 +573,7 @@ async def update_repository(
     repository_service: RepositoryServiceDep,
     current_user: Annotated[
         User,
-        Depends(
-            require_permission("repository:admin", user_dep=RepositoryUser, token_scope=TokenScope.REPOSITORY_WRITE)
-        ),
+        Depends(require_permission("repository:write", user_dep=RepositoryUser)),
     ],
 ) -> Repository:
     """Update repository settings as the owner or administrator."""
@@ -734,9 +587,7 @@ async def delete_repository(
     repository_service: RepositoryServiceDep,
     current_user: Annotated[
         User,
-        Depends(
-            require_permission("repository:owner", user_dep=RepositoryUser, token_scope=TokenScope.REPOSITORY_DELETE)
-        ),
+        Depends(require_permission("repository:delete", user_dep=RepositoryUser)),
     ],
 ) -> None:
     """Permanently delete a repository as the owner or administrator."""

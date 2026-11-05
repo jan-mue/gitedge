@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, Path, Response
 
 from app.api.dependencies import OptionalRepositoryUser, RepositoryUser, ReviewServiceDep
 from app.api.permissions import require_permission
-from app.schemas.personal_access_tokens import TokenScope
 from app.schemas.repositories import DiffHunk
 from app.schemas.reviews import (
     ReviewDraft,
@@ -20,13 +19,7 @@ from app.schemas.reviews import (
 )
 
 router = APIRouter(
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
     prefix="/repositories/{owner}/{repo}/pulls/{number}",
     tags=["reviews"],
 )
@@ -63,9 +56,7 @@ async def get_comment_context(
 @router.post(
     "/reviews/{review_id}/replies",
     status_code=201,
-    dependencies=[
-        Depends(require_permission("repository:read", user_dep=RepositoryUser, token_scope=TokenScope.REVIEWS_WRITE))
-    ],
+    dependencies=[Depends(require_permission("reviews:write", user_dep=RepositoryUser))],
 )
 async def reply_to_review(
     owner: str,
@@ -82,9 +73,7 @@ async def reply_to_review(
 
 @router.put(
     "/review-draft",
-    dependencies=[
-        Depends(require_permission("repository:read", user_dep=RepositoryUser, token_scope=TokenScope.REVIEWS_WRITE))
-    ],
+    dependencies=[Depends(require_permission("reviews:write", user_dep=RepositoryUser))],
 )
 async def save_draft(
     owner: str, repo: str, number: int, body: ReviewDraft, service: ReviewServiceDep, current_user: RepositoryUser
@@ -95,9 +84,7 @@ async def save_draft(
 
 @router.put(
     "/reviewed-files",
-    dependencies=[
-        Depends(require_permission("repository:read", user_dep=RepositoryUser, token_scope=TokenScope.REVIEWS_WRITE))
-    ],
+    dependencies=[Depends(require_permission("reviews:write", user_dep=RepositoryUser))],
 )
 async def mark_reviewed(
     owner: str,
@@ -114,9 +101,7 @@ async def mark_reviewed(
 @router.post(
     "/reviews",
     status_code=201,
-    dependencies=[
-        Depends(require_permission("repository:read", user_dep=RepositoryUser, token_scope=TokenScope.REVIEWS_WRITE))
-    ],
+    dependencies=[Depends(require_permission("reviews:write", user_dep=RepositoryUser))],
 )
 async def submit_review(
     owner: str, repo: str, number: int, body: ReviewSubmit, service: ReviewServiceDep, current_user: RepositoryUser

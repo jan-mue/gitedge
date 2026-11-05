@@ -57,7 +57,7 @@ async def check_personal_access_tokens(database_url: str) -> None:
             row = await store.get(first_id)
             assert row.secret_hash.startswith("$argon2id$")
             assert row.secret_last4 == issued.token[-4:]
-            authenticated = await service.authenticate(issued.token, TokenScope.READ)
+            authenticated = await service.authenticate(issued.token)
             assert authenticated.user is owner
             assert issued.repository_ids == body.repository_ids
             assert row.repository_ids == [str(repository_id) for repository_id in body.repository_ids]
@@ -71,7 +71,7 @@ async def check_personal_access_tokens(database_url: str) -> None:
             replacement_id = replacement.id
             assert (await store.get(first_id)).revoked_reason == "Rotated"
             with pytest.raises(InvalidPersonalAccessTokenError):
-                await service.authenticate(issued.token, TokenScope.READ)
+                await service.authenticate(issued.token)
 
             class CollidingStore(SQLPersonalAccessTokenStore):
                 """Force one genuine unique-index collision during issuance."""

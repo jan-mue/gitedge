@@ -14,7 +14,6 @@ from app.api.dependencies import (
 )
 from app.api.permissions import require_permission
 from app.entities.users import User
-from app.schemas.personal_access_tokens import TokenScope
 from app.schemas.releases import ReleaseCreate, ReleasePublic, ReleasesPublic, ReleaseUpdate, TagsPublic
 
 router = APIRouter(prefix="/repositories", tags=["releases"])
@@ -27,11 +26,7 @@ async def list_releases(
     release_service: ReleaseServiceDep,
     current_user: Annotated[
         User | None,
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        ),
+        Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser)),
     ],
     include_drafts: bool = False,
 ) -> ReleasesPublic:
@@ -47,7 +42,7 @@ async def create_release(
     release_service: ReleaseServiceDep,
     current_user: Annotated[
         User,
-        Depends(require_permission("repository:write", user_dep=RepositoryUser, token_scope=TokenScope.RELEASES_WRITE)),
+        Depends(require_permission("releases:write", user_dep=RepositoryUser)),
     ],
 ) -> ReleasePublic:
     """Create a release."""
@@ -62,11 +57,7 @@ async def get_release(
     release_service: ReleaseServiceDep,
     current_user: Annotated[
         User | None,
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        ),
+        Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser)),
     ],
 ) -> ReleasePublic:
     """Get a single release by tag name."""
@@ -82,7 +73,7 @@ async def update_release(
     release_service: ReleaseServiceDep,
     current_user: Annotated[
         User,
-        Depends(require_permission("repository:write", user_dep=RepositoryUser, token_scope=TokenScope.RELEASES_WRITE)),
+        Depends(require_permission("releases:write", user_dep=RepositoryUser)),
     ],
 ) -> ReleasePublic:
     """Update a release."""
@@ -91,13 +82,7 @@ async def update_release(
 
 @router.get(
     "/{owner}/{repo}/tags",
-    dependencies=[
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        )
-    ],
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
 )
 async def list_tags(
     owner: str,

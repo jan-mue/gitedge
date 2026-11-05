@@ -1,21 +1,26 @@
 from typing import TYPE_CHECKING, Annotated
 
 import pytest
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import (
     CurrentUser,
+    OptionalRepositoryUser,
     OptionalUser,
     get_authorization_service,
     get_current_user,
+    get_optional_repository_user,
     get_optional_user,
 )
 from app.api.exception_handlers import application_exception_handler
 from app.api.permissions import require_permission
+from app.entities.authorization import RepositoryCollaborator
+from app.entities.personal_access_tokens import PersonalAccessToken
 from app.entities.users import User
 from app.exceptions import ApplicationError
 from app.services.authorization import policy_enforcer
+from app.services.personal_access_tokens import AuthenticatedToken
 from tests.unit.api.routes.test_authorization import add_repository, add_user, service
 
 if TYPE_CHECKING:
@@ -120,3 +125,53 @@ def test_static_policy_reuses_enforcer_without_retaining_request_roles() -> None
 def test_rejects_invalid_authentication_dependency() -> None:
     with pytest.raises(TypeError, match="user_dep"):
         require_permission("repository:read", user_dep="current_user")
+
+
+@pytest.mark.parametrize(
+    ("operation", "scope", "role", "status"),
+    [
+        ("repository:read", "repository:read", "read", 200),
+        ("repository:read", "git:read", "read", 403),
+        ("git:read", "git:read", "read", 200),
+        ("git:read", "repository:read", "read", 403),
+        ("git:write", "git:write", "write", 200),
+        ("git:write", "repository:write", "write", 403),
+        ("repository:write", "repository:write", "admin", 200),
+        ("repository:write", "repository:write", "write", 403),
+        ("repository:delete", "repository:delete", "owner", 200),
+        ("repository:delete", "repository:delete", "admin", 403),
+        ("issues:write", "issues:write", "read", 200),
+        ("issues:write", "repository:read", "owner", 403),
+        ("pull_requests:write", "pull_requests:write", "read", 200),
+        ("pull_requests:merge", "pull_requests:merge", "write", 200),
+        ("pull_requests:merge", "pull_requests:write", "owner", 403),
+        ("collaborators:write", "repository:write", "owner", 403),
+        ("unknown:operation", "repository:read", "owner", 403),
+    ],
+)
+async def test_operation_selects_both_account_permission_and_token_scope(
+    fake_stores: FakeStores, operation: str, scope: str, role: str, status: int
+) -> None:
+    owner = add_user(fake_stores, "owner")
+    actor = add_user(fake_stores, "actor")
+    repository = add_repository(fake_stores, owner)
+    await fake_stores.authorization.save(
+        RepositoryCollaborator(repository_id=repository.id, user_id=actor.id, role=role)
+    )
+    token = PersonalAccessToken(owner_id=actor.id, repository_ids=[str(repository.id)], scopes=[scope])
+    app = FastAPI()
+    app.add_exception_handler(ApplicationError, application_exception_handler)
+    app.dependency_overrides[get_authorization_service] = lambda: service(fake_stores)
+
+    async def authenticate(request: Request) -> User:
+        request.state.personal_access_token = AuthenticatedToken(actor, token)
+        return actor
+
+    app.dependency_overrides[get_optional_repository_user] = authenticate
+
+    @app.get("/{owner}/{repo}", dependencies=[Depends(require_permission(operation, user_dep=OptionalRepositoryUser))])
+    async def route(owner: str, repo: str) -> dict[str, str]:
+        return {"owner": owner, "repo": repo}
+
+    with TestClient(app) as client:
+        assert client.get("/owner/repo").status_code == status

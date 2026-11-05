@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends, Request
 from app.api.dependencies import CurrentUser, ForkServiceDep, OptionalRepositoryUser
 from app.api.permissions import require_permission, token_authentication
 from app.entities.users import User
-from app.schemas.personal_access_tokens import TokenScope
 from app.schemas.social import ForkCreate, ForkPublic, ForksPublic
 
 router = APIRouter(prefix="/repositories", tags=["forks"])
@@ -23,11 +22,7 @@ async def list_forks(
     fork_service: ForkServiceDep,
     current_user: Annotated[
         User | None,
-        Depends(
-            require_permission(
-                "repository:read", user_dep=OptionalRepositoryUser, token_scope=TokenScope.REPOSITORY_READ
-            )
-        ),
+        Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser)),
     ],
     offset: int = 0,
     limit: int = 100,
@@ -47,7 +42,7 @@ async def fork_repository(
     repo: str,
     body: ForkCreate,
     fork_service: ForkServiceDep,
-    current_user: Annotated[User, Depends(require_permission("repository:read", user_dep=CurrentUser))],
+    current_user: Annotated[User, Depends(require_permission("repository:fork", user_dep=CurrentUser))],
 ) -> ForkPublic:
     """Fork a repository."""
     return await fork_service.fork(owner, repo, body, current_user)

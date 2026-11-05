@@ -191,7 +191,7 @@ async def test_format_rejected_before_database_lookup(
     store = fake_stores.personal_access_tokens
     lookup = mocker.spy(store, "find_by_key_id")
     with pytest.raises(InvalidPersonalAccessTokenError):
-        await PersonalAccessTokenService(store, fake_stores.users).authenticate(credential, TokenScope.READ)
+        await PersonalAccessTokenService(store, fake_stores.users).authenticate(credential)
     lookup.assert_not_called()
 
 
