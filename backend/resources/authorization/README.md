@@ -1,6 +1,7 @@
 # Authorization
 
-GitEdge uses PyCasbin directly (`casbin` on PyPI). Roles and their permission
+GitEdge uses PyCasbin (`pycasbin` on PyPI) and the official
+`casbin-async-sqlalchemy-adapter`. Roles and their permission
 inheritance live in `model.conf` and `policy.csv`. FastAPI endpoints compose
 permission checks with an explicit authentication dependency:
 
@@ -53,18 +54,34 @@ never enter the shared enforcer. The domain role manager uses Casbin's built-in
 `keyMatch2` function to inherit parent namespace relationships without crossing
 into sibling namespaces. Resource UUIDs preserve scope across renames.
 
-A single asynchronous batch query loads direct grants, current organization
-memberships, and valid team memberships for the requested repositories. The
+The adapter stores relationship tuples in `casbin_rule`. Identity tables retain
+membership metadata, team names, collaborator IDs, and integrity constraints.
+Each mutation updates identity metadata and its relationship records in one
+transaction, using the request's external SQLAlchemy session. The adapter never
+creates its own engine or runs schema DDL during a request. Organization and
+repository authorization both read the persisted Casbin relationships.
+
+A request-local `AsyncEnforcer` uses the adapter's filtered-policy API. One SQL
+query loads only the actor, their current teams, and the requested resource and
+owner domains; it never loads an entire tenant's policy. Permission checks use the
+same immutable policy definitions after loading those relationships. The
 permissions endpoint evaluates all four flags against one fresh relationship
 graph. Fork pages and their separate SQL count query apply the same visibility
 and token-selection filters before pagination; counting never materializes all
 forks or feeds all fork IDs back into an authorization query. SQL selects grants
 using the roles allowed by Casbin's policy, rather than a second permission map.
 
-`AsyncEnforcer` makes adapter/policy management asynchronous, while `enforce()`
-is synchronous. These in-memory checks need no asynchronous adapter or globally
-cached identity state. Services require `AuthorizationService` explicitly;
-tests use the same service with in-memory fact stores.
+`AsyncEnforcer` makes policy loading asynchronous, while `enforce()` remains
+synchronous. Enforcers and their relationship snapshots are not shared across
+requests. Services require `AuthorizationService` explicitly; tests use the same
+service with in-memory fact stores.
+
+The adapter's model factory registers `casbin_rule` with the application's
+Alembic metadata. Its migration follows the token migration in the linear chain
+and copies existing member, team, and collaborator relationships with an
+`INSERT ... SELECT`. Role changes, revocation, and namespace deletion update
+policy records in the same transaction as identity metadata. A failed adapter
+write rolls back both; tables are never created at application startup.
 
 No user grants or access decisions are cached across requests or authorization
 operations. Revocations are visible on the next check, including in another warm

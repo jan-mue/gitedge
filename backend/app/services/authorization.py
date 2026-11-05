@@ -125,11 +125,7 @@ class AuthorizationService:
         grants: list[ScopeGrant] = []
         if user.is_superuser:
             grants.append((subject, "org_admin", domain))
-        grants.extend(
-            (subject, "org_admin" if member.is_admin else "org_member", domain)
-            for member in await self.store.members(organization.id)
-            if member.user_id == user.id
-        )
+        grants.extend(await self.store.organization_grants(user.id, organization.id))
         if not user.is_active or not scoped_enforcer(grants).enforce(subject, domain, permission):
             raise PermissionDeniedError(detail="Insufficient organization permission")
         return organization

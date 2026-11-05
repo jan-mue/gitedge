@@ -1,5 +1,6 @@
 from app.entities.activity import Activity
 from app.entities.authorization import OrganizationMember, RepositoryCollaborator, Team, TeamMember
+from app.entities.casbin import CasbinRule
 from app.entities.comments import Comment
 from app.entities.issues import Issue
 from app.entities.notifications import (
@@ -22,6 +23,7 @@ from app.entities.watchers import Watcher
 
 __all__ = [
     "Activity",
+    "CasbinRule",
     "Comment",
     "CommentReaction",
     "Issue",

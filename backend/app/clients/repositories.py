@@ -10,6 +10,7 @@ from sqlalchemy import Table, delete, false, func, or_, select, update
 from sqlalchemy.orm import selectinload
 
 from app.clients.authorization import repository_role_grants
+from app.clients.casbin import RelationshipAdapter
 from app.clients.database import CrudStore, SQLStore
 from app.entities.activity import Activity
 from app.entities.comments import Comment
@@ -21,6 +22,7 @@ from app.entities.repositories import Repository
 from app.entities.stars import Star
 from app.entities.watchers import Watcher
 from app.exceptions import OwnerNotFoundError, RepositoryNotFoundError
+from app.permissions import repository_domain
 
 if TYPE_CHECKING:
     import uuid
@@ -115,6 +117,9 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
     async def delete(self, obj: Repository) -> None:
         """Delete dependent records in one transaction and detach surviving forks."""
         try:
+            await RelationshipAdapter(self.db).remove_filtered_policy(
+                "g", "g2", 2, repository_domain(obj.owner_id, obj.id)
+            )
             related_prs = select(PullRequest.id).where(
                 or_(PullRequest.head_repo_id == obj.id, PullRequest.base_repo_id == obj.id)
             )

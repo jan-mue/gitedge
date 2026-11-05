@@ -1007,6 +1007,17 @@ class FakeAuthorizationStore(AuthorizationStore):
         self.organizations = organizations
 
     @override
+    async def organization_grants(self, user_id: uuid.UUID, organization_id: uuid.UUID) -> list[ScopeGrant]:
+        """Model organization relationship records without involving a real adapter or database."""
+        domain = owner_domain(organization_id)
+        return [
+            (f"user:{user_id}", "org_admin" if member.is_admin else "org_member", scope)
+            for member in await self.members(organization_id)
+            if member.user_id == user_id
+            for scope in (domain, f"{domain}/*")
+        ]
+
+    @override
     async def scope_grants(self, user_id: uuid.UUID, repositories: list[Repository]) -> list[ScopeGrant]:
         """Expose current membership edges to Casbin, preserving organization boundaries."""
         subject = f"user:{user_id}"

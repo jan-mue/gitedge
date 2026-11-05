@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, override
 
 from sqlalchemy import or_, select
 
+from app.clients.casbin import RelationshipAdapter
 from app.clients.database import CrudStore, SQLStore
 from app.entities.users import User
 from app.exceptions import UserNotFoundError
@@ -52,6 +53,12 @@ class SQLUserStore(UserStore, SQLStore[User]):
             db: SQLAlchemy async session.
         """
         super().__init__(db, User)
+
+    @override
+    async def delete(self, obj: User) -> None:
+        """Revoke the user's persisted relationships before deleting their identity."""
+        await RelationshipAdapter(self.db).remove_filtered_policy("g", "g2", 0, f"user:{obj.id}")
+        await super().delete(obj)
 
     @override
     async def get_by_email(self, email: str) -> User | None:

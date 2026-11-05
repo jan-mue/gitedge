@@ -22,7 +22,7 @@ class OrganizationService:
         self,
         organization_store: OrganizationStore,
         user_store: UserStore,
-        authorization_store: AuthorizationStore | None = None,
+        authorization_store: AuthorizationStore,
     ) -> None:
         """Initialize the organization service.
 
@@ -35,11 +35,11 @@ class OrganizationService:
         self.user_store = user_store
         self.authorization_store = authorization_store
 
-    async def create_organization(self, body: OrganizationCreate, user: User | None = None) -> OrganizationPublic:
+    async def create_organization(self, body: OrganizationCreate, user: User) -> OrganizationPublic:
         """Create a new organization.
 
         Args:
-            user: Authenticated viewer, or anonymous for public reads.
+            user: Authenticated organization creator.
             body: Organization creation data.
 
         Returns:
@@ -60,10 +60,7 @@ class OrganizationService:
             display_name=body.display_name,
             description=body.description,
         )
-        if self.authorization_store is not None and user is not None:
-            await self.authorization_store.create_organization(organization, user.id)
-        else:
-            await self.organization_store.add(organization)
+        await self.authorization_store.create_organization(organization, user.id)
         return OrganizationPublic.model_validate(organization)
 
     async def list_organizations(self, offset: int = 0, limit: int = 100) -> OrganizationsPublic:
