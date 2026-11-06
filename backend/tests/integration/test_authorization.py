@@ -5,7 +5,6 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.clients.authorization import SQLAuthorizationStore
@@ -13,12 +12,11 @@ from app.clients.database import create_session_factory
 from app.clients.organizations import SQLOrganizationStore
 from app.clients.repositories import SQLRepositoryStore
 from app.clients.users import SQLUserStore
-from app.entities.authorization import RepositoryCollaborator, TeamMember
 from app.entities.organizations import Organization
 from app.entities.repositories import Repository
 from app.entities.users import User
-from app.permissions import permitted_roles
-from app.schemas.authorization import CollaboratorInput, RepositoryRole
+from app.permissions import repository_visibility
+from app.schemas.authorization import CollaboratorInput, RepositoryCollaborator, RepositoryRole, TeamMember
 from app.services.authorization import AuthorizationService
 from tests.conftest import _run_async
 
@@ -94,8 +92,8 @@ async def check_authorization_persistence(database_url: str, mocker: MockerFixtu
             assert await authorization.can(repository, member, "git:write")
             team = await authorization.team(organization.name, team.id, admin)
             await facts.remove(team)
-            assert await db.scalar(select(RepositoryCollaborator).where(RepositoryCollaborator.id == grant_id)) is None
-            assert not list(await db.scalars(select(TeamMember).where(TeamMember.team_id == team.id)))
+            assert not any(item.id == grant_id for item in await facts.collaborators(repository_id))
+            assert not await facts.team_members(team.id)
             assert not await authorization.can(repository, member)
             await authorization.set_collaborator(
                 repository, CollaboratorInput(user_id=member.id, role=RepositoryRole.READ), admin
@@ -146,15 +144,23 @@ async def check_batched_repository_roles(
     await authorization.repositories.add(parent)
     for candidate in [repository, sibling, direct, foreign]:
         await authorization.repositories.update(candidate, {"fork_of_id": parent.id})
-    readable = permitted_roles("repository:read")
-    assert await authorization.repositories.count_by_fork_of(parent.id, user=member, readable_roles=readable) == 2
-    assert await authorization.repositories.count_by_fork_of(parent.id, user=admin, readable_roles=readable) == 4
-    assert await authorization.repositories.count_by_fork_of(parent.id, readable_roles=readable) == 0
-    page = await authorization.repositories.list_by_fork_of(parent.id, limit=1, user=member, readable_roles=readable)
+    assert (
+        await authorization.repositories.count_by_fork_of(parent.id, visibility=await repository_visibility(member))
+        == 2
+    )
+    assert (
+        await authorization.repositories.count_by_fork_of(parent.id, visibility=await repository_visibility(admin)) == 4
+    )
+    assert (
+        await authorization.repositories.count_by_fork_of(parent.id, visibility=await repository_visibility(None)) == 0
+    )
+    page = await authorization.repositories.list_by_fork_of(
+        parent.id, limit=1, visibility=await repository_visibility(member)
+    )
     assert len(page) == 1
     assert page[0].id in {repository.id, direct.id}
     assert not await authorization.repositories.list_by_fork_of(
-        parent.id, offset=2, limit=1, user=member, readable_roles=readable
+        parent.id, offset=2, limit=1, visibility=await repository_visibility(member)
     )
     await authorization.repositories.delete(parent)
     # Organization administration remains scoped to the owning organization.

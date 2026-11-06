@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, status
 from app.api.dependencies import CrudServiceDep, CurrentUser, EmailClientDep, UserStoreDep, get_current_active_superuser
 from app.config import settings
 from app.exceptions import ConflictError, InvalidInputError, PermissionDeniedError
+from app.permissions import account_can
 from app.schemas.users import (
     UpdatePassword,
     UserCreate,
@@ -85,7 +86,7 @@ async def read_user_me(current_user: CurrentUser) -> UserPublic:
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user_me(user_store: UserStoreDep, current_user: CurrentUser) -> None:
     """Delete own user."""
-    if current_user.is_superuser:
+    if await account_can(current_user, "account:admin"):
         raise PermissionDeniedError(detail="Super users are not allowed to delete themselves")
     # TODO: delete repositories
     await user_store.delete(current_user)

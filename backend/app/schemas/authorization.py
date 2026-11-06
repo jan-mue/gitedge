@@ -1,6 +1,7 @@
 """Typed inputs and outputs for membership and collaborator management."""
 
 import uuid
+from dataclasses import dataclass
 from enum import StrEnum
 
 from pydantic import ConfigDict, Field, model_validator
@@ -86,3 +87,53 @@ class TeamPublic(TeamInput):
 
     id: uuid.UUID
     organization_id: uuid.UUID
+
+
+class RelationshipRecord(GitEdgeBaseModel):
+    """A management projection of a Casbin relationship, never a database entity."""
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4)
+
+
+class OrganizationMember(RelationshipRecord):
+    """Organization membership projected from named grouping policies."""
+
+    organization_id: uuid.UUID
+    user_id: uuid.UUID
+    is_admin: bool = False
+
+
+class TeamMember(RelationshipRecord):
+    """Team membership projected from named grouping policies."""
+
+    team_id: uuid.UUID
+    user_id: uuid.UUID
+
+
+class RepositoryCollaborator(RelationshipRecord):
+    """A user or team grant projected from named grouping policies."""
+
+    repository_id: uuid.UUID
+    user_id: uuid.UUID | None = None
+    team_id: uuid.UUID | None = None
+    role: str = "read"
+
+
+@dataclass(frozen=True)
+class Actor:
+    """Authenticated identity attributes supplied to Casbin, without computed permissions."""
+
+    name: str
+    active: bool = True
+    superuser: bool = False
+    repository_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Resource:
+    """Resource identity and visibility facts evaluated by the matcher."""
+
+    domain: str
+    owner_subject: str = ""
+    public: bool = False
+    id: str = ""

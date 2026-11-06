@@ -31,35 +31,36 @@ For example, `issues:write` is available to readers with that token scope, while
 have no token admission; unknown operations have no matching policy and are denied.
 There is no Python permission/scope translation table or per-route `token_scope`.
 
-The database stores facts, not the static permission definitions:
-
-- `organization_member`: organization membership and admin status.
-- `team`: a named team belonging to one organization.
-- `team_member`: team membership; users must also belong to its organization.
-- `repository_collaborator`: a user or team granted a repository role.
+The official adapter stores all organization memberships, team memberships, and
+repository grants as named grouping policies in `casbin_rule`. There are no
+parallel membership or collaborator permission tables. `team` stores only a
+team's name and organization identity. Management response models project
+Casbin relationships into the existing API shape, with stable UUIDs derived
+from the subject and resource domain.
 
 GitEdge uses resource-specific roles as relationships (ReBAC): users own repositories,
 users belong to organizations and teams, and collaborators relate users or teams
-to a repository. `scoped_model.conf` lets Casbin traverse these relationships.
+to a repository. The single `model.conf` lets Casbin traverse these relationships.
 The policy's `org_admin > owner` edge grants organization administrators repository
 ownership within their organization's UUID-based domain. Team membership reaches
 only repositories with an explicit grant to that team. Ordinary organization
 membership grants no implicit access to private repositories.
 
-The service caches deployment-static Casbin models and policies once per warm
-process, and compiles Casbin's static role/scope grant relations into immutable
-sets. Each authorization operation builds a separate in-memory relationship graph
-from current PostgreSQL facts. User IDs, team memberships, and repository grants
-never enter the shared enforcer. The domain role manager uses Casbin's built-in
+The service caches only the parsed deployment-static model and policy once per
+warm process. Each authorization operation builds a separate `AsyncEnforcer`
+and loads current relationships through the adapter. There is no synchronous
+enforcer or shared decision cache. Identity activity, site administration,
+structural ownership, public visibility, and token restrictions are attributes
+evaluated by the same matcher. The domain role manager uses Casbin's built-in
 `keyMatch2` function to inherit parent namespace relationships without crossing
 into sibling namespaces. Resource UUIDs preserve scope across renames.
 
-The adapter stores relationship tuples in `casbin_rule`. Identity tables retain
-membership metadata, team names, collaborator IDs, and integrity constraints.
-Each mutation updates identity metadata and its relationship records in one
-transaction, using the request's external SQLAlchemy session. The adapter never
-creates its own engine or runs schema DDL during a request. Organization and
-repository authorization both read the persisted Casbin relationships.
+Management mutations use `AsyncEnforcer` policy APIs directly. The adapter joins
+the request's external SQLAlchemy session, so identity changes and policy writes
+share a transaction. The adapter never creates its own engine or runs schema DDL
+during a request. Organization and repository authorization both use the loaded
+`AsyncEnforcer` directly, without translating database memberships into another
+permission system.
 
 A request-local `AsyncEnforcer` uses the adapter's filtered-policy API. One SQL
 query loads only the actor, their current teams, and the requested resource and
@@ -68,8 +69,9 @@ same immutable policy definitions after loading those relationships. The
 permissions endpoint evaluates all four flags against one fresh relationship
 graph. Fork pages and their separate SQL count query apply the same visibility
 and token-selection filters before pagination; counting never materializes all
-forks or feeds all fork IDs back into an authorization query. SQL selects grants
-using the roles allowed by Casbin's policy, rather than a second permission map.
+forks or feeds all fork IDs back into an authorization query. SQL predicates use
+visibility flags and roles evaluated by `AsyncEnforcer`, joining only Casbin
+relationships; there is no second permission map.
 
 `AsyncEnforcer` makes policy loading asynchronous, while `enforce()` remains
 synchronous. Enforcers and their relationship snapshots are not shared across
@@ -77,18 +79,21 @@ requests. Services require `AuthorizationService` explicitly; tests use the same
 service with in-memory fact stores.
 
 The adapter's model factory registers `casbin_rule` with the application's
-Alembic metadata. Its migration follows the token migration in the linear chain
-and copies existing member, team, and collaborator relationships with an
-`INSERT ... SELECT`. Role changes, revocation, and namespace deletion update
-policy records in the same transaction as identity metadata. A failed adapter
-write rolls back both; tables are never created at application startup.
+Alembic metadata. A single generated feature migration, `346231be68fc`, follows
+main's `c45f8528cc79` and creates Casbin policies, team identities, and personal
+access tokens. It replaces the earlier feature migrations; reset an existing
+preview database branch before deploying this revision. There is no legacy
+permission backfill. A failed policy write rolls back the transaction; tables
+are never created at application startup.
 
 No user grants or access decisions are cached across requests or authorization
 operations. Revocations are visible on the next check, including in another warm
 instance; no distributed invalidation, background watcher, or persistent worker
 is required. Cold starts rebuild the small static policy; warm invocations reuse
 it. Role resolution for one repository or organization cannot authorize another,
-and UUID-scoped grants survive renames. Automatic policy persistence is disabled.
+and UUID-scoped grants survive renames. Policy mutations persist through the
+adapter; immutable deployment policies are added with automatic persistence
+disabled so they never become per-user database records.
 
 | Role | Permissions |
 | --- | --- |
@@ -146,8 +151,8 @@ input uses `is_admin`. Team input uses `name`. The generated frontend SDK includ
 these endpoints.
 
 Apply the generated migration with `cd backend && uv run alembic upgrade head`.
-Existing organizations have no reliable creator information in the old schema;
-a site superuser must assign their initial admins with the membership endpoint.
+A site superuser can assign administrators to organizations created outside the
+organization creation API.
 
 ## Personal access tokens
 

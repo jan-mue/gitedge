@@ -24,7 +24,7 @@ from app.exceptions import (
     TokenNotFoundError,
     TokenRevokedError,
 )
-from app.permissions import permitted_token_scopes
+from app.permissions import Actor, Resource, policy_enforcer
 from app.schemas.personal_access_tokens import PersonalAccessTokenIssued, PersonalAccessTokenPublic
 
 if TYPE_CHECKING:
@@ -51,20 +51,31 @@ class AuthenticatedToken:
     user: User
     token: PersonalAccessToken
 
-    def require(self, repository_id: uuid.UUID, operation: str) -> None:
-        """Require both the repository allowlist and an explicit operation permission."""
-        if str(repository_id) not in self.token.repository_ids:
+    async def require(self, repository_id: uuid.UUID, operation: str) -> None:
+        """Ask Casbin to intersect the selected repository and operation scopes."""
+        enforcer = await policy_enforcer()
+        resource = Resource("", id=str(repository_id))
+        selection = Actor("token", active=bool(self.user.is_active), repository_ids=tuple(self.token.repository_ids))
+        if not enforcer.enforce(selection, resource, "token:repository", "token"):
             raise InsufficientTokenRepositoryError()
-        self.require_scope(operation)
-
-    def allows(self, operation: str) -> bool:
-        """Let Casbin evaluate this credential's scopes against the operation."""
-        return bool(set(self.token.scopes) & permitted_token_scopes(operation))
-
-    def require_scope(self, operation: str) -> None:
-        """Deny operations absent from the token policy, including account-only actions."""
-        if not self.allows(operation):
+        if not any(
+            enforcer.enforce(
+                Actor(scope, active=bool(self.user.is_active), repository_ids=selection.repository_ids),
+                resource,
+                operation,
+                "token",
+            )
+            for scope in self.token.scopes
+        ):
             raise InsufficientTokenScopeError()
+
+    async def allows(self, operation: str) -> bool:
+        """Evaluate scope inheritance directly with AsyncEnforcer."""
+        enforcer = await policy_enforcer()
+        return any(
+            enforcer.enforce(Actor(scope, active=bool(self.user.is_active)), Resource(""), operation, "token")
+            for scope in self.token.scopes
+        )
 
 
 class PersonalAccessTokenService:
@@ -93,7 +104,15 @@ class PersonalAccessTokenService:
     async def owned_token(self, token_id: uuid.UUID, user: User) -> PersonalAccessToken:
         """Resolve a token only within its owner's account."""
         token = await self.store.find(token_id)
-        if token is None or token.owner_id != user.id:
+        if token is None:
+            raise TokenNotFoundError()
+        enforcer = await policy_enforcer()
+        if not enforcer.enforce(
+            Actor(f"user:{user.id}", bool(user.is_active), bool(user.is_superuser)),
+            Resource(f"/tokens/{token.id}", f"user:{token.owner_id}"),
+            "personal_tokens:manage",
+            "account",
+        ):
             raise TokenNotFoundError()
         return token
 

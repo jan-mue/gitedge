@@ -35,7 +35,7 @@ async def get_permissions(
 ) -> RepositoryPermissions:
     """Return effective permissions for the current viewer."""
     repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
-    require_token_access(request, repository.id, "repository:read")
+    await require_token_access(request, repository.id, "repository:read")
     permissions = await authorization.permissions(repository, current_user)
     if not permissions.read:
         authorization.deny(current_user)
@@ -43,9 +43,9 @@ async def get_permissions(
     if authenticated is not None:
         permissions = RepositoryPermissions(
             read=permissions.read,
-            write=permissions.write and authenticated.allows("git:write"),
-            admin=permissions.admin and authenticated.allows("repository:write"),
-            owner=permissions.owner and authenticated.allows("repository:delete"),
+            write=permissions.write and await authenticated.allows("git:write"),
+            admin=permissions.admin and await authenticated.allows("repository:write"),
+            owner=permissions.owner and await authenticated.allows("repository:delete"),
         )
     response.headers["Cache-Control"] = "private, no-store"
     return permissions
@@ -214,7 +214,4 @@ async def get_organization_permissions(
 ) -> OrganizationPermissions:
     """Expose management controls only to organization administrators."""
     org = await authorization.organization(organization, user, "organization:read")
-    members = await authorization.store.members(org.id)
-    return OrganizationPermissions(
-        admin=user.is_superuser or any(member.user_id == user.id and member.is_admin for member in members)
-    )
+    return OrganizationPermissions(admin=await authorization.organization_can(org, user, "organization:admin"))

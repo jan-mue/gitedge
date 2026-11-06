@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from app.config import settings
-from app.entities.authorization import RepositoryCollaborator
+from app.schemas.authorization import RepositoryCollaborator
 from tests.unit.api.routes.test_authorization import add_repository, add_user, headers
 from tests.unit.api.routes.test_personal_access_tokens import create_token
 

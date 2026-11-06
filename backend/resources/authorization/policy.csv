@@ -1,5 +1,9 @@
 # Each operation names its required account role and whether tokens may use it.
 # A token scope is the operation name itself; there is no scope translation table.
+p, site_admin, account:admin, account
+p, self, personal_tokens:manage, account
+p, token, token:repository, token
+p, owner, repository:create, account
 p, read, repository:read, token
 p, admin, repository:write, token
 p, owner, repository:delete, token

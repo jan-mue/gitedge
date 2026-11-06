@@ -20,8 +20,8 @@ if TYPE_CHECKING:
 class RelationshipFilter:
     """Bound loading to one actor, their teams, and the requested resource domains."""
 
-    subject: str
-    domains: list[str]
+    subject: str | None
+    domains: list[str] | None
 
 
 class RelationshipAdapter(Adapter):
@@ -34,6 +34,14 @@ class RelationshipAdapter(Adapter):
     @override
     def filter_query(self, stmt: Select[tuple[object]], filter: RelationshipFilter) -> Select[tuple[object]]:
         """Fetch the actor's relationship closure in one query without loading a whole tenant."""
+        if filter.domains is None:
+            if filter.subject is None:
+                raise ValueError("A relationship filter must identify a subject or resource domains")
+            return stmt.where(
+                CasbinRule.ptype == "g2", or_(CasbinRule.v0 == filter.subject, CasbinRule.v1 == filter.subject)
+            ).order_by(CasbinRule.id)
+        if filter.subject is None:
+            return stmt.where(CasbinRule.ptype == "g2", CasbinRule.v2.in_(filter.domains)).order_by(CasbinRule.id)
         membership = aliased(CasbinRule)
         teams = select(CasbinRule.v1).where(
             CasbinRule.ptype == "g2",

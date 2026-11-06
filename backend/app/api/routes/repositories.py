@@ -506,7 +506,7 @@ async def update_pull_request(
     """Update a pull request."""
     if body.state == "merged":
         repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
-        require_token_access(request, repository.id, "pull_requests:merge")
+        await require_token_access(request, repository.id, "pull_requests:merge")
     return await pull_request_service.update_pull_request(owner, repo, number, body, current_user)
 
 

@@ -61,11 +61,11 @@ async def check_personal_access_tokens(database_url: str) -> None:
             assert authenticated.user is owner
             assert issued.repository_ids == body.repository_ids
             assert row.repository_ids == [str(repository_id) for repository_id in body.repository_ids]
-            authenticated.require(body.repository_ids[0], TokenScope.WRITE)
+            await authenticated.require(body.repository_ids[0], TokenScope.WRITE)
             with pytest.raises(InsufficientTokenRepositoryError):
-                authenticated.require(uuid.uuid4(), TokenScope.READ)
+                await authenticated.require(uuid.uuid4(), TokenScope.READ)
             with pytest.raises(InsufficientTokenScopeError):
-                authenticated.require(body.repository_ids[0], TokenScope.ISSUES_WRITE)
+                await authenticated.require(body.repository_ids[0], TokenScope.ISSUES_WRITE)
             assert row.last_used_at is not None
             replacement = await service.rotate(first_id, body, owner)
             replacement_id = replacement.id

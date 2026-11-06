@@ -14,9 +14,9 @@ from app.clients.organizations import SQLOrganizationStore
 from app.clients.repositories import SQLRepositoryStore
 from app.clients.stars import SQLStarStore
 from app.clients.users import SQLUserStore
-from app.entities.authorization import RepositoryCollaborator
 from app.entities.repositories import Repository
 from app.entities.users import User
+from app.schemas.authorization import RepositoryCollaborator
 from app.services.activity import ActivityService
 from app.services.authorization import AuthorizationService
 from app.services.forks import ForkService

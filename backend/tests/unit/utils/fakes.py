@@ -38,7 +38,7 @@ from app.clients.users import UserStore
 from app.clients.watchers import WatcherStore
 from app.config import settings
 from app.entities.activity import Activity, ActivityKind, ActivityTargetType
-from app.entities.authorization import OrganizationMember, RepositoryCollaborator, Team, TeamMember
+from app.entities.authorization import Team
 from app.entities.base import Base
 from app.entities.comments import Comment
 from app.entities.issues import Issue, IssueState
@@ -61,14 +61,26 @@ from app.exceptions import (
     PullRequestNotFoundError,
     RepositoryNotFoundError,
 )
-from app.permissions import ScopeGrant, owner_domain, repository_domain, scoped_enforcer
+from app.permissions import (
+    Actor,
+    RepositoryVisibility,
+    Resource,
+    ScopeGrant,
+    owner_domain,
+    policy_enforcer,
+    repository_domain,
+    scoped_enforcer,
+)
 from app.schemas.activity import ActivityTargetPreview
+from app.schemas.authorization import OrganizationMember, RepositoryCollaborator, TeamMember
 from app.schemas.notifications import NotificationCategory, NotificationFilter
 from app.utils.security import get_password_hash
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any
+
+    import casbin
 
 logger = logging.getLogger(__name__)
 
@@ -423,10 +435,9 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
         limit: int = 100,
         *,
         allowed_repository_ids: Sequence[uuid.UUID] | None = None,
-        user: User | None = None,
-        readable_roles: frozenset[str] | None = None,
+        visibility: RepositoryVisibility | None = None,
     ) -> list[Repository]:
-        repositories = await self._accessible_forks(fork_of_id, allowed_repository_ids, user, readable_roles)
+        repositories = await self._accessible_forks(fork_of_id, allowed_repository_ids, visibility)
         repositories.sort(key=lambda repository: (repository.created_at, repository.id), reverse=True)
         return [self._hydrate(repository) for repository in repositories[offset : offset + limit]]
 
@@ -436,18 +447,16 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
         fork_of_id: uuid.UUID,
         *,
         allowed_repository_ids: Sequence[uuid.UUID] | None = None,
-        user: User | None = None,
-        readable_roles: frozenset[str] | None = None,
+        visibility: RepositoryVisibility | None = None,
     ) -> int:
         """Count with the same visibility and credential scope as the page."""
-        return len(await self._accessible_forks(fork_of_id, allowed_repository_ids, user, readable_roles))
+        return len(await self._accessible_forks(fork_of_id, allowed_repository_ids, visibility))
 
     async def _accessible_forks(
         self,
         fork_of_id: uuid.UUID,
         allowed_repository_ids: Sequence[uuid.UUID] | None,
-        user: User | None,
-        readable_roles: frozenset[str] | None,
+        visibility: RepositoryVisibility | None,
     ) -> list[Repository]:
         result = []
         for repository in self.items.values():
@@ -455,21 +464,25 @@ class FakeRepositoryStore(FakeCrudStore[Repository], RepositoryStore):
                 continue
             if allowed_repository_ids is not None and repository.id not in allowed_repository_ids:
                 continue
-            if readable_roles is not None:
-                if user is not None and not user.is_active:
-                    continue
-                roles = {"read"} if not repository.is_private else set()
-                if user is not None:
-                    if user.is_superuser or repository.owner_id == user.id:
-                        roles.add("owner")
-                    if self.stores is not None:
-                        enforcer = scoped_enforcer(await self.stores.authorization.scope_grants(user.id, [repository]))
-                        manager = enforcer.get_named_role_manager("g2")
-                        domain = repository_domain(repository.owner_id, repository.id)
-                        roles.update(
-                            role for role in readable_roles if manager.has_link(f"user:{user.id}", role, domain)
+            if visibility is not None:
+                visible = visibility.unrestricted or (visibility.public_read and not repository.is_private)
+                visible = visible or (visibility.owned_read and repository.owner_id == visibility.user_id)
+                if not visible and visibility.user_id is not None and self.stores is not None:
+                    enforcer = await self.stores.authorization.enforcer(
+                        visibility.user_id,
+                        [
+                            repository_domain(repository.owner_id, repository.id),
+                            owner_domain(repository.owner_id),
+                            f"{owner_domain(repository.owner_id)}/*",
+                        ],
+                    )
+                    visible = any(
+                        enforcer.get_named_role_manager("g2").has_link(
+                            f"user:{visibility.user_id}", role, repository_domain(repository.owner_id, repository.id)
                         )
-                if not roles & readable_roles:
+                        for role in visibility.roles
+                    )
+                if not visible:
                     continue
             result.append(repository)
         return result
@@ -1007,6 +1020,19 @@ class FakeAuthorizationStore(AuthorizationStore):
         self.organizations = organizations
 
     @override
+    async def enforcer(self, user_id: uuid.UUID | None, domains: list[str]) -> casbin.AsyncEnforcer:
+        """Exercise the real AsyncEnforcer with in-memory policy storage in unit tests."""
+        if user_id is None:
+            return await policy_enforcer()
+        repositories = [
+            repo for repo in self.repositories.items.values() if repository_domain(repo.owner_id, repo.id) in domains
+        ]
+        grants = await self.scope_grants(user_id, repositories)
+        for organization in self.organizations.items.values():
+            if owner_domain(organization.id) in domains:
+                grants.extend(await self.organization_grants(user_id, organization.id))
+        return await scoped_enforcer(grants)
+
     async def organization_grants(self, user_id: uuid.UUID, organization_id: uuid.UUID) -> list[ScopeGrant]:
         """Model organization relationship records without involving a real adapter or database."""
         domain = owner_domain(organization_id)
@@ -1017,7 +1043,6 @@ class FakeAuthorizationStore(AuthorizationStore):
             for scope in (domain, f"{domain}/*")
         ]
 
-    @override
     async def scope_grants(self, user_id: uuid.UUID, repositories: list[Repository]) -> list[ScopeGrant]:
         """Expose current membership edges to Casbin, preserving organization boundaries."""
         subject = f"user:{user_id}"
@@ -1077,8 +1102,9 @@ class FakeAuthorizationStore(AuthorizationStore):
     async def save(self, entity: AccessEntity) -> None:
         if entity.id is None:
             entity.id = uuid.uuid4()
-        entity.created_at = entity.created_at or datetime.now(UTC)
-        entity.updated_at = datetime.now(UTC)
+        if isinstance(entity, Team):
+            entity.created_at = entity.created_at or datetime.now(UTC)
+            entity.updated_at = datetime.now(UTC)
         self.items[entity.id] = entity
 
     @override
@@ -1215,11 +1241,21 @@ class FakeNotificationStore(FakeCrudStore[Notification], NotificationStore):
         return [
             (user, reasons[user.id])
             for user in stores.users.items.values()
-            if user.id in reasons
-            and user.id != activity.actor_id
-            and user.is_active
-            and (not repo.is_private or repo.owner_id == user.id or user.is_superuser)
+            if user.id in reasons and user.id != activity.actor_id and user.is_active
         ]
+
+    async def _visible(self, repository: Repository, user: User) -> bool:
+        stores = self.repository.stores
+        assert stores is not None
+        domain = repository_domain(repository.owner_id, repository.id)
+        parent = owner_domain(repository.owner_id)
+        enforcer = await stores.authorization.enforcer(user.id, [domain, parent, f"{parent}/*"])
+        return enforcer.enforce(
+            Actor(f"user:{user.id}", bool(user.is_active), bool(user.is_superuser)),
+            Resource(domain, f"user:{repository.owner_id}", not repository.is_private),
+            "repository:read",
+            "account",
+        )
 
     @override
     async def list_for_user(self, user: User, ids: list[uuid.UUID] | None = None) -> list[Notification]:
@@ -1230,7 +1266,7 @@ class FakeNotificationStore(FakeCrudStore[Notification], NotificationStore):
                 if n.user_id == user.id
                 and (ids is None or n.id in ids)
                 and n.activity.repo is not None
-                and (not n.activity.repo.is_private or n.activity.repo.owner_id == user.id or user.is_superuser)
+                and await self._visible(n.activity.repo, user)
             ],
             key=lambda n: n.created_at,
             reverse=True,

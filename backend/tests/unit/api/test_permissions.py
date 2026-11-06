@@ -15,11 +15,11 @@ from app.api.dependencies import (
 )
 from app.api.exception_handlers import application_exception_handler
 from app.api.permissions import require_permission
-from app.entities.authorization import RepositoryCollaborator
 from app.entities.personal_access_tokens import PersonalAccessToken
 from app.entities.users import User
 from app.exceptions import ApplicationError
-from app.permissions import policy_enforcer
+from app.permissions import Actor, Resource, policy_enforcer
+from app.schemas.authorization import RepositoryCollaborator
 from app.services.personal_access_tokens import AuthenticatedToken
 from tests.unit.api.routes.test_authorization import add_repository, add_user, service
 
@@ -111,16 +111,13 @@ def test_optional_user_allows_anonymous_public_reads_but_not_private_reads(fake_
         assert private.headers["www-authenticate"] == "Bearer"
 
 
-def test_static_policy_reuses_enforcer_without_retaining_request_roles() -> None:
-    enforcer = policy_enforcer()
-    assert enforcer is policy_enforcer()
-    assert enforcer.enforce("owner", "repository:read", "account")
-    assert enforcer.enforce("owner", "repository:delete", "account")
-    assert not enforcer.enforce("anonymous", "repository:read", "account")
-    # The policy grants organization admins ownership; request graphs scope that relationship to their org.
-    assert enforcer.enforce("org_admin", "repository:read", "account")
-    assert not enforcer.enforce("owner", "organization:read", "account")
-    assert enforcer.enforce("org_admin", "organization:read", "account")
+async def test_async_enforcers_do_not_retain_request_roles() -> None:
+    enforcer = await policy_enforcer()
+    await enforcer.add_named_grouping_policy("g2", "actor", "owner", "/repo")
+    assert enforcer.enforce(Actor("actor"), Resource("/repo"), "repository:delete", "account")
+    fresh = await policy_enforcer()
+    assert not fresh.enforce(Actor("actor"), Resource("/repo"), "repository:read", "account")
+    assert not fresh.enforce(Actor("anonymous"), Resource("/repo"), "repository:read", "account")
 
 
 def test_rejects_invalid_authentication_dependency() -> None:

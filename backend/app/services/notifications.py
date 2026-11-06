@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from app.entities.activity import Activity
     from app.entities.users import User
     from app.schemas.notifications import NotificationUpdate
+    from app.services.authorization import AuthorizationService
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +69,11 @@ class NotificationService:
         repository_store: RepositoryStore,
         email_client: EmailClient,
         background_tasks: BackgroundTasks,
+        authorization: AuthorizationService,
     ) -> None:
         """Bind persistence and the existing SMTP transport."""
         self.store = store
+        self.authorization = authorization
         self.repository_store = repository_store
         self.email_client = email_client
         self.background_tasks = background_tasks
@@ -80,7 +83,9 @@ class NotificationService:
         if activity.repo_id is None:
             return
         mentions = mentioned_users(text) - mentioned_users(previous_text)
-        audience = await self.store.audience(activity, mentions)
+        candidates = await self.store.audience(activity, mentions)
+        repository = await self.repository_store.get(activity.repo_id)
+        audience = [(user, reason) for user, reason in candidates if await self.authorization.can(repository, user)]
         preferences = await self.store.delivery_preferences([user.id for user, _ in audience], activity)
         deliveries = []
         for user, reason in audience:
@@ -236,7 +241,7 @@ class NotificationService:
     async def repository_preferences(self, user: User, owner: str, name: str) -> RepositoryNotificationPreferences:
         """Read category settings after checking repository visibility."""
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
-        if repository.is_private and repository.owner_id != user.id and not user.is_superuser:
+        if not await self.authorization.can(repository, user):
             raise RepositoryNotFoundError
         return RepositoryNotificationPreferences.model_validate(
             {"categories": await self.store.categories(user.id, repository.id)}

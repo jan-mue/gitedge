@@ -46,6 +46,7 @@ from app.clients.watchers import SQLWatcherStore, WatcherStore
 from app.config import settings
 from app.entities.users import User
 from app.exceptions import AuthenticationError, InvalidPersonalAccessTokenError, PermissionDeniedError
+from app.permissions import account_can
 from app.schemas.token import TokenPayload
 from app.services.activity import ActivityService
 from app.services.authorization import AuthorizationService
@@ -209,7 +210,7 @@ def get_authorization_service(
 AuthorizationServiceDep = Annotated[AuthorizationService, Depends(get_authorization_service)]
 
 
-def get_current_active_superuser(current_user: CurrentUser) -> User:
+async def get_current_active_superuser(current_user: CurrentUser) -> User:
     """Get the current user if they are a superuser.
 
     Args:
@@ -221,7 +222,7 @@ def get_current_active_superuser(current_user: CurrentUser) -> User:
     Raises:
         ApplicationError: If user is not a superuser.
     """
-    if not current_user.is_superuser:
+    if not await account_can(current_user, "account:admin"):
         raise PermissionDeniedError(detail="The user doesn't have enough privileges")
     return current_user
 
@@ -488,9 +489,10 @@ def get_notification_service(
     repository_store: RepositoryStoreDep,
     email_client: EmailClientDep,
     background_tasks: BackgroundTasks,
+    authorization: AuthorizationServiceDep,
 ) -> NotificationService:
     """Get the activity delivery and inbox service."""
-    return NotificationService(store, repository_store, email_client, background_tasks)
+    return NotificationService(store, repository_store, email_client, background_tasks, authorization)
 
 
 NotificationServiceDep = Annotated[NotificationService, Depends(get_notification_service)]

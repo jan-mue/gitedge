@@ -8,8 +8,8 @@ import pytest
 
 from app.clients.personal_access_tokens import AUTHENTICATION_LIMIT
 from app.config import settings
-from app.entities.authorization import RepositoryCollaborator
 from app.exceptions import InvalidPersonalAccessTokenError, TokenIssuanceError
+from app.schemas.authorization import RepositoryCollaborator
 from app.schemas.personal_access_tokens import PersonalAccessTokenCreate, TokenScope
 from app.services.personal_access_tokens import ISSUANCE_ATTEMPTS, PAT_FORMAT_PREFIX, PersonalAccessTokenService
 from tests.unit.api.routes.test_authorization import add_repository, add_user, headers

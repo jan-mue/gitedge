@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.entities.authorization import OrganizationMember, RepositoryCollaborator, Team, TeamMember
-from app.entities.principals import PrincipalType
+from app.entities.authorization import Team
 from app.exceptions import (
     AuthenticationError,
     ConflictError,
@@ -15,8 +14,16 @@ from app.exceptions import (
     PermissionDeniedError,
     UserNotFoundError,
 )
-from app.permissions import owner_domain, repository_domain, scoped_enforcer
-from app.schemas.authorization import CollaboratorPublic, MemberPublic, RepositoryPermissions, RepositoryRole
+from app.permissions import Actor, Resource, owner_domain, repository_domain
+from app.schemas.authorization import (
+    CollaboratorPublic,
+    MemberPublic,
+    OrganizationMember,
+    RepositoryCollaborator,
+    RepositoryPermissions,
+    RepositoryRole,
+    TeamMember,
+)
 
 if TYPE_CHECKING:
     import uuid
@@ -30,7 +37,6 @@ if TYPE_CHECKING:
     from app.entities.organizations import Organization
     from app.entities.repositories import Repository
     from app.entities.users import User
-    from app.permissions import ScopeGrant
     from app.schemas.authorization import CollaboratorInput
 
 
@@ -50,57 +56,58 @@ class AuthorizationService:
         self.organizations = organizations
         self.users = users
 
-    async def can(self, repository: Repository, user: User | None, permission: str = "repository:read") -> bool:
-        """Evaluate a permission in a repository's UUID domain."""
-        if user is not None and not user.is_active:
-            return False
-        enforcer = await self._repository_enforcer([repository], user)
-        return enforcer.enforce(self._subject(user), repository_domain(repository.owner_id, repository.id), permission)
+    @staticmethod
+    def _actor(user: User | None) -> Actor:
+        """Pass identity attributes to the matcher without calculating permissions."""
+        return (
+            Actor(f"user:{user.id}", active=bool(user.is_active), superuser=bool(user.is_superuser))
+            if user
+            else Actor("anonymous")
+        )
 
     @staticmethod
-    def _subject(user: User | None) -> str:
-        """Keep anonymous and authenticated identities distinct in the role graph."""
-        return f"user:{user.id}" if user is not None else "anonymous"
+    def _resource(repository: Repository) -> Resource:
+        """Pass repository attributes to the matcher."""
+        return Resource(
+            repository_domain(repository.owner_id, repository.id),
+            f"user:{repository.owner_id}",
+            not repository.is_private,
+            str(repository.id),
+        )
 
-    async def _repository_enforcer(self, repositories: list[Repository], user: User | None) -> casbin.Enforcer:
-        """Build a fresh scoped graph from a bounded batch of current database facts."""
-        subject = self._subject(user)
-        grants: list[ScopeGrant] = []
-        for repository in repositories:
-            domain = repository_domain(repository.owner_id, repository.id)
-            if not repository.is_private:
-                grants.append((subject, "read", domain))
-            if user is not None and (user.is_superuser or repository.owner_id == user.id):
-                grants.append((subject, "owner", domain))
-        if user is not None and not user.is_superuser:
-            grants.extend(await self.store.scope_grants(user.id, repositories))
-        return scoped_enforcer(grants)
+    async def _repository_enforcer(self, repositories: list[Repository], user: User | None) -> casbin.AsyncEnforcer:
+        """Use the adapter-backed AsyncEnforcer directly for every authorization decision."""
+        parents = {owner_domain(repository.owner_id) for repository in repositories}
+        domains = [repository_domain(repository.owner_id, repository.id) for repository in repositories]
+        domains.extend(parents)
+        domains.extend(f"{parent}/*" for parent in parents)
+        return await self.store.enforcer(user.id if user else None, domains)
+
+    async def can(self, repository: Repository, user: User | None, permission: str = "repository:read") -> bool:
+        """Ask Casbin to evaluate the account relationship and resource facts."""
+        enforcer = await self._repository_enforcer([repository], user)
+        return enforcer.enforce(self._actor(user), self._resource(repository), permission, "account")
 
     async def visible_repositories(self, repositories: list[Repository], user: User | None) -> list[Repository]:
-        """Filter a listing with one batch query, regardless of its repository count."""
-        if not repositories or (user is not None and not user.is_active):
+        """Use one filtered AsyncEnforcer for a bounded repository batch."""
+        if not repositories:
             return []
         enforcer = await self._repository_enforcer(repositories, user)
         return [
             repository
             for repository in repositories
-            if enforcer.enforce(
-                self._subject(user), repository_domain(repository.owner_id, repository.id), "repository:read"
-            )
+            if enforcer.enforce(self._actor(user), self._resource(repository), "repository:read", "account")
         ]
 
     async def permissions(self, repository: Repository, user: User | None) -> RepositoryPermissions:
-        """Derive every permission from one fresh set of repository grants."""
-        if user is not None and not user.is_active:
-            return RepositoryPermissions(read=False, write=False, admin=False, owner=False)
+        """Evaluate all capability flags using the same AsyncEnforcer."""
         enforcer = await self._repository_enforcer([repository], user)
-        subject = self._subject(user)
-        domain = repository_domain(repository.owner_id, repository.id)
+        actor, resource = self._actor(user), self._resource(repository)
         return RepositoryPermissions(
-            read=enforcer.enforce(subject, domain, "repository:read"),
-            write=enforcer.enforce(subject, domain, "git:write"),
-            admin=enforcer.enforce(subject, domain, "repository:write"),
-            owner=enforcer.enforce(subject, domain, "repository:delete"),
+            read=enforcer.enforce(actor, resource, "repository:read", "account"),
+            write=enforcer.enforce(actor, resource, "git:write", "account"),
+            admin=enforcer.enforce(actor, resource, "repository:write", "account"),
+            owner=enforcer.enforce(actor, resource, "repository:delete", "account"),
         )
 
     async def require(self, repository: Repository, user: User | None, permission: str = "repository:read") -> None:
@@ -120,23 +127,25 @@ class AuthorizationService:
         organization = await self.organizations.get_by_name(name)
         if organization is None:
             raise OrganizationNotFoundError()
-        subject = self._subject(user)
-        domain = owner_domain(organization.id)
-        grants: list[ScopeGrant] = []
-        if user.is_superuser:
-            grants.append((subject, "org_admin", domain))
-        grants.extend(await self.store.organization_grants(user.id, organization.id))
-        if not user.is_active or not scoped_enforcer(grants).enforce(subject, domain, permission):
-            raise PermissionDeniedError(detail="Insufficient organization permission")
+        if not await self.organization_can(organization, user, permission):
+            raise PermissionDeniedError("Insufficient organization permission")
         return organization
 
+    async def organization_can(self, organization: Organization, user: User, permission: str) -> bool:
+        """Evaluate organization management with the same Casbin model."""
+        domain = owner_domain(organization.id)
+        enforcer = await self.store.enforcer(user.id, [domain, f"{domain}/*"])
+        return enforcer.enforce(self._actor(user), Resource(domain), permission, "account")
+
     async def require_creation(self, owner: str, user: User) -> None:
-        """Require ownership of a personal namespace or administration of an org."""
-        owner_id, owner_type = await self.repositories.resolve_owner(owner)
-        if owner_type == PrincipalType.ORGANIZATION:
-            await self.organization(owner, user)
-        elif owner_id != user.id and not user.is_superuser:
-            raise PermissionDeniedError(detail="Cannot create repositories for another user")
+        """Authorize creation in a personal or organization namespace through Casbin."""
+        owner_id, _ = await self.repositories.resolve_owner(owner)
+        domain = owner_domain(owner_id)
+        enforcer = await self.store.enforcer(user.id, [domain, f"{domain}/*"])
+        if not enforcer.enforce(
+            self._actor(user), Resource(domain, f"user:{owner_id}"), "repository:create", "account"
+        ):
+            raise PermissionDeniedError("Cannot create repositories for this owner")
 
     async def member_public(self, member: OrganizationMember) -> MemberPublic:
         """Include public identity fields in the membership list."""

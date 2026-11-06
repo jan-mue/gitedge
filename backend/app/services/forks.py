@@ -10,7 +10,7 @@ from app.exceptions import (
     ConflictError,
     InvalidInputError,
 )
-from app.permissions import permitted_roles
+from app.permissions import repository_visibility
 from app.schemas.social import ForkCreate, ForkPublic, ForksPublic
 
 if TYPE_CHECKING:
@@ -131,17 +131,16 @@ class ForkService:
         source = await self.repository_store.find_by_owner_and_name(owner, name)
         if source is None:
             return ForksPublic(data=[], count=0)
-        readable_roles = permitted_roles("repository:read")
+        visibility = await repository_visibility(user)
         forks = await self.repository_store.list_by_fork_of(
             source.id,
             offset,
             limit,
             allowed_repository_ids=allowed_repository_ids,
-            user=user,
-            readable_roles=readable_roles,
+            visibility=visibility,
         )
         count = await self.repository_store.count_by_fork_of(
-            source.id, allowed_repository_ids=allowed_repository_ids, user=user, readable_roles=readable_roles
+            source.id, allowed_repository_ids=allowed_repository_ids, visibility=visibility
         )
         return ForksPublic(data=[await self._to_public(fork) for fork in forks], count=count)
 

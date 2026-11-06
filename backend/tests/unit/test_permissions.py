@@ -2,10 +2,10 @@
 
 from uuid import uuid4
 
-import casbin
 import pytest
+from casbin import AsyncEnforcer
 
-from app.permissions import POLICY_DIRECTORY, owner_domain, policy_enforcer, repository_domain, scoped_enforcer
+from app.permissions import Actor, Resource, owner_domain, policy_enforcer, repository_domain, scoped_enforcer
 
 
 @pytest.mark.parametrize(
@@ -25,26 +25,43 @@ from app.permissions import POLICY_DIRECTORY, owner_domain, policy_enforcer, rep
         ("admin", "pull_requests:moderate", "account", True),
     ],
 )
-def test_policy_separates_roles_and_scopes(subject: str, operation: str, kind: str, *, allowed: bool) -> None:
-    assert policy_enforcer().enforce(subject, operation, kind) == allowed
+async def test_policy_separates_roles_and_scopes(subject: str, operation: str, kind: str, *, allowed: bool) -> None:
+    enforcer = await scoped_enforcer([("account", subject, "/repo")])
+    actor = Actor("account") if kind == "account" else Actor(subject)
+    assert enforcer.enforce(actor, Resource("/repo"), operation, kind) == allowed
 
 
-def test_casbin_policy_changes_control_both_limits_without_python_translation() -> None:
-    enforcer = casbin.Enforcer(str(POLICY_DIRECTORY / "model.conf"), str(POLICY_DIRECTORY / "policy.csv"))
-    enforcer.enable_auto_save(False)
-    assert enforcer.enforce("read", "issues:write", "account")
-    assert enforcer.enforce("issues:write", "issues:write", "token")
-    enforcer.remove_policy("read", "issues:write", "token")
-    enforcer.add_policy("write", "issues:write", "token")
-    assert not enforcer.enforce("read", "issues:write", "account")
-    assert enforcer.enforce("write", "issues:write", "account")
-    enforcer.remove_policy("write", "issues:write", "token")
-    enforcer.add_policy("write", "issues:write", "account")
-    assert not enforcer.enforce("issues:write", "issues:write", "token")
-    assert enforcer.enforce("owner", "issues:write", "account")
+async def test_casbin_policy_changes_control_both_limits_without_python_translation() -> None:
+    enforcer = await scoped_enforcer([("reader", "read", "/repo"), ("writer", "write", "/repo")])
+    assert isinstance(enforcer, AsyncEnforcer)
+    resource = Resource("/repo")
+    assert enforcer.enforce(Actor("reader"), resource, "issues:write", "account")
+    assert enforcer.enforce(Actor("issues:write"), resource, "issues:write", "token")
+    await enforcer.remove_policy("read", "issues:write", "token")
+    await enforcer.add_policy("write", "issues:write", "token")
+    assert not enforcer.enforce(Actor("reader"), resource, "issues:write", "account")
+    assert enforcer.enforce(Actor("writer"), resource, "issues:write", "account")
+    await enforcer.remove_policy("write", "issues:write", "token")
+    await enforcer.add_policy("write", "issues:write", "account")
+    assert not enforcer.enforce(Actor("issues:write"), resource, "issues:write", "token")
 
 
-def test_relationships_inherit_inside_their_resource_and_organization_only() -> None:
+async def test_identity_and_visibility_attributes_are_evaluated_by_casbin() -> None:
+    enforcer = await policy_enforcer()
+    private = Resource("/repo", owner_subject="user:owner")
+    public = Resource("/public", public=True)
+    assert enforcer.enforce(Actor("user:owner"), private, "repository:delete", "account")
+    assert enforcer.enforce(Actor("anonymous"), public, "repository:read", "account")
+    assert not enforcer.enforce(Actor("anonymous"), public, "repository:write", "account")
+    assert enforcer.enforce(Actor("user:admin", superuser=True), private, "repository:delete", "account")
+    assert not enforcer.enforce(Actor("user:owner", active=False), private, "repository:read", "account")
+    assert not enforcer.enforce(Actor("user:admin", active=False, superuser=True), public, "repository:read", "account")
+    token = Resource("/tokens/1", owner_subject="user:owner")
+    assert enforcer.enforce(Actor("user:owner"), token, "personal_tokens:manage", "account")
+    assert not enforcer.enforce(Actor("user:admin", superuser=True), token, "personal_tokens:manage", "account")
+
+
+async def test_relationships_inherit_inside_their_resource_and_organization_only() -> None:
     organization, sibling_organization, repository, sibling_repository = (uuid4() for _ in range(4))
     parent = owner_domain(organization)
     resource = repository_domain(organization, repository)
@@ -58,17 +75,19 @@ def test_relationships_inherit_inside_their_resource_and_organization_only() -> 
         ("user:writer", "team:engineering", f"{parent}/*"),
         ("team:engineering", "write", resource),
     ]
-    enforcer = scoped_enforcer(grants)
-    assert enforcer.enforce("user:admin", parent, "organization:admin")
-    assert enforcer.enforce("user:admin", resource, "repository:delete")
-    assert enforcer.enforce("user:admin", sibling, "repository:delete")
-    assert not enforcer.enforce("user:admin", foreign, "repository:read")
-    assert enforcer.enforce("user:member", parent, "organization:read")
-    assert not enforcer.enforce("user:member", parent, "organization:admin")
-    assert not enforcer.enforce("user:member", resource, "repository:read")
-    assert enforcer.enforce("user:writer", resource, "git:write")
-    assert not enforcer.enforce("user:writer", sibling, "repository:read")
-    assert not enforcer.enforce("user:writer", foreign, "repository:read")
-    assert not enforcer.enforce("user:writer", parent, "organization:admin")
-    assert not scoped_enforcer([]).enforce("user:writer", resource, "git:write")
-    assert not any("user:" in value for rule in policy_enforcer().get_grouping_policy() for value in rule)
+    enforcer = await scoped_enforcer(grants)
+    assert enforcer.enforce(Actor("user:admin"), Resource(parent), "organization:admin", "account")
+    assert enforcer.enforce(Actor("user:admin"), Resource(resource), "repository:delete", "account")
+    assert enforcer.enforce(Actor("user:admin"), Resource(sibling), "repository:delete", "account")
+    assert not enforcer.enforce(Actor("user:admin"), Resource(foreign), "repository:read", "account")
+    assert enforcer.enforce(Actor("user:member"), Resource(parent), "organization:read", "account")
+    assert not enforcer.enforce(Actor("user:member"), Resource(parent), "organization:admin", "account")
+    assert not enforcer.enforce(Actor("user:member"), Resource(resource), "repository:read", "account")
+    assert enforcer.enforce(Actor("user:writer"), Resource(resource), "git:write", "account")
+    assert not enforcer.enforce(Actor("user:writer"), Resource(sibling), "repository:read", "account")
+    assert not enforcer.enforce(Actor("user:writer"), Resource(foreign), "repository:read", "account")
+    assert not enforcer.enforce(Actor("user:writer"), Resource(parent), "organization:admin", "account")
+    assert not (await scoped_enforcer([])).enforce(Actor("user:writer"), Resource(resource), "git:write", "account")
+    assert not any(
+        "user:" in value for rule in (await policy_enforcer()).get_named_grouping_policy("g2") for value in rule
+    )

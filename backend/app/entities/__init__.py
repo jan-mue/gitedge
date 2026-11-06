@@ -1,5 +1,5 @@
 from app.entities.activity import Activity
-from app.entities.authorization import OrganizationMember, RepositoryCollaborator, Team, TeamMember
+from app.entities.authorization import Team
 from app.entities.casbin import CasbinRule
 from app.entities.comments import Comment
 from app.entities.issues import Issue
@@ -32,7 +32,6 @@ __all__ = [
     "NotificationRepositoryPreference",
     "NotificationSubscription",
     "Organization",
-    "OrganizationMember",
     "PersonalAccessToken",
     "Principal",
     "PullRequest",
@@ -41,10 +40,8 @@ __all__ = [
     "PullRequestReviewWorkspace",
     "Release",
     "Repository",
-    "RepositoryCollaborator",
     "Star",
     "Team",
-    "TeamMember",
     "User",
     "Watcher",
 ]

@@ -1,68 +1,71 @@
-"""Casbin evaluates account roles and token scopes against the same operations."""
+"""One AsyncEnforcer model for account relationships and restricted token credentials."""
 
 from copy import deepcopy
+from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import casbin
 from casbin import util
+from casbin.persist.adapters import FileAdapter
+
+from app.schemas.authorization import Actor, Resource
 
 if TYPE_CHECKING:
     from uuid import UUID
 
-type ScopeGrant = tuple[str, str, str]
+    from casbin.persist.adapters.asyncio import AsyncAdapter
+
+    from app.entities.users import User
 
 POLICY_DIRECTORY = Path(__file__).resolve().parents[1] / "resources" / "authorization"
-type SubjectKind = Literal["account", "token"]
+type ScopeGrant = tuple[str, str, str]
 
 
 @cache
-def policy_enforcer() -> casbin.Enforcer:
-    """Load deployment-static rules once; never add request-specific identity facts."""
-    enforcer = casbin.Enforcer(str(POLICY_DIRECTORY / "model.conf"), str(POLICY_DIRECTORY / "policy.csv"))
-    enforcer.enable_auto_save(False)
-    return enforcer
-
-
-@cache
-def permitted_subjects(operation: str, kind: SubjectKind) -> frozenset[str]:
-    """Compile Casbin's immutable grant relation, without caching an actor's access."""
-    enforcer = policy_enforcer()
-    subjects = set(enforcer.get_all_subjects()) | set(enforcer.get_all_actions())
-    subjects.update(subject for relation in enforcer.get_grouping_policy() for subject in relation)
-    return frozenset(subject for subject in subjects if enforcer.enforce(subject, operation, kind))
-
-
-def permitted_roles(operation: str) -> frozenset[str]:
-    """Find account roles allowed by Casbin for this operation."""
-    return permitted_subjects(operation, "account")
-
-
-def permitted_token_scopes(operation: str) -> frozenset[str]:
-    """Find token scopes allowed by Casbin, including scope inheritance."""
-    return permitted_subjects(operation, "token")
-
-
-@cache
-def scoped_policy_model() -> casbin.Model:
-    """Parse the scoped model once, keeping request-specific role graphs separate."""
+def policy_model() -> casbin.Model:
+    """Parse immutable deployment policy once; never cache an actor or decision."""
     model = casbin.Model()
-    model.load_model(str(POLICY_DIRECTORY / "scoped_model.conf"))
+    model.load_model(str(POLICY_DIRECTORY / "model.conf"))
+    FileAdapter(str(POLICY_DIRECTORY / "policy.csv")).load_policy(model)
     return model
 
 
-def scoped_enforcer(grants: list[ScopeGrant]) -> casbin.Enforcer:
-    """Let Casbin inherit organization and team grants within UUID-based domains."""
-    enforcer = casbin.Enforcer(deepcopy(scoped_policy_model()))
+async def policy_enforcer(adapter: AsyncAdapter | None = None, policy_filter: object = None) -> casbin.AsyncEnforcer:
+    """Load current adapter relationships and evaluate them with the sole authorization model."""
+    model = policy_model()
+    enforcer = casbin.AsyncEnforcer(deepcopy(model), adapter)
     enforcer.enable_auto_save(False)
     enforcer.enable_auto_build_role_links(False)
-    enforcer.add_policies(policy_enforcer().get_policy())
+    if adapter is not None:
+        await enforcer.load_filtered_policy(policy_filter)
+    await enforcer.add_policies(model.get_policy("p", "p"))
+    hierarchy = model.get_policy("g", "g")
+    await enforcer.add_named_grouping_policies("g", hierarchy)
+    await enforcer.add_named_grouping_policies("g2", [[child, parent, "*"] for child, parent in hierarchy])
     enforcer.add_named_domain_matching_func("g2", util.key_match2)
-    hierarchy = [(child, parent, "*") for child, parent in policy_enforcer().get_grouping_policy()]
-    enforcer.add_named_grouping_policies("g2", [list(grant) for grant in [*hierarchy, *grants]])
     enforcer.build_role_links()
+    enforcer.enable_auto_build_role_links(True)
+    enforcer.enable_auto_save(adapter is not None)
     return enforcer
+
+
+async def scoped_enforcer(grants: list[ScopeGrant]) -> casbin.AsyncEnforcer:
+    """Build the same AsyncEnforcer with an in-memory adapter's relationships in tests."""
+    enforcer = await policy_enforcer()
+    await enforcer.add_named_grouping_policies("g2", [list(grant) for grant in dict.fromkeys(grants)])
+    return enforcer
+
+
+async def permitted_roles(operation: str, actor: Actor | None = None) -> frozenset[str]:
+    """Project Casbin decisions into indexed SQL listing/count predicates, never another policy."""
+    actor = actor or Actor("query")
+    model = policy_model()
+    candidates = {row[0] for row in model.get_policy("p", "p")}
+    candidates.update(value for row in model.get_policy("g", "g") for value in row)
+    enforcer = await scoped_enforcer([(actor.name, role, role) for role in candidates])
+    return frozenset(role for role in candidates if enforcer.enforce(actor, Resource(role), operation, "account"))
 
 
 def owner_domain(owner_id: UUID) -> str:
@@ -73,3 +76,47 @@ def owner_domain(owner_id: UUID) -> str:
 def repository_domain(owner_id: UUID, repository_id: UUID) -> str:
     """Nest a repository under its owner's namespace."""
     return f"{owner_domain(owner_id)}/repositories/{repository_id}"
+
+
+@dataclass(frozen=True)
+class RepositoryVisibility:
+    """SQL query inputs compiled exclusively from AsyncEnforcer decisions."""
+
+    user_id: UUID | None
+    unrestricted: bool
+    public_read: bool
+    owned_read: bool
+    roles: frozenset[str]
+
+
+async def repository_visibility(user: User | None) -> RepositoryVisibility:
+    """Compile the model's resource decisions for scalable listing and count queries."""
+    actor = (
+        Actor(f"user:{user.id}", active=bool(user.is_active), superuser=bool(user.is_superuser))
+        if user
+        else Actor("anonymous")
+    )
+    enforcer = await policy_enforcer()
+    return RepositoryVisibility(
+        user.id if user else None,
+        enforcer.enforce(actor, Resource("/query"), "repository:read", "account"),
+        enforcer.enforce(actor, Resource("/query", public=True), "repository:read", "account"),
+        enforcer.enforce(
+            actor,
+            Resource("/query", owner_subject=f"user:{user.id}" if user else "no-owner"),
+            "repository:read",
+            "account",
+        ),
+        await permitted_roles("repository:read", actor),
+    )
+
+
+async def account_can(user: User, operation: str) -> bool:
+    """Evaluate site administration using the same AsyncEnforcer."""
+    enforcer = await policy_enforcer()
+    return enforcer.enforce(
+        Actor(f"user:{user.id}", bool(user.is_active), bool(user.is_superuser)),
+        Resource("/account"),
+        operation,
+        "account",
+    )

@@ -2,29 +2,30 @@
 
 from __future__ import annotations
 
+import uuid
 from abc import ABC, abstractmethod
-from copy import deepcopy
 from typing import TYPE_CHECKING, override
 
-import casbin
-from sqlalchemy import String, and_, cast, delete, literal, select, union_all
+from sqlalchemy import String, and_, cast, false, literal, or_, select, true, union_all
 from sqlalchemy.orm import aliased
 
 from app.clients.casbin import RelationshipAdapter, RelationshipFilter
-from app.entities.authorization import OrganizationMember, RepositoryCollaborator, Team, TeamMember
+from app.entities.authorization import Team
 from app.entities.casbin import CasbinRule
+from app.entities.organizations import Organization
 from app.entities.repositories import Repository
 from app.exceptions import NotFoundError
-from app.permissions import owner_domain, repository_domain, scoped_policy_model
+from app.permissions import owner_domain, policy_enforcer, repository_domain
+from app.schemas.authorization import OrganizationMember, RepositoryCollaborator, TeamMember
 
 if TYPE_CHECKING:
-    import uuid
-
+    import casbin
     from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.sql.elements import ColumnElement
     from sqlalchemy.sql.selectable import CompoundSelect
 
-    from app.entities.organizations import Organization
-    from app.permissions import ScopeGrant
+    from app.permissions import RepositoryVisibility
+
 
 type AccessEntity = OrganizationMember | Team | TeamMember | RepositoryCollaborator
 
@@ -72,189 +73,217 @@ def repository_role_grants(user_id: uuid.UUID) -> CompoundSelect[uuid.UUID, str]
     return union_all(direct, teams, organizations)
 
 
+def repository_visibility_predicate(visibility: RepositoryVisibility) -> ColumnElement[bool]:
+    """Apply Casbin's compiled decisions to persisted Casbin relationships in SQL."""
+    if visibility.unrestricted:
+        return true()
+    predicates: list[ColumnElement[bool]] = [false()]
+    if visibility.public_read:
+        predicates.append(Repository.is_private.is_(False))
+    if visibility.user_id is not None:
+        if visibility.owned_read:
+            predicates.append(Repository.owner_id == visibility.user_id)
+        grants = repository_role_grants(visibility.user_id).subquery()
+        predicates.append(Repository.id.in_(select(grants.c.repository_id).where(grants.c.role.in_(visibility.roles))))
+    return or_(*predicates)
+
+
 class AuthorizationStore(ABC):
-    """Store contract for the facts used in authorization decisions."""
+    """Casbin policy management and team identity persistence."""
 
     @abstractmethod
-    async def scope_grants(self, user_id: uuid.UUID, repositories: list[Repository]) -> list[ScopeGrant]:
-        """Load current membership and collaborator edges for Casbin's scoped role graph."""
-
-    @abstractmethod
-    async def organization_grants(self, user_id: uuid.UUID, organization_id: uuid.UUID) -> list[ScopeGrant]:
-        """Load the actor's persisted relationships in an organization's domain."""
+    async def enforcer(self, user_id: uuid.UUID | None, domains: list[str]) -> casbin.AsyncEnforcer:
+        """Load one current, filtered AsyncEnforcer for authorization."""
 
     @abstractmethod
     async def members(self, organization_id: uuid.UUID, *, for_update: bool = False) -> list[OrganizationMember]:
-        """List members of an organization."""
+        """Project organization members from Casbin policies."""
 
     @abstractmethod
     async def teams(self, organization_id: uuid.UUID) -> list[Team]:
-        """List teams in an organization."""
+        """List organization team identities."""
 
     @abstractmethod
     async def team_members(self, team_id: uuid.UUID) -> list[TeamMember]:
-        """List a team's members."""
+        """Project team members from Casbin policies."""
 
     @abstractmethod
     async def collaborators(self, repository_id: uuid.UUID) -> list[RepositoryCollaborator]:
-        """List a repository's explicit collaborators."""
+        """Project collaborator grants from Casbin policies."""
 
     @abstractmethod
     async def save(self, entity: AccessEntity) -> None:
-        """Insert or update an authorization fact."""
+        """Write a team identity or a Casbin relationship."""
 
     @abstractmethod
     async def remove(self, entity: AccessEntity) -> None:
-        """Remove a fact, including team memberships when leaving an organization."""
+        """Delete an identity or revoke its Casbin relationships."""
 
     @abstractmethod
     async def create_organization(self, organization: Organization, user_id: uuid.UUID) -> None:
-        """Atomically create an organization and its first administrator."""
+        """Create an organization and its initial Casbin administrator atomically."""
+
+
+def relationship_id(subject: str, domain: str) -> uuid.UUID:
+    """Identify a management projection without maintaining a parallel permission record."""
+    return uuid.uuid5(uuid.NAMESPACE_URL, f"gitedge:{subject}:{domain}")
 
 
 class SQLAuthorizationStore(AuthorizationStore):
-    """SQLAlchemy implementation of the authorization fact store."""
+    """The official adapter owns all membership and collaborator persistence."""
 
     def __init__(self, db: AsyncSession) -> None:
-        """Bind the store to the request's database session."""
+        """Use the request's database transaction."""
         self.db = db
 
     @override
-    async def scope_grants(self, user_id: uuid.UUID, repositories: list[Repository]) -> list[ScopeGrant]:
-        """Read identity facts without translating organization administration into repository ownership."""
-        if not repositories:
-            return []
-        parents = {owner_domain(repository.owner_id) for repository in repositories}
-        domains = [repository_domain(repository.owner_id, repository.id) for repository in repositories]
-        domains.extend(parents)
-        domains.extend(f"{parent}/*" for parent in parents)
-        return await self._load_grants(user_id, domains)
+    async def enforcer(self, user_id: uuid.UUID | None, domains: list[str]) -> casbin.AsyncEnforcer:
+        """Load current relationships without copying them into a synchronous enforcer."""
+        if user_id is None:
+            return await policy_enforcer()
+        return await policy_enforcer(RelationshipAdapter(self.db), RelationshipFilter(f"user:{user_id}", domains))
 
-    @override
-    async def organization_grants(self, user_id: uuid.UUID, organization_id: uuid.UUID) -> list[ScopeGrant]:
-        """Use persisted Casbin relationships for organization administration as well."""
-        domain = owner_domain(organization_id)
-        return await self._load_grants(user_id, [domain, f"{domain}/*"])
-
-    async def _load_grants(self, user_id: uuid.UUID, domains: list[str]) -> list[ScopeGrant]:
-        """Reload only this actor's relevant policy subset, using the external request session."""
-        adapter = RelationshipAdapter(self.db)
-        enforcer = casbin.AsyncEnforcer(deepcopy(scoped_policy_model()), adapter)
-        enforcer.enable_auto_save(False)
-        await enforcer.load_filtered_policy(RelationshipFilter(f"user:{user_id}", domains))
-        return [(subject, relation, domain) for subject, relation, domain in enforcer.get_named_grouping_policy("g2")]
+    async def _policies(self, domains: list[str]) -> casbin.AsyncEnforcer:
+        """Load the management scope for Casbin's policy APIs."""
+        return await policy_enforcer(RelationshipAdapter(self.db), RelationshipFilter(None, domains))
 
     @override
     async def members(self, organization_id: uuid.UUID, *, for_update: bool = False) -> list[OrganizationMember]:
-        """List organization memberships."""
-        statement = (
-            select(OrganizationMember)
-            .where(OrganizationMember.organization_id == organization_id)
-            .order_by(OrganizationMember.id)
-        )
+        """Read membership from Casbin, locking the organization to protect its last administrator."""
         if for_update:
-            statement = statement.with_for_update().execution_options(populate_existing=True)
-        return list(await self.db.scalars(statement))
+            await self.db.execute(select(Organization).where(Organization.id == organization_id).with_for_update())
+        domain = owner_domain(organization_id)
+        enforcer = await self._policies([domain])
+        return [
+            OrganizationMember(
+                id=relationship_id(subject, scope),
+                organization_id=organization_id,
+                user_id=uuid.UUID(subject.removeprefix("user:")),
+                is_admin=role == "org_admin",
+            )
+            for subject, role, scope in enforcer.get_named_grouping_policy("g2")
+            if scope == domain and role in ("org_admin", "org_member") and subject.startswith("user:")
+        ]
 
     @override
     async def teams(self, organization_id: uuid.UUID) -> list[Team]:
-        """List organization teams."""
+        """Teams contain only names and organization identity, never permissions."""
         return list(await self.db.scalars(select(Team).where(Team.organization_id == organization_id)))
 
     @override
     async def team_members(self, team_id: uuid.UUID) -> list[TeamMember]:
-        """List team memberships."""
-        return list(await self.db.scalars(select(TeamMember).where(TeamMember.team_id == team_id)))
+        """Read team membership grouping policies."""
+        team = await self.db.get(Team, team_id)
+        if team is None:
+            return []
+        domain = f"{owner_domain(team.organization_id)}/*"
+        enforcer = await self._policies([domain])
+        return [
+            TeamMember(
+                id=relationship_id(subject, f"{scope}:{relation}"),
+                team_id=team_id,
+                user_id=uuid.UUID(subject.removeprefix("user:")),
+            )
+            for subject, relation, scope in enforcer.get_named_grouping_policy("g2")
+            if scope == domain and relation == f"team:{team_id}" and subject.startswith("user:")
+        ]
 
     @override
     async def collaborators(self, repository_id: uuid.UUID) -> list[RepositoryCollaborator]:
-        """List repository role assignments."""
-        return list(
-            await self.db.scalars(
-                select(RepositoryCollaborator).where(RepositoryCollaborator.repository_id == repository_id)
+        """Read repository role bindings exclusively from Casbin."""
+        repository = await self.db.get(Repository, repository_id)
+        if repository is None:
+            return []
+        domain = repository_domain(repository.owner_id, repository.id)
+        enforcer = await self._policies([domain])
+        return [
+            RepositoryCollaborator(
+                id=relationship_id(subject, scope),
+                repository_id=repository_id,
+                user_id=uuid.UUID(subject[5:]) if subject.startswith("user:") else None,
+                team_id=uuid.UUID(subject[5:]) if subject.startswith("team:") else None,
+                role=role,
             )
-        )
+            for subject, role, scope in enforcer.get_named_grouping_policy("g2")
+            if scope == domain and subject.startswith(("user:", "team:"))
+        ]
 
     @override
     async def save(self, entity: AccessEntity) -> None:
-        """Persist an authorization fact."""
-        self.db.add(entity)
-        await self.db.flush()
-        await self._save_relationships(entity)
-        await self.db.commit()
-        await self.db.refresh(entity)
-
-    async def _save_relationships(self, entity: AccessEntity) -> None:
-        """Persist identity metadata and Casbin relationships atomically through the adapter."""
-        adapter = RelationshipAdapter(self.db)
+        """Mutate policies through AsyncEnforcer; there are no duplicate grant tables."""
+        if isinstance(entity, Team):
+            self.db.add(entity)
+            await self.db.commit()
+            await self.db.refresh(entity)
+            return
         if isinstance(entity, OrganizationMember):
             subject = f"user:{entity.user_id}"
             domain = owner_domain(entity.organization_id)
+            enforcer = await self._policies([domain, f"{domain}/*"])
             for role in ("org_admin", "org_member"):
                 for scope in (domain, f"{domain}/*"):
-                    await adapter.remove_filtered_policy("g", "g2", 0, subject, role, scope)
+                    await enforcer.remove_filtered_named_grouping_policy("g2", 0, subject, role, scope)
             role = "org_admin" if entity.is_admin else "org_member"
-            await adapter.add_policies("g", "g2", [[subject, role, domain], [subject, role, f"{domain}/*"]])
+            await enforcer.add_named_grouping_policies("g2", [[subject, role, domain], [subject, role, f"{domain}/*"]])
         elif isinstance(entity, TeamMember):
             team = await self.db.get(Team, entity.team_id)
             if team is None:
-                raise NotFoundError(detail="Team not found")
-            member = await self.db.scalar(
-                select(OrganizationMember).where(
-                    OrganizationMember.organization_id == team.organization_id,
-                    OrganizationMember.user_id == entity.user_id,
-                )
-            )
-            if member is not None:
-                rule = [f"user:{entity.user_id}", f"team:{team.id}", f"{owner_domain(team.organization_id)}/*"]
-                await adapter.remove_policy("g", "g2", rule)
-                await adapter.add_policy("g", "g2", rule)
-        elif isinstance(entity, RepositoryCollaborator):
+                raise NotFoundError("Team not found")
+            subject = f"user:{entity.user_id}"
+            domain = f"{owner_domain(team.organization_id)}/*"
+            enforcer = await self._policies([domain])
+            await enforcer.add_named_grouping_policy("g2", subject, f"team:{entity.team_id}", domain)
+        else:
             repository = await self.db.get(Repository, entity.repository_id)
             if repository is None:
-                raise NotFoundError(detail="Repository not found")
+                raise NotFoundError("Repository not found")
             subject = f"user:{entity.user_id}" if entity.user_id is not None else f"team:{entity.team_id}"
             domain = repository_domain(repository.owner_id, repository.id)
-            await adapter.remove_filtered_policy("g", "g2", 0, subject, "", domain)
-            await adapter.add_policy("g", "g2", [subject, entity.role, domain])
+            enforcer = await self._policies([domain])
+            await enforcer.remove_filtered_named_grouping_policy("g2", 0, subject, "", domain)
+            await enforcer.add_named_grouping_policy("g2", subject, entity.role, domain)
+        entity.id = relationship_id(
+            subject, f"{domain}:team:{entity.team_id}" if isinstance(entity, TeamMember) else domain
+        )
+        await self.db.commit()
 
     @override
     async def remove(self, entity: AccessEntity) -> None:
-        """Revoke persisted relationships in the same transaction as identity metadata."""
-        adapter = RelationshipAdapter(self.db)
-        if isinstance(entity, OrganizationMember):
-            teams = select(Team.id).where(Team.organization_id == entity.organization_id)
-            await self.db.execute(
-                delete(TeamMember).where(TeamMember.team_id.in_(teams), TeamMember.user_id == entity.user_id)
+        """Revoke the selected grouping policies with AsyncEnforcer."""
+        if isinstance(entity, Team):
+            enforcer = await policy_enforcer(
+                RelationshipAdapter(self.db), RelationshipFilter(f"team:{entity.id}", None)
             )
-            subject = f"user:{entity.user_id}"
+            await enforcer.remove_filtered_named_grouping_policy("g2", 0, f"team:{entity.id}")
+            await enforcer.remove_filtered_named_grouping_policy("g2", 1, f"team:{entity.id}")
+            await self.db.delete(entity)
+        elif isinstance(entity, OrganizationMember):
             domain = owner_domain(entity.organization_id)
-            await adapter.remove_filtered_policy("g", "g2", 0, subject, "", domain)
-            await adapter.remove_filtered_policy("g", "g2", 0, subject, "", f"{domain}/*")
-        elif isinstance(entity, Team):
-            await adapter.remove_filtered_policy("g", "g2", 0, f"team:{entity.id}")
-            await adapter.remove_filtered_policy("g", "g2", 1, f"team:{entity.id}")
+            enforcer = await self._policies([domain, f"{domain}/*"])
+            for scope in (domain, f"{domain}/*"):
+                await enforcer.remove_filtered_named_grouping_policy("g2", 0, f"user:{entity.user_id}", "", scope)
         elif isinstance(entity, TeamMember):
-            await adapter.remove_filtered_policy("g", "g2", 0, f"user:{entity.user_id}", f"team:{entity.team_id}")
-        elif isinstance(entity, RepositoryCollaborator):
+            team = await self.db.get(Team, entity.team_id)
+            if team is None:
+                return
+            enforcer = await self._policies([f"{owner_domain(team.organization_id)}/*"])
+            await enforcer.remove_filtered_named_grouping_policy(
+                "g2", 0, f"user:{entity.user_id}", f"team:{entity.team_id}"
+            )
+        else:
             repository = await self.db.get(Repository, entity.repository_id)
             if repository is None:
-                raise NotFoundError(detail="Repository not found")
-            subject = f"user:{entity.user_id}" if entity.user_id is not None else f"team:{entity.team_id}"
-            await adapter.remove_filtered_policy(
-                "g", "g2", 0, subject, "", repository_domain(repository.owner_id, repository.id)
-            )
-        await self.db.delete(entity)
+                return
+            domain = repository_domain(repository.owner_id, repository.id)
+            enforcer = await self._policies([domain])
+            subject = f"user:{entity.user_id}" if entity.user_id else f"team:{entity.team_id}"
+            await enforcer.remove_filtered_named_grouping_policy("g2", 0, subject, "", domain)
         await self.db.commit()
 
     @override
     async def create_organization(self, organization: Organization, user_id: uuid.UUID) -> None:
-        """Create an organization and its administrator in one transaction."""
+        """Create the organization identity and Casbin administrator in one transaction."""
         self.db.add(organization)
         await self.db.flush()
-        member = OrganizationMember(organization_id=organization.id, user_id=user_id, is_admin=True)
-        self.db.add(member)
-        await self.db.flush()
-        await self._save_relationships(member)
-        await self.db.commit()
+        await self.save(OrganizationMember(organization_id=organization.id, user_id=user_id, is_admin=True))
         await self.db.refresh(organization)

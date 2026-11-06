@@ -6,10 +6,11 @@ from typing import TYPE_CHECKING
 import pytest
 
 from app.config import settings
-from app.entities.authorization import RepositoryCollaborator, Team
+from app.entities.authorization import Team
 from app.entities.organizations import Organization
 from app.entities.repositories import Repository
 from app.entities.users import User
+from app.schemas.authorization import RepositoryCollaborator
 from app.services.authorization import AuthorizationService
 from app.utils.security import create_access_token, get_password_hash
 from tests.unit.utils.git import seed_merge_repository
@@ -410,14 +411,15 @@ async def test_listing_batches_grants_and_anonymous_needs_no_lookup(
         RepositoryCollaborator(repository_id=repositories[0].id, user_id=reader.id, role="write")
     )
     authorization = service(fake_stores)
-    lookup = mocker.spy(fake_stores.authorization, "scope_grants")
+    lookup = mocker.spy(fake_stores.authorization, "enforcer")
     visible = await authorization.visible_repositories(repositories, reader)
     assert {repo.id for repo in visible} == {repositories[0].id, repositories[-1].id}
     lookup.assert_awaited_once()
-    assert len(lookup.call_args.args[1]) == count
+    assert len(lookup.call_args.args[1]) == count + 2
     lookup.reset_mock()
     assert await authorization.visible_repositories(repositories, None) == [repositories[-1]]
-    lookup.assert_not_called()
+    lookup.assert_awaited_once()
+    assert lookup.call_args.args[0] is None
 
 
 def test_permissions_resolves_grants_once_and_preserves_denials(
@@ -428,7 +430,7 @@ def test_permissions_resolves_grants_once_and_preserves_denials(
     repo = add_repository(fake_stores, owner)
     grant = RepositoryCollaborator(repository_id=repo.id, user_id=reader.id, role="write")
     fake_stores.authorization.items[repo.id] = grant
-    lookup = mocker.spy(fake_stores.authorization, "scope_grants")
+    lookup = mocker.spy(fake_stores.authorization, "enforcer")
     url = f"{API}/repositories/owner/repo/permissions"
     response = client.get(url, headers=headers(reader))
     assert response.status_code == 200
