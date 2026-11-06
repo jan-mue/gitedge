@@ -11,6 +11,7 @@ from app.config import settings
 from tests.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD, create_user_via_api
 from tests.e2e.conftest import log_in_user
 from tests.e2e.test_commit_history import _run_git
+from tests.git import configure_git_auth
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -38,6 +39,7 @@ def _repository(path: Path, app_url: str, name: str, count: int = 3, lines: int 
     _run_git(path, ["add", "."])
     _run_git(path, ["commit", "-m", "Update configuration"])
     head = _run_git(path, ["rev-parse", "HEAD"])
+    configure_git_auth(app_url, f"admin/{name}.git", path)
     _run_git(path, ["remote", "add", "origin", f"{app_url}/api/v1/admin/{name}.git"])
     _run_git(path, ["push", "origin", "main", "feature/review"])
     return base, head

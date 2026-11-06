@@ -7,8 +7,8 @@ from functools import cache
 from typing import TYPE_CHECKING, Annotated
 
 import jwt
-from fastapi import BackgroundTasks, Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import BackgroundTasks, Depends, Request
+from fastapi.security import APIKeyHeader, HTTPBasic, HTTPBasicCredentials, OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
 from redis_fastapi import get_async_redis
@@ -16,6 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.activity import ActivityStore, SQLActivityStore
+from app.clients.authorization import AuthorizationStore, SQLAuthorizationStore
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
 from app.clients.cache import (
     AbstractCacheClient,
@@ -33,6 +34,7 @@ from app.clients.git.storage import RepositoryStorage
 from app.clients.issues import IssueStore, SQLIssueStore
 from app.clients.notifications import NotificationStore, SQLNotificationStore
 from app.clients.organizations import OrganizationStore, SQLOrganizationStore
+from app.clients.personal_access_tokens import PersonalAccessTokenStore, SQLPersonalAccessTokenStore
 from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
 from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClient
 from app.clients.releases import ReleaseStore, SQLReleaseStore
@@ -43,14 +45,18 @@ from app.clients.users import SQLUserStore, UserStore
 from app.clients.watchers import SQLWatcherStore, WatcherStore
 from app.config import settings
 from app.entities.users import User
+from app.exceptions import AuthenticationError, InvalidPersonalAccessTokenError, PermissionDeniedError
+from app.permissions import account_can
 from app.schemas.token import TokenPayload
 from app.services.activity import ActivityService
+from app.services.authorization import AuthorizationService
 from app.services.comments import CommentService
 from app.services.crud import CrudService
 from app.services.forks import ForkService
 from app.services.issues import IssueService
 from app.services.notifications import NotificationService
 from app.services.organizations import OrganizationService
+from app.services.personal_access_tokens import PersonalAccessTokenService
 from app.services.pull_requests import PullRequestService
 from app.services.releases import ReleaseService
 from app.services.repositories import RepositoryService
@@ -143,42 +149,68 @@ async def get_current_user(user_store: UserStoreDep, token: TokenDep) -> User:
         The authenticated user.
 
     Raises:
-        HTTPException: If authentication fails.
+        ApplicationError: If authentication fails.
     """
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[security.ALGORITHM])
         token_data = TokenPayload(**payload)
     except (InvalidTokenError, ValidationError) as e:
         logger.error("Token decode error: %s", str(e))
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        ) from e
+        raise AuthenticationError(detail="Could not validate credentials", challenge="Bearer") from e
     if not token_data.sub:
         logger.error("Token has no sub claim")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise AuthenticationError(detail="Could not validate credentials", challenge="Bearer")
     user = await user_store.find(token_data.sub)
     if not user:
         logger.error("User not found for id: %s", token_data.sub)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise AuthenticationError(detail="Could not validate credentials", challenge="Bearer")
     if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
+        raise PermissionDeniedError(detail="Inactive user")
     return user
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
-def get_current_active_superuser(current_user: CurrentUser) -> User:
+optional_oauth2 = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/login/access-token", auto_error=False)
+
+
+async def get_optional_user(
+    request: Request, user_store: UserStoreDep, token: Annotated[str | None, Depends(optional_oauth2)]
+) -> User | None:
+    """Allow absent credentials, but reject any supplied invalid credentials."""
+    if token is not None:
+        return await get_current_user(user_store, token)
+    if request.headers.get("Authorization"):
+        raise AuthenticationError(detail="Invalid authentication scheme", challenge="Bearer")
+    return None
+
+
+OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+
+
+def get_authorization_store(session: SessionDep) -> AuthorizationStore:
+    """Get the persistent authorization fact store."""
+    return SQLAuthorizationStore(session)
+
+
+AuthorizationStoreDep = Annotated[AuthorizationStore, Depends(get_authorization_store)]
+
+
+def get_authorization_service(
+    store: AuthorizationStoreDep,
+    repositories: RepositoryStoreDep,
+    organizations: OrganizationStoreDep,
+    users: UserStoreDep,
+) -> AuthorizationService:
+    """Wire the Casbin authorization service."""
+    return AuthorizationService(store, repositories, organizations, users)
+
+
+AuthorizationServiceDep = Annotated[AuthorizationService, Depends(get_authorization_service)]
+
+
+async def get_current_active_superuser(current_user: CurrentUser) -> User:
     """Get the current user if they are a superuser.
 
     Args:
@@ -188,10 +220,10 @@ def get_current_active_superuser(current_user: CurrentUser) -> User:
         The superuser.
 
     Raises:
-        HTTPException: If user is not a superuser.
+        ApplicationError: If user is not a superuser.
     """
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="The user doesn't have enough privileges")
+    if not await account_can(current_user, "account:admin"):
+        raise PermissionDeniedError(detail="The user doesn't have enough privileges")
     return current_user
 
 
@@ -345,9 +377,10 @@ def get_repository_service(
     cache_client: CacheClientDep,
     repository_store: RepositoryStoreDep,
     star_store: StarStoreDep,
+    authorization: AuthorizationServiceDep,
 ) -> RepositoryService:
     """Bind repository metadata stores and the Git client."""
-    return RepositoryService(git, cache_client, repository_store, star_store)
+    return RepositoryService(git, cache_client, repository_store, star_store, authorization)
 
 
 RepositoryServiceDep = Annotated[RepositoryService, Depends(get_repository_service)]
@@ -456,9 +489,10 @@ def get_notification_service(
     repository_store: RepositoryStoreDep,
     email_client: EmailClientDep,
     background_tasks: BackgroundTasks,
+    authorization: AuthorizationServiceDep,
 ) -> NotificationService:
     """Get the activity delivery and inbox service."""
-    return NotificationService(store, repository_store, email_client, background_tasks)
+    return NotificationService(store, repository_store, email_client, background_tasks, authorization)
 
 
 NotificationServiceDep = Annotated[NotificationService, Depends(get_notification_service)]
@@ -468,11 +502,13 @@ def get_activity_service(
     activity_store: ActivityStoreDep,
     repository_store: RepositoryStoreDep,
     star_store: StarStoreDep,
+    authorization: AuthorizationServiceDep,
     notification_service: NotificationServiceDep,
 ) -> ActivityService:
     """Get the activity service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         activity_store: Activity store dependency.
         repository_store: Repository store dependency.
         star_store: Star store dependency.
@@ -481,7 +517,7 @@ def get_activity_service(
     Returns:
         Activity service instance.
     """
-    return ActivityService(activity_store, repository_store, star_store, notification_service)
+    return ActivityService(activity_store, repository_store, star_store, authorization, notification_service)
 
 
 ActivityServiceDep = Annotated[ActivityService, Depends(get_activity_service)]
@@ -491,10 +527,12 @@ def get_issue_service(
     issue_store: IssueStoreDep,
     repository_store: RepositoryStoreDep,
     activity_service: ActivityServiceDep,
+    authorization: AuthorizationServiceDep,
 ) -> IssueService:
     """Get the issue service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         issue_store: Issue store dependency.
         repository_store: Repository store dependency.
         activity_service: Activity service dependency.
@@ -502,7 +540,7 @@ def get_issue_service(
     Returns:
         Issue service instance.
     """
-    return IssueService(issue_store, repository_store, activity_service)
+    return IssueService(issue_store, repository_store, activity_service, authorization)
 
 
 IssueServiceDep = Annotated[IssueService, Depends(get_issue_service)]
@@ -524,10 +562,12 @@ def get_pull_request_service(
     repository_store: RepositoryStoreDep,
     repository_service: RepositoryServiceDep,
     activity_service: ActivityServiceDep,
+    authorization: AuthorizationServiceDep,
 ) -> PullRequestService:
     """Get the pull request service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         git_merges: Durable Git merge storage adapter.
         pull_request_store: Pull request store dependency.
         repository_store: Repository store dependency.
@@ -537,7 +577,9 @@ def get_pull_request_service(
     Returns:
         Pull request service instance.
     """
-    return PullRequestService(pull_request_store, repository_store, repository_service, activity_service, git_merges)
+    return PullRequestService(
+        pull_request_store, repository_store, repository_service, activity_service, git_merges, authorization
+    )
 
 
 PullRequestServiceDep = Annotated[PullRequestService, Depends(get_pull_request_service)]
@@ -568,10 +610,12 @@ def get_star_service(
     star_store: StarStoreDep,
     repository_store: RepositoryStoreDep,
     activity_service: ActivityServiceDep,
+    authorization: AuthorizationServiceDep,
 ) -> StarService:
     """Get the star service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         star_store: Star store dependency.
         repository_store: Repository store dependency.
         activity_service: Activity service dependency.
@@ -579,7 +623,7 @@ def get_star_service(
     Returns:
         Star service instance.
     """
-    return StarService(star_store, repository_store, activity_service)
+    return StarService(star_store, repository_store, activity_service, authorization)
 
 
 StarServiceDep = Annotated[StarService, Depends(get_star_service)]
@@ -613,10 +657,12 @@ def get_comment_service(
     pull_request_store: PullRequestStoreDep,
     repository_store: RepositoryStoreDep,
     activity_service: ActivityServiceDep,
+    authorization: AuthorizationServiceDep,
 ) -> CommentService:
     """Get the comment service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         comment_store: Comment store dependency.
         issue_store: Issue store dependency.
         pull_request_store: Pull request store dependency.
@@ -632,6 +678,7 @@ def get_comment_service(
         pull_request_store=pull_request_store,
         repository_store=repository_store,
         activity_service=activity_service,
+        authorization=authorization,
     )
 
 
@@ -642,10 +689,12 @@ def get_release_service(
     release_store: ReleaseStoreDep,
     repository_store: RepositoryStoreDep,
     activity_service: ActivityServiceDep,
+    authorization: AuthorizationServiceDep,
 ) -> ReleaseService:
     """Get the release service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         release_store: Release store dependency.
         repository_store: Repository store dependency.
         activity_service: Activity service dependency.
@@ -653,7 +702,7 @@ def get_release_service(
     Returns:
         Release service instance.
     """
-    return ReleaseService(release_store, repository_store, activity_service)
+    return ReleaseService(release_store, repository_store, activity_service, authorization)
 
 
 ReleaseServiceDep = Annotated[ReleaseService, Depends(get_release_service)]
@@ -664,10 +713,12 @@ def get_fork_service(
     repository_service: RepositoryServiceDep,
     activity_service: ActivityServiceDep,
     star_store: StarStoreDep,
+    authorization: AuthorizationServiceDep,
 ) -> ForkService:
     """Get the fork service dependency.
 
     Args:
+        authorization: Authorization service for scoped role checks.
         repository_store: Repository store dependency.
         repository_service: Repository service dependency.
         activity_service: Activity service dependency.
@@ -676,7 +727,7 @@ def get_fork_service(
     Returns:
         Fork service instance.
     """
-    return ForkService(repository_store, repository_service, activity_service, star_store)
+    return ForkService(repository_store, repository_service, activity_service, star_store, authorization)
 
 
 ForkServiceDep = Annotated[ForkService, Depends(get_fork_service)]
@@ -685,17 +736,115 @@ ForkServiceDep = Annotated[ForkService, Depends(get_fork_service)]
 def get_organization_service(
     organization_store: OrganizationStoreDep,
     user_store: UserStoreDep,
+    authorization_store: AuthorizationStoreDep,
 ) -> OrganizationService:
     """Get the organization service dependency.
 
     Args:
+        authorization_store: Persistent memberships and grants.
         organization_store: Organization store dependency.
         user_store: User store dependency.
 
     Returns:
         Organization service instance.
     """
-    return OrganizationService(organization_store, user_store)
+    return OrganizationService(organization_store, user_store, authorization_store)
 
 
 OrganizationServiceDep = Annotated[OrganizationService, Depends(get_organization_service)]
+
+
+def get_personal_access_token_store(session: SessionDep) -> PersonalAccessTokenStore:
+    """Get the database-backed personal access token store."""
+    return SQLPersonalAccessTokenStore(session)
+
+
+PersonalAccessTokenStoreDep = Annotated[PersonalAccessTokenStore, Depends(get_personal_access_token_store)]
+
+
+def get_personal_access_token_service(
+    store: PersonalAccessTokenStoreDep, users: UserStoreDep, background_tasks: BackgroundTasks
+) -> PersonalAccessTokenService:
+    """Wire personal access token lifecycle and authentication."""
+    return PersonalAccessTokenService(store, users, background_tasks)
+
+
+PersonalAccessTokenServiceDep = Annotated[PersonalAccessTokenService, Depends(get_personal_access_token_service)]
+
+personal_access_token_header = APIKeyHeader(name="X-API-Key", scheme_name="PersonalAccessToken", auto_error=False)
+git_basic_auth = HTTPBasic(auto_error=False)
+
+
+async def get_optional_repository_user(
+    request: Request,
+    users: UserStoreDep,
+    tokens: PersonalAccessTokenServiceDep,
+    bearer: Annotated[str | None, Depends(optional_oauth2)],
+    presented_key: Annotated[str | None, Depends(personal_access_token_header)],
+) -> User | None:
+    """Accept account sessions or scoped tokens only on repository endpoints."""
+    if presented_key is not None and bearer is not None:
+        raise InvalidPersonalAccessTokenError(challenge="Bearer")
+    if presented_key is not None or (bearer is not None and bearer.startswith("gitedge_pat_")):
+        credential = presented_key if presented_key is not None else bearer
+        if credential is None:
+            raise InvalidPersonalAccessTokenError(challenge="Bearer")
+        try:
+            authenticated = await tokens.authenticate(credential)
+        except AuthenticationError as error:
+            error.challenge = "Bearer"
+            raise
+        request.state.personal_access_token = authenticated
+        return authenticated.user
+    return await get_optional_user(request, users, bearer)
+
+
+OptionalRepositoryUser = Annotated[User | None, Depends(get_optional_repository_user)]
+
+
+async def get_repository_user(user: OptionalRepositoryUser) -> User:
+    """Require authentication for repository mutations."""
+    if user is None:
+        raise AuthenticationError()
+    return user
+
+
+RepositoryUser = Annotated[User, Depends(get_repository_user)]
+
+
+async def get_git_user(
+    request: Request,
+    users: UserStoreDep,
+    tokens: PersonalAccessTokenServiceDep,
+    presented_key: Annotated[str | None, Depends(personal_access_token_header)],
+    bearer: Annotated[str | None, Depends(optional_oauth2)],
+    basic: Annotated[HTTPBasicCredentials | None, Depends(git_basic_auth)],
+) -> User | None:
+    """Authenticate Git credentials; the permission dependency enforces the operation."""
+    if sum(value is not None for value in (presented_key, bearer, basic)) > 1:
+        raise InvalidPersonalAccessTokenError()
+    if presented_key is not None:
+        authenticated = await tokens.authenticate(presented_key)
+        request.state.personal_access_token = authenticated
+        return authenticated.user
+    if bearer is not None:
+        if bearer.startswith("gitedge_pat_"):
+            authenticated = await tokens.authenticate(bearer)
+            request.state.personal_access_token = authenticated
+            return authenticated.user
+        return await get_current_user(users, bearer)
+    if basic is not None:
+        if basic.password.startswith("gitedge_pat_"):
+            authenticated = await tokens.authenticate(basic.password, username=basic.username)
+            request.state.personal_access_token = authenticated
+            return authenticated.user
+        user = await users.find_by_name(basic.username)
+        if user is not None and security.verify_password(basic.password, user.hashed_password)[0] and user.is_active:
+            return user
+        raise InvalidPersonalAccessTokenError()
+    if request.headers.get("Authorization") or request.headers.get("X-API-Key") is not None:
+        raise InvalidPersonalAccessTokenError()
+    return None
+
+
+GitUser = Annotated[User | None, Depends(get_git_user)]

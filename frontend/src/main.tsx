@@ -3,6 +3,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
 import { Toaster } from "@/components/design-system"
+import { getSessionToken } from "@/lib/api-auth"
 import "@fontsource-variable/inter"
 import "@fontsource-variable/jetbrains-mono"
 import { client } from "./client/client.gen"
@@ -12,7 +13,7 @@ import { routeTree } from "./routeTree.gen"
 
 client.setConfig({
   baseUrl: import.meta.env.VITE_API_URL ?? "",
-  auth: () => localStorage.getItem("access_token") || "",
+  auth: getSessionToken,
 })
 
 client.interceptors.error.use((error, response) => {

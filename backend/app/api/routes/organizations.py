@@ -20,7 +20,7 @@ async def list_organizations(
 
 @router.post("/", status_code=201)
 async def create_organization(
-    body: OrganizationCreate, organization_service: OrganizationServiceDep, _current_user: CurrentUser
+    body: OrganizationCreate, organization_service: OrganizationServiceDep, current_user: CurrentUser
 ) -> OrganizationPublic:
     """Create a new organization."""
-    return await organization_service.create_organization(body)
+    return await organization_service.create_organization(body, current_user)

@@ -8,12 +8,10 @@ from html import escape
 from typing import TYPE_CHECKING, Literal
 from urllib.parse import quote
 
-from fastapi import HTTPException
-
 from app.clients.notifications import notification_thread
 from app.config import settings
 from app.entities.notifications import Notification
-from app.exceptions import EmailDeliveryError, RepositoryNotFoundError
+from app.exceptions import EmailDeliveryError, NotFoundError, RepositoryNotFoundError
 from app.schemas.notifications import (
     NotificationCategory,
     NotificationFilter,
@@ -34,6 +32,7 @@ if TYPE_CHECKING:
     from app.entities.activity import Activity
     from app.entities.users import User
     from app.schemas.notifications import NotificationUpdate
+    from app.services.authorization import AuthorizationService
 
 logger = logging.getLogger(__name__)
 
@@ -70,9 +69,11 @@ class NotificationService:
         repository_store: RepositoryStore,
         email_client: EmailClient,
         background_tasks: BackgroundTasks,
+        authorization: AuthorizationService,
     ) -> None:
         """Bind persistence and the existing SMTP transport."""
         self.store = store
+        self.authorization = authorization
         self.repository_store = repository_store
         self.email_client = email_client
         self.background_tasks = background_tasks
@@ -82,7 +83,12 @@ class NotificationService:
         if activity.repo_id is None:
             return
         mentions = mentioned_users(text) - mentioned_users(previous_text)
-        audience = await self.store.audience(activity, mentions)
+        candidates = await self.store.audience(activity, mentions)
+        repository = await self.repository_store.get(activity.repo_id)
+        visible = {
+            user.id for user in await self.authorization.visible_users(repository, [user for user, _ in candidates])
+        }
+        audience = [(user, reason) for user, reason in candidates if user.id in visible]
         preferences = await self.store.delivery_preferences([user.id for user, _ in audience], activity)
         deliveries = []
         for user, reason in audience:
@@ -201,7 +207,7 @@ class NotificationService:
         """Validate ownership of the entire selection before applying any changes."""
         owned = {n.id: n for n in await self.store.list_for_user(user, body.ids)}
         if any(notification_id not in owned for notification_id in body.ids):
-            raise HTTPException(status_code=404, detail="Notification not found")
+            raise NotFoundError(detail="Notification not found")
         for notification_id in set(body.ids):
             notification = owned[notification_id]
             if body.is_read is not None:
@@ -238,7 +244,7 @@ class NotificationService:
     async def repository_preferences(self, user: User, owner: str, name: str) -> RepositoryNotificationPreferences:
         """Read category settings after checking repository visibility."""
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
-        if repository.is_private and repository.owner_id != user.id and not user.is_superuser:
+        if not await self.authorization.can(repository, user):
             raise RepositoryNotFoundError
         return RepositoryNotificationPreferences.model_validate(
             {"categories": await self.store.categories(user.id, repository.id)}

@@ -2,6 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query"
 import { Building2 } from "lucide-react"
 import { Suspense } from "react"
 import { organizationsListOrganizationsOptions } from "@/client/@tanstack/react-query.gen"
+import { Link } from "@/components/design-system"
 import PendingUsers from "@/components/Pending/PendingUsers"
 
 function OrganizationsContent() {
@@ -32,7 +33,9 @@ function OrganizationsContent() {
           data-testid={`organization-${organization.name}`}
         >
           <Building2 className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium text-foreground">{organization.name}</span>
+          <Link to="/profile/$username" params={{ username: organization.name }} appearance="strong">
+            {organization.name}
+          </Link>
           {organization.description && (
             <span className="truncate text-sm text-muted-foreground">{organization.description}</span>
           )}

@@ -5,6 +5,7 @@ import { Page, PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@/co
 import ChangePassword from "@/components/UserSettings/ChangePassword"
 import DeleteAccount from "@/components/UserSettings/DeleteAccount"
 import { NotificationPreferences } from "@/components/UserSettings/NotificationPreferences"
+import PersonalAccessTokens from "@/components/UserSettings/PersonalAccessTokens"
 import UserInformation from "@/components/UserSettings/UserInformation"
 import useAuth from "@/hooks/useAuth"
 
@@ -12,13 +13,14 @@ const tabsConfig = [
   { value: "my-profile", title: "My profile", component: UserInformation },
   { value: "notifications", title: "Notifications", component: NotificationPreferences },
   { value: "password", title: "Password", component: ChangePassword },
+  { value: "tokens", title: "Access tokens", component: PersonalAccessTokens },
   { value: "danger-zone", title: "Danger zone", component: DeleteAccount },
 ]
 
 export const Route = createFileRoute("/_layout/settings")({
   component: UserSettings,
   validateSearch: z.object({
-    tab: z.enum(["my-profile", "notifications", "password", "danger-zone"]).optional().catch(undefined),
+    tab: z.enum(["my-profile", "notifications", "password", "tokens", "danger-zone"]).optional().catch(undefined),
   }),
   head: () => ({
     meta: [
@@ -50,7 +52,7 @@ function UserSettings() {
       <Tabs
         value={tab ?? "my-profile"}
         onValueChange={(value) =>
-          navigate({ search: { tab: value as "my-profile" | "notifications" | "password" | "danger-zone" } })
+          navigate({ search: { tab: value as "my-profile" | "notifications" | "password" | "tokens" | "danger-zone" } })
         }
       >
         <TabsList>

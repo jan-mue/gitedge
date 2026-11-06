@@ -2,10 +2,12 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 from app.api.dependencies import CrudServiceDep, CurrentUser, EmailClientDep, UserStoreDep, get_current_active_superuser
 from app.config import settings
+from app.exceptions import ConflictError, InvalidInputError, PermissionDeniedError
+from app.permissions import account_can
 from app.schemas.users import (
     UpdatePassword,
     UserCreate,
@@ -35,10 +37,7 @@ async def create_user(*, crud_service: CrudServiceDep, user_in: UserCreate, emai
     """Create new user."""
     user = await crud_service.get_user_by_email(email=user_in.email)
     if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system.",
-        )
+        raise InvalidInputError(detail="The user with this email already exists in the system.")
 
     user = await crud_service.create_user(user_create=user_in)
     if settings.emails_enabled and user_in.email:
@@ -61,7 +60,7 @@ async def update_user_me(
     if user_in.email:
         existing_user = await crud_service.get_user_by_email(email=user_in.email)
         if existing_user and existing_user.id != current_user.id:
-            raise HTTPException(status_code=409, detail="User with this email already exists")
+            raise ConflictError(detail="User with this email already exists")
     return await crud_service.update_user(db_user=current_user, user_in=user_in)
 
 
@@ -70,9 +69,9 @@ async def update_password_me(*, user_store: UserStoreDep, body: UpdatePassword, 
     """Update own password."""
     verified, _ = verify_password(body.current_password, current_user.hashed_password)
     if not verified:
-        raise HTTPException(status_code=400, detail="Incorrect password")
+        raise InvalidInputError(detail="Incorrect password")
     if body.current_password == body.new_password:
-        raise HTTPException(status_code=400, detail="New password cannot be the same as the current one")
+        raise InvalidInputError(detail="New password cannot be the same as the current one")
     hashed_password = get_password_hash(body.new_password)
     current_user.hashed_password = hashed_password
     await user_store.update(current_user)
@@ -87,8 +86,8 @@ async def read_user_me(current_user: CurrentUser) -> UserPublic:
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user_me(user_store: UserStoreDep, current_user: CurrentUser) -> None:
     """Delete own user."""
-    if current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Super users are not allowed to delete themselves")
+    if await account_can(current_user, "account:admin"):
+        raise PermissionDeniedError(detail="Super users are not allowed to delete themselves")
     # TODO: delete repositories
     await user_store.delete(current_user)
 
@@ -97,16 +96,10 @@ async def delete_user_me(user_store: UserStoreDep, current_user: CurrentUser) ->
 async def register_user(crud_service: CrudServiceDep, user_in: UserRegister) -> UserPublic:
     """Create new user without the need to be logged in."""
     if not settings.SIGNUPS_ENABLED:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Sign-ups are disabled",
-        )
+        raise PermissionDeniedError(detail="Sign-ups are disabled")
     user = await crud_service.get_user_by_email(email=user_in.email)
     if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system",
-        )
+        raise InvalidInputError(detail="The user with this email already exists in the system")
     user_create = UserCreate.model_validate(user_in)
     return await crud_service.create_user(user_create=user_create)
 
@@ -120,7 +113,7 @@ async def update_user(
     if user_in.email:
         existing_user = await crud_service.get_user_by_email(email=user_in.email)
         if existing_user and existing_user.id != user_id:
-            raise HTTPException(status_code=409, detail="User with this email already exists")
+            raise ConflictError(detail="User with this email already exists")
 
     return await crud_service.update_user(db_user=db_user, user_in=user_in)
 
@@ -132,6 +125,6 @@ async def delete_user(user_store: UserStoreDep, current_user: CurrentUser, user_
     """Delete a user."""
     user = await user_store.get(user_id)
     if user == current_user:
-        raise HTTPException(status_code=403, detail="Super users are not allowed to delete themselves")
+        raise PermissionDeniedError(detail="Super users are not allowed to delete themselves")
     # TODO: delete repositories
     await user_store.delete(user)

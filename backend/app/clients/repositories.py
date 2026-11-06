@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING, cast, override
 from sqlalchemy import Table, delete, func, or_, select, update
 from sqlalchemy.orm import selectinload
 
+from app.clients.authorization import repository_visibility_predicate
+from app.clients.casbin import RelationshipAdapter
 from app.clients.database import CrudStore, SQLStore
 from app.entities.activity import Activity
 from app.entities.comments import Comment
@@ -20,6 +22,7 @@ from app.entities.repositories import Repository
 from app.entities.stars import Star
 from app.entities.watchers import Watcher
 from app.exceptions import OwnerNotFoundError, RepositoryNotFoundError
+from app.permissions import repository_domain
 
 if TYPE_CHECKING:
     import uuid
@@ -27,12 +30,19 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.sql.base import ExecutableOption
+    from sqlalchemy.sql.elements import ColumnElement
+
+    from app.permissions import RepositoryVisibility
 
 logger = logging.getLogger(__name__)
 
 
 class RepositoryStore(CrudStore[Repository], ABC):
     """Abstract repository store with additional repository-specific methods."""
+
+    @abstractmethod
+    async def get_by_ids(self, repository_ids: list[uuid.UUID]) -> list[Repository]:
+        """Fetch a repository selection in one batch."""
 
     @abstractmethod
     async def get_by_owner_and_name(self, owner: str, name: str, *, include_releases: bool = False) -> Repository:
@@ -53,12 +63,26 @@ class RepositoryStore(CrudStore[Repository], ABC):
         """Get all repositories owned by a principal."""
 
     @abstractmethod
-    async def list_by_fork_of(self, fork_of_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
-        """Get all repositories forked from a given repository."""
+    async def list_by_fork_of(
+        self,
+        fork_of_id: uuid.UUID,
+        offset: int = 0,
+        limit: int = 100,
+        *,
+        allowed_repository_ids: Sequence[uuid.UUID] | None = None,
+        visibility: RepositoryVisibility | None = None,
+    ) -> list[Repository]:
+        """List forks, restricting repository IDs before applying pagination."""
 
     @abstractmethod
-    async def count_by_fork_of(self, fork_of_id: uuid.UUID) -> int:
-        """Count repositories forked from a given repository."""
+    async def count_by_fork_of(
+        self,
+        fork_of_id: uuid.UUID,
+        *,
+        allowed_repository_ids: Sequence[uuid.UUID] | None = None,
+        visibility: RepositoryVisibility | None = None,
+    ) -> int:
+        """Count forks using the same access filters as the requested page."""
 
     @abstractmethod
     async def count_forks_by_repos(self, repo_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
@@ -91,6 +115,9 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
     async def delete(self, obj: Repository) -> None:
         """Delete dependent records in one transaction and detach surviving forks."""
         try:
+            await RelationshipAdapter(self.db).remove_filtered_policy(
+                "g", "g2", 2, repository_domain(obj.owner_id, obj.id)
+            )
             related_prs = select(PullRequest.id).where(
                 or_(PullRequest.head_repo_id == obj.id, PullRequest.base_repo_id == obj.id)
             )
@@ -128,6 +155,11 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         """Get all repositories with their owners loaded."""
         result = await self.db.scalars(select(Repository).options(*self._owner_options()).offset(offset).limit(limit))
         return list(result.all())
+
+    @override
+    async def get_by_ids(self, repository_ids: list[uuid.UUID]) -> list[Repository]:
+        """Resolve a token's explicit repository selection without per-ID queries."""
+        return list(await self.db.scalars(select(Repository).where(Repository.id.in_(repository_ids))))
 
     @override
     async def find_by_owner_and_name(
@@ -171,25 +203,54 @@ class SQLRepositoryStore(RepositoryStore, SQLStore[Repository]):
         return list(result.all())
 
     @override
-    async def list_by_fork_of(self, fork_of_id: uuid.UUID, offset: int = 0, limit: int = 100) -> list[Repository]:
-        """Get all repositories forked from a given repository."""
-        result = await self.db.scalars(
+    async def list_by_fork_of(
+        self,
+        fork_of_id: uuid.UUID,
+        offset: int = 0,
+        limit: int = 100,
+        *,
+        allowed_repository_ids: Sequence[uuid.UUID] | None = None,
+        visibility: RepositoryVisibility | None = None,
+    ) -> list[Repository]:
+        """List allowed forks before pagination; an empty allowlist matches nothing."""
+        statement = (
             select(Repository)
             .options(*self._owner_options())
-            .where(Repository.fork_of_id == fork_of_id)
-            .order_by(Repository.created_at.desc())
-            .offset(offset)
-            .limit(limit)
+            .where(*self._fork_filters(fork_of_id, allowed_repository_ids, visibility))
+            .order_by(Repository.created_at.desc(), Repository.id.desc())
         )
+        result = await self.db.scalars(statement.offset(offset).limit(limit))
         return list(result.all())
 
     @override
-    async def count_by_fork_of(self, fork_of_id: uuid.UUID) -> int:
-        """Count repositories forked from a given repository."""
+    async def count_by_fork_of(
+        self,
+        fork_of_id: uuid.UUID,
+        *,
+        allowed_repository_ids: Sequence[uuid.UUID] | None = None,
+        visibility: RepositoryVisibility | None = None,
+    ) -> int:
+        """Count accessible forks in SQL without loading repositories or their owners."""
         result = await self.db.execute(
-            select(func.count()).select_from(Repository).where(Repository.fork_of_id == fork_of_id)
+            select(func.count())
+            .select_from(Repository)
+            .where(*self._fork_filters(fork_of_id, allowed_repository_ids, visibility))
         )
         return result.scalar_one()
+
+    @staticmethod
+    def _fork_filters(
+        fork_of_id: uuid.UUID,
+        allowed_repository_ids: Sequence[uuid.UUID] | None,
+        visibility: RepositoryVisibility | None,
+    ) -> list[ColumnElement[bool]]:
+        """Select scope and visibility using the AsyncEnforcer's compiled predicate."""
+        filters = [Repository.fork_of_id == fork_of_id]
+        if allowed_repository_ids is not None:
+            filters.append(Repository.id.in_(allowed_repository_ids))
+        if visibility is not None:
+            filters.append(repository_visibility_predicate(visibility))
+        return filters
 
     @override
     async def count_forks_by_repos(self, repo_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:

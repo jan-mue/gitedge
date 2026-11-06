@@ -256,6 +256,52 @@ export type BranchInfo = {
 };
 
 /**
+ * CollaboratorInput
+ *
+ * A role assigned to exactly one user or team.
+ */
+export type CollaboratorInput = {
+    /**
+     * User Id
+     */
+    user_id?: string | null;
+    /**
+     * Team Id
+     */
+    team_id?: string | null;
+    role: RepositoryRole;
+};
+
+/**
+ * CollaboratorPublic
+ *
+ * An explicit persisted collaborator.
+ */
+export type CollaboratorPublic = {
+    /**
+     * User Id
+     */
+    user_id?: string | null;
+    /**
+     * Team Id
+     */
+    team_id?: string | null;
+    role: RepositoryRole;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
+    /**
+     * Subject Name
+     */
+    subject_name: string;
+};
+
+/**
  * CommentCreate
  *
  * Request to create a comment.
@@ -569,6 +615,10 @@ export type CreateRepositoryRequest = {
      * Owner
      */
     owner: string;
+    /**
+     * Is Private
+     */
+    is_private?: boolean;
 };
 
 /**
@@ -928,6 +978,42 @@ export type LanguageStatistic = {
 };
 
 /**
+ * MemberInput
+ *
+ * Organization membership options.
+ */
+export type MemberInput = {
+    /**
+     * Is Admin
+     */
+    is_admin?: boolean;
+};
+
+/**
+ * MemberPublic
+ *
+ * A member of an organization.
+ */
+export type MemberPublic = {
+    /**
+     * Is Admin
+     */
+    is_admin?: boolean;
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
+};
+
+/**
  * MergeMessage
  *
  * Repository commit message templates.
@@ -1139,6 +1225,18 @@ export type OrganizationCreate = {
 };
 
 /**
+ * OrganizationPermissions
+ *
+ * The current viewer's organization management permission.
+ */
+export type OrganizationPermissions = {
+    /**
+     * Admin
+     */
+    admin: boolean;
+};
+
+/**
  * OrganizationPublic
  *
  * Public organization representation.
@@ -1180,6 +1278,166 @@ export type OrganizationsPublic = {
      * Count
      */
     count: number;
+};
+
+/**
+ * PersonalAccessTokenCreate
+ *
+ * User-specified token name, expiry, repository selection, and operations.
+ */
+export type PersonalAccessTokenCreate = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Scopes
+     */
+    scopes: Array<TokenScope>;
+    /**
+     * Repository Ids
+     */
+    repository_ids: Array<string>;
+    /**
+     * Expires At
+     */
+    expires_at?: string | null;
+};
+
+/**
+ * PersonalAccessTokenIssued
+ *
+ * One-time response containing the newly issued plaintext credential.
+ */
+export type PersonalAccessTokenIssued = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Owner Id
+     */
+    owner_id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Prefix
+     */
+    prefix: string;
+    /**
+     * Key Id
+     */
+    key_id: string;
+    /**
+     * Secret Last4
+     */
+    secret_last4: string;
+    /**
+     * Scopes
+     */
+    scopes: Array<TokenScope>;
+    /**
+     * Repository Ids
+     */
+    repository_ids: Array<string>;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Expires At
+     */
+    expires_at: string | null;
+    /**
+     * Last Used At
+     */
+    last_used_at: string | null;
+    /**
+     * Revoked At
+     */
+    revoked_at: string | null;
+    /**
+     * Revoked Reason
+     */
+    revoked_reason: string | null;
+    /**
+     * Token
+     */
+    token: string;
+};
+
+/**
+ * PersonalAccessTokenPublic
+ *
+ * Public metadata that never includes a token or secret hash.
+ */
+export type PersonalAccessTokenPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Owner Id
+     */
+    owner_id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Prefix
+     */
+    prefix: string;
+    /**
+     * Key Id
+     */
+    key_id: string;
+    /**
+     * Secret Last4
+     */
+    secret_last4: string;
+    /**
+     * Scopes
+     */
+    scopes: Array<TokenScope>;
+    /**
+     * Repository Ids
+     */
+    repository_ids: Array<string>;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Expires At
+     */
+    expires_at: string | null;
+    /**
+     * Last Used At
+     */
+    last_used_at: string | null;
+    /**
+     * Revoked At
+     */
+    revoked_at: string | null;
+    /**
+     * Revoked Reason
+     */
+    revoked_reason: string | null;
+};
+
+/**
+ * PersonalAccessTokenRevoke
+ *
+ * Optional audit reason when revoking a credential.
+ */
+export type PersonalAccessTokenRevoke = {
+    /**
+     * Reason
+     */
+    reason?: string | null;
 };
 
 /**
@@ -1799,6 +2057,37 @@ export type RepositoryNotificationPreferences = {
 };
 
 /**
+ * RepositoryPermissions
+ *
+ * The current viewer's effective repository permissions.
+ */
+export type RepositoryPermissions = {
+    /**
+     * Read
+     */
+    read: boolean;
+    /**
+     * Write
+     */
+    write: boolean;
+    /**
+     * Admin
+     */
+    admin: boolean;
+    /**
+     * Owner
+     */
+    owner: boolean;
+};
+
+/**
+ * RepositoryRole
+ *
+ * Repository collaborator roles, ordered by the policy file.
+ */
+export type RepositoryRole = 'read' | 'write' | 'admin' | 'owner';
+
+/**
  * RepositoryStatistics
  *
  * Revision size and commit count, with language shares for text files.
@@ -1824,6 +2113,10 @@ export type RepositoryStatistics = {
  * Editable repository settings.
  */
 export type RepositoryUpdate = {
+    /**
+     * Is Private
+     */
+    is_private?: boolean | null;
     /**
      * Allow Merge Commit
      */
@@ -2185,6 +2478,38 @@ export type TagsPublic = {
 };
 
 /**
+ * TeamInput
+ *
+ * Team creation options.
+ */
+export type TeamInput = {
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * TeamPublic
+ *
+ * A team belonging to an organization.
+ */
+export type TeamPublic = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+};
+
+/**
  * Token
  *
  * OAuth2 token response schema.
@@ -2199,6 +2524,33 @@ export type Token = {
      */
     token_type?: string;
 };
+
+/**
+ * TokenRepositoryOption
+ *
+ * A repository the account can select for a token.
+ */
+export type TokenRepositoryOption = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Owner
+     */
+    owner: string;
+};
+
+/**
+ * TokenScope
+ *
+ * Operations a personal access token can authorize.
+ */
+export type TokenScope = 'git:read' | 'git:write' | 'repository:read' | 'repository:write' | 'repository:delete' | 'issues:write' | 'pull_requests:write' | 'pull_requests:merge' | 'comments:write' | 'reviews:write' | 'releases:write';
 
 /**
  * TreeEntry
@@ -2847,6 +3199,127 @@ export type loginRecoverPasswordHtmlContentResponses = {
     200: unknown;
 };
 
+export type personalAccessTokensRepositoryOptionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/users/me/personal-access-tokens/repositories';
+};
+
+export type personalAccessTokensRepositoryOptionsResponses = {
+    /**
+     * Response Personal-Access-Tokens-Repository Options
+     *
+     * Successful Response
+     */
+    200: Array<TokenRepositoryOption>;
+};
+
+export type personalAccessTokensRepositoryOptionsResponse = personalAccessTokensRepositoryOptionsResponses[keyof personalAccessTokensRepositoryOptionsResponses];
+
+export type personalAccessTokensListTokensData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/users/me/personal-access-tokens/';
+};
+
+export type personalAccessTokensListTokensResponses = {
+    /**
+     * Response Personal-Access-Tokens-List Tokens
+     *
+     * Successful Response
+     */
+    200: Array<PersonalAccessTokenPublic>;
+};
+
+export type personalAccessTokensListTokensResponse = personalAccessTokensListTokensResponses[keyof personalAccessTokensListTokensResponses];
+
+export type personalAccessTokensCreateTokenData = {
+    body: PersonalAccessTokenCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/users/me/personal-access-tokens/';
+};
+
+export type personalAccessTokensCreateTokenErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type personalAccessTokensCreateTokenError = personalAccessTokensCreateTokenErrors[keyof personalAccessTokensCreateTokenErrors];
+
+export type personalAccessTokensCreateTokenResponses = {
+    /**
+     * Successful Response
+     */
+    201: PersonalAccessTokenIssued;
+};
+
+export type personalAccessTokensCreateTokenResponse = personalAccessTokensCreateTokenResponses[keyof personalAccessTokensCreateTokenResponses];
+
+export type personalAccessTokensRevokeTokenData = {
+    body: PersonalAccessTokenRevoke;
+    path: {
+        /**
+         * Token Id
+         */
+        token_id: string;
+    };
+    query?: never;
+    url: '/api/v1/users/me/personal-access-tokens/{token_id}/revoke';
+};
+
+export type personalAccessTokensRevokeTokenErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type personalAccessTokensRevokeTokenError = personalAccessTokensRevokeTokenErrors[keyof personalAccessTokensRevokeTokenErrors];
+
+export type personalAccessTokensRevokeTokenResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type personalAccessTokensRevokeTokenResponse = personalAccessTokensRevokeTokenResponses[keyof personalAccessTokensRevokeTokenResponses];
+
+export type personalAccessTokensRotateTokenData = {
+    body: PersonalAccessTokenCreate;
+    path: {
+        /**
+         * Token Id
+         */
+        token_id: string;
+    };
+    query?: never;
+    url: '/api/v1/users/me/personal-access-tokens/{token_id}/rotate';
+};
+
+export type personalAccessTokensRotateTokenErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type personalAccessTokensRotateTokenError = personalAccessTokensRotateTokenErrors[keyof personalAccessTokensRotateTokenErrors];
+
+export type personalAccessTokensRotateTokenResponses = {
+    /**
+     * Successful Response
+     */
+    201: PersonalAccessTokenIssued;
+};
+
+export type personalAccessTokensRotateTokenResponse = personalAccessTokensRotateTokenResponses[keyof personalAccessTokensRotateTokenResponses];
+
 export type usersReadUsersData = {
     body?: never;
     path?: never;
@@ -3077,12 +3550,16 @@ export type gitGetInfoRefsData = {
     body?: never;
     path: {
         /**
-         * Repo Path
+         * Owner
          */
-        repo_path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: never;
-    url: '/api/v1/{repo_path}/info/refs';
+    url: '/api/v1/{owner}/{repo}.git/info/refs';
 };
 
 export type gitGetInfoRefsErrors = {
@@ -3105,12 +3582,16 @@ export type gitGetHeadData = {
     body?: never;
     path: {
         /**
-         * Repo Path
+         * Owner
          */
-        repo_path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: never;
-    url: '/api/v1/{repo_path}/HEAD';
+    url: '/api/v1/{owner}/{repo}.git/HEAD';
 };
 
 export type gitGetHeadErrors = {
@@ -3133,12 +3614,16 @@ export type gitGetInfoPacksData = {
     body?: never;
     path: {
         /**
-         * Repo Path
+         * Owner
          */
-        repo_path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: never;
-    url: '/api/v1/{repo_path}/objects/info/packs';
+    url: '/api/v1/{owner}/{repo}.git/objects/info/packs';
 };
 
 export type gitGetInfoPacksErrors = {
@@ -3161,9 +3646,13 @@ export type gitGetLooseObjectData = {
     body?: never;
     path: {
         /**
-         * Repo Path
+         * Owner
          */
-        repo_path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
         /**
          * Prefix
          */
@@ -3174,7 +3663,7 @@ export type gitGetLooseObjectData = {
         suffix: string;
     };
     query?: never;
-    url: '/api/v1/{repo_path}/objects/{prefix}/{suffix}';
+    url: '/api/v1/{owner}/{repo}.git/objects/{prefix}/{suffix}';
 };
 
 export type gitGetLooseObjectErrors = {
@@ -3197,16 +3686,20 @@ export type gitGetPackFileData = {
     body?: never;
     path: {
         /**
-         * Repo Path
+         * Owner
          */
-        repo_path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
         /**
          * Pack File
          */
         pack_file: string;
     };
     query?: never;
-    url: '/api/v1/{repo_path}/objects/pack/{pack_file}';
+    url: '/api/v1/{owner}/{repo}.git/objects/pack/{pack_file}';
 };
 
 export type gitGetPackFileErrors = {
@@ -3229,12 +3722,16 @@ export type gitGitUploadPackData = {
     body?: never;
     path: {
         /**
-         * Repo Path
+         * Owner
          */
-        repo_path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: never;
-    url: '/api/v1/{repo_path}/git-upload-pack';
+    url: '/api/v1/{owner}/{repo}.git/git-upload-pack';
 };
 
 export type gitGitUploadPackErrors = {
@@ -3257,12 +3754,16 @@ export type gitGitReceivePackData = {
     body?: never;
     path: {
         /**
-         * Repo Path
+         * Owner
          */
-        repo_path: string;
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
     };
     query?: never;
-    url: '/api/v1/{repo_path}/git-receive-pack';
+    url: '/api/v1/{owner}/{repo}.git/git-receive-pack';
 };
 
 export type gitGitReceivePackErrors = {
@@ -3339,6 +3840,600 @@ export type organizationsCreateOrganizationResponses = {
 };
 
 export type organizationsCreateOrganizationResponse = organizationsCreateOrganizationResponses[keyof organizationsCreateOrganizationResponses];
+
+export type authorizationGetPermissionsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/permissions';
+};
+
+export type authorizationGetPermissionsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationGetPermissionsError = authorizationGetPermissionsErrors[keyof authorizationGetPermissionsErrors];
+
+export type authorizationGetPermissionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: RepositoryPermissions;
+};
+
+export type authorizationGetPermissionsResponse = authorizationGetPermissionsResponses[keyof authorizationGetPermissionsResponses];
+
+export type authorizationListCollaboratorTeamsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/collaborator-teams';
+};
+
+export type authorizationListCollaboratorTeamsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationListCollaboratorTeamsError = authorizationListCollaboratorTeamsErrors[keyof authorizationListCollaboratorTeamsErrors];
+
+export type authorizationListCollaboratorTeamsResponses = {
+    /**
+     * Response Authorization-List Collaborator Teams
+     *
+     * Successful Response
+     */
+    200: Array<TeamPublic>;
+};
+
+export type authorizationListCollaboratorTeamsResponse = authorizationListCollaboratorTeamsResponses[keyof authorizationListCollaboratorTeamsResponses];
+
+export type authorizationListMembersData = {
+    body?: never;
+    path: {
+        /**
+         * Organization
+         */
+        organization: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/{organization}/members';
+};
+
+export type authorizationListMembersErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationListMembersError = authorizationListMembersErrors[keyof authorizationListMembersErrors];
+
+export type authorizationListMembersResponses = {
+    /**
+     * Response Authorization-List Members
+     *
+     * Successful Response
+     */
+    200: Array<MemberPublic>;
+};
+
+export type authorizationListMembersResponse = authorizationListMembersResponses[keyof authorizationListMembersResponses];
+
+export type authorizationRemoveMemberData = {
+    body?: never;
+    path: {
+        /**
+         * Organization
+         */
+        organization: string;
+        /**
+         * User Id
+         */
+        user_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/{organization}/members/{user_id}';
+};
+
+export type authorizationRemoveMemberErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationRemoveMemberError = authorizationRemoveMemberErrors[keyof authorizationRemoveMemberErrors];
+
+export type authorizationRemoveMemberResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type authorizationRemoveMemberResponse = authorizationRemoveMemberResponses[keyof authorizationRemoveMemberResponses];
+
+export type authorizationSetMemberData = {
+    body: MemberInput;
+    path: {
+        /**
+         * Organization
+         */
+        organization: string;
+        /**
+         * User Id
+         */
+        user_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/{organization}/members/{user_id}';
+};
+
+export type authorizationSetMemberErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationSetMemberError = authorizationSetMemberErrors[keyof authorizationSetMemberErrors];
+
+export type authorizationSetMemberResponses = {
+    /**
+     * Successful Response
+     */
+    200: MemberPublic;
+};
+
+export type authorizationSetMemberResponse = authorizationSetMemberResponses[keyof authorizationSetMemberResponses];
+
+export type authorizationListTeamsData = {
+    body?: never;
+    path: {
+        /**
+         * Organization
+         */
+        organization: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/{organization}/teams';
+};
+
+export type authorizationListTeamsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationListTeamsError = authorizationListTeamsErrors[keyof authorizationListTeamsErrors];
+
+export type authorizationListTeamsResponses = {
+    /**
+     * Response Authorization-List Teams
+     *
+     * Successful Response
+     */
+    200: Array<TeamPublic>;
+};
+
+export type authorizationListTeamsResponse = authorizationListTeamsResponses[keyof authorizationListTeamsResponses];
+
+export type authorizationCreateTeamData = {
+    body: TeamInput;
+    path: {
+        /**
+         * Organization
+         */
+        organization: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/{organization}/teams';
+};
+
+export type authorizationCreateTeamErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationCreateTeamError = authorizationCreateTeamErrors[keyof authorizationCreateTeamErrors];
+
+export type authorizationCreateTeamResponses = {
+    /**
+     * Successful Response
+     */
+    201: TeamPublic;
+};
+
+export type authorizationCreateTeamResponse = authorizationCreateTeamResponses[keyof authorizationCreateTeamResponses];
+
+export type authorizationDeleteTeamData = {
+    body?: never;
+    path: {
+        /**
+         * Organization
+         */
+        organization: string;
+        /**
+         * Team Id
+         */
+        team_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/{organization}/teams/{team_id}';
+};
+
+export type authorizationDeleteTeamErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationDeleteTeamError = authorizationDeleteTeamErrors[keyof authorizationDeleteTeamErrors];
+
+export type authorizationDeleteTeamResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type authorizationDeleteTeamResponse = authorizationDeleteTeamResponses[keyof authorizationDeleteTeamResponses];
+
+export type authorizationListTeamMembersData = {
+    body?: never;
+    path: {
+        /**
+         * Organization
+         */
+        organization: string;
+        /**
+         * Team Id
+         */
+        team_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/{organization}/teams/{team_id}/members';
+};
+
+export type authorizationListTeamMembersErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationListTeamMembersError = authorizationListTeamMembersErrors[keyof authorizationListTeamMembersErrors];
+
+export type authorizationListTeamMembersResponses = {
+    /**
+     * Response Authorization-List Team Members
+     *
+     * Successful Response
+     */
+    200: Array<string>;
+};
+
+export type authorizationListTeamMembersResponse = authorizationListTeamMembersResponses[keyof authorizationListTeamMembersResponses];
+
+export type authorizationRemoveTeamMemberData = {
+    body?: never;
+    path: {
+        /**
+         * Organization
+         */
+        organization: string;
+        /**
+         * Team Id
+         */
+        team_id: string;
+        /**
+         * User Id
+         */
+        user_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/{organization}/teams/{team_id}/members/{user_id}';
+};
+
+export type authorizationRemoveTeamMemberErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationRemoveTeamMemberError = authorizationRemoveTeamMemberErrors[keyof authorizationRemoveTeamMemberErrors];
+
+export type authorizationRemoveTeamMemberResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type authorizationRemoveTeamMemberResponse = authorizationRemoveTeamMemberResponses[keyof authorizationRemoveTeamMemberResponses];
+
+export type authorizationSetTeamMemberData = {
+    body?: never;
+    path: {
+        /**
+         * Organization
+         */
+        organization: string;
+        /**
+         * Team Id
+         */
+        team_id: string;
+        /**
+         * User Id
+         */
+        user_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/{organization}/teams/{team_id}/members/{user_id}';
+};
+
+export type authorizationSetTeamMemberErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationSetTeamMemberError = authorizationSetTeamMemberErrors[keyof authorizationSetTeamMemberErrors];
+
+export type authorizationSetTeamMemberResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type authorizationSetTeamMemberResponse = authorizationSetTeamMemberResponses[keyof authorizationSetTeamMemberResponses];
+
+export type authorizationListCollaboratorsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/collaborators';
+};
+
+export type authorizationListCollaboratorsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationListCollaboratorsError = authorizationListCollaboratorsErrors[keyof authorizationListCollaboratorsErrors];
+
+export type authorizationListCollaboratorsResponses = {
+    /**
+     * Response Authorization-List Collaborators
+     *
+     * Successful Response
+     */
+    200: Array<CollaboratorPublic>;
+};
+
+export type authorizationListCollaboratorsResponse = authorizationListCollaboratorsResponses[keyof authorizationListCollaboratorsResponses];
+
+export type authorizationSetCollaboratorData = {
+    body: CollaboratorInput;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/collaborators';
+};
+
+export type authorizationSetCollaboratorErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationSetCollaboratorError = authorizationSetCollaboratorErrors[keyof authorizationSetCollaboratorErrors];
+
+export type authorizationSetCollaboratorResponses = {
+    /**
+     * Successful Response
+     */
+    200: CollaboratorPublic;
+};
+
+export type authorizationSetCollaboratorResponse = authorizationSetCollaboratorResponses[keyof authorizationSetCollaboratorResponses];
+
+export type authorizationRemoveCollaboratorData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Collaborator Id
+         */
+        collaborator_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/collaborators/{collaborator_id}';
+};
+
+export type authorizationRemoveCollaboratorErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationRemoveCollaboratorError = authorizationRemoveCollaboratorErrors[keyof authorizationRemoveCollaboratorErrors];
+
+export type authorizationRemoveCollaboratorResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type authorizationRemoveCollaboratorResponse = authorizationRemoveCollaboratorResponses[keyof authorizationRemoveCollaboratorResponses];
+
+export type authorizationSearchCollaboratorCandidatesData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query: {
+        /**
+         * Q
+         */
+        q: string;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/collaborator-candidates';
+};
+
+export type authorizationSearchCollaboratorCandidatesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationSearchCollaboratorCandidatesError = authorizationSearchCollaboratorCandidatesErrors[keyof authorizationSearchCollaboratorCandidatesErrors];
+
+export type authorizationSearchCollaboratorCandidatesResponses = {
+    /**
+     * Response Authorization-Search Collaborator Candidates
+     *
+     * Successful Response
+     */
+    200: Array<ProfilePublic>;
+};
+
+export type authorizationSearchCollaboratorCandidatesResponse = authorizationSearchCollaboratorCandidatesResponses[keyof authorizationSearchCollaboratorCandidatesResponses];
+
+export type authorizationSearchMemberCandidatesData = {
+    body?: never;
+    path: {
+        /**
+         * Organization
+         */
+        organization: string;
+    };
+    query: {
+        /**
+         * Q
+         */
+        q: string;
+    };
+    url: '/api/v1/organizations/{organization}/member-candidates';
+};
+
+export type authorizationSearchMemberCandidatesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationSearchMemberCandidatesError = authorizationSearchMemberCandidatesErrors[keyof authorizationSearchMemberCandidatesErrors];
+
+export type authorizationSearchMemberCandidatesResponses = {
+    /**
+     * Response Authorization-Search Member Candidates
+     *
+     * Successful Response
+     */
+    200: Array<ProfilePublic>;
+};
+
+export type authorizationSearchMemberCandidatesResponse = authorizationSearchMemberCandidatesResponses[keyof authorizationSearchMemberCandidatesResponses];
+
+export type authorizationGetOrganizationPermissionsData = {
+    body?: never;
+    path: {
+        /**
+         * Organization
+         */
+        organization: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/{organization}/permissions';
+};
+
+export type authorizationGetOrganizationPermissionsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type authorizationGetOrganizationPermissionsError = authorizationGetOrganizationPermissionsErrors[keyof authorizationGetOrganizationPermissionsErrors];
+
+export type authorizationGetOrganizationPermissionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: OrganizationPermissions;
+};
+
+export type authorizationGetOrganizationPermissionsResponse = authorizationGetOrganizationPermissionsResponses[keyof authorizationGetOrganizationPermissionsResponses];
 
 export type starsUnstarRepositoryData = {
     body?: never;

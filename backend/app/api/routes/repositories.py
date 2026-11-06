@@ -4,14 +4,21 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Query, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 
 from app.api.dependencies import (
+    AuthorizationServiceDep,
     CurrentUser,
     IssueServiceDep,
+    OptionalRepositoryUser,
+    OptionalUser,
     PullRequestServiceDep,
     RepositoryServiceDep,
+    RepositoryUser,
 )
+from app.api.permissions import require_permission, require_token_access
+from app.entities.users import User
+from app.exceptions import ConflictError, InvalidInputError
 from app.schemas.activity import ActivityPublic
 from app.schemas.repositories import (
     BlameContent,
@@ -73,18 +80,31 @@ async def _apply_cache_headers(
 
 
 @router.get("/")
-async def list_repositories(repository_service: RepositoryServiceDep) -> RepositoriesPublic:
+async def list_repositories(repository_service: RepositoryServiceDep, user: OptionalUser) -> RepositoriesPublic:
     """List all repositories."""
-    return await repository_service.list_repositories()
+    return await repository_service.list_repositories(user)
 
 
 @router.post("/", status_code=201)
-async def create_repository(body: CreateRepositoryRequest, repository_service: RepositoryServiceDep) -> Repository:
+async def create_repository(
+    body: CreateRepositoryRequest,
+    repository_service: RepositoryServiceDep,
+    user: CurrentUser,
+    authorization: AuthorizationServiceDep,
+) -> Repository:
     """Create a new empty Git repository."""
-    return await repository_service.create_repository(body.owner, body.name)
+    await authorization.require_creation(body.owner, user)
+    if body.name in (".", "..") or body.name.endswith(".git"):
+        raise InvalidInputError(detail="Invalid repository name")
+    if await authorization.repositories.find_by_owner_and_name(body.owner, body.name) is not None:
+        raise ConflictError(detail="Repository already exists")
+    return await repository_service.create_repository(body.owner, body.name, is_private=body.is_private)
 
 
-@router.get("/{owner}/{repo}/source")
+@router.get(
+    "/{owner}/{repo}/source",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_source(
     owner: str,
     repo: str,
@@ -99,7 +119,10 @@ async def get_source(
     return result
 
 
-@router.get("/{owner}/{repo}/tree")
+@router.get(
+    "/{owner}/{repo}/tree",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_tree(
     owner: str,
     repo: str,
@@ -114,7 +137,10 @@ async def get_tree(
     return result
 
 
-@router.get("/{owner}/{repo}/blob")
+@router.get(
+    "/{owner}/{repo}/blob",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_blob(
     owner: str,
     repo: str,
@@ -129,7 +155,10 @@ async def get_blob(
     return result
 
 
-@router.get("/{owner}/{repo}/blame")
+@router.get(
+    "/{owner}/{repo}/blame",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_blame(
     owner: str,
     repo: str,
@@ -144,7 +173,10 @@ async def get_blame(
     return result
 
 
-@router.get("/{owner}/{repo}/statistics")
+@router.get(
+    "/{owner}/{repo}/statistics",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_statistics(
     owner: str,
     repo: str,
@@ -158,7 +190,10 @@ async def get_statistics(
     return result
 
 
-@router.get("/{owner}/{repo}/files")
+@router.get(
+    "/{owner}/{repo}/files",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_file_index(
     owner: str,
     repo: str,
@@ -172,7 +207,10 @@ async def get_file_index(
     return result
 
 
-@router.get("/{owner}/{repo}/raw")
+@router.get(
+    "/{owner}/{repo}/raw",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_raw(
     owner: str,
     repo: str,
@@ -187,7 +225,10 @@ async def get_raw(
     return response
 
 
-@router.get("/{owner}/{repo}/info")
+@router.get(
+    "/{owner}/{repo}/info",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_repository_info(
     owner: str,
     repo: str,
@@ -201,7 +242,10 @@ async def get_repository_info(
     return result
 
 
-@router.get("/{owner}/{repo}/readme")
+@router.get(
+    "/{owner}/{repo}/readme",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_readme(
     owner: str,
     repo: str,
@@ -216,9 +260,15 @@ async def get_readme(
     return result
 
 
-@router.get("/{owner}/{repo}/branches")
+@router.get(
+    "/{owner}/{repo}/branches",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def list_branches(
-    owner: str, repo: str, response: Response, repository_service: RepositoryServiceDep
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
 ) -> list[BranchInfo]:
     """List all branches in a repository."""
     result = await repository_service.list_branches(owner, repo)
@@ -226,7 +276,10 @@ async def list_branches(
     return result
 
 
-@router.get("/{owner}/{repo}/commits")
+@router.get(
+    "/{owner}/{repo}/commits",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def list_commits(
     owner: str,
     repo: str,
@@ -243,7 +296,10 @@ async def list_commits(
     return result
 
 
-@router.get("/{owner}/{repo}/commits/{sha}")
+@router.get(
+    "/{owner}/{repo}/commits/{sha}",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_commit(
     owner: str,
     repo: str,
@@ -258,7 +314,10 @@ async def get_commit(
     return result
 
 
-@router.get("/{owner}/{repo}/issues")
+@router.get(
+    "/{owner}/{repo}/issues",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def list_issues(
     owner: str,
     repo: str,
@@ -271,27 +330,53 @@ async def list_issues(
 
 @router.post("/{owner}/{repo}/issues", status_code=201)
 async def create_issue(
-    owner: str, repo: str, body: IssueCreate, issue_service: IssueServiceDep, current_user: CurrentUser
+    owner: str,
+    repo: str,
+    body: IssueCreate,
+    issue_service: IssueServiceDep,
+    current_user: Annotated[
+        User,
+        Depends(require_permission("issues:write", user_dep=RepositoryUser)),
+    ],
 ) -> IssuePublic:
     """Create a new issue."""
     return await issue_service.create_issue(owner, repo, body, current_user)
 
 
-@router.get("/{owner}/{repo}/issues/{number}")
-async def get_issue(owner: str, repo: str, number: int, issue_service: IssueServiceDep) -> IssuePublic:
+@router.get(
+    "/{owner}/{repo}/issues/{number}",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
+async def get_issue(
+    owner: str,
+    repo: str,
+    number: int,
+    issue_service: IssueServiceDep,
+) -> IssuePublic:
     """Get a single issue by number."""
     return await issue_service.get_issue(owner, repo, number)
 
 
 @router.patch("/{owner}/{repo}/issues/{number}")
 async def update_issue(
-    owner: str, repo: str, number: int, body: IssueUpdate, issue_service: IssueServiceDep, current_user: CurrentUser
+    owner: str,
+    repo: str,
+    number: int,
+    body: IssueUpdate,
+    issue_service: IssueServiceDep,
+    current_user: Annotated[
+        User,
+        Depends(require_permission("issues:write", user_dep=RepositoryUser)),
+    ],
 ) -> IssuePublic:
     """Update an issue."""
     return await issue_service.update_issue(owner, repo, number, body, current_user)
 
 
-@router.get("/{owner}/{repo}/pulls")
+@router.get(
+    "/{owner}/{repo}/pulls",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def list_pull_requests(
     owner: str,
     repo: str,
@@ -308,21 +393,33 @@ async def create_pull_request(
     repo: str,
     body: PullRequestCreate,
     pull_request_service: PullRequestServiceDep,
-    current_user: CurrentUser,
+    current_user: Annotated[
+        User,
+        Depends(require_permission("pull_requests:write", user_dep=RepositoryUser)),
+    ],
 ) -> PullRequestPublic:
     """Create a new pull request."""
     return await pull_request_service.create_pull_request(owner, repo, body, current_user)
 
 
-@router.get("/{owner}/{repo}/pulls/{number}")
+@router.get(
+    "/{owner}/{repo}/pulls/{number}",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_pull_request(
-    owner: str, repo: str, number: int, pull_request_service: PullRequestServiceDep
+    owner: str,
+    repo: str,
+    number: int,
+    pull_request_service: PullRequestServiceDep,
 ) -> PullRequestPublic:
     """Get a single pull request by number."""
     return await pull_request_service.get_pull_request(owner, repo, number)
 
 
-@router.get("/{owner}/{repo}/pulls/{number}/events")
+@router.get(
+    "/{owner}/{repo}/pulls/{number}/events",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_pull_request_events(
     owner: str, repo: str, number: int, pull_request_service: PullRequestServiceDep
 ) -> list[ActivityPublic]:
@@ -330,7 +427,10 @@ async def get_pull_request_events(
     return await pull_request_service.get_pull_request_events(owner, repo, number)
 
 
-@router.get("/{owner}/{repo}/pulls/{number}/commits")
+@router.get(
+    "/{owner}/{repo}/pulls/{number}/commits",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_pull_request_commits(
     owner: str,
     repo: str,
@@ -343,7 +443,10 @@ async def get_pull_request_commits(
     return await pull_request_service.get_pull_request_commits(owner, repo, number, offset, limit)
 
 
-@router.get("/{owner}/{repo}/pulls/{number}/files")
+@router.get(
+    "/{owner}/{repo}/pulls/{number}/files",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_pull_request_files(
     owner: str,
     repo: str,
@@ -355,7 +458,10 @@ async def get_pull_request_files(
     return await pull_request_service.get_pull_request_files(owner, repo, number, include_diff=include_diff)
 
 
-@router.get("/{owner}/{repo}/pulls/{number}/mergeability")
+@router.get(
+    "/{owner}/{repo}/pulls/{number}/mergeability",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_pull_request_mergeability(
     owner: str,
     repo: str,
@@ -374,7 +480,10 @@ async def merge_pull_request(
     number: int,
     body: PullRequestMerge,
     pull_request_service: PullRequestServiceDep,
-    current_user: CurrentUser,
+    current_user: Annotated[
+        User,
+        Depends(require_permission("pull_requests:merge", user_dep=RepositoryUser)),
+    ],
 ) -> PullRequestPublic:
     """Merge Git history and record the PR state only after successful publication."""
     return await pull_request_service.merge_pull_request(owner, repo, number, body, current_user)
@@ -382,18 +491,29 @@ async def merge_pull_request(
 
 @router.patch("/{owner}/{repo}/pulls/{number}")
 async def update_pull_request(
+    request: Request,
+    authorization: AuthorizationServiceDep,
     owner: str,
     repo: str,
     number: int,
     body: PullRequestUpdate,
     pull_request_service: PullRequestServiceDep,
-    current_user: CurrentUser,
+    current_user: Annotated[
+        User,
+        Depends(require_permission("pull_requests:write", user_dep=RepositoryUser)),
+    ],
 ) -> PullRequestPublic:
     """Update a pull request."""
+    if body.state == "merged":
+        repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
+        await require_token_access(request, repository.id, "pull_requests:merge")
     return await pull_request_service.update_pull_request(owner, repo, number, body, current_user)
 
 
-@router.get("/{owner}/{repo}/compare")
+@router.get(
+    "/{owner}/{repo}/compare",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def compare_revisions(
     owner: str,
     repo: str,
@@ -410,7 +530,10 @@ async def compare_revisions(
     return result
 
 
-@router.get("/{owner}/{repo}/diff-file")
+@router.get(
+    "/{owner}/{repo}/diff-file",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_diff_file(
     owner: str,
     repo: str,
@@ -426,9 +549,15 @@ async def get_diff_file(
     return result
 
 
-@router.get("/{owner}/{repo}")
+@router.get(
+    "/{owner}/{repo}",
+    dependencies=[Depends(require_permission("repository:read", user_dep=OptionalRepositoryUser))],
+)
 async def get_repository(
-    owner: str, repo: str, response: Response, repository_service: RepositoryServiceDep
+    owner: str,
+    repo: str,
+    response: Response,
+    repository_service: RepositoryServiceDep,
 ) -> Repository:
     """Get a specific repository."""
     result = await repository_service.get_repository(owner, repo)
@@ -442,7 +571,10 @@ async def update_repository(
     repo: str,
     body: RepositoryUpdate,
     repository_service: RepositoryServiceDep,
-    current_user: CurrentUser,
+    current_user: Annotated[
+        User,
+        Depends(require_permission("repository:write", user_dep=RepositoryUser)),
+    ],
 ) -> Repository:
     """Update repository settings as the owner or administrator."""
     return await repository_service.update_repository(owner, repo, body, current_user)
@@ -453,7 +585,10 @@ async def delete_repository(
     owner: str,
     repo: str,
     repository_service: RepositoryServiceDep,
-    current_user: CurrentUser,
+    current_user: Annotated[
+        User,
+        Depends(require_permission("repository:delete", user_dep=RepositoryUser)),
+    ],
 ) -> None:
     """Permanently delete a repository as the owner or administrator."""
     await repository_service.delete_repository(owner, repo, current_user)

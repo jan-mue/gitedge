@@ -7,9 +7,9 @@ from dulwich.graph import find_merge_base
 from dulwich.merge import recursive_merge, three_way_merge
 from dulwich.object_store import MemoryObjectStore, OverlayObjectStore
 from dulwich.objects import Commit, ObjectID
-from fastapi import HTTPException
 
 from app.clients.git.types import MergeResult
+from app.exceptions import ConflictError
 from app.schemas.repositories import MergeMessage, MergeMethod
 
 if TYPE_CHECKING:
@@ -19,12 +19,12 @@ if TYPE_CHECKING:
 MAX_CONFLICT_PATHS = 10
 
 
-class MergeConflict(HTTPException):
+class MergeConflictError(ConflictError):
     """Expected conflict with structured paths for the read-only preflight."""
 
     def __init__(self, paths: list[str], detail: str) -> None:
         """Keep the normal merge error and the complete list of affected paths."""
-        super().__init__(status_code=409, detail=detail)
+        super().__init__(detail=detail)
         self.paths = paths
 
 
@@ -35,7 +35,7 @@ def reject_conflicts(conflicts: list[bytes], operation: str) -> None:
     paths = [path.decode("utf-8", errors="replace") for path in conflicts]
     visible = ", ".join(paths[:MAX_CONFLICT_PATHS])
     remaining = f" and {len(paths) - MAX_CONFLICT_PATHS} more files" if len(paths) > MAX_CONFLICT_PATHS else ""
-    raise MergeConflict(
+    raise MergeConflictError(
         paths=paths,
         detail=f"{operation} has conflicts in {visible}{remaining}. Resolve them on the PR branch before merging.",
     )
@@ -72,12 +72,12 @@ def calculate_merge(
     store = OverlayObjectStore([pending, repo.object_store], add_store=pending)
     ours, theirs = store[base], store[head]
     if not isinstance(ours, Commit) or not isinstance(theirs, Commit):
-        raise HTTPException(status_code=409, detail="Branch refs must point to commits")
+        raise ConflictError(detail="Branch refs must point to commits")
     bases = find_merge_base(repo, [base, head])
     if not bases:
-        raise HTTPException(status_code=409, detail="Branches have no common ancestor")
+        raise ConflictError(detail="Branches have no common ancestor")
     if head in bases:
-        raise HTTPException(status_code=409, detail="The PR has no commits to merge")
+        raise ConflictError(detail="The PR has no commits to merge")
 
     def commit(tree: ObjectID, parents: list[ObjectID], body: bytes, original: Commit | None = None) -> Commit:
         result = Commit()
@@ -102,7 +102,7 @@ def calculate_merge(
             original = entry.commit
             ancestor = store[original.parents[0]] if original.parents else None
             if ancestor is not None and not isinstance(ancestor, Commit):
-                raise HTTPException(status_code=409, detail="PR history contains an invalid parent")
+                raise ConflictError(detail="PR history contains an invalid parent")
             tree, conflicts = three_way_merge(store, ancestor, current, original)
             reject_conflicts(conflicts, "Rebase")
             store.add_object(tree)
@@ -110,7 +110,7 @@ def calculate_merge(
                 tree.id, [current.id], message if index == len(entries) - 1 else original.message, original
             )
         if not entries:
-            raise HTTPException(status_code=409, detail="The PR has no commits to rebase")
+            raise ConflictError(detail="The PR has no commits to rebase")
         result = current
     else:
         tree, conflicts = recursive_merge(store, bases, ours, theirs)

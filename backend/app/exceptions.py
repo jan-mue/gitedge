@@ -1,12 +1,12 @@
-"""Domain exceptions raised by the client (store) layer."""
+"""Application failures independent of the HTTP transport."""
 
 from __future__ import annotations
 
 
-class NotFoundError(Exception):
-    """Base class for a requested entity that could not be found."""
+class ApplicationError(Exception):
+    """Base class for expected application failures."""
 
-    default_detail = "Not found"
+    default_detail = "Application error"
 
     def __init__(self, detail: str | None = None) -> None:
         """Initialize the exception.
@@ -16,6 +16,106 @@ class NotFoundError(Exception):
         """
         self.detail = detail or self.default_detail
         super().__init__(self.detail)
+
+
+class NotFoundError(ApplicationError):
+    """A requested entity could not be found."""
+
+    default_detail = "Not found"
+
+
+class InvalidInputError(ApplicationError):
+    """Input violates an application constraint."""
+
+    default_detail = "Invalid input"
+
+
+class UnprocessableInputError(ApplicationError):
+    """A well-formed request contains invalid domain data."""
+
+
+class PermissionDeniedError(ApplicationError):
+    """The actor lacks permission for an operation."""
+
+    default_detail = "Permission denied"
+
+
+class AuthenticationError(ApplicationError):
+    """Credentials are missing or cannot be authenticated."""
+
+    default_detail = "Authentication required"
+    default_challenge = "Bearer"
+
+    def __init__(self, detail: str | None = None, *, challenge: str | None = None) -> None:
+        """Keep the authentication scheme for the transport challenge."""
+        super().__init__(detail)
+        self.challenge = challenge or self.default_challenge
+
+
+class ConflictError(ApplicationError):
+    """An operation conflicts with current application state."""
+
+    default_detail = "Conflict"
+
+
+class PayloadTooLargeError(ApplicationError):
+    """Input exceeds a supported processing limit."""
+
+    default_detail = "Payload too large"
+
+
+class RateLimitError(ApplicationError):
+    """An operation exceeded its rate limit."""
+
+    default_detail = "Rate limit exceeded"
+
+    def __init__(self, detail: str | None = None, *, retry_after: int = 60) -> None:
+        """Record the time in seconds until retrying is appropriate."""
+        super().__init__(detail)
+        self.retry_after = retry_after
+
+
+class ServiceUnavailableError(ApplicationError):
+    """An operation could not be completed temporarily."""
+
+    default_detail = "Service unavailable"
+
+
+class InvalidPersonalAccessTokenError(AuthenticationError):
+    """A personal access token cannot authenticate its owner."""
+
+    default_detail = "Invalid personal access token"
+    default_challenge = 'Basic realm="GitEdge"'
+
+
+class TokenNotFoundError(NotFoundError):
+    """A token is absent or belongs to another account."""
+
+    default_detail = "Token not found"
+
+
+class TokenRevokedError(ConflictError):
+    """A revoked token cannot be rotated."""
+
+    default_detail = "Token is already revoked"
+
+
+class TokenIssuanceError(ServiceUnavailableError):
+    """Issuance exhausted its collision retries."""
+
+    default_detail = "Could not issue a token; try again"
+
+
+class TokenAuthenticationLimitError(RateLimitError):
+    """A token exceeded its authentication attempt limit."""
+
+    default_detail = "Token authentication limit reached"
+
+
+class InsufficientTokenScopeError(PermissionDeniedError):
+    """A token does not permit the requested Git operation."""
+
+    default_detail = "Token lacks the required operation permission"
 
 
 class RepositoryNotFoundError(NotFoundError):
@@ -68,3 +168,9 @@ class ReleaseNotFoundError(NotFoundError):
 
 class EmailDeliveryError(Exception):
     """Raised when the email transport cannot deliver a message."""
+
+
+class InsufficientTokenRepositoryError(PermissionDeniedError):
+    """A token does not include the requested repository."""
+
+    default_detail = "Token does not have access to this repository"

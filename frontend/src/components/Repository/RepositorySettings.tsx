@@ -1,12 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { GitMerge, Settings, Trash2 } from "lucide-react"
+import { GitMerge, Settings, Trash2, Users } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
 import type { Repository } from "@/client"
 import {
+  authorizationGetPermissionsOptions,
   repositoriesDeleteRepositoryMutation,
   repositoriesGetRepositoryOptions,
   repositoriesListBranchesOptions,
@@ -31,6 +32,7 @@ import {
   SelectField,
   Textarea,
 } from "@/components/design-system"
+import RepositoryCollaborators from "@/components/Repository/RepositoryCollaborators"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -51,6 +53,7 @@ const schema = z.object({
   rebase_commit_message: z.enum(["default", "title", "title_description", "title_commits"]),
   delete_branch_on_merge: z.boolean(),
   default_branch: z.string().min(1, "Default branch is required"),
+  is_private: z.boolean(),
 })
 type SettingsForm = z.infer<typeof schema>
 
@@ -99,6 +102,7 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [confirmation, setConfirmation] = useState("")
   const { data, isPending, isError, refetch } = useQuery(repositoriesGetRepositoryOptions({ path: { owner, repo } }))
+  const permissions = useQuery(authorizationGetPermissionsOptions({ path: { owner, repo } }))
   const { data: branches } = useQuery(repositoriesListBranchesOptions({ path: { owner, repo } }))
   const {
     register,
@@ -108,7 +112,7 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
     formState: { errors, isDirty },
   } = useForm<SettingsForm>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", description: "", default_branch: "main", ...mergeFormValues({}) },
+    defaultValues: { is_private: false, name: "", description: "", default_branch: "main", ...mergeFormValues({}) },
   })
   useEffect(() => {
     if (data)
@@ -117,6 +121,7 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
         name: data.name,
         description: data.description ?? "",
         default_branch: data.default_branch ?? "main",
+        is_private: data.is_private,
       })
   }, [data, reset])
   const update = useMutation({
@@ -128,6 +133,7 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
         name: updated.name,
         description: updated.description ?? "",
         default_branch: updated.default_branch ?? "main",
+        is_private: updated.is_private,
       })
       showSuccessToast("Repository settings saved")
       if (updated.name !== repo)
@@ -144,10 +150,12 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
     },
     onError: handleError.bind(showErrorToast),
   })
-  if (isPending) return <RepositoryLoading label="Loading repository settings" />
+  if (isPending || permissions.isPending) return <RepositoryLoading label="Loading repository settings" />
   if (isError) return <RepositoryError message="Unable to load settings." retry={() => refetch()} />
-  if (!user || (user.name.toLowerCase() !== owner.toLowerCase() && !user.is_superuser))
-    return <RepositoryError message="Only the repository owner or an administrator can change these settings." />
+  if (permissions.isError)
+    return <RepositoryError message="Unable to load permissions." retry={() => permissions.refetch()} />
+  if (!user || !permissions.data?.admin)
+    return <RepositoryError message="Repository admin permission is required to change these settings." />
   const fullName = `${owner}/${repo}`
   return (
     <div className="grid min-w-0 gap-6 md:grid-cols-[16rem_minmax(0,1fr)]">
@@ -161,14 +169,20 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
             <Settings className="size-4 shrink-0" aria-hidden="true" />
             Repository
           </ExternalLink>
+          <ExternalLink href="#collaborators" appearance="settings">
+            <Users className="size-4 shrink-0" aria-hidden="true" />
+            Collaborators
+          </ExternalLink>
           <ExternalLink href="#merge-settings" appearance="settings">
             <GitMerge className="size-4 shrink-0" aria-hidden="true" />
             Pull requests
           </ExternalLink>
-          <ExternalLink href="#danger-zone" appearance="settingsDanger">
-            <Trash2 className="size-4 shrink-0" aria-hidden="true" />
-            Danger zone
-          </ExternalLink>
+          {permissions.data.owner && (
+            <ExternalLink href="#danger-zone" appearance="settingsDanger">
+              <Trash2 className="size-4 shrink-0" aria-hidden="true" />
+              Danger zone
+            </ExternalLink>
+          )}
         </nav>
       </aside>
       <div className="min-w-0 space-y-6">
@@ -218,6 +232,30 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
               {errors.default_branch && <p className="text-sm text-destructive">{errors.default_branch.message}</p>}
               <p className="mt-1 text-xs text-muted-foreground">The branch shown when visitors open the repository.</p>
             </div>
+            <div className="flex items-center gap-2">
+              <Controller
+                control={control}
+                name="is_private"
+                render={({ field }) => (
+                  <Checkbox
+                    id="repository-private"
+                    name={field.name}
+                    ref={field.ref}
+                    checked={field.value}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
+                    onBlur={field.onBlur}
+                    aria-describedby="repository-visibility-description"
+                  />
+                )}
+              />
+              <Label htmlFor="repository-private" appearance="inline">
+                Private repository
+              </Label>
+            </div>
+            <p id="repository-visibility-description" className="text-xs text-muted-foreground">
+              Public repositories allow anyone to read and clone. Private repositories require authentication and a
+              repository role.
+            </p>
             <fieldset id="merge-settings" className="space-y-5 border-t border-border pt-5">
               <legend className="pt-5 text-lg font-semibold">Pull requests</legend>
               <p className="text-sm text-muted-foreground">
@@ -282,70 +320,72 @@ const RepositorySettings = ({ owner, repo }: { owner: string; repo: string }) =>
                 </div>
               </div>
             </fieldset>
-            <p className="text-sm text-muted-foreground">Visibility: {data.is_private ? "Private" : "Public"}</p>
             <LoadingButton type="submit" loading={update.isPending} disabled={!isDirty || remove.isPending}>
               Save settings
             </LoadingButton>
           </form>
         </section>
-        <DangerZone id="danger-zone">
-          <DangerZoneAction
-            title="Delete this repository"
-            description={
-              <>
-                <p>Permanently delete code, issues, pull requests, releases, and repository activity.</p>
-                <p className="mt-1 text-xs">Independent forks will be preserved.</p>
-              </>
-            }
-            action={
-              <Dialog
-                open={deleteOpen}
-                onOpenChange={(open) => {
-                  if (!remove.isPending) {
-                    setDeleteOpen(open)
-                    setConfirmation("")
-                  }
-                }}
-              >
-                <DialogTrigger asChild>
-                  <Button variant="dangerOutline" size="danger" disabled={update.isPending}>
-                    Delete this repository
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Delete {fullName}?</DialogTitle>
-                    <DialogDescription>
-                      This is permanent. All code and repository records will be deleted. Type {fullName} to confirm.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <Label htmlFor="delete-confirmation" appearance="field">
-                    Repository full name
-                  </Label>
-                  <Input
-                    id="delete-confirmation"
-                    value={confirmation}
-                    onChange={(event) => setConfirmation(event.target.value)}
-                    autoComplete="off"
-                  />
-                  <DialogFooter>
-                    <Button variant="repository" disabled={remove.isPending} onClick={() => setDeleteOpen(false)}>
-                      Cancel
+        <RepositoryCollaborators owner={owner} repo={repo} canManageOwners={permissions.data.owner} />
+        {permissions.data.owner && (
+          <DangerZone id="danger-zone">
+            <DangerZoneAction
+              title="Delete this repository"
+              description={
+                <>
+                  <p>Permanently delete code, issues, pull requests, releases, and repository activity.</p>
+                  <p className="mt-1 text-xs">Independent forks will be preserved.</p>
+                </>
+              }
+              action={
+                <Dialog
+                  open={deleteOpen}
+                  onOpenChange={(open) => {
+                    if (!remove.isPending) {
+                      setDeleteOpen(open)
+                      setConfirmation("")
+                    }
+                  }}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="dangerOutline" size="danger" disabled={update.isPending}>
+                      Delete this repository
                     </Button>
-                    <LoadingButton
-                      variant="destructive"
-                      loading={remove.isPending}
-                      disabled={confirmation !== fullName}
-                      onClick={() => remove.mutate({ path: { owner, repo } })}
-                    >
-                      Delete repository
-                    </LoadingButton>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            }
-          />
-        </DangerZone>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete {fullName}?</DialogTitle>
+                      <DialogDescription>
+                        This is permanent. All code and repository records will be deleted. Type {fullName} to confirm.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Label htmlFor="delete-confirmation" appearance="field">
+                      Repository full name
+                    </Label>
+                    <Input
+                      id="delete-confirmation"
+                      value={confirmation}
+                      onChange={(event) => setConfirmation(event.target.value)}
+                      autoComplete="off"
+                    />
+                    <DialogFooter>
+                      <Button variant="repository" disabled={remove.isPending} onClick={() => setDeleteOpen(false)}>
+                        Cancel
+                      </Button>
+                      <LoadingButton
+                        variant="destructive"
+                        loading={remove.isPending}
+                        disabled={confirmation !== fullName}
+                        onClick={() => remove.mutate({ path: { owner, repo } })}
+                      >
+                        Delete repository
+                      </LoadingButton>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              }
+            />
+          </DangerZone>
+        )}
       </div>
     </div>
   )

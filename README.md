@@ -396,3 +396,5 @@ or configuration fails closed. No shared compiler secret is used.
 ## License
 
 [MIT](LICENSE)
+
+See [the authorization model](backend/resources/authorization/README.md) for repository roles, organization membership, teams, and Git authentication.

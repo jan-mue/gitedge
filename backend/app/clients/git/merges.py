@@ -12,13 +12,13 @@ if TYPE_CHECKING:
     from app.clients.redis import AbstractRedisClient
 from dulwich.objects import ObjectID
 from dulwich.refs import Ref
-from fastapi import HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 
 from app.clients.git.blob_repository import BlobRepository
-from app.clients.git.merging import MergeConflict, calculate_merge, merge_message
+from app.clients.git.merging import MergeConflictError, calculate_merge, merge_message
 from app.clients.git.refs import GitRefStore
 from app.clients.git.storage import RepositoryStorage
+from app.exceptions import ConflictError
 from app.schemas.repositories import MergeMethod, PullRequestMergeability
 
 
@@ -64,11 +64,9 @@ class GitMergeClient:
                 b"GitEdge <mergeability@gitedge.local>",
                 write_objects=False,
             )
-        except HTTPException as error:
-            if error.status_code != status.HTTP_409_CONFLICT:
-                raise
+        except ConflictError as error:
             result.mergeable, result.reason = False, str(error.detail)
-            if isinstance(error, MergeConflict):
+            if isinstance(error, MergeConflictError):
                 result.conflicting_files = error.paths
         finally:
             repo.object_store.close()
@@ -119,11 +117,11 @@ class GitMergeClient:
             )
             base, head = repo.refs.read_loose_ref(base_ref), repo.refs.read_loose_ref(head_ref)
             if base is None or head is None:
-                raise HTTPException(status_code=409, detail="The base or PR branch no longer exists")
+                raise ConflictError(detail="The base or PR branch no longer exists")
             if request.expected_head and head.decode() != request.expected_head:
-                raise HTTPException(status_code=409, detail="The PR branch changed. Reload before merging.")
+                raise ConflictError(detail="The PR branch changed. Reload before merging.")
             if request.expected_base and base.decode() != request.expected_base:
-                raise HTTPException(status_code=409, detail="The base branch changed. Reload before merging.")
+                raise ConflictError(detail="The base branch changed. Reload before merging.")
             commits = await run_in_threadpool(
                 lambda: [
                     entry.commit
@@ -133,7 +131,7 @@ class GitMergeClient:
                 ]
             )
             if not commits:
-                raise HTTPException(status_code=409, detail="The PR has no commits to merge")
+                raise ConflictError(detail="The PR has no commits to merge")
             message = merge_message(
                 request.template, request.title, request.body, request.head_branch, request.base_branch, commits
             )
@@ -153,7 +151,7 @@ class GitMergeClient:
                 delete_branch,
                 pull_id=request.pull_id,
             ):
-                raise HTTPException(status_code=409, detail="A branch changed during merging. Reload and try again.")
+                raise ConflictError(detail="A branch changed during merging. Reload and try again.")
         finally:
             repo.object_store.close()
         return result
