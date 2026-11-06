@@ -16,6 +16,7 @@ import {
   ConversationTimeline,
   MarkdownComposer,
   MarkdownContent,
+  Link as RouterLink,
   Textarea,
 } from "@/components/design-system"
 import { CommentReactions } from "@/components/Repository/CommentReactions"
@@ -187,7 +188,13 @@ const CommentsSection = ({
       </Button>
     </>
   )
-  const composer = <MarkdownComposer value={body} onChange={setBody} testId="comment-input" actions={commentActions} />
+  const composer = user ? (
+    <MarkdownComposer value={body} onChange={setBody} testId="comment-input" actions={commentActions} />
+  ) : (
+    <p className="p-4 text-sm text-muted-foreground">
+      <RouterLink to="/login">Sign in</RouterLink> to join the conversation.
+    </p>
+  )
   const content = (
     <>
       {intro}

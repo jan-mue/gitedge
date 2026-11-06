@@ -8,8 +8,10 @@ import { EmptyState, Page, PageHeader } from "@/components/design-system"
 import PendingItems from "@/components/Pending/PendingItems"
 import CreateRepository from "@/components/Repositories/CreateRepository"
 import { columns } from "@/components/Repositories/columns"
+import { requireSession } from "@/lib/route-auth"
 
 export const Route = createFileRoute("/_layout/repositories")({
+  beforeLoad: requireSession,
   component: Repositories,
   head: () => ({
     meta: [

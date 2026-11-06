@@ -18,6 +18,16 @@ if TYPE_CHECKING:
 PermissionUser = User | None
 
 
+def _authentication(user_dep: object) -> Dependency:
+    """Preserve explicit authentication metadata for repository and comment dependencies."""
+    authentication = next((metadata for metadata in get_args(user_dep) if isinstance(metadata, Dependency)), None)
+    if authentication is None:
+        if not callable(user_dep):
+            raise TypeError("user_dep must be an authentication callable or Annotated dependency alias")
+        authentication = Depends(user_dep)
+    return authentication
+
+
 def require_permission(
     operation: str | Callable[[Request], str],
     *,
@@ -25,11 +35,7 @@ def require_permission(
     challenge: str = "Bearer",
 ) -> Callable[..., Awaitable[PermissionUser]]:
     """Authenticate and enforce the central policy for one repository operation."""
-    authentication = next((metadata for metadata in get_args(user_dep) if isinstance(metadata, Dependency)), None)
-    if authentication is None:
-        if not callable(user_dep):
-            raise TypeError("user_dep must be an authentication callable or Annotated dependency alias")
-        authentication = Depends(user_dep)
+    authentication = _authentication(user_dep)
 
     async def authorize(
         owner: Annotated[str, Path()],
@@ -68,15 +74,18 @@ async def require_token_access(request: Request, repository_id: uuid.UUID, opera
         await authenticated.require(repository_id, operation)
 
 
-def require_comment_permission(operation: str) -> Callable[..., Awaitable[User]]:
+def require_comment_permission(
+    operation: str, *, user_dep: object = RepositoryUser
+) -> Callable[..., Awaitable[PermissionUser]]:
     """Resolve UUID-only comment routes before applying repository token restrictions."""
+    authentication = _authentication(user_dep)
 
     async def authorize(
         comment_id: uuid.UUID,
         request: Request,
         comments: CommentStoreDep,
-        user: RepositoryUser,
-    ) -> User:
+        user: Annotated[PermissionUser, authentication],
+    ) -> PermissionUser:
         if token_authentication(request) is not None:
             comment = await comments.get(comment_id)
             _, repository = await comments.context(comment)

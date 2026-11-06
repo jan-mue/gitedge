@@ -181,7 +181,7 @@ class CommentService:
 
         await self.comment_store.delete(comment)
 
-    async def list_reactions(self, comment_id: uuid.UUID, current_user: User) -> ReactionsPublic:
+    async def list_reactions(self, comment_id: uuid.UUID, current_user: User | None) -> ReactionsPublic:
         """Read reaction totals after checking the comment is accessible."""
         comment = await self.comment_store.get(comment_id)
         await self._reaction_context(comment, current_user)
@@ -192,9 +192,8 @@ class CommentService:
                 ReactionPublic(
                     emoji=emoji,
                     count=sum(reaction.emoji == emoji for reaction in reactions),
-                    reacted=any(
-                        reaction.emoji == emoji and reaction.user_id == current_user.id for reaction in reactions
-                    ),
+                    reacted=current_user is not None
+                    and any(reaction.emoji == emoji and reaction.user_id == current_user.id for reaction in reactions),
                 )
                 for emoji in emojis
             ]
@@ -218,7 +217,7 @@ class CommentService:
         return await self.list_reactions(comment_id, current_user)
 
     async def _reaction_context(
-        self, comment: Comment, user: User, operation: str = "repository:read"
+        self, comment: Comment, user: User | None, operation: str = "repository:read"
     ) -> tuple[Issue, Repository]:
         """Protect private discussion reactions."""
         issue, repo = await self.comment_store.context(comment)

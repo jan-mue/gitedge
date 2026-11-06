@@ -10,10 +10,12 @@ import { DataTable } from "@/components/Common/DataTable"
 import { Page, PageHeader, SectionHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/design-system"
 import PendingUsers from "@/components/Pending/PendingUsers"
 import useAuth from "@/hooks/useAuth"
+import { requireSession } from "@/lib/route-auth"
 
 export const Route = createFileRoute("/_layout/admin")({
   component: Admin,
   beforeLoad: async () => {
+    requireSession()
     const { data: user } = await UsersService.readUserMe()
     if (!user.is_superuser) {
       throw redirect({

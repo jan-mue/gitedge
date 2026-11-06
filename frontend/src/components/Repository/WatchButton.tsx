@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useNavigate } from "@tanstack/react-router"
 import { ChevronDown, Eye, EyeOff } from "lucide-react"
 import {
   watchersGetWatchStateOptions,
@@ -17,6 +18,7 @@ import {
   Link as RouterLink,
 } from "@/components/design-system"
 import { RepositoryNotificationOptions } from "@/components/Notifications/RepositoryNotificationPreferences"
+import { useRepositoryViewer } from "@/hooks/useRepositoryViewer"
 
 interface WatchButtonProps {
   owner: string
@@ -25,9 +27,12 @@ interface WatchButtonProps {
 
 const WatchButton = ({ owner, repo }: WatchButtonProps) => {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const { authenticated, repository } = useRepositoryViewer(owner, repo)
 
   const { data: state } = useQuery({
     ...watchersGetWatchStateOptions({ path: { owner, repo } }),
+    enabled: authenticated,
   })
 
   const mutation = useMutation({
@@ -38,16 +43,16 @@ const WatchButton = ({ owner, repo }: WatchButtonProps) => {
     },
   })
 
-  const isWatching = state?.is_watching ?? false
-  const count = state?.watchers_count ?? 0
+  const isWatching = authenticated && (state?.is_watching ?? false)
+  const count = (authenticated ? state?.watchers_count : repository?.watchers_count) ?? 0
   const Icon = isWatching ? EyeOff : Eye
 
   return (
     <div className="flex items-stretch" data-testid="watch-button">
       <Button
         type="button"
-        onClick={() => mutation.mutate({ path: { owner, repo } })}
-        disabled={mutation.isPending || !state}
+        onClick={() => (authenticated ? mutation.mutate({ path: { owner, repo } }) : navigate({ to: "/login" }))}
+        disabled={mutation.isPending || (authenticated && !state)}
         aria-pressed={isWatching}
         variant="repository"
         size="compact"
@@ -67,7 +72,13 @@ const WatchButton = ({ owner, repo }: WatchButtonProps) => {
       </RouterLink>
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="repository" size="icon-sm" shape="end" aria-label="Notification settings">
+          <Button
+            variant="repository"
+            size="icon-sm"
+            shape="end"
+            aria-label="Notification settings"
+            disabled={!authenticated}
+          >
             <ChevronDown className="size-3.5" />
           </Button>
         </PopoverTrigger>

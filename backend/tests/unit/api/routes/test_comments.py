@@ -73,6 +73,28 @@ def test_create_and_list_issue_comment(
     assert r.json()["count"] == 1
 
 
+def test_anonymous_reaction_totals_preserve_private_access_and_authenticated_mutations(
+    client: TestClient,
+    fake_stores: FakeStores,
+    superuser_token_headers: dict[str, str],
+) -> None:
+    client.post(ISSUES_URL, headers=superuser_token_headers, json={"title": "Public discussion"})
+    comment = client.post(COMMENTS_URL, headers=superuser_token_headers, json={"body": "A comment"}).json()
+    url = f"{COMMENT_URL}/{comment['id']}/reactions"
+    assert client.put(url, headers=superuser_token_headers, json={"emoji": "👍"}).status_code == 200
+    anonymous = client.get(url)
+    assert anonymous.status_code == 200
+    assert anonymous.json() == {"data": [{"emoji": "👍", "count": 1, "reacted": False}]}
+    assert client.get(url, headers=superuser_token_headers).json()["data"][0]["reacted"] is True
+    assert client.put(url, json={"emoji": "👍"}).status_code == 401
+    assert client.request("DELETE", url, json={"emoji": "👍"}).status_code == 401
+    assert client.get(url, headers={"Authorization": "Bearer invalid-token"}).status_code == 401
+    repository = next(repo for repo in fake_stores.repository.items.values() if repo.name == REPO_NAME)
+    repository.is_private = True
+    assert client.get(url).status_code == 404
+    assert client.get(url, headers=superuser_token_headers).status_code == 200
+
+
 def test_create_pull_request_comment(
     client: TestClient,
     superuser_token_headers: dict[str, str],

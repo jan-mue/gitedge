@@ -31,6 +31,7 @@ import {
   LoadingButton,
   Link as RouterLink,
 } from "@/components/design-system"
+import { isLoggedIn } from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -83,7 +84,13 @@ const ForkButton = ({ owner, repo }: ForkButtonProps) => {
   })
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (open && !isLoggedIn()) navigate({ to: "/login" })
+        else setIsOpen(open)
+      }}
+    >
       <div className="flex items-stretch">
         <DialogTrigger asChild>
           <Button type="button" data-testid="fork-button" variant="repository" size="compact" shape="start">
