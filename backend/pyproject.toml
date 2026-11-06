@@ -24,7 +24,7 @@ dependencies = [
     "psycopg[binary]==3.3.6",
     "pwdlib[argon2,bcrypt]==0.3.1",
     "pycasbin==2.8.0",
-    "pydantic[email]==2.14.1",
+    "pydantic[email]==2.14.2",
     "pydantic-settings==2.16.2",
     "pygments==2.21.0",
     "pyjwt==2.15.1",

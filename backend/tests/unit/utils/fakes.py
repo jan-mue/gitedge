@@ -1033,6 +1033,15 @@ class FakeAuthorizationStore(AuthorizationStore):
                 grants.extend(await self.organization_grants(user_id, organization.id))
         return await scoped_enforcer(grants)
 
+    @override
+    async def audience_enforcer(self, user_ids: list[uuid.UUID], domains: list[str]) -> casbin.AsyncEnforcer:
+        """Combine current candidate relationships into the real async policy model."""
+        repositories = [
+            repo for repo in self.repositories.items.values() if repository_domain(repo.owner_id, repo.id) in domains
+        ]
+        grants = [grant for user_id in user_ids for grant in await self.scope_grants(user_id, repositories)]
+        return await scoped_enforcer(grants)
+
     async def organization_grants(self, user_id: uuid.UUID, organization_id: uuid.UUID) -> list[ScopeGrant]:
         """Model organization relationship records without involving a real adapter or database."""
         domain = owner_domain(organization_id)

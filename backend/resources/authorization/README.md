@@ -67,7 +67,11 @@ query loads only the actor, their current teams, and the requested resource and
 owner domains; it never loads an entire tenant's policy. Permission checks use the
 same immutable policy definitions after loading those relationships. The
 permissions endpoint evaluates all four flags against one fresh relationship
-graph. Fork pages and their separate SQL count query apply the same visibility
+graph. Notification delivery loads candidate users and their current teams in
+one filtered policy query, then evaluates every recipient against that single
+graph. Team edges without current organization membership are excluded, even
+when another candidate belongs to the same team. An empty audience performs no
+policy load. Fork pages and their separate SQL count query apply the same visibility
 and token-selection filters before pagination; counting never materializes all
 forks or feeds all fork IDs back into an authorization query. SQL predicates use
 visibility flags and roles evaluated by `AsyncEnforcer`, joining only Casbin

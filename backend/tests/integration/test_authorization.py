@@ -68,6 +68,7 @@ async def check_authorization_persistence(database_url: str, mocker: MockerFixtu
             await authorization.set_member(organization.name, member.id, False, admin)
             team = await authorization.create_team(organization.name, "developers", admin)
             await authorization.set_team_member(organization.name, team.id, member.id, admin)
+            await authorization.set_team_member(organization.name, team.id, admin.id, admin)
             grant = await authorization.set_collaborator(
                 repository, CollaboratorInput(team_id=team.id, role=RepositoryRole.WRITE), admin
             )
@@ -76,14 +77,24 @@ async def check_authorization_persistence(database_url: str, mocker: MockerFixtu
             await db.reset()
             repository = await repositories.get(repository_id)
             assert await authorization.can(repository, member, "git:write")
+            candidates = [admin, member] + [
+                User(id=uuid.uuid4(), name=f"outsider-{index}", is_active=True) for index in range(500)
+            ]
+            query = mocker.spy(db, "execute")
+            try:
+                assert await authorization.visible_users(repository, candidates) == [admin, member]
+                query.assert_awaited_once()
+            finally:
+                mocker.stop(query)
             await check_batched_repository_roles(db, authorization, repository, admin, member, team.id, mocker)
             await repositories.update(repository, {"name": "renamed"})
             assert await authorization.can(repository, member, "git:write")
             await authorization.remove_member(organization.name, member.id, admin)
-            assert not await facts.team_members(team.id)
+            assert [item.user_id for item in await facts.team_members(team.id)] == [admin.id]
             stale_team_member = TeamMember(team_id=team.id, user_id=member.id)
             await facts.save(stale_team_member)
             assert not await authorization.can(repository, member)
+            assert await authorization.visible_users(repository, [admin, member]) == [admin]
             await facts.remove(stale_team_member)
             assert not await authorization.can(repository, member)
             await authorization.set_member(organization.name, member.id, False, admin)
@@ -128,6 +139,7 @@ async def check_batched_repository_roles(
     await authorization.store.save(RepositoryCollaborator(repository_id=direct.id, user_id=member.id, role="read"))
     # A corrupt cross-organization team grant must still fail closed at read time.
     await authorization.store.save(RepositoryCollaborator(repository_id=foreign.id, team_id=team_id, role="write"))
+    assert await authorization.visible_users(foreign, [admin, member]) == [admin]
     candidates = [repository, sibling, direct, foreign] + [
         Repository(id=uuid.uuid4(), name=f"candidate-{index}", owner_id=other_org.id, is_private=True)
         for index in range(9996)

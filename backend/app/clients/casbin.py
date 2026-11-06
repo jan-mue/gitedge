@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, override
 
 from casbin_async_sqlalchemy_adapter import Adapter
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import aliased
 
 from app.entities.casbin import CasbinRule
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class RelationshipFilter:
     """Bound loading to one actor, their teams, and the requested resource domains."""
 
-    subject: str | None
+    subject: str | list[str] | None
     domains: list[str] | None
 
 
@@ -35,30 +35,40 @@ class RelationshipAdapter(Adapter):
     def filter_query(self, stmt: Select[tuple[object]], filter: RelationshipFilter) -> Select[tuple[object]]:
         """Fetch the actor's relationship closure in one query without loading a whole tenant."""
         if filter.domains is None:
-            if filter.subject is None:
+            if not isinstance(filter.subject, str):
                 raise ValueError("A relationship filter must identify a subject or resource domains")
             return stmt.where(
                 CasbinRule.ptype == "g2", or_(CasbinRule.v0 == filter.subject, CasbinRule.v1 == filter.subject)
             ).order_by(CasbinRule.id)
         if filter.subject is None:
             return stmt.where(CasbinRule.ptype == "g2", CasbinRule.v2.in_(filter.domains)).order_by(CasbinRule.id)
+        subjects = [filter.subject] if isinstance(filter.subject, str) else filter.subject
         membership = aliased(CasbinRule)
-        teams = select(CasbinRule.v1).where(
-            CasbinRule.ptype == "g2",
-            CasbinRule.v0 == filter.subject,
-            CasbinRule.v1.startswith("team:"),
-            CasbinRule.v2.in_(filter.domains),
+        organization_member = (
             select(membership.id)
             .where(
                 membership.ptype == "g2",
-                membership.v0 == filter.subject,
+                membership.v0 == CasbinRule.v0,
                 membership.v1.in_(["org_admin", "org_member"]),
                 membership.v2 == CasbinRule.v2,
             )
-            .exists(),
+            .exists()
+        )
+        teams = select(CasbinRule.v1).where(
+            CasbinRule.ptype == "g2",
+            CasbinRule.v0.in_(subjects),
+            CasbinRule.v1.startswith("team:"),
+            CasbinRule.v2.in_(filter.domains),
+            organization_member,
         )
         return stmt.where(
             CasbinRule.ptype == "g2",
             CasbinRule.v2.in_(filter.domains),
-            or_(CasbinRule.v0 == filter.subject, CasbinRule.v0.in_(teams)),
+            or_(
+                and_(
+                    CasbinRule.v0.in_(subjects),
+                    or_(~CasbinRule.v1.startswith("team:"), organization_member),
+                ),
+                CasbinRule.v0.in_(teams),
+            ),
         ).order_by(CasbinRule.id)

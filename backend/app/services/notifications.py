@@ -85,7 +85,10 @@ class NotificationService:
         mentions = mentioned_users(text) - mentioned_users(previous_text)
         candidates = await self.store.audience(activity, mentions)
         repository = await self.repository_store.get(activity.repo_id)
-        audience = [(user, reason) for user, reason in candidates if await self.authorization.can(repository, user)]
+        visible = {
+            user.id for user in await self.authorization.visible_users(repository, [user for user, _ in candidates])
+        }
+        audience = [(user, reason) for user, reason in candidates if user.id in visible]
         preferences = await self.store.delivery_preferences([user.id for user, _ in audience], activity)
         deliveries = []
         for user, reason in audience:

@@ -96,6 +96,10 @@ class AuthorizationStore(ABC):
         """Load one current, filtered AsyncEnforcer for authorization."""
 
     @abstractmethod
+    async def audience_enforcer(self, user_ids: list[uuid.UUID], domains: list[str]) -> casbin.AsyncEnforcer:
+        """Load one filtered policy graph for a repository's notification candidates."""
+
+    @abstractmethod
     async def members(self, organization_id: uuid.UUID, *, for_update: bool = False) -> list[OrganizationMember]:
         """Project organization members from Casbin policies."""
 
@@ -142,6 +146,13 @@ class SQLAuthorizationStore(AuthorizationStore):
         if user_id is None:
             return await policy_enforcer()
         return await policy_enforcer(RelationshipAdapter(self.db), RelationshipFilter(f"user:{user_id}", domains))
+
+    @override
+    async def audience_enforcer(self, user_ids: list[uuid.UUID], domains: list[str]) -> casbin.AsyncEnforcer:
+        """Fetch candidate users and their team relationships in a single policy query."""
+        return await policy_enforcer(
+            RelationshipAdapter(self.db), RelationshipFilter([f"user:{user_id}" for user_id in user_ids], domains)
+        )
 
     async def _policies(self, domains: list[str]) -> casbin.AsyncEnforcer:
         """Load the management scope for Casbin's policy APIs."""

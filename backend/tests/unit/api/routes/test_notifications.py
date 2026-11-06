@@ -15,7 +15,9 @@ from app.entities.users import User
 from app.entities.watchers import Watcher
 from app.exceptions import EmailDeliveryError
 from app.index import app
+from app.schemas.authorization import RepositoryCollaborator
 from app.services.notifications import mentioned_users
+from tests.unit.api.routes.test_authorization import add_user
 from tests.unit.utils.git import seed_merge_repository
 
 if TYPE_CHECKING:
@@ -220,6 +222,35 @@ def test_private_repository_does_not_leak(
         client.get(f"{URL}/repositories/{owner.name}/{repository.name}", headers=normal_user_token_headers).status_code
         == 404
     )
+
+
+@pytest.mark.parametrize("private", [False, True])
+async def test_notification_audience_uses_one_policy_load(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    fake_stores: FakeStores,
+    mocker: MockerFixture,
+    *,
+    private: bool,
+) -> None:
+    repository = next(repo for repo in fake_stores.repository.items.values() if repo.name == "notifications-test")
+    repository.is_private = private
+    candidates = [add_user(fake_stores, f"watcher-{index}") for index in range(100)]
+    for index, user in enumerate(candidates):
+        fake_stores.watchers.persist(Watcher(repo_id=repository.id, user_id=user.id))
+        if index % 2 == 0:
+            await fake_stores.authorization.save(
+                RepositoryCollaborator(repository_id=repository.id, user_id=user.id, role="read")
+            )
+    policy_load = mocker.spy(fake_stores.authorization, "audience_enforcer")
+    response = client.post(f"{REPO}/issues", headers=superuser_token_headers, json={"title": "Batch delivery"})
+    assert response.status_code == 201
+    policy_load.assert_awaited_once()
+    assert set(policy_load.call_args.args[0]) == {user.id for user in candidates}
+    expected = candidates[::2] if private else candidates
+    assert {notification.user_id for notification in fake_stores.notifications.items.values()} == {
+        user.id for user in expected
+    }
 
 
 def test_email_is_opt_in_and_keeps_inbox(
