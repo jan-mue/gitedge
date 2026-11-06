@@ -9,7 +9,10 @@ from app.config import settings
 from app.entities.actions import WorkflowAttempt, WorkflowRun
 from app.index import app
 from app.schemas.actions import ActionJob, ActionStep
+from app.schemas.authorization import RepositoryCollaborator
 from app.services.actions.capabilities import issue_capability
+from tests.unit.api.routes.test_authorization import add_repository, add_user, headers
+from tests.unit.api.routes.test_personal_access_tokens import create_token
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -19,10 +22,9 @@ if TYPE_CHECKING:
 OWNER = settings.FIRST_SUPERUSER.split("@")[0]
 
 
-async def setup(client: TestClient, fakes: FakeStores) -> tuple[WorkflowRun, WorkflowAttempt, str]:
-    client.post(f"{settings.API_V1_STR}/repositories/", json={"owner": OWNER, "name": "log-repo"}).raise_for_status()
-    repo = await fakes.repository.get_by_owner_and_name(OWNER, "log-repo")
-    repo.is_private = True
+async def setup(_client: TestClient, fakes: FakeStores) -> tuple[WorkflowRun, WorkflowAttempt, str]:
+    owner = next(user for user in fakes.users.items.values() if user.name == OWNER)
+    repo = add_repository(fakes, owner, "log-repo")
     store = app.dependency_overrides[get_actions_store]()
     attempt_id, run_id = uuid.uuid4(), uuid.uuid4()
     job = ActionJob(
@@ -81,8 +83,8 @@ async def test_private_history_sse_and_download_use_normal_repository_authorizat
     fake_stores.redis.streams.clear()
     base = f"{settings.API_V1_STR}/repositories/{OWNER}/log-repo/actions/runs/{run.id}/attempts/{attempt.id}/logs"
     for path in [base, base + "/events", base + "/download"]:
-        assert client.get(path).status_code == 404
-        assert client.get(path, headers=normal_user_token_headers).status_code == 404
+        assert client.get(path).status_code == 401
+        assert client.get(path, headers=normal_user_token_headers).status_code == 403
     history = client.get(base, headers=superuser_token_headers)
     assert "no-store" in history.headers["Cache-Control"]
     assert history.json()["next_seq"] == 2
@@ -136,3 +138,25 @@ async def test_result_callbacks_never_inspect_a_sandbox(client: TestClient, fake
     assert client.post(path, headers=headers, json=payload).status_code == 202
     assert attempt.status == "success"
     assert client.post(path, headers=headers, json={**payload, "generation": 2}).status_code == 403
+
+
+async def test_log_access_honors_collaborators_revocation_and_pat_scopes(
+    client: TestClient, fake_stores: FakeStores
+) -> None:
+    run, attempt, _ = await setup(client, fake_stores)
+    attempt.status = "success"
+    reader = add_user(fake_stores, "log-reader")
+    grant = RepositoryCollaborator(repository_id=run.repo_id, user_id=reader.id, role="read")
+    await fake_stores.authorization.save(grant)
+    path = f"{settings.API_V1_STR}/repositories/{OWNER}/log-repo/actions/runs/{run.id}/attempts/{attempt.id}/logs"
+    for suffix in ["", "/events", "/download"]:
+        assert client.get(path + suffix, headers=headers(reader)).status_code == 200
+    await fake_stores.authorization.remove(grant)
+    for suffix in ["", "/events", "/download"]:
+        assert client.get(path + suffix, headers=headers(reader)).status_code == 403
+    owner = next(user for user in fake_stores.users.items.values() if user.name == OWNER)
+    for scope, expected in [("git:read", 403), ("actions:read", 200), ("actions:write", 200)]:
+        token = create_token(client, headers(owner), scopes=[scope], repository_ids=[str(run.repo_id)])
+        credential = {"X-API-Key": str(token["token"])}
+        for suffix in ["", "/events", "/download"]:
+            assert client.get(path + suffix, headers=credential).status_code == expected

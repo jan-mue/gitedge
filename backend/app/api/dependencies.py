@@ -54,8 +54,8 @@ from app.config import settings
 from app.entities.users import User
 from app.exceptions import AuthenticationError, InvalidPersonalAccessTokenError, PermissionDeniedError
 from app.permissions import account_can
-from app.schemas.token import TokenPayload, WorkflowGitToken
 from app.schemas.action_logs import LogCursor
+from app.schemas.token import TokenPayload, WorkflowGitToken
 from app.services.actions.cache import ActionsCacheService
 from app.services.actions.logs import ActionsLogService
 from app.services.actions.service import ActionsService

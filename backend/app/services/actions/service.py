@@ -90,7 +90,7 @@ class ActionsService:
     async def repository(
         self, owner: str, name: str, user: User | None = None, *, write: bool = False
     ) -> RepositoryEntity:
-        """Authorize repository reads or owner-only workflow mutations."""
+        """Enforce the repository's Casbin Actions permission."""
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
         await self.authorization.require(repository, user, "actions:write" if write else "actions:read")
         return repository

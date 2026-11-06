@@ -8,7 +8,13 @@ from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 
-from app.api.dependencies import ActionsLogCursorDep, ActionsLogServiceDep, ActionsServiceDep, OptionalRepositoryUser, RepositoryUser
+from app.api.dependencies import (
+    ActionsLogCursorDep,
+    ActionsLogServiceDep,
+    ActionsServiceDep,
+    OptionalRepositoryUser,
+    RepositoryUser,
+)
 from app.api.permissions import require_permission
 from app.entities.users import User
 from app.exceptions import PayloadTooLargeError, WorkflowError

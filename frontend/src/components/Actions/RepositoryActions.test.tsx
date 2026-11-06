@@ -5,8 +5,8 @@ import {
   handleActionsDispatchWorkflow,
   handleActionsListRuns,
   handleActionsListWorkflows,
-  handleAuthorizationGetPermissions,
   handleActionsLogHistory,
+  handleAuthorizationGetPermissions,
 } from "@/client/msw.gen"
 import { server } from "@/test/server"
 import { render, screen, waitFor } from "@/test/test-utils"
