@@ -14,7 +14,6 @@ from app.entities.actions import WorkflowRun
 from app.exceptions import (
     ActionsUnavailableError,
     NotFoundError,
-    PermissionDeniedError,
     ServiceUnavailableError,
     WorkflowError,
 )

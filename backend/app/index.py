@@ -13,8 +13,14 @@ from app.api.exception_handlers import application_exception_handler
 from app.api.main import api_router
 from app.api.routes import git
 from app.config import settings
-from app.exceptions import ApplicationError, CompilerUnavailableError, EmailDeliveryError, WorkflowError
-from app.exceptions import ActionsUnavailableError, InvalidDeliveryError
+from app.exceptions import (
+    ActionsUnavailableError,
+    ApplicationError,
+    CompilerUnavailableError,
+    EmailDeliveryError,
+    InvalidDeliveryError,
+    WorkflowError,
+)
 from app.lifespan import lifespan
 from app.utils.setup_logging import setup_logging
 

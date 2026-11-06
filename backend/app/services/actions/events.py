@@ -27,8 +27,8 @@ if TYPE_CHECKING:
     from app.entities.repositories import Repository as RepositoryEntity
     from app.entities.users import User
     from app.schemas.actions import ActionRun
-    from app.services.repositories import RepositoryService
     from app.services.authorization import AuthorizationService
+    from app.services.repositories import RepositoryService
 
 
 class WorkflowTrigger(Protocol):

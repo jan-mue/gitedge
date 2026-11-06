@@ -15,6 +15,7 @@ from app.entities.actions import WorkflowRun
 from app.exceptions import ActionsUnavailableError, PermissionDeniedError
 from app.services.actions.service import ActionsService
 from app.services.actions.workflows import instantiate_jobs
+from app.services.authorization import AuthorizationService
 from tests.unit.utils.actions import FakeActionsQueue, FakeActionsStore, FakeWorkflowCompiler, compiled_fixture
 
 if TYPE_CHECKING:
@@ -41,6 +42,7 @@ def execution(mocker: MockerFixture, fake_stores: FakeStores) -> Execution:
         fake_stores.blob,
         sandbox,
         compiler=FakeWorkflowCompiler(),
+        authorization=mocker.AsyncMock(spec=AuthorizationService),
         queue=queue,
         provider="docker",
         max_timeout=60,
