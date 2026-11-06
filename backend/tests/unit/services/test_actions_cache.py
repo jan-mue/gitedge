@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from app.exceptions import PayloadTooLargeError
 from app.schemas.actions import CacheIdentity
 from app.services.actions.cache import STATE_LIMIT, ActionsCacheService
 from app.services.actions.service import ActionsService
@@ -72,7 +73,7 @@ async def test_cache_archives_are_stored_intact_with_size_and_checksum_validatio
     blobs.objects[key] = b"b" * len(payload)
     assert await service.download(repository, entry.id) is None
     assert await service.lookup(repository, identity, []) is None
-    with pytest.raises(ValueError, match="32 MiB"):
+    with pytest.raises(PayloadTooLargeError, match="32 MiB"):
         await service.save(repository, identity, b"x" * (STATE_LIMIT + 1))
 
 

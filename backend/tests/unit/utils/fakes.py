@@ -83,6 +83,7 @@ if TYPE_CHECKING:
     from typing import Any
 
     import casbin
+
     from app.entities.actions import WorkflowCacheEntry
 
 logger = logging.getLogger(__name__)

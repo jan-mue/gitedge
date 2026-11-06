@@ -41,9 +41,9 @@ if TYPE_CHECKING:
     from app.clients.workflow_compiler import WorkflowCompiler
     from app.entities.repositories import Repository as RepositoryEntity
     from app.entities.users import User
-    from app.services.authorization import AuthorizationService
     from app.schemas.actions import CacheEntry, CacheIdentity
     from app.services.actions.cache import ActionsCacheService
+    from app.services.authorization import AuthorizationService
     from app.services.repositories import RepositoryService
 
 logger = logging.getLogger(__name__)
