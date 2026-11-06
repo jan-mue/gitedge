@@ -1,0 +1,42 @@
+# Each operation names its required account role and whether tokens may use it.
+# A token scope is the operation name itself; there is no scope translation table.
+p, site_admin, account:admin, account
+p, self, personal_tokens:manage, account
+p, token, token:repository, token
+p, owner, repository:create, account
+p, read, repository:read, token
+p, admin, repository:write, token
+p, owner, repository:delete, token
+p, read, git:read, token
+p, write, git:write, token
+p, read, actions:read, token
+p, write, actions:write, token
+p, read, issues:write, token
+p, write, issues:moderate, account
+p, read, pull_requests:write, token
+p, write, pull_requests:merge, token
+p, write, pull_requests:moderate, account
+p, read, comments:write, token
+p, write, comments:moderate, account
+p, read, reviews:write, token
+p, write, releases:write, token
+p, write, releases:drafts, account
+p, admin, collaborators:read, account
+p, admin, collaborators:write, account
+p, owner, collaborators:owner, account
+p, read, repository:fork, account
+p, read, stars:read, account
+p, read, stars:write, account
+p, read, watchers:read, account
+p, read, watchers:write, account
+p, org_member, organization:read, account
+p, org_admin, organization:admin, account
+
+# Casbin applies account-role and token-scope inheritance.
+g, owner, admin
+g, admin, write
+g, write, read
+g, org_admin, org_member
+g, org_admin, owner
+g, git:write, git:read
+g, actions:write, actions:read

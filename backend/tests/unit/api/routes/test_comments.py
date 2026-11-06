@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from app.config import settings
+from app.entities.repositories import Repository
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -21,6 +22,15 @@ ISSUES_URL = f"{REPO_URL}/issues"
 PULLS_URL = f"{REPO_URL}/pulls"
 COMMENTS_URL = f"{ISSUES_URL}/1/comments"
 COMMENT_URL = f"{settings.API_V1_STR}/comments"
+
+
+@pytest.fixture(autouse=True)
+def existing_repository(fake_stores: FakeStores) -> None:
+    """Feature tests operate on an existing public repository."""
+    owner = next(iter(fake_stores.users.items.values()))
+    repository = Repository(owner_id=owner.id, name=REPO_NAME, default_branch="main", is_private=False)
+    fake_stores.repository.persist(repository)
+    repository.owner = owner
 
 
 @pytest.mark.parametrize("url", [ISSUES_URL, PULLS_URL])

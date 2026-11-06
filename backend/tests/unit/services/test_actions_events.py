@@ -8,6 +8,7 @@ from app.clients.sandboxes import AbstractSandboxClient, SandboxError
 from app.entities.actions import WorkflowRun
 from app.services.actions.service import ActionsService
 from app.services.actions.workflows import instantiate_jobs
+from app.services.authorization import AuthorizationService
 from tests.unit.utils.actions import FakeActionsStore, FakeWorkflowCompiler, compiled_fixture
 
 if TYPE_CHECKING:
@@ -56,6 +57,7 @@ async def test_ready_jobs_provision_concurrently_without_exceeding_the_limit(
         fake_stores.blob,
         provider,
         compiler=FakeWorkflowCompiler(),
+        authorization=mocker.AsyncMock(spec=AuthorizationService),
         provider="docker",
         max_timeout=60,
         max_parallel=2,
@@ -96,6 +98,7 @@ async def test_provisioning_failures_finish_out_of_order_dependencies_without_pe
         fake_stores.blob,
         provider,
         compiler=FakeWorkflowCompiler(),
+        authorization=mocker.AsyncMock(spec=AuthorizationService),
         provider="docker",
         max_timeout=60,
         max_parallel=1,
@@ -149,6 +152,7 @@ async def test_pr_checks_follow_the_head_and_ignore_other_prs_and_old_deliveries
         fake_stores.blob,
         mocker.AsyncMock(spec=AbstractSandboxClient),
         compiler=FakeWorkflowCompiler(),
+        authorization=mocker.AsyncMock(spec=AuthorizationService),
         provider="docker",
         max_timeout=60,
         max_parallel=1,
@@ -178,6 +182,7 @@ async def test_push_to_an_open_pr_triggers_synchronize(mocker: MockerFixture, fa
         fake_stores.blob,
         mocker.AsyncMock(spec=AbstractSandboxClient),
         compiler=FakeWorkflowCompiler(),
+        authorization=mocker.AsyncMock(spec=AuthorizationService),
         provider="docker",
         max_timeout=60,
         max_parallel=1,

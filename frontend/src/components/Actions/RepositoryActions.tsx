@@ -8,10 +8,10 @@ import {
   actionsListRunsOptions,
   actionsListRunsQueryKey,
   actionsListWorkflowsOptions,
+  authorizationGetPermissionsOptions,
 } from "@/client/@tanstack/react-query.gen"
 import { Badge, Button, CheckStatusIcon, FilterDropdown, Input, Label } from "@/components/design-system"
 import RepositoryLoading, { RepositoryError } from "@/components/Repository/RepositoryLoading"
-import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { formatDuration, handleError } from "@/utils"
 import { RunDetail } from "./RunDetail"
@@ -31,7 +31,7 @@ export const RepositoryActions = ({
 }) => {
   const path = { owner, repo }
   const queryClient = useQueryClient()
-  const { user } = useAuth()
+  const permissions = useQuery(authorizationGetPermissionsOptions({ path }))
   const { showErrorToast } = useCustomToast()
   const [workflow, setWorkflow] = useState("")
   const [actor, setActor] = useState("")
@@ -58,7 +58,7 @@ export const RepositoryActions = ({
     onSuccess: refresh,
     onError: handleError.bind(showErrorToast),
   })
-  const canManage = !!user && (user.name.toLowerCase() === owner.toLowerCase() || user.is_superuser === true)
+  const canManage = permissions.data?.actions_write === true
   const selected = runs.data?.find((run) => run.id === runId)
   if (runs.isPending || workflows.isPending) return <RepositoryLoading label="Loading workflow runs" />
   if (runs.isError || workflows.isError)

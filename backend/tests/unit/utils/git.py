@@ -9,14 +9,16 @@ from dulwich.refs import Ref
 from app.clients.git.blob_repository import BlobRepository
 from app.clients.git.repositories import GitClient
 from app.clients.git.storage import RepositoryStorage
+from app.entities.repositories import Repository
+from app.services.authorization import AuthorizationService
 from app.services.repositories import RepositoryService
+from tests.unit.utils.fakes import FakeAuthorizationStore, FakeOrganizationStore, FakeRepositoryStore, FakeUserStore
 
 if TYPE_CHECKING:
     from app.clients.blob_storage import BlobStorageClient
     from app.clients.cache import AbstractCacheClient
     from app.clients.git.blob_backend import BlobBackend
     from app.clients.redis import AbstractRedisClient
-    from app.clients.repositories import RepositoryStore
     from app.clients.stars import StarStore
     from tests.unit.utils.fakes import FakeStores
 
@@ -31,6 +33,9 @@ def seed_merge_repository(
     revert_first: bool = False,
 ) -> tuple[str, str, str]:
     """Persist a diverged base and two PR commits without external services."""
+    principal = next(user for user in stores.users.items.values() if user.name == owner)
+    if not any(repo.owner_id == principal.id and repo.name == name for repo in stores.repository.items.values()):
+        stores.repository.persist(Repository(owner_id=principal.id, name=name, is_private=False, default_branch="main"))
     repo = BlobRepository.init_bare()
 
     def commit(files: dict[str, bytes], parents: list[ObjectID], message: bytes) -> Commit:
@@ -82,7 +87,7 @@ def build_repository_service(
     blob: BlobStorageClient,
     redis: AbstractRedisClient,
     cache: AbstractCacheClient,
-    repository_store: RepositoryStore,
+    repository_store: FakeRepositoryStore,
     star_store: StarStore,
 ) -> RepositoryService:
     """Wire the actual Git adapter to in-memory persistence for unit tests."""
@@ -91,4 +96,9 @@ def build_repository_service(
         return await repository_store.find_by_owner_and_name(owner, name) is not None
 
     git = GitClient(backend, RepositoryStorage(blob, redis), cache, exists)
-    return RepositoryService(git, cache, repository_store, star_store)
+    users = repository_store.users or FakeUserStore()
+    organizations = repository_store.organizations or FakeOrganizationStore()
+    authorization = AuthorizationService(
+        FakeAuthorizationStore(organizations, repository_store), repository_store, organizations, users
+    )
+    return RepositoryService(git, cache, repository_store, star_store, authorization)

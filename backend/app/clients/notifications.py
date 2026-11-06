@@ -6,10 +6,11 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, override
 
-from sqlalchemy import String, cast, func, literal, or_, select, update
+from sqlalchemy import String, cast, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import selectinload
 
+from app.clients.authorization import repository_visibility_predicate
 from app.clients.database import CrudStore, SQLStore
 from app.entities.activity import Activity
 from app.entities.comments import Comment
@@ -24,6 +25,7 @@ from app.entities.principals import Principal
 from app.entities.repositories import Repository
 from app.entities.users import User
 from app.entities.watchers import Watcher
+from app.permissions import repository_visibility
 from app.schemas.notifications import NotificationCategory, NotificationFilter
 
 if TYPE_CHECKING:
@@ -165,11 +167,7 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
         mentioned = await self.db.scalars(select(User.id).where(User.lower_name.in_(mentions)))
         reasons.update(dict.fromkeys(mentioned.all(), "mentioned"))
         users = await self.db.scalars(select(User).where(User.id.in_(reasons), User.is_active.is_(True)))
-        return [
-            (user, reasons[user.id])
-            for user in users
-            if user.id != activity.actor_id and (not repo.is_private or user.id == repo.owner_id or user.is_superuser)
-        ]
+        return [(user, reasons[user.id]) for user in users if user.id != activity.actor_id]
 
     @override
     async def delivery_preferences(
@@ -213,7 +211,7 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
             await self.db.commit()
 
     @staticmethod
-    def _inbox_query(user: User) -> Select[Notification]:
+    async def _inbox_query(user: User) -> Select[Notification]:
         """Scope every inbox query to the recipient and currently visible repositories."""
         return (
             select(Notification)
@@ -222,14 +220,14 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
             .join(Principal, Repository.owner_id == Principal.id)
             .where(
                 Notification.user_id == user.id,
-                or_(Repository.is_private.is_(False), Repository.owner_id == user.id, literal(user.is_superuser)),
+                repository_visibility_predicate(await repository_visibility(user)),
             )
         )
 
     @override
     async def list_for_user(self, user: User, ids: list[uuid.UUID] | None = None) -> list[Notification]:
         """Read selected accessible rows for ownership checks."""
-        query = self._inbox_query(user)
+        query = await self._inbox_query(user)
         if ids is not None:
             query = query.where(Notification.id.in_(ids))
         result = await self.db.scalars(
@@ -240,7 +238,7 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
     @override
     async def page(self, user: User, filters: NotificationFilter) -> NotificationPage:
         """Paginate in SQL and compute counts separately from destination hydration."""
-        base = self._inbox_query(user)
+        base = await self._inbox_query(user)
         repository_name = Principal.name + "/" + Repository.name
         aggregates = await self.db.execute(
             base.with_only_columns(
@@ -292,14 +290,18 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
     @override
     async def mark_all_read(self, user: User) -> None:
         """Update all visible inbox rows without loading them."""
-        ids = self._inbox_query(user).with_only_columns(Notification.id).where(Notification.is_archived.is_(False))
+        ids = (
+            (await self._inbox_query(user))
+            .with_only_columns(Notification.id)
+            .where(Notification.is_archived.is_(False))
+        )
         await self.db.execute(update(Notification).where(Notification.id.in_(ids)).values(is_read=True))
         await self.db.commit()
 
     @override
     async def archive_repository(self, user: User, repo_id: uuid.UUID) -> None:
         """Archive every accessible notification for this repository in one statement."""
-        ids = self._inbox_query(user).with_only_columns(Notification.id).where(Activity.repo_id == repo_id)
+        ids = (await self._inbox_query(user)).with_only_columns(Notification.id).where(Activity.repo_id == repo_id)
         await self.db.execute(
             update(Notification).where(Notification.id.in_(ids)).values(is_read=True, is_archived=True)
         )

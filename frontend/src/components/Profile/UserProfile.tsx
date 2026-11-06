@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query"
 import { GitBranch } from "lucide-react"
 import { useState } from "react"
-import type { Repository } from "@/client"
+import type { ProfilePublic, Repository } from "@/client"
 import {
   profilesListUserRepositoriesOptions,
   profilesListUserStarredRepositoriesOptions,
   profilesReadUserByUsernameOptions,
 } from "@/client/@tanstack/react-query.gen"
 import { Avatar, AvatarFallback, Button } from "@/components/design-system"
+import { OrganizationMembers } from "@/components/Organizations/OrganizationMembers"
 import { RepositorySummary } from "@/components/Repositories/RepositorySummary"
 import StarButton from "@/components/Repository/StarButton"
 
@@ -25,7 +26,7 @@ const RepoCard = ({ repo }: { repo: Repository }) => (
 )
 
 const UserProfile = ({ username }: UserProfileProps) => {
-  const [tab, setTab] = useState<"repositories" | "starred">("repositories")
+  const [tab, setTab] = useState<"repositories" | "starred" | "members">("repositories")
 
   const { data: user } = useQuery({
     ...profilesReadUserByUsernameOptions({ path: { username } }),
@@ -46,17 +47,7 @@ const UserProfile = ({ username }: UserProfileProps) => {
 
   return (
     <div className="container mx-auto max-w-7xl space-y-6 px-4 py-6" data-testid="user-profile">
-      <div className="flex items-center gap-4">
-        <Avatar appearance="profile">
-          <AvatarFallback appearance="profile">
-            {(user?.display_name || username).slice(0, 1).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{user?.display_name || username}</h1>
-          <p className="text-muted-foreground">@{user?.name ?? username}</p>
-        </div>
-      </div>
+      <ProfileHeader user={user} username={username} />
 
       <div className="flex items-center gap-2 border-b border-border">
         <Button
@@ -68,6 +59,11 @@ const UserProfile = ({ username }: UserProfileProps) => {
           <GitBranch className="w-4 h-4" />
           Repositories ({repos?.count ?? 0})
         </Button>
+        {user?.principal_type === "organization" && (
+          <Button variant="tab" aria-pressed={tab === "members"} onClick={() => setTab("members")}>
+            Members
+          </Button>
+        )}
         {isUser && (
           <Button
             variant="tab"
@@ -80,19 +76,38 @@ const UserProfile = ({ username }: UserProfileProps) => {
         )}
       </div>
 
-      {list.length > 0 ? (
-        <div className="space-y-3">
-          {list.map((repo) => (
-            <RepoCard key={`${repo.owner}/${repo.name}`} repo={repo} />
-          ))}
-        </div>
+      {tab === "members" && user?.principal_type === "organization" ? (
+        <OrganizationMembers key={username} organization={username} />
       ) : (
-        <div className="py-12 text-center text-sm text-muted-foreground">
-          {tab === "repositories" ? "No repositories yet." : "No starred repositories yet."}
-        </div>
+        <ProfileRepositories list={list} starred={tab === "starred"} />
       )}
     </div>
   )
 }
 
 export default UserProfile
+
+const ProfileRepositories = ({ list, starred }: { list: Repository[]; starred: boolean }) =>
+  list.length ? (
+    <div className="space-y-3">
+      {list.map((repo) => (
+        <RepoCard key={`${repo.owner}/${repo.name}`} repo={repo} />
+      ))}
+    </div>
+  ) : (
+    <div className="py-12 text-center text-sm text-muted-foreground">
+      {starred ? "No starred repositories yet." : "No repositories yet."}
+    </div>
+  )
+
+const ProfileHeader = ({ user, username }: { user?: ProfilePublic; username: string }) => (
+  <div className="flex items-center gap-4">
+    <Avatar appearance="profile">
+      <AvatarFallback appearance="profile">{(user?.display_name || username).slice(0, 1).toUpperCase()}</AvatarFallback>
+    </Avatar>
+    <div>
+      <h1 className="text-2xl font-bold tracking-tight">{user?.display_name || username}</h1>
+      <p className="text-muted-foreground">@{user?.name ?? username}</p>
+    </div>
+  </div>
+)

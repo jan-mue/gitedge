@@ -5,11 +5,13 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, override
 
-from sqlalchemy import select
+from sqlalchemy import delete, or_, select
 
 from app.clients.database import CrudStore, SQLStore
+from app.entities.casbin import CasbinRule
 from app.entities.organizations import Organization
 from app.exceptions import OrganizationNotFoundError
+from app.permissions import owner_domain
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,6 +46,17 @@ class SQLOrganizationStore(OrganizationStore, SQLStore[Organization]):
             db: SQLAlchemy async session.
         """
         super().__init__(db, Organization)
+
+    @override
+    async def delete(self, obj: Organization) -> None:
+        """Remove namespace relationships in the organization's deletion transaction."""
+        domain = owner_domain(obj.id)
+        await self.db.execute(
+            delete(CasbinRule).where(
+                CasbinRule.ptype == "g2", or_(CasbinRule.v2 == domain, CasbinRule.v2.startswith(f"{domain}/"))
+            )
+        )
+        await super().delete(obj)
 
     @override
     async def find_by_name(self, name: str) -> Organization | None:

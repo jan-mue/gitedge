@@ -1,10 +1,13 @@
 """Actions history, dispatch, cancellation, and completion callbacks."""
 
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Depends, Response
 
-from app.api.dependencies import ActionsServiceDep, CurrentUser, OptionalUser
+from app.api.dependencies import ActionsServiceDep, OptionalRepositoryUser, RepositoryUser
+from app.api.permissions import require_permission
+from app.entities.users import User
 from app.schemas.actions import ActionRun, PullRequestChecks, WorkflowDispatch, WorkflowInfo
 
 router = APIRouter(tags=["actions"])
@@ -12,7 +15,12 @@ router = APIRouter(tags=["actions"])
 
 @router.get("/repositories/{owner}/{repo}/actions/workflows")
 async def list_workflows(
-    owner: str, repo: str, service: ActionsServiceDep, user: OptionalUser, response: Response, ref: str = "HEAD"
+    owner: str,
+    repo: str,
+    service: ActionsServiceDep,
+    user: Annotated[User | None, Depends(require_permission("actions:read", user_dep=OptionalRepositoryUser))],
+    response: Response,
+    ref: str = "HEAD",
 ) -> list[WorkflowInfo]:
     """Discover workflows in .gitedge/workflow at a repository revision."""
     response.headers["Cache-Control"] = "private, no-store"
@@ -21,7 +29,11 @@ async def list_workflows(
 
 @router.get("/repositories/{owner}/{repo}/actions/runs")
 async def list_runs(
-    owner: str, repo: str, service: ActionsServiceDep, user: OptionalUser, response: Response
+    owner: str,
+    repo: str,
+    service: ActionsServiceDep,
+    user: Annotated[User | None, Depends(require_permission("actions:read", user_dep=OptionalRepositoryUser))],
+    response: Response,
 ) -> list[ActionRun]:
     """Read recent runs and refresh their sandbox state."""
     response.headers["Cache-Control"] = "private, no-store"
@@ -30,7 +42,12 @@ async def list_runs(
 
 @router.get("/repositories/{owner}/{repo}/pulls/{number}/checks")
 async def get_pull_request_checks(
-    owner: str, repo: str, number: int, service: ActionsServiceDep, user: OptionalUser, response: Response
+    owner: str,
+    repo: str,
+    number: int,
+    service: ActionsServiceDep,
+    user: Annotated[User | None, Depends(require_permission("actions:read", user_dep=OptionalRepositoryUser))],
+    response: Response,
 ) -> PullRequestChecks:
     """Return real checks for this pull request's current head commit."""
     response.headers["Cache-Control"] = "private, no-store"
@@ -39,14 +56,24 @@ async def get_pull_request_checks(
 
 @router.post("/repositories/{owner}/{repo}/actions/dispatch", status_code=201)
 async def dispatch_workflow(
-    owner: str, repo: str, body: WorkflowDispatch, service: ActionsServiceDep, user: CurrentUser
+    owner: str,
+    repo: str,
+    body: WorkflowDispatch,
+    service: ActionsServiceDep,
+    user: Annotated[User, Depends(require_permission("actions:write", user_dep=RepositoryUser))],
 ) -> ActionRun:
     """Run an explicitly enabled workflow as its repository owner."""
     return await service.dispatch(owner, repo, body.workflow, body.ref, body.inputs, user)
 
 
 @router.post("/repositories/{owner}/{repo}/actions/runs/{run_id}/cancel", status_code=204)
-async def cancel_run(owner: str, repo: str, run_id: uuid.UUID, service: ActionsServiceDep, user: CurrentUser) -> None:
+async def cancel_run(
+    owner: str,
+    repo: str,
+    run_id: uuid.UUID,
+    service: ActionsServiceDep,
+    user: Annotated[User, Depends(require_permission("actions:write", user_dep=RepositoryUser))],
+) -> None:
     """Cancel a run and remove its sandbox resources."""
     await service.cancel(owner, repo, run_id, user)
 

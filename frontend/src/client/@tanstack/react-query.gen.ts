@@ -3,8 +3,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { ActionsService, ActivityService, CommentsService, ForksService, GitService, LoginService, NotificationsService, type Options, OrganizationsService, PrivateService, ProfilesService, ReleasesService, RepositoriesService, ReviewsService, StarsService, UsersService, UtilsService, WatchersService } from '../sdk.gen';
-import type { actionsCancelRunData, actionsCancelRunError, actionsCancelRunResponse, actionsDispatchWorkflowData, actionsDispatchWorkflowError, actionsDispatchWorkflowResponse, actionsGetPullRequestChecksData, actionsGetPullRequestChecksError, actionsGetPullRequestChecksResponse, actionsListRunsData, actionsListRunsError, actionsListRunsResponse, actionsListWorkflowsData, actionsListWorkflowsError, actionsListWorkflowsResponse, activityGetFeedData, activityGetFeedError, activityGetFeedResponse, activityGetRepositoryActivityData, activityGetRepositoryActivityError, activityGetRepositoryActivityResponse, activityGetRepositoryActivityStatisticsData, activityGetRepositoryActivityStatisticsError, activityGetRepositoryActivityStatisticsResponse, commentsAddReactionData, commentsAddReactionError, commentsAddReactionResponse, commentsCreateCommentData, commentsCreateCommentError, commentsCreateCommentResponse, commentsDeleteCommentData, commentsDeleteCommentError, commentsDeleteCommentResponse, commentsListCommentsData, commentsListCommentsError, commentsListCommentsResponse, commentsListReactionsData, commentsListReactionsError, commentsListReactionsResponse, commentsRemoveReactionData, commentsRemoveReactionError, commentsRemoveReactionResponse, commentsUpdateCommentData, commentsUpdateCommentError, commentsUpdateCommentResponse, forksForkRepositoryData, forksForkRepositoryError, forksForkRepositoryResponse, forksListForksData, forksListForksError, forksListForksResponse, gitGetHeadData, gitGetHeadError, gitGetInfoPacksData, gitGetInfoPacksError, gitGetInfoRefsData, gitGetInfoRefsError, gitGetLooseObjectData, gitGetLooseObjectError, gitGetPackFileData, gitGetPackFileError, gitGitReceivePackData, gitGitReceivePackError, gitGitUploadPackData, gitGitUploadPackError, loginLoginAccessTokenData, loginLoginAccessTokenError, loginLoginAccessTokenResponse, loginRecoverPasswordData, loginRecoverPasswordError, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentError, loginRecoverPasswordResponse, loginResetPasswordData, loginResetPasswordError, loginResetPasswordResponse, loginTestTokenData, loginTestTokenResponse, notificationsArchiveRepositoryData, notificationsArchiveRepositoryError, notificationsArchiveRepositoryResponse, notificationsGetPreferencesData, notificationsGetPreferencesResponse, notificationsGetRepositoryPreferencesData, notificationsGetRepositoryPreferencesError, notificationsGetRepositoryPreferencesResponse, notificationsListNotificationsData, notificationsListNotificationsError, notificationsListNotificationsResponse, notificationsMarkAllReadData, notificationsMarkAllReadResponse, notificationsSetPreferencesData, notificationsSetPreferencesError, notificationsSetPreferencesResponse, notificationsSetRepositoryPreferencesData, notificationsSetRepositoryPreferencesError, notificationsSetRepositoryPreferencesResponse, notificationsUpdateNotificationsData, notificationsUpdateNotificationsError, notificationsUpdateNotificationsResponse, organizationsCreateOrganizationData, organizationsCreateOrganizationError, organizationsCreateOrganizationResponse, organizationsListOrganizationsData, organizationsListOrganizationsError, organizationsListOrganizationsResponse, privateCreateUserData, privateCreateUserError, privateCreateUserResponse, profilesListUserRepositoriesData, profilesListUserRepositoriesError, profilesListUserRepositoriesResponse, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesError, profilesListUserStarredRepositoriesResponse, profilesReadUserByUsernameData, profilesReadUserByUsernameError, profilesReadUserByUsernameResponse, releasesCreateReleaseData, releasesCreateReleaseError, releasesCreateReleaseResponse, releasesGetReleaseData, releasesGetReleaseError, releasesGetReleaseResponse, releasesListReleasesData, releasesListReleasesError, releasesListReleasesResponse, releasesListTagsData, releasesListTagsError, releasesListTagsResponse, releasesUpdateReleaseData, releasesUpdateReleaseError, releasesUpdateReleaseResponse, repositoriesCompareRevisionsData, repositoriesCompareRevisionsError, repositoriesCompareRevisionsResponse, repositoriesCreateIssueData, repositoriesCreateIssueError, repositoriesCreateIssueResponse, repositoriesCreatePullRequestData, repositoriesCreatePullRequestError, repositoriesCreatePullRequestResponse, repositoriesCreateRepositoryData, repositoriesCreateRepositoryError, repositoriesCreateRepositoryResponse, repositoriesDeleteRepositoryData, repositoriesDeleteRepositoryError, repositoriesDeleteRepositoryResponse, repositoriesGetBlameData, repositoriesGetBlameError, repositoriesGetBlameResponse, repositoriesGetBlobData, repositoriesGetBlobError, repositoriesGetBlobResponse, repositoriesGetCommitData, repositoriesGetCommitError, repositoriesGetCommitResponse, repositoriesGetDiffFileData, repositoriesGetDiffFileError, repositoriesGetDiffFileResponse, repositoriesGetFileIndexData, repositoriesGetFileIndexError, repositoriesGetFileIndexResponse, repositoriesGetIssueData, repositoriesGetIssueError, repositoriesGetIssueResponse, repositoriesGetPullRequestCommitsData, repositoriesGetPullRequestCommitsError, repositoriesGetPullRequestCommitsResponse, repositoriesGetPullRequestData, repositoriesGetPullRequestError, repositoriesGetPullRequestEventsData, repositoriesGetPullRequestEventsError, repositoriesGetPullRequestEventsResponse, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesError, repositoriesGetPullRequestFilesResponse, repositoriesGetPullRequestMergeabilityData, repositoriesGetPullRequestMergeabilityError, repositoriesGetPullRequestMergeabilityResponse, repositoriesGetPullRequestResponse, repositoriesGetRawData, repositoriesGetRawError, repositoriesGetReadmeData, repositoriesGetReadmeError, repositoriesGetReadmeResponse, repositoriesGetRepositoryData, repositoriesGetRepositoryError, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoError, repositoriesGetRepositoryInfoResponse, repositoriesGetRepositoryResponse, repositoriesGetSourceData, repositoriesGetSourceError, repositoriesGetSourceResponse, repositoriesGetStatisticsData, repositoriesGetStatisticsError, repositoriesGetStatisticsResponse, repositoriesGetTreeData, repositoriesGetTreeError, repositoriesGetTreeResponse, repositoriesListBranchesData, repositoriesListBranchesError, repositoriesListBranchesResponse, repositoriesListCommitsData, repositoriesListCommitsError, repositoriesListCommitsResponse, repositoriesListIssuesData, repositoriesListIssuesError, repositoriesListIssuesResponse, repositoriesListPullRequestsData, repositoriesListPullRequestsError, repositoriesListPullRequestsResponse, repositoriesListRepositoriesData, repositoriesListRepositoriesResponse, repositoriesMergePullRequestData, repositoriesMergePullRequestError, repositoriesMergePullRequestResponse, repositoriesUpdateIssueData, repositoriesUpdateIssueError, repositoriesUpdateIssueResponse, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestError, repositoriesUpdatePullRequestResponse, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryError, repositoriesUpdateRepositoryResponse, reviewsGetCommentContextData, reviewsGetCommentContextError, reviewsGetCommentContextResponse, reviewsGetWorkspaceData, reviewsGetWorkspaceError, reviewsGetWorkspaceResponse, reviewsListReviewsData, reviewsListReviewsError, reviewsListReviewsResponse, reviewsMarkReviewedData, reviewsMarkReviewedError, reviewsMarkReviewedResponse, reviewsReplyToReviewData, reviewsReplyToReviewError, reviewsReplyToReviewResponse, reviewsSaveDraftData, reviewsSaveDraftError, reviewsSaveDraftResponse, reviewsSubmitReviewData, reviewsSubmitReviewError, reviewsSubmitReviewResponse, starsGetStarStateData, starsGetStarStateError, starsGetStarStateResponse, starsListStargazersData, starsListStargazersError, starsListStargazersResponse, starsListStarredRepositoriesData, starsListStarredRepositoriesError, starsListStarredRepositoriesResponse, starsStarRepositoryData, starsStarRepositoryError, starsStarRepositoryResponse, starsUnstarRepositoryData, starsUnstarRepositoryError, starsUnstarRepositoryResponse, usersCreateUserData, usersCreateUserError, usersCreateUserResponse, usersDeleteUserData, usersDeleteUserError, usersDeleteUserMeData, usersDeleteUserMeResponse, usersDeleteUserResponse, usersReadUserMeData, usersReadUserMeResponse, usersReadUsersData, usersReadUsersError, usersReadUsersResponse, usersRegisterUserData, usersRegisterUserError, usersRegisterUserResponse, usersUpdatePasswordMeData, usersUpdatePasswordMeError, usersUpdatePasswordMeResponse, usersUpdateUserData, usersUpdateUserError, usersUpdateUserMeData, usersUpdateUserMeError, usersUpdateUserMeResponse, usersUpdateUserResponse, utilsHealthCheckData, utilsHealthCheckResponse, utilsPreviewMarkdownData, utilsPreviewMarkdownError, utilsPreviewMarkdownResponse, utilsTestEmailData, utilsTestEmailError, utilsTestEmailResponse, watchersGetWatchStateData, watchersGetWatchStateError, watchersGetWatchStateResponse, watchersListWatchersData, watchersListWatchersError, watchersListWatchersResponse, watchersUnwatchRepositoryData, watchersUnwatchRepositoryError, watchersUnwatchRepositoryResponse, watchersWatchRepositoryData, watchersWatchRepositoryError, watchersWatchRepositoryResponse } from '../types.gen';
+import { ActionsService, ActivityService, AuthorizationService, CommentsService, ForksService, GitService, LoginService, NotificationsService, type Options, OrganizationsService, PersonalAccessTokensService, PrivateService, ProfilesService, ReleasesService, RepositoriesService, ReviewsService, StarsService, UsersService, UtilsService, WatchersService } from '../sdk.gen';
+import type { actionsCancelRunData, actionsCancelRunError, actionsCancelRunResponse, actionsDispatchWorkflowData, actionsDispatchWorkflowError, actionsDispatchWorkflowResponse, actionsGetPullRequestChecksData, actionsGetPullRequestChecksError, actionsGetPullRequestChecksResponse, actionsListRunsData, actionsListRunsError, actionsListRunsResponse, actionsListWorkflowsData, actionsListWorkflowsError, actionsListWorkflowsResponse, activityGetFeedData, activityGetFeedError, activityGetFeedResponse, activityGetRepositoryActivityData, activityGetRepositoryActivityError, activityGetRepositoryActivityResponse, activityGetRepositoryActivityStatisticsData, activityGetRepositoryActivityStatisticsError, activityGetRepositoryActivityStatisticsResponse, authorizationCreateTeamData, authorizationCreateTeamError, authorizationCreateTeamResponse, authorizationDeleteTeamData, authorizationDeleteTeamError, authorizationDeleteTeamResponse, authorizationGetOrganizationPermissionsData, authorizationGetOrganizationPermissionsError, authorizationGetOrganizationPermissionsResponse, authorizationGetPermissionsData, authorizationGetPermissionsError, authorizationGetPermissionsResponse, authorizationListCollaboratorsData, authorizationListCollaboratorsError, authorizationListCollaboratorsResponse, authorizationListCollaboratorTeamsData, authorizationListCollaboratorTeamsError, authorizationListCollaboratorTeamsResponse, authorizationListMembersData, authorizationListMembersError, authorizationListMembersResponse, authorizationListTeamMembersData, authorizationListTeamMembersError, authorizationListTeamMembersResponse, authorizationListTeamsData, authorizationListTeamsError, authorizationListTeamsResponse, authorizationRemoveCollaboratorData, authorizationRemoveCollaboratorError, authorizationRemoveCollaboratorResponse, authorizationRemoveMemberData, authorizationRemoveMemberError, authorizationRemoveMemberResponse, authorizationRemoveTeamMemberData, authorizationRemoveTeamMemberError, authorizationRemoveTeamMemberResponse, authorizationSearchCollaboratorCandidatesData, authorizationSearchCollaboratorCandidatesError, authorizationSearchCollaboratorCandidatesResponse, authorizationSearchMemberCandidatesData, authorizationSearchMemberCandidatesError, authorizationSearchMemberCandidatesResponse, authorizationSetCollaboratorData, authorizationSetCollaboratorError, authorizationSetCollaboratorResponse, authorizationSetMemberData, authorizationSetMemberError, authorizationSetMemberResponse, authorizationSetTeamMemberData, authorizationSetTeamMemberError, authorizationSetTeamMemberResponse, commentsAddReactionData, commentsAddReactionError, commentsAddReactionResponse, commentsCreateCommentData, commentsCreateCommentError, commentsCreateCommentResponse, commentsDeleteCommentData, commentsDeleteCommentError, commentsDeleteCommentResponse, commentsListCommentsData, commentsListCommentsError, commentsListCommentsResponse, commentsListReactionsData, commentsListReactionsError, commentsListReactionsResponse, commentsRemoveReactionData, commentsRemoveReactionError, commentsRemoveReactionResponse, commentsUpdateCommentData, commentsUpdateCommentError, commentsUpdateCommentResponse, forksForkRepositoryData, forksForkRepositoryError, forksForkRepositoryResponse, forksListForksData, forksListForksError, forksListForksResponse, gitGetHeadData, gitGetHeadError, gitGetInfoPacksData, gitGetInfoPacksError, gitGetInfoRefsData, gitGetInfoRefsError, gitGetLooseObjectData, gitGetLooseObjectError, gitGetPackFileData, gitGetPackFileError, gitGitReceivePackData, gitGitReceivePackError, gitGitUploadPackData, gitGitUploadPackError, loginLoginAccessTokenData, loginLoginAccessTokenError, loginLoginAccessTokenResponse, loginRecoverPasswordData, loginRecoverPasswordError, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentError, loginRecoverPasswordResponse, loginResetPasswordData, loginResetPasswordError, loginResetPasswordResponse, loginTestTokenData, loginTestTokenResponse, notificationsArchiveRepositoryData, notificationsArchiveRepositoryError, notificationsArchiveRepositoryResponse, notificationsGetPreferencesData, notificationsGetPreferencesResponse, notificationsGetRepositoryPreferencesData, notificationsGetRepositoryPreferencesError, notificationsGetRepositoryPreferencesResponse, notificationsListNotificationsData, notificationsListNotificationsError, notificationsListNotificationsResponse, notificationsMarkAllReadData, notificationsMarkAllReadResponse, notificationsSetPreferencesData, notificationsSetPreferencesError, notificationsSetPreferencesResponse, notificationsSetRepositoryPreferencesData, notificationsSetRepositoryPreferencesError, notificationsSetRepositoryPreferencesResponse, notificationsUpdateNotificationsData, notificationsUpdateNotificationsError, notificationsUpdateNotificationsResponse, organizationsCreateOrganizationData, organizationsCreateOrganizationError, organizationsCreateOrganizationResponse, organizationsListOrganizationsData, organizationsListOrganizationsError, organizationsListOrganizationsResponse, personalAccessTokensCreateTokenData, personalAccessTokensCreateTokenError, personalAccessTokensCreateTokenResponse, personalAccessTokensListTokensData, personalAccessTokensListTokensResponse, personalAccessTokensRepositoryOptionsData, personalAccessTokensRepositoryOptionsResponse, personalAccessTokensRevokeTokenData, personalAccessTokensRevokeTokenError, personalAccessTokensRevokeTokenResponse, personalAccessTokensRotateTokenData, personalAccessTokensRotateTokenError, personalAccessTokensRotateTokenResponse, privateCreateUserData, privateCreateUserError, privateCreateUserResponse, profilesListUserRepositoriesData, profilesListUserRepositoriesError, profilesListUserRepositoriesResponse, profilesListUserStarredRepositoriesData, profilesListUserStarredRepositoriesError, profilesListUserStarredRepositoriesResponse, profilesReadUserByUsernameData, profilesReadUserByUsernameError, profilesReadUserByUsernameResponse, releasesCreateReleaseData, releasesCreateReleaseError, releasesCreateReleaseResponse, releasesGetReleaseData, releasesGetReleaseError, releasesGetReleaseResponse, releasesListReleasesData, releasesListReleasesError, releasesListReleasesResponse, releasesListTagsData, releasesListTagsError, releasesListTagsResponse, releasesUpdateReleaseData, releasesUpdateReleaseError, releasesUpdateReleaseResponse, repositoriesCompareRevisionsData, repositoriesCompareRevisionsError, repositoriesCompareRevisionsResponse, repositoriesCreateIssueData, repositoriesCreateIssueError, repositoriesCreateIssueResponse, repositoriesCreatePullRequestData, repositoriesCreatePullRequestError, repositoriesCreatePullRequestResponse, repositoriesCreateRepositoryData, repositoriesCreateRepositoryError, repositoriesCreateRepositoryResponse, repositoriesDeleteRepositoryData, repositoriesDeleteRepositoryError, repositoriesDeleteRepositoryResponse, repositoriesGetBlameData, repositoriesGetBlameError, repositoriesGetBlameResponse, repositoriesGetBlobData, repositoriesGetBlobError, repositoriesGetBlobResponse, repositoriesGetCommitData, repositoriesGetCommitError, repositoriesGetCommitResponse, repositoriesGetDiffFileData, repositoriesGetDiffFileError, repositoriesGetDiffFileResponse, repositoriesGetFileIndexData, repositoriesGetFileIndexError, repositoriesGetFileIndexResponse, repositoriesGetIssueData, repositoriesGetIssueError, repositoriesGetIssueResponse, repositoriesGetPullRequestCommitsData, repositoriesGetPullRequestCommitsError, repositoriesGetPullRequestCommitsResponse, repositoriesGetPullRequestData, repositoriesGetPullRequestError, repositoriesGetPullRequestEventsData, repositoriesGetPullRequestEventsError, repositoriesGetPullRequestEventsResponse, repositoriesGetPullRequestFilesData, repositoriesGetPullRequestFilesError, repositoriesGetPullRequestFilesResponse, repositoriesGetPullRequestMergeabilityData, repositoriesGetPullRequestMergeabilityError, repositoriesGetPullRequestMergeabilityResponse, repositoriesGetPullRequestResponse, repositoriesGetRawData, repositoriesGetRawError, repositoriesGetReadmeData, repositoriesGetReadmeError, repositoriesGetReadmeResponse, repositoriesGetRepositoryData, repositoriesGetRepositoryError, repositoriesGetRepositoryInfoData, repositoriesGetRepositoryInfoError, repositoriesGetRepositoryInfoResponse, repositoriesGetRepositoryResponse, repositoriesGetSourceData, repositoriesGetSourceError, repositoriesGetSourceResponse, repositoriesGetStatisticsData, repositoriesGetStatisticsError, repositoriesGetStatisticsResponse, repositoriesGetTreeData, repositoriesGetTreeError, repositoriesGetTreeResponse, repositoriesListBranchesData, repositoriesListBranchesError, repositoriesListBranchesResponse, repositoriesListCommitsData, repositoriesListCommitsError, repositoriesListCommitsResponse, repositoriesListIssuesData, repositoriesListIssuesError, repositoriesListIssuesResponse, repositoriesListPullRequestsData, repositoriesListPullRequestsError, repositoriesListPullRequestsResponse, repositoriesListRepositoriesData, repositoriesListRepositoriesResponse, repositoriesMergePullRequestData, repositoriesMergePullRequestError, repositoriesMergePullRequestResponse, repositoriesUpdateIssueData, repositoriesUpdateIssueError, repositoriesUpdateIssueResponse, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestError, repositoriesUpdatePullRequestResponse, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryError, repositoriesUpdateRepositoryResponse, reviewsGetCommentContextData, reviewsGetCommentContextError, reviewsGetCommentContextResponse, reviewsGetWorkspaceData, reviewsGetWorkspaceError, reviewsGetWorkspaceResponse, reviewsListReviewsData, reviewsListReviewsError, reviewsListReviewsResponse, reviewsMarkReviewedData, reviewsMarkReviewedError, reviewsMarkReviewedResponse, reviewsReplyToReviewData, reviewsReplyToReviewError, reviewsReplyToReviewResponse, reviewsSaveDraftData, reviewsSaveDraftError, reviewsSaveDraftResponse, reviewsSubmitReviewData, reviewsSubmitReviewError, reviewsSubmitReviewResponse, starsGetStarStateData, starsGetStarStateError, starsGetStarStateResponse, starsListStargazersData, starsListStargazersError, starsListStargazersResponse, starsListStarredRepositoriesData, starsListStarredRepositoriesError, starsListStarredRepositoriesResponse, starsStarRepositoryData, starsStarRepositoryError, starsStarRepositoryResponse, starsUnstarRepositoryData, starsUnstarRepositoryError, starsUnstarRepositoryResponse, usersCreateUserData, usersCreateUserError, usersCreateUserResponse, usersDeleteUserData, usersDeleteUserError, usersDeleteUserMeData, usersDeleteUserMeResponse, usersDeleteUserResponse, usersReadUserMeData, usersReadUserMeResponse, usersReadUsersData, usersReadUsersError, usersReadUsersResponse, usersRegisterUserData, usersRegisterUserError, usersRegisterUserResponse, usersUpdatePasswordMeData, usersUpdatePasswordMeError, usersUpdatePasswordMeResponse, usersUpdateUserData, usersUpdateUserError, usersUpdateUserMeData, usersUpdateUserMeError, usersUpdateUserMeResponse, usersUpdateUserResponse, utilsHealthCheckData, utilsHealthCheckResponse, utilsPreviewMarkdownData, utilsPreviewMarkdownError, utilsPreviewMarkdownResponse, utilsTestEmailData, utilsTestEmailError, utilsTestEmailResponse, watchersGetWatchStateData, watchersGetWatchStateError, watchersGetWatchStateResponse, watchersListWatchersData, watchersListWatchersError, watchersListWatchersResponse, watchersUnwatchRepositoryData, watchersUnwatchRepositoryError, watchersUnwatchRepositoryResponse, watchersWatchRepositoryData, watchersWatchRepositoryError, watchersWatchRepositoryResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -451,6 +451,103 @@ export const loginRecoverPasswordHtmlContentMutation = (options?: Partial<Option
     return mutationOptions;
 };
 
+export const personalAccessTokensRepositoryOptionsQueryKey = (options?: Options<personalAccessTokensRepositoryOptionsData>) => createQueryKey('personalAccessTokensRepositoryOptions', options);
+
+/**
+ * Repository Options
+ *
+ * List repositories that this account can select for a token.
+ */
+export const personalAccessTokensRepositoryOptionsOptions = (options?: Options<personalAccessTokensRepositoryOptionsData>) => queryOptions<personalAccessTokensRepositoryOptionsResponse, DefaultError, personalAccessTokensRepositoryOptionsResponse, ReturnType<typeof personalAccessTokensRepositoryOptionsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await PersonalAccessTokensService.accessTokensRepositoryOptions({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: personalAccessTokensRepositoryOptionsQueryKey(options)
+});
+
+export const personalAccessTokensListTokensQueryKey = (options?: Options<personalAccessTokensListTokensData>) => createQueryKey('personalAccessTokensListTokens', options);
+
+/**
+ * List Tokens
+ *
+ * List safe token metadata for the signed-in account.
+ */
+export const personalAccessTokensListTokensOptions = (options?: Options<personalAccessTokensListTokensData>) => queryOptions<personalAccessTokensListTokensResponse, DefaultError, personalAccessTokensListTokensResponse, ReturnType<typeof personalAccessTokensListTokensQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await PersonalAccessTokensService.accessTokensListTokens({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: personalAccessTokensListTokensQueryKey(options)
+});
+
+/**
+ * Create Token
+ *
+ * Generate a token and show its full value once.
+ */
+export const personalAccessTokensCreateTokenMutation = (options?: Partial<Options<personalAccessTokensCreateTokenData>>): UseMutationOptions<personalAccessTokensCreateTokenResponse, personalAccessTokensCreateTokenError, Options<personalAccessTokensCreateTokenData>> => {
+    const mutationOptions: UseMutationOptions<personalAccessTokensCreateTokenResponse, personalAccessTokensCreateTokenError, Options<personalAccessTokensCreateTokenData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await PersonalAccessTokensService.accessTokensCreateToken({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Revoke Token
+ *
+ * Revoke an account token without deleting its audit metadata.
+ */
+export const personalAccessTokensRevokeTokenMutation = (options?: Partial<Options<personalAccessTokensRevokeTokenData>>): UseMutationOptions<personalAccessTokensRevokeTokenResponse, personalAccessTokensRevokeTokenError, Options<personalAccessTokensRevokeTokenData>> => {
+    const mutationOptions: UseMutationOptions<personalAccessTokensRevokeTokenResponse, personalAccessTokensRevokeTokenError, Options<personalAccessTokensRevokeTokenData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await PersonalAccessTokensService.accessTokensRevokeToken({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Rotate Token
+ *
+ * Atomically replace a token, showing the replacement once.
+ */
+export const personalAccessTokensRotateTokenMutation = (options?: Partial<Options<personalAccessTokensRotateTokenData>>): UseMutationOptions<personalAccessTokensRotateTokenResponse, personalAccessTokensRotateTokenError, Options<personalAccessTokensRotateTokenData>> => {
+    const mutationOptions: UseMutationOptions<personalAccessTokensRotateTokenResponse, personalAccessTokensRotateTokenError, Options<personalAccessTokensRotateTokenData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await PersonalAccessTokensService.accessTokensRotateToken({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
 export const usersReadUsersQueryKey = (options?: Options<usersReadUsersData>) => createQueryKey('usersReadUsers', options);
 
 /**
@@ -633,7 +730,8 @@ export const gitGetInfoRefsQueryKey = (options: Options<gitGetInfoRefsData>) => 
  *
  * Args:
  * request: FastAPI request.
- * repo_path: Repository path.
+ * owner: Repository owner.
+ * repo: Repository name.
  * repository_service: Repository service.
  *
  * Returns:
@@ -661,7 +759,8 @@ export const gitGetHeadQueryKey = (options: Options<gitGetHeadData>) => createQu
  *
  * Args:
  * request: FastAPI request.
- * repo_path: Repository path.
+ * owner: Repository owner.
+ * repo: Repository name.
  * repository_service: Repository service.
  *
  * Returns:
@@ -689,7 +788,8 @@ export const gitGetInfoPacksQueryKey = (options: Options<gitGetInfoPacksData>) =
  *
  * Args:
  * request: FastAPI request.
- * repo_path: Repository path.
+ * owner: Repository owner.
+ * repo: Repository name.
  * repository_service: Repository service.
  *
  * Returns:
@@ -717,7 +817,8 @@ export const gitGetLooseObjectQueryKey = (options: Options<gitGetLooseObjectData
  *
  * Args:
  * request: FastAPI request.
- * repo_path: Repository path.
+ * owner: Repository owner.
+ * repo: Repository name.
  * prefix: Object SHA prefix (2 chars).
  * suffix: Object SHA suffix (38 chars).
  * repository_service: Repository service.
@@ -747,7 +848,8 @@ export const gitGetPackFileQueryKey = (options: Options<gitGetPackFileData>) => 
  *
  * Args:
  * request: FastAPI request.
- * repo_path: Repository path.
+ * owner: Repository owner.
+ * repo: Repository name.
  * pack_file: Pack file name.
  * repository_service: Repository service.
  *
@@ -774,7 +876,8 @@ export const gitGetPackFileOptions = (options: Options<gitGetPackFileData>) => q
  *
  * Args:
  * request: FastAPI request.
- * repo_path: Repository path.
+ * owner: Repository owner.
+ * repo: Repository name.
  * repository_service: Repository service.
  *
  * Returns:
@@ -801,7 +904,8 @@ export const gitGitUploadPackMutation = (options?: Partial<Options<gitGitUploadP
  *
  * Args:
  * request: FastAPI request.
- * repo_path: Repository path.
+ * owner: Repository owner.
+ * repo: Repository name.
  * repository_service: Repository service.
  * actions: Workflow orchestration service.
  * user: Authenticated event actor, when provided.
@@ -894,6 +998,338 @@ export const organizationsCreateOrganizationMutation = (options?: Partial<Option
     };
     return mutationOptions;
 };
+
+export const authorizationGetPermissionsQueryKey = (options: Options<authorizationGetPermissionsData>) => createQueryKey('authorizationGetPermissions', options);
+
+/**
+ * Get Permissions
+ *
+ * Return effective permissions for the current viewer.
+ */
+export const authorizationGetPermissionsOptions = (options: Options<authorizationGetPermissionsData>) => queryOptions<authorizationGetPermissionsResponse, authorizationGetPermissionsError, authorizationGetPermissionsResponse, ReturnType<typeof authorizationGetPermissionsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await AuthorizationService.getPermissions({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: authorizationGetPermissionsQueryKey(options)
+});
+
+export const authorizationListCollaboratorTeamsQueryKey = (options: Options<authorizationListCollaboratorTeamsData>) => createQueryKey('authorizationListCollaboratorTeams', options);
+
+/**
+ * List Collaborator Teams
+ *
+ * List teams eligible for grants on this repository.
+ */
+export const authorizationListCollaboratorTeamsOptions = (options: Options<authorizationListCollaboratorTeamsData>) => queryOptions<authorizationListCollaboratorTeamsResponse, authorizationListCollaboratorTeamsError, authorizationListCollaboratorTeamsResponse, ReturnType<typeof authorizationListCollaboratorTeamsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await AuthorizationService.listCollaboratorTeams({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: authorizationListCollaboratorTeamsQueryKey(options)
+});
+
+export const authorizationListMembersQueryKey = (options: Options<authorizationListMembersData>) => createQueryKey('authorizationListMembers', options);
+
+/**
+ * List Members
+ *
+ * List an organization's members.
+ */
+export const authorizationListMembersOptions = (options: Options<authorizationListMembersData>) => queryOptions<authorizationListMembersResponse, authorizationListMembersError, authorizationListMembersResponse, ReturnType<typeof authorizationListMembersQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await AuthorizationService.listMembers({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: authorizationListMembersQueryKey(options)
+});
+
+/**
+ * Remove Member
+ *
+ * Remove a member and revoke their team memberships.
+ */
+export const authorizationRemoveMemberMutation = (options?: Partial<Options<authorizationRemoveMemberData>>): UseMutationOptions<authorizationRemoveMemberResponse, authorizationRemoveMemberError, Options<authorizationRemoveMemberData>> => {
+    const mutationOptions: UseMutationOptions<authorizationRemoveMemberResponse, authorizationRemoveMemberError, Options<authorizationRemoveMemberData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await AuthorizationService.removeMember({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Set Member
+ *
+ * Add a member or change their organization role.
+ */
+export const authorizationSetMemberMutation = (options?: Partial<Options<authorizationSetMemberData>>): UseMutationOptions<authorizationSetMemberResponse, authorizationSetMemberError, Options<authorizationSetMemberData>> => {
+    const mutationOptions: UseMutationOptions<authorizationSetMemberResponse, authorizationSetMemberError, Options<authorizationSetMemberData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await AuthorizationService.setMember({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const authorizationListTeamsQueryKey = (options: Options<authorizationListTeamsData>) => createQueryKey('authorizationListTeams', options);
+
+/**
+ * List Teams
+ *
+ * List teams in an organization.
+ */
+export const authorizationListTeamsOptions = (options: Options<authorizationListTeamsData>) => queryOptions<authorizationListTeamsResponse, authorizationListTeamsError, authorizationListTeamsResponse, ReturnType<typeof authorizationListTeamsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await AuthorizationService.listTeams({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: authorizationListTeamsQueryKey(options)
+});
+
+/**
+ * Create Team
+ *
+ * Create an organization team.
+ */
+export const authorizationCreateTeamMutation = (options?: Partial<Options<authorizationCreateTeamData>>): UseMutationOptions<authorizationCreateTeamResponse, authorizationCreateTeamError, Options<authorizationCreateTeamData>> => {
+    const mutationOptions: UseMutationOptions<authorizationCreateTeamResponse, authorizationCreateTeamError, Options<authorizationCreateTeamData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await AuthorizationService.createTeam({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Delete Team
+ *
+ * Delete a team and its memberships and grants.
+ */
+export const authorizationDeleteTeamMutation = (options?: Partial<Options<authorizationDeleteTeamData>>): UseMutationOptions<authorizationDeleteTeamResponse, authorizationDeleteTeamError, Options<authorizationDeleteTeamData>> => {
+    const mutationOptions: UseMutationOptions<authorizationDeleteTeamResponse, authorizationDeleteTeamError, Options<authorizationDeleteTeamData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await AuthorizationService.deleteTeam({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const authorizationListTeamMembersQueryKey = (options: Options<authorizationListTeamMembersData>) => createQueryKey('authorizationListTeamMembers', options);
+
+/**
+ * List Team Members
+ *
+ * List a team's member IDs.
+ */
+export const authorizationListTeamMembersOptions = (options: Options<authorizationListTeamMembersData>) => queryOptions<authorizationListTeamMembersResponse, authorizationListTeamMembersError, authorizationListTeamMembersResponse, ReturnType<typeof authorizationListTeamMembersQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await AuthorizationService.listTeamMembers({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: authorizationListTeamMembersQueryKey(options)
+});
+
+/**
+ * Remove Team Member
+ *
+ * Remove a team membership.
+ */
+export const authorizationRemoveTeamMemberMutation = (options?: Partial<Options<authorizationRemoveTeamMemberData>>): UseMutationOptions<authorizationRemoveTeamMemberResponse, authorizationRemoveTeamMemberError, Options<authorizationRemoveTeamMemberData>> => {
+    const mutationOptions: UseMutationOptions<authorizationRemoveTeamMemberResponse, authorizationRemoveTeamMemberError, Options<authorizationRemoveTeamMemberData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await AuthorizationService.removeTeamMember({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Set Team Member
+ *
+ * Add an existing organization member to a team.
+ */
+export const authorizationSetTeamMemberMutation = (options?: Partial<Options<authorizationSetTeamMemberData>>): UseMutationOptions<authorizationSetTeamMemberResponse, authorizationSetTeamMemberError, Options<authorizationSetTeamMemberData>> => {
+    const mutationOptions: UseMutationOptions<authorizationSetTeamMemberResponse, authorizationSetTeamMemberError, Options<authorizationSetTeamMemberData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await AuthorizationService.setTeamMember({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const authorizationListCollaboratorsQueryKey = (options: Options<authorizationListCollaboratorsData>) => createQueryKey('authorizationListCollaborators', options);
+
+/**
+ * List Collaborators
+ *
+ * List explicit repository collaborators.
+ */
+export const authorizationListCollaboratorsOptions = (options: Options<authorizationListCollaboratorsData>) => queryOptions<authorizationListCollaboratorsResponse, authorizationListCollaboratorsError, authorizationListCollaboratorsResponse, ReturnType<typeof authorizationListCollaboratorsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await AuthorizationService.listCollaborators({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: authorizationListCollaboratorsQueryKey(options)
+});
+
+/**
+ * Set Collaborator
+ *
+ * Add or update a user or team's repository role.
+ */
+export const authorizationSetCollaboratorMutation = (options?: Partial<Options<authorizationSetCollaboratorData>>): UseMutationOptions<authorizationSetCollaboratorResponse, authorizationSetCollaboratorError, Options<authorizationSetCollaboratorData>> => {
+    const mutationOptions: UseMutationOptions<authorizationSetCollaboratorResponse, authorizationSetCollaboratorError, Options<authorizationSetCollaboratorData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await AuthorizationService.setCollaborator({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Remove Collaborator
+ *
+ * Revoke an explicit repository role.
+ */
+export const authorizationRemoveCollaboratorMutation = (options?: Partial<Options<authorizationRemoveCollaboratorData>>): UseMutationOptions<authorizationRemoveCollaboratorResponse, authorizationRemoveCollaboratorError, Options<authorizationRemoveCollaboratorData>> => {
+    const mutationOptions: UseMutationOptions<authorizationRemoveCollaboratorResponse, authorizationRemoveCollaboratorError, Options<authorizationRemoveCollaboratorData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await AuthorizationService.removeCollaborator({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const authorizationSearchCollaboratorCandidatesQueryKey = (options: Options<authorizationSearchCollaboratorCandidatesData>) => createQueryKey('authorizationSearchCollaboratorCandidates', options);
+
+/**
+ * Search Collaborator Candidates
+ *
+ * Search public identities for the repository's add-people dialog.
+ */
+export const authorizationSearchCollaboratorCandidatesOptions = (options: Options<authorizationSearchCollaboratorCandidatesData>) => queryOptions<authorizationSearchCollaboratorCandidatesResponse, authorizationSearchCollaboratorCandidatesError, authorizationSearchCollaboratorCandidatesResponse, ReturnType<typeof authorizationSearchCollaboratorCandidatesQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await AuthorizationService.searchCollaboratorCandidates({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: authorizationSearchCollaboratorCandidatesQueryKey(options)
+});
+
+export const authorizationSearchMemberCandidatesQueryKey = (options: Options<authorizationSearchMemberCandidatesData>) => createQueryKey('authorizationSearchMemberCandidates', options);
+
+/**
+ * Search Member Candidates
+ *
+ * Allow organization administrators to find users to add.
+ */
+export const authorizationSearchMemberCandidatesOptions = (options: Options<authorizationSearchMemberCandidatesData>) => queryOptions<authorizationSearchMemberCandidatesResponse, authorizationSearchMemberCandidatesError, authorizationSearchMemberCandidatesResponse, ReturnType<typeof authorizationSearchMemberCandidatesQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await AuthorizationService.searchMemberCandidates({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: authorizationSearchMemberCandidatesQueryKey(options)
+});
+
+export const authorizationGetOrganizationPermissionsQueryKey = (options: Options<authorizationGetOrganizationPermissionsData>) => createQueryKey('authorizationGetOrganizationPermissions', options);
+
+/**
+ * Get Organization Permissions
+ *
+ * Expose management controls only to organization administrators.
+ */
+export const authorizationGetOrganizationPermissionsOptions = (options: Options<authorizationGetOrganizationPermissionsData>) => queryOptions<authorizationGetOrganizationPermissionsResponse, authorizationGetOrganizationPermissionsError, authorizationGetOrganizationPermissionsResponse, ReturnType<typeof authorizationGetOrganizationPermissionsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await AuthorizationService.getOrganizationPermissions({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: authorizationGetOrganizationPermissionsQueryKey(options)
+});
 
 /**
  * Unstar Repository

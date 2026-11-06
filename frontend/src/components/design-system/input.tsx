@@ -9,6 +9,7 @@ export const Input = component(
       "h-auto px-3 py-1 text-sm border border-border rounded bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary",
     branchSearch:
       "h-auto rounded border-border py-1.5 pl-3 pr-8 text-sm focus-visible:border-border focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0",
+    accessSearch: "h-10 rounded-md border-border bg-background pl-10 shadow-sm",
     search: "h-auto rounded border-border bg-secondary py-2 pl-9 text-sm",
     trackerSearch:
       "h-auto rounded border-border bg-secondary dark:bg-secondary px-3 py-1.5 text-sm focus-visible:border-border focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",

@@ -5,9 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 from app.entities.activity import Activity, ActivityKind, ActivityTargetType
+from app.exceptions import RepositoryNotFoundError
 from app.schemas.activity import ActivitiesPublic, ActivityPublic
 from app.schemas.repository_activity import ActivityOverview, ActivitySeriesPoint, RepositoryActivityStatistics
 from app.utils.repository_activity import aggregate_contributors, aggregate_recent_commits
@@ -20,6 +19,7 @@ if TYPE_CHECKING:
     from app.clients.stars import StarStore
     from app.entities.repositories import Repository
     from app.entities.users import User
+    from app.services.authorization import AuthorizationService
     from app.services.notifications import NotificationService
     from app.services.repositories import RepositoryService
 
@@ -32,16 +32,19 @@ class ActivityService:
         activity_store: ActivityStore,
         repository_store: RepositoryStore,
         star_store: StarStore,
+        authorization: AuthorizationService,
         notification_service: NotificationService | None = None,
     ) -> None:
         """Initialize the activity service.
 
         Args:
+            authorization: Authorization service for scoped role checks.
             activity_store: Activity store.
             repository_store: Repository store.
             star_store: Star store used to build a personalized feed.
             notification_service: Optional notification delivery service.
         """
+        self.authorization = authorization
         self.activity_store = activity_store
         self.repository_store = repository_store
         self.star_store = star_store
@@ -53,7 +56,7 @@ class ActivityService:
         """Build all activity views from complete Git history and period events."""
         repository = await self.repository_store.find_by_owner_and_name(owner, name)
         if repository is None:
-            raise HTTPException(status_code=404, detail="Repository not found")
+            raise RepositoryNotFoundError()
         end = datetime.now(UTC)
         start = end - timedelta(days=days)
         history = await repository_service.activity_history(owner, name)
@@ -205,6 +208,19 @@ class ActivityService:
             if offset and await self.activity_store.list_feed(user.id, 0, 1):
                 return ActivitiesPublic(data=[], count=0)
             activities = await self.activity_store.list_recent(offset, limit)
+        repositories = {}
+        for activity in activities:
+            if activity.repo_id is not None and activity.repo_id not in repositories:
+                repositories[activity.repo_id] = await self.repository_store.find(activity.repo_id)
+        visible_ids = {
+            repository.id
+            for repository in await self.authorization.visible_repositories(
+                [repository for repository in repositories.values() if repository is not None], user
+            )
+        }
+        activities = [
+            activity for activity in activities if activity.repo_id is None or activity.repo_id in visible_ids
+        ]
         previews = await self.activity_store.get_target_previews(activities)
         public = [
             self._to_public(activity).model_copy(update={"preview": previews.get(activity.id)})

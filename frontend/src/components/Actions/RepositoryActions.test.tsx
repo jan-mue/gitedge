@@ -1,13 +1,16 @@
 import { HttpResponse } from "msw"
-import { describe, expect, test, vi } from "vitest"
+import { beforeEach, describe, expect, test, vi } from "vitest"
 import type { ActionRun } from "@/client"
-import { handleActionsDispatchWorkflow, handleActionsListRuns, handleActionsListWorkflows } from "@/client/msw.gen"
+import {
+  handleActionsDispatchWorkflow,
+  handleActionsListRuns,
+  handleActionsListWorkflows,
+  handleAuthorizationGetPermissions,
+} from "@/client/msw.gen"
 import { server } from "@/test/server"
 import { render, screen, waitFor } from "@/test/test-utils"
 import { RepositoryActions } from "./RepositoryActions"
 import { RunDetail } from "./RunDetail"
-
-vi.mock("@/hooks/useAuth", () => ({ default: () => ({ user: { name: "owner", is_superuser: false } }) }))
 
 const run: ActionRun = {
   id: "27a368e4-6c47-4da3-b508-277db25d7106",
@@ -34,11 +37,33 @@ const run: ActionRun = {
 
 const handlers = () =>
   server.use(
+    handleAuthorizationGetPermissions({
+      body: { read: true, write: true, admin: false, owner: false, actions_read: true, actions_write: true },
+    }),
     handleActionsListRuns({ body: [run] }),
     handleActionsListWorkflows({ body: [{ path: ".gitedge/workflow/ci.yaml", name: "CI", dispatch: true }] }),
   )
 
 describe("Actions", () => {
+  beforeEach(() => {
+    server.use(
+      handleAuthorizationGetPermissions({
+        body: { read: true, write: true, admin: false, owner: false, actions_read: true, actions_write: true },
+      }),
+    )
+  })
+
+  test("hides workflow controls without Actions write permission", async () => {
+    handlers()
+    server.use(
+      handleAuthorizationGetPermissions({
+        body: { read: true, write: false, admin: false, owner: false, actions_read: true, actions_write: false },
+      }),
+    )
+    const { user } = render(<RepositoryActions owner="owner" repo="repo" onSelectRun={vi.fn()} />)
+    await user.click(await screen.findByRole("button", { name: "ci.yaml" }))
+    expect(screen.queryByRole("button", { name: "Run workflow" })).toBeNull()
+  })
   test("shows real workflow runs and opens a selected run", async () => {
     handlers()
     const select = vi.fn()

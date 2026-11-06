@@ -17,7 +17,6 @@ from dulwich.diff_tree import tree_changes
 from dulwich.objects import S_ISGITLINK, Blob, Commit, ObjectID, Tag, Tree
 from dulwich.patch import write_object_diff, write_tree_diff
 from dulwich.refs import SYMREF, Ref, check_ref_format
-from fastapi import HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, TypeAdapter
 from pygments import highlight
@@ -30,7 +29,13 @@ from app.clients.git.diffs import enrich_diff
 from app.clients.git.http import handle_http
 from app.clients.git.refs import GitRefStore
 from app.config import settings
-from app.exceptions import WorkflowError
+from app.exceptions import (
+    InvalidInputError,
+    NotFoundError,
+    PayloadTooLargeError,
+    RepositoryNotFoundError,
+    WorkflowError,
+)
 from app.schemas.releases import TagInfo, TagsPublic
 from app.schemas.repositories import (
     BlameContent,
@@ -360,7 +365,7 @@ class GitClient:
 
         old_entry, new_entry = entry(old_tree), entry(new_tree)
         if old_entry == new_entry:
-            raise HTTPException(status_code=404, detail="File is not changed in this comparison")
+            raise NotFoundError(detail="File is not changed in this comparison")
         buffer = io.BytesIO()
         write_object_diff(buffer, store, old_entry, new_entry)
         files = cls._parse_patch(buffer.getvalue().decode("utf-8", errors="replace"))
@@ -472,11 +477,11 @@ class GitClient:
             The commit SHA as bytes.
 
         Raises:
-            HTTPException: If the ref is not found.
+            ApplicationError: If the ref is not found.
         """
         sha = GitClient._try_resolve_ref(repo, ref_name)
         if sha is None:
-            raise HTTPException(status_code=404, detail=f"Ref '{ref_name}' not found")
+            raise NotFoundError(detail=f"Ref '{ref_name}' not found")
         return sha
 
     @staticmethod
@@ -492,16 +497,16 @@ class GitClient:
             The Tree object at the given path.
 
         Raises:
-            HTTPException: If the path is not found or not a tree.
+            ApplicationError: If the path is not found or not a tree.
         """
         store = repo.object_store
         commit = store[ObjectID(commit_sha)]
         if not isinstance(commit, Commit):
-            raise HTTPException(status_code=404, detail="Not a valid commit")
+            raise NotFoundError(detail="Not a valid commit")
 
         tree = store[commit.tree]
         if not isinstance(tree, Tree):
-            raise HTTPException(status_code=404, detail="Invalid tree")
+            raise NotFoundError(detail="Invalid tree")
 
         if not path or path == "/":
             return tree
@@ -518,9 +523,9 @@ class GitClient:
                         current_tree = obj
                         found = True
                         break
-                    raise HTTPException(status_code=400, detail=f"'{part}' is not a directory")
+                    raise InvalidInputError(detail=f"'{part}' is not a directory")
             if not found:
-                raise HTTPException(status_code=404, detail=f"Path '{path}' not found")
+                raise NotFoundError(detail=f"Path '{path}' not found")
 
         return current_tree
 
@@ -537,20 +542,20 @@ class GitClient:
             Tuple of (Blob object, filename).
 
         Raises:
-            HTTPException: If the file is not found or not a blob.
+            ApplicationError: If the file is not found or not a blob.
         """
         store = repo.object_store
         commit = store[ObjectID(commit_sha)]
         if not isinstance(commit, Commit):
-            raise HTTPException(status_code=404, detail="Not a valid commit")
+            raise NotFoundError(detail="Not a valid commit")
 
         tree = store[commit.tree]
         if not isinstance(tree, Tree):
-            raise HTTPException(status_code=404, detail="Invalid tree")
+            raise NotFoundError(detail="Invalid tree")
 
         parts = [p for p in path.split("/") if p]
         if not parts:
-            raise HTTPException(status_code=400, detail="Path cannot be empty")
+            raise InvalidInputError(detail="Path cannot be empty")
 
         current_tree = tree
         for part in parts[:-1]:
@@ -562,9 +567,9 @@ class GitClient:
                         current_tree = obj
                         found = True
                         break
-                    raise HTTPException(status_code=400, detail=f"'{part}' is not a directory")
+                    raise InvalidInputError(detail=f"'{part}' is not a directory")
             if not found:
-                raise HTTPException(status_code=404, detail=f"Path '{path}' not found")
+                raise NotFoundError(detail=f"Path '{path}' not found")
 
         filename = parts[-1]
         for entry in current_tree.items():
@@ -572,9 +577,9 @@ class GitClient:
                 obj = store[entry.sha]
                 if isinstance(obj, Blob):
                     return obj, filename
-                raise HTTPException(status_code=400, detail=f"'{filename}' is not a file")
+                raise InvalidInputError(detail=f"'{filename}' is not a file")
 
-        raise HTTPException(status_code=404, detail=f"File '{path}' not found")
+        raise NotFoundError(detail=f"File '{path}' not found")
 
     @staticmethod
     def _get_ref_counts(repo: BlobRepository) -> tuple[int, int, str]:
@@ -747,13 +752,13 @@ class GitClient:
             sha = self._resolve_ref(repo, ref)
             blob, _ = self._get_blob_at_path(repo, sha, file_path)
             if len(blob.data) > 1024 * 1024:
-                raise HTTPException(status_code=413, detail="File is too large for blame (maximum 1 MiB)")
+                raise PayloadTooLargeError(detail="File is too large for blame (maximum 1 MiB)")
             try:
                 blob.data.decode("utf-8")
             except UnicodeDecodeError as exc:
-                raise HTTPException(status_code=400, detail="Blame is unavailable for binary files") from exc
+                raise InvalidInputError(detail="Blame is unavailable for binary files") from exc
             if b"\0" in blob.data:
-                raise HTTPException(status_code=400, detail="Blame is unavailable for binary files")
+                raise InvalidInputError(detail="Blame is unavailable for binary files")
             annotations = await run_in_threadpool(annotate_lines, repo.object_store, ObjectID(sha), file_path.encode())
             return BlameContent(
                 path=file_path,
@@ -801,9 +806,7 @@ class GitClient:
         """Resolve a source path in one request, avoiding a failed tree request in the browser."""
         try:
             return await self.get_tree(owner, name, ref, path)
-        except HTTPException as exc:
-            if exc.status_code != status.HTTP_400_BAD_REQUEST:
-                raise
+        except InvalidInputError:
             return await self.get_blob(owner, name, ref, path)
 
     async def get_tree(self, owner: str, name: str, ref: str, tree_path: str) -> TreeListing:
@@ -873,10 +876,10 @@ class GitClient:
             FileContent with highlighted HTML and CSS.
 
         Raises:
-            HTTPException: If file_path is empty.
+            ApplicationError: If file_path is empty.
         """
         if not file_path:
-            raise HTTPException(status_code=400, detail="file_path is required")
+            raise InvalidInputError(detail="file_path is required")
 
         async def compute() -> FileContent:
             repo = await self.load_repository(owner, name)
@@ -994,7 +997,7 @@ class GitClient:
             ReadmeContent with the filename, raw content and rendered HTML.
 
         Raises:
-            HTTPException: If no README is found.
+            ApplicationError: If no README is found.
         """
 
         async def compute() -> ReadmeContent:
@@ -1004,7 +1007,7 @@ class GitClient:
 
             result = self._find_readme_in_tree(repo, tree)
             if result is None:
-                raise HTTPException(status_code=404, detail="README not found")
+                raise NotFoundError(detail="README not found")
 
             filename, content = result
             html = render_markdown(content) if filename.lower().endswith((".md", ".markdown")) else ""
@@ -1194,7 +1197,7 @@ class GitClient:
             CommitDetail with metadata and per-file unified diffs.
 
         Raises:
-            HTTPException: If the commit is not found.
+            ApplicationError: If the commit is not found.
         """
 
         async def compute() -> CommitDetail:
@@ -1203,9 +1206,9 @@ class GitClient:
             try:
                 obj = store[ObjectID(sha.encode())]
             except (KeyError, ValueError) as e:
-                raise HTTPException(status_code=404, detail="Commit not found") from e
+                raise NotFoundError(detail="Commit not found") from e
             if not isinstance(obj, Commit):
-                raise HTTPException(status_code=404, detail="Commit not found")
+                raise NotFoundError(detail="Commit not found")
 
             parent = store[obj.parents[0]] if obj.parents else None
             files = await run_in_threadpool(
@@ -1341,9 +1344,9 @@ class GitClient:
                 head_commit = store[ObjectID(head.encode())]
                 base_commit = store[ObjectID(base.encode())] if base else None
             except (KeyError, ValueError) as error:
-                raise HTTPException(status_code=404, detail="Comparison revision not found") from error
+                raise NotFoundError(detail="Comparison revision not found") from error
             if not isinstance(head_commit, Commit) or (base_commit is not None and not isinstance(base_commit, Commit)):
-                raise HTTPException(status_code=404, detail="Comparison revision not found")
+                raise NotFoundError(detail="Comparison revision not found")
             old_tree = base_commit.tree if isinstance(base_commit, Commit) else None
             return await run_in_threadpool(self._diff_file, store, old_tree, head_commit.tree, file_path)
 
@@ -1366,12 +1369,12 @@ class GitClient:
             try:
                 before, after = store[ObjectID(base.encode())], store[ObjectID(head.encode())]
             except KeyError as error:
-                raise HTTPException(status_code=404, detail="Comparison revision not found") from error
+                raise NotFoundError(detail="Comparison revision not found") from error
             if not isinstance(before, Commit) or not isinstance(after, Commit):
-                raise HTTPException(status_code=404, detail="Comparison revision not found")
+                raise NotFoundError(detail="Comparison revision not found")
             file = await run_in_threadpool(self._diff_file, store, before.tree, after.tree, path, (side, line))
             if not file.hunks:
-                raise HTTPException(status_code=404, detail="Diff context is unavailable for this line")
+                raise NotFoundError(detail="Diff context is unavailable for this line")
             return file.hunks[0]
 
         return await self._cached_model(
@@ -1393,7 +1396,7 @@ class GitClient:
             The loaded repository.
 
         Raises:
-            HTTPException: If the repository does not exist.
+            ApplicationError: If the repository does not exist.
         """
         key = repo_key(owner, name)
         logger.debug("Loading repository: %s", key)
@@ -1409,7 +1412,7 @@ class GitClient:
 
         if await self.repository_exists(owner, name):
             return self.backend.create_repository(key)
-        raise HTTPException(status_code=404, detail="Repository not found")
+        raise RepositoryNotFoundError()
 
     async def save_changes(self, owner: str, name: str) -> None:
         """Persist pending repository changes to storage.
@@ -1441,9 +1444,9 @@ class GitClient:
         repo = await self.load_repository(owner, name)
         branch = Ref(f"refs/heads/{branch_name}".encode())
         if not check_ref_format(branch):
-            raise HTTPException(status_code=400, detail="Invalid branch name")
+            raise InvalidInputError(detail="Invalid branch name")
         if repo.refs.allkeys() - {Ref(b"HEAD")} and branch not in repo.refs.allkeys():
-            raise HTTPException(status_code=400, detail="Default branch must exist")
+            raise InvalidInputError(detail="Default branch must exist")
         repo.refs.set_symbolic_ref(Ref(b"HEAD"), branch)
         await self.save_changes(owner, name)
 

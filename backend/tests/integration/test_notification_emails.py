@@ -57,7 +57,7 @@ def test_notification_emails_reach_smtp_catcher(
         owner_headers = login(api, owner_email, password)
         opted_in_headers = login(api, opted_in_email, password)
         inbox_only_headers = login(api, inbox_only_email, password)
-        created = api.post("/repositories/", json={"owner": owner, "name": repository})
+        created = api.post("/repositories/", headers=owner_headers, json={"owner": owner, "name": repository})
         assert created.status_code == 201, created.text
         for headers in (opted_in_headers, inbox_only_headers):
             watched = api.put(f"{repo_path}/watch", headers=headers)

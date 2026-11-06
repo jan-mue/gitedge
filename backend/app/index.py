@@ -8,17 +8,11 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.exception_handlers import application_exception_handler
 from app.api.main import api_router
 from app.api.routes import git
 from app.config import settings
-from app.exceptions import (
-    CompilerUnavailableError,
-    EmailDeliveryError,
-    NotFoundError,
-    PermissionDeniedError,
-    ServiceUnavailableError,
-    WorkflowError,
-)
+from app.exceptions import ApplicationError, CompilerUnavailableError, EmailDeliveryError, WorkflowError
 from app.lifespan import lifespan
 from app.utils.setup_logging import setup_logging
 
@@ -62,29 +56,13 @@ async def email_delivery_exception_handler(request: Request, exc: EmailDeliveryE
     return JSONResponse(status_code=500, content={"detail": "Email delivery failed"})
 
 
-@app.exception_handler(NotFoundError)
-async def not_found_exception_handler(_request: Request, exc: NotFoundError) -> JSONResponse:
-    """Handle not-found errors raised by the store layer."""
-    return JSONResponse(status_code=404, content={"detail": exc.detail})
+app.add_exception_handler(ApplicationError, application_exception_handler)
 
 
 @app.exception_handler(WorkflowError)
 async def workflow_exception_handler(_request: Request, exc: WorkflowError) -> JSONResponse:
     """Report invalid workflows consistently across Actions endpoints."""
     return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-
-@app.exception_handler(PermissionDeniedError)
-async def permission_denied_handler(_request: Request, exc: PermissionDeniedError) -> JSONResponse:
-    """Map domain authorization failures without coupling services to HTTP."""
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-
-@app.exception_handler(ServiceUnavailableError)
-async def service_unavailable_handler(_request: Request, exc: ServiceUnavailableError) -> JSONResponse:
-    """Return a retryable response for a temporarily unavailable service."""
-    logger.warning("Service unavailable: %s", exc)
-    return JSONResponse(status_code=503, content={"detail": str(exc)}, headers={"Retry-After": "1"})
 
 
 @app.exception_handler(CompilerUnavailableError)

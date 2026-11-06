@@ -1,5 +1,7 @@
 from app.entities.actions import WorkflowRun
 from app.entities.activity import Activity
+from app.entities.authorization import Team
+from app.entities.casbin import CasbinRule
 from app.entities.comments import Comment
 from app.entities.issues import Issue
 from app.entities.notifications import (
@@ -9,6 +11,7 @@ from app.entities.notifications import (
     NotificationSubscription,
 )
 from app.entities.organizations import Organization
+from app.entities.personal_access_tokens import PersonalAccessToken
 from app.entities.principals import Principal
 from app.entities.pull_requests import PullRequest
 from app.entities.reactions import CommentReaction
@@ -21,6 +24,7 @@ from app.entities.watchers import Watcher
 
 __all__ = [
     "Activity",
+    "CasbinRule",
     "Comment",
     "CommentReaction",
     "Issue",
@@ -29,6 +33,7 @@ __all__ = [
     "NotificationRepositoryPreference",
     "NotificationSubscription",
     "Organization",
+    "PersonalAccessToken",
     "Principal",
     "PullRequest",
     "PullRequestComment",
@@ -37,6 +42,7 @@ __all__ = [
     "Release",
     "Repository",
     "Star",
+    "Team",
     "User",
     "Watcher",
     "WorkflowRun",

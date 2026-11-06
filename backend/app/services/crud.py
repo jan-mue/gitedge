@@ -6,9 +6,8 @@ import re
 import uuid
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 from app.entities.users import User
+from app.exceptions import ConflictError
 from app.schemas.users import UserCreate, UserPublic, UserUpdate, UserUpdateMe
 from app.utils.security import get_password_hash, verify_password
 
@@ -119,7 +118,7 @@ class CrudService:
             user_data["hashed_password"] = hashed_password
         if user_data.get("name"):
             if await self._owner_name_taken(user_data["name"], exclude_user_id=db_user.id):
-                raise HTTPException(status_code=409, detail="User with this name already exists")
+                raise ConflictError(detail="User with this name already exists")
             user_data["lower_name"] = user_data["name"].lower()
         await self.user_store.update(db_user, user_data)
         return UserPublic.model_validate(db_user)

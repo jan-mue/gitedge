@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from app.clients.workflow_compiler import WorkflowCompiler
     from app.entities.repositories import Repository as RepositoryEntity
     from app.entities.users import User
+    from app.services.authorization import AuthorizationService
     from app.services.repositories import RepositoryService
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,7 @@ class ActionsService:
         sandbox: AbstractSandboxClient,
         *,
         compiler: WorkflowCompiler,
+        authorization: AuthorizationService,
         provider: str,
         max_timeout: int,
         max_parallel: int,
@@ -65,6 +67,7 @@ class ActionsService:
         pull_requests: PullRequestStore | None = None,
     ) -> None:
         """Inject data access and sandbox clients; keep provider policy out of workflows."""
+        self.authorization = authorization
         self.compiler = compiler
         self.store = store
         self.repositories = repositories
@@ -79,11 +82,7 @@ class ActionsService:
         self, owner: str, name: str, user: User | None = None, *, write: bool = False
     ) -> RepositoryEntity:
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
-        allowed = user is not None and (user.id == repository.owner_id or user.is_superuser)
-        if repository.is_private and not allowed:
-            raise NotFoundError("Repository not found")
-        if write and not allowed:
-            raise PermissionDeniedError("Only the repository owner can dispatch or cancel workflows")
+        await self.authorization.require(repository, user, "actions:write" if write else "actions:read")
         return repository
 
     async def workflows(self, owner: str, name: str, ref: str, user: User | None) -> list[WorkflowInfo]:
@@ -261,7 +260,8 @@ class ActionsService:
 
     async def on_push(self, owner: str, name: str, before: dict[str, str], after: dict[str, str], user: User) -> None:
         """Accept CI events only from an authenticated repository owner or administrator."""
-        repository = await self._repository(owner, name, user, write=True)
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        await self.authorization.require(repository, user, "git:write")
         pulls = await self.pull_requests.list_by_repo(repository.id, IssueState.OPEN) if self.pull_requests else []
         for ref, sha in after.items():
             old = before.get(ref)
@@ -299,8 +299,7 @@ class ActionsService:
     ) -> None:
         """Trigger opened PR workflows using the submitted head and base context."""
         repository = await self.repository_store.get_by_owner_and_name(owner, name)
-        if user.id != repository.owner_id and not user.is_superuser:
-            return
+        await self.authorization.require(repository, user, "pull_requests:write")
         index = await self.repositories.get_file_index(owner, name, head_branch)
         if not workflow_paths(index.paths):
             return
@@ -344,10 +343,11 @@ class ActionsService:
 
     async def cancel_repository(self, owner: str, name: str, user: User) -> uuid.UUID:
         """Stop active sandboxes before their repository rows can be deleted."""
-        repository = await self._repository(owner, name, user, write=True)
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        await self.authorization.require(repository, user, "repository:delete")
         for repo_id, run_id in await self.store.active_runs(repository.id):
             if repo_id == repository.id:
-                await self.cancel(owner, name, run_id, user)
+                await self.scheduler.cancel(repo_id, run_id)
         return repository.id
 
     async def delete_repository_blobs(self, repo_id: uuid.UUID) -> None:

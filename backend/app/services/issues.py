@@ -5,10 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.issues import Issue, IssueState
+from app.exceptions import InvalidInputError
 from app.schemas.repositories import IssueCreate, IssuePublic, IssuesListPublic, IssueUpdate
 from app.services.repositories import ensure_repository
 from app.utils.markdown import render_markdown
@@ -18,6 +17,7 @@ if TYPE_CHECKING:
     from app.clients.repositories import RepositoryStore
     from app.entities.users import User
     from app.services.activity import ActivityService
+    from app.services.authorization import AuthorizationService
 
 
 class IssueService:
@@ -28,14 +28,17 @@ class IssueService:
         issue_store: IssueStore,
         repository_store: RepositoryStore,
         activity_service: ActivityService,
+        authorization: AuthorizationService,
     ) -> None:
         """Initialize the issue service.
 
         Args:
+            authorization: Authorization service for scoped role checks.
             issue_store: Issue store.
             repository_store: Repository store.
             activity_service: Service used to record activity.
         """
+        self.authorization = authorization
         self.issue_store = issue_store
         self.repository_store = repository_store
         self.activity_service = activity_service
@@ -114,7 +117,7 @@ class IssueService:
             The issue.
 
         Raises:
-            HTTPException: If the issue is not found.
+            ApplicationError: If the issue is not found.
         """
         issue = await self._find_issue(owner, name, number)
         return self._to_public(issue, owner, name)
@@ -135,16 +138,13 @@ class IssueService:
             The updated issue.
 
         Raises:
-            HTTPException: If the issue is not found, the state is invalid, or the user is not allowed to edit.
+            ApplicationError: If the issue is not found, the state is invalid, or the user is not allowed to edit.
         """
         issue = await self._find_issue(owner, name, number)
-
-        if (
-            (body.title is not None or body.body is not None)
-            and issue.author_id != current_user.id
-            and not current_user.is_superuser
-        ):
-            raise HTTPException(status_code=403, detail="You can only edit your own issues")
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        await self.authorization.require(repository, current_user, "issues:write")
+        if issue.author_id != current_user.id:
+            await self.authorization.require(repository, current_user, "issues:moderate")
 
         previous_state = issue.state
         previous_text = f"{issue.title}\n{issue.body or ''}"
@@ -155,7 +155,7 @@ class IssueService:
             issue.body = body.body
         if body.state is not None:
             if body.state not in (IssueState.OPEN, IssueState.CLOSED):
-                raise HTTPException(status_code=400, detail="State must be 'open' or 'closed'")
+                raise InvalidInputError(detail="State must be 'open' or 'closed'")
             issue.state = body.state
 
         issue.updated_at = datetime.now(UTC)

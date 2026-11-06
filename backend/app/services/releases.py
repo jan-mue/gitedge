@@ -5,11 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.releases import Release
-from app.exceptions import ReleaseNotFoundError
+from app.exceptions import ConflictError, ReleaseNotFoundError
 from app.schemas.releases import ReleaseCreate, ReleasePublic, ReleasesPublic, ReleaseUpdate
 from app.services.repositories import ensure_repository
 
@@ -18,6 +16,7 @@ if TYPE_CHECKING:
     from app.clients.repositories import RepositoryStore
     from app.entities.users import User
     from app.services.activity import ActivityService
+    from app.services.authorization import AuthorizationService
 
 
 class ReleaseService:
@@ -28,22 +27,28 @@ class ReleaseService:
         release_store: ReleaseStore,
         repository_store: RepositoryStore,
         activity_service: ActivityService,
+        authorization: AuthorizationService,
     ) -> None:
         """Initialize the release service.
 
         Args:
+            authorization: Authorization service for scoped role checks.
             release_store: Release store.
             repository_store: Repository store.
             activity_service: Service used to record activity.
         """
+        self.authorization = authorization
         self.release_store = release_store
         self.repository_store = repository_store
         self.activity_service = activity_service
 
-    async def list_releases(self, owner: str, name: str, include_drafts: bool = False) -> ReleasesPublic:
+    async def list_releases(
+        self, owner: str, name: str, include_drafts: bool = False, user: User | None = None
+    ) -> ReleasesPublic:
         """List releases for a repository.
 
         Args:
+            user: Authenticated viewer, or anonymous for public reads.
             owner: Owner name.
             name: Repository name.
             include_drafts: Whether to include draft releases.
@@ -54,13 +59,16 @@ class ReleaseService:
         repository = await self.repository_store.find_by_owner_and_name(owner, name, include_releases=True)
         if repository is None:
             return ReleasesPublic(data=[], count=0)
+        if include_drafts:
+            await self.authorization.require(repository, user, "releases:drafts")
         releases = [release for release in repository.releases if include_drafts or not release.is_draft]
         return ReleasesPublic(data=[self._to_public(release, owner, name) for release in releases], count=len(releases))
 
-    async def get_release(self, owner: str, name: str, tag_name: str) -> ReleasePublic:
+    async def get_release(self, owner: str, name: str, tag_name: str, user: User | None = None) -> ReleasePublic:
         """Get a single release by tag name.
 
         Args:
+            user: Authenticated viewer, or anonymous for public reads.
             owner: Owner name.
             name: Repository name.
             tag_name: The release tag name.
@@ -72,6 +80,9 @@ class ReleaseService:
             ReleaseNotFoundError: If the release is not found.
         """
         release = await self._find_release(owner, name, tag_name)
+        if release.is_draft:
+            repository = await self.repository_store.get_by_owner_and_name(owner, name)
+            await self.authorization.require(repository, user, "releases:drafts")
         return self._to_public(release, owner, name)
 
     async def create_release(self, owner: str, name: str, body: ReleaseCreate, current_user: User) -> ReleasePublic:
@@ -87,11 +98,11 @@ class ReleaseService:
             The created release.
 
         Raises:
-            HTTPException: If a release for the tag already exists.
+            ApplicationError: If a release for the tag already exists.
         """
         repository = await ensure_repository(self.repository_store, owner, name, include_releases=True)
         if any(release.tag_name == body.tag_name for release in repository.releases):
-            raise HTTPException(status_code=409, detail="A release for this tag already exists")
+            raise ConflictError(detail="A release for this tag already exists")
 
         release = Release(
             repo_id=repository.id,
@@ -134,11 +145,11 @@ class ReleaseService:
 
         Raises:
             ReleaseNotFoundError: If the release is not found.
-            HTTPException: If the user is not allowed to edit the release.
+            ApplicationError: If the user is not allowed to edit the release.
         """
         release = await self._find_release(owner, name, tag_name)
-        if release.author_id != current_user.id and not current_user.is_superuser:
-            raise HTTPException(status_code=403, detail="You can only edit your own releases")
+        repository = await self.repository_store.get_by_owner_and_name(owner, name)
+        await self.authorization.require(repository, current_user, "releases:write")
 
         was_draft = release.is_draft
         if body.name is not None:

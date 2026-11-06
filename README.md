@@ -206,6 +206,12 @@ container or Vercel Sandbox. Prepared images contain actions and toolchains;
 checkout transfers source at the immutable commit. JavaScript actions run under
 Node, while the agent runs under Bun.
 
+Casbin repository readers can view Actions runs and logs; writers can dispatch
+and cancel workflows. Organization and team grants use the same policy. Personal
+access tokens require `actions:read` or `actions:write` and an explicit repository
+selection; `actions:write` includes read access. Job checkout credentials only
+authorize Git reads in their own repository.
+
 Start the local compiler from the repository root:
 
 ```shell
@@ -411,3 +417,5 @@ or configuration fails closed. No shared compiler secret is used.
 ## License
 
 [MIT](LICENSE)
+
+See [the authorization model](backend/resources/authorization/README.md) for repository roles, organization membership, teams, and Git authentication.

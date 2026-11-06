@@ -5,11 +5,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 from app.entities.activity import ActivityKind, ActivityTargetType
 from app.entities.comments import Comment
-from app.exceptions import CommentNotFoundError, IssueNotFoundError, PullRequestNotFoundError
+from app.exceptions import (
+    CommentNotFoundError,
+    IssueNotFoundError,
+    PullRequestNotFoundError,
+)
 from app.schemas.comments import (
     CommentCreate,
     CommentPublic,
@@ -31,6 +33,7 @@ if TYPE_CHECKING:
     from app.entities.repositories import Repository
     from app.entities.users import User
     from app.services.activity import ActivityService
+    from app.services.authorization import AuthorizationService
 
 
 class CommentService:
@@ -44,16 +47,19 @@ class CommentService:
         pull_request_store: PullRequestStore,
         repository_store: RepositoryStore,
         activity_service: ActivityService,
+        authorization: AuthorizationService,
     ) -> None:
         """Initialize the comment service.
 
         Args:
+            authorization: Authorization service for scoped role checks.
             comment_store: Comment store.
             issue_store: Issue store.
             pull_request_store: Pull request store.
             repository_store: Repository store.
             activity_service: Service used to record activity.
         """
+        self.authorization = authorization
         self.comment_store = comment_store
         self.issue_store = issue_store
         self.pull_request_store = pull_request_store
@@ -72,7 +78,7 @@ class CommentService:
             CommentsPublic with the comments, oldest first.
 
         Raises:
-            HTTPException: If the issue or pull request is not found.
+            ApplicationError: If the issue or pull request is not found.
         """
         issue = await self._find_issue(owner, name, number)
         comments = await self.comment_store.list_by_issue(issue.id)
@@ -94,7 +100,7 @@ class CommentService:
             The created comment.
 
         Raises:
-            HTTPException: If the issue or pull request is not found.
+            ApplicationError: If the issue or pull request is not found.
         """
         issue = await self._find_issue(owner, name, number)
 
@@ -129,11 +135,13 @@ class CommentService:
 
         Raises:
             NotFoundError: If the comment is not found.
-            HTTPException: If the user is not allowed to edit the comment.
+            ApplicationError: If the user is not allowed to edit the comment.
         """
         comment = await self.comment_store.get(comment_id)
-        if comment.author_id != current_user.id and not current_user.is_superuser:
-            raise HTTPException(status_code=403, detail="You can only edit your own comments")
+        repository = await self.repository_store.get(comment.issue.repo_id)
+        await self.authorization.require(repository, current_user, "comments:write")
+        if comment.author_id != current_user.id:
+            await self.authorization.require(repository, current_user, "comments:moderate")
 
         previous_body = comment.body
         comment.body = body.body
@@ -163,11 +171,13 @@ class CommentService:
 
         Raises:
             NotFoundError: If the comment is not found.
-            HTTPException: If the user is not allowed to delete the comment.
+            ApplicationError: If the user is not allowed to delete the comment.
         """
         comment = await self.comment_store.get(comment_id)
-        if comment.author_id != current_user.id and not current_user.is_superuser:
-            raise HTTPException(status_code=403, detail="You can only delete your own comments")
+        repository = await self.repository_store.get(comment.issue.repo_id)
+        await self.authorization.require(repository, current_user, "comments:write")
+        if comment.author_id != current_user.id:
+            await self.authorization.require(repository, current_user, "comments:moderate")
 
         await self.comment_store.delete(comment)
 
@@ -193,7 +203,7 @@ class CommentService:
     async def react(self, comment_id: uuid.UUID, emoji: str, current_user: User, *, enabled: bool) -> ReactionsPublic:
         """Add or remove a reaction; only new reactions create activity."""
         comment = await self.comment_store.get(comment_id)
-        issue, repository = await self._reaction_context(comment, current_user)
+        issue, repository = await self._reaction_context(comment, current_user, "comments:write")
         added = await self.comment_store.set_reaction(comment_id, current_user.id, emoji, enabled=enabled)
         if added:
             await self.activity_service.record(
@@ -207,10 +217,12 @@ class CommentService:
             )
         return await self.list_reactions(comment_id, current_user)
 
-    async def _reaction_context(self, comment: Comment, user: User) -> tuple[Issue, Repository]:
+    async def _reaction_context(
+        self, comment: Comment, user: User, operation: str = "repository:read"
+    ) -> tuple[Issue, Repository]:
         """Protect private discussion reactions."""
         issue, repo = await self.comment_store.context(comment)
-        if repo.is_private and repo.owner_id != user.id and not user.is_superuser:
+        if not await self.authorization.can(repo, user, operation):
             raise CommentNotFoundError
         return issue, repo
 

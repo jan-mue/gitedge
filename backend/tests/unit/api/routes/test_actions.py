@@ -25,7 +25,11 @@ def test_empty_repository_actions_and_dispatch_authorization(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
     assert (
-        client.post(f"{settings.API_V1_STR}/repositories/", json={"owner": OWNER, "name": "actions-repo"}).status_code
+        client.post(
+            f"{settings.API_V1_STR}/repositories/",
+            json={"owner": OWNER, "name": "actions-repo"},
+            headers=superuser_token_headers,
+        ).status_code
         == 201
     )
     assert client.get(f"{PATH}/actions/workflows").json() == []
@@ -40,12 +44,16 @@ async def test_private_actions_history_requires_owner(
     superuser_token_headers: dict[str, str],
     normal_user_token_headers: dict[str, str],
 ) -> None:
-    client.post(f"{settings.API_V1_STR}/repositories/", json={"owner": OWNER, "name": "actions-repo"})
+    client.post(
+        f"{settings.API_V1_STR}/repositories/",
+        json={"owner": OWNER, "name": "actions-repo"},
+        headers=superuser_token_headers,
+    )
     repository = await fake_stores.repository.get_by_owner_and_name(OWNER, "actions-repo")
     repository.is_private = True
-    assert client.get(f"{PATH}/pulls/1/checks").status_code == 404
-    assert client.get(f"{PATH}/actions/runs").status_code == 404
-    assert client.get(f"{PATH}/actions/runs", headers=normal_user_token_headers).status_code == 404
+    assert client.get(f"{PATH}/pulls/1/checks").status_code == 401
+    assert client.get(f"{PATH}/actions/runs").status_code == 401
+    assert client.get(f"{PATH}/actions/runs", headers=normal_user_token_headers).status_code == 403
     assert client.get(f"{PATH}/actions/runs", headers=superuser_token_headers).status_code == 200
     assert (
         client.post(
@@ -53,7 +61,7 @@ async def test_private_actions_history_requires_owner(
             headers=normal_user_token_headers,
             json={"workflow": ".gitedge/workflow/ci.yaml"},
         ).status_code
-        == 404
+        == 403
     )
 
 
@@ -82,6 +90,11 @@ def test_workflow_errors_use_the_global_handler(
     endpoint: str,
     operation: str,
 ) -> None:
+    client.post(
+        f"{settings.API_V1_STR}/repositories/",
+        json={"owner": OWNER, "name": "actions-repo"},
+        headers=superuser_token_headers,
+    )
     mocker.patch.object(
         ActionsService, operation, new=mocker.AsyncMock(side_effect=WorkflowError("Invalid workflow YAML"))
     )

@@ -58,6 +58,10 @@ def comparison(mocker: MockerFixture) -> CompareResult:
 
 @pytest.fixture
 def pull(client: TestClient, superuser_token_headers: dict[str, str], comparison: CompareResult) -> str:  # noqa: ARG001
+    repository = client.post(
+        f"{settings.API_V1_STR}/repositories/", headers=superuser_token_headers, json={"owner": OWNER, "name": "repo"}
+    )
+    assert repository.status_code == 201
     response = client.post(
         URL, headers=superuser_token_headers, json={"title": "Change code", "head_branch": "feature"}
     )

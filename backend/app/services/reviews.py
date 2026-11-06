@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 from app.entities.comments import Comment
 from app.entities.issues import IssueState
 from app.entities.reviews import DiffSide, PullRequestComment, PullRequestReview
+from app.exceptions import ConflictError, NotFoundError, PermissionDeniedError, UnprocessableInputError
 from app.schemas.reviews import (
     ReviewCommentPublic,
     ReviewDraft,
@@ -73,9 +72,7 @@ class ReviewService:
     @staticmethod
     def _validate_revision(body: ReviewDraft | ReviewedFileUpdate, comparison: CompareResult) -> None:
         if body.base_commit != comparison.base_commit or body.head_commit != comparison.head_commit:
-            raise HTTPException(
-                status_code=409, detail="The branches changed. Refresh the diff before continuing your review."
-            )
+            raise ConflictError(detail="The branches changed. Refresh the diff before continuing your review.")
 
     async def _validate_comments(
         self, owner: str, repo: str, comments: list[ReviewLineComment], comparison: CompareResult
@@ -85,7 +82,7 @@ class ReviewService:
         paths = {comment.path for comment in comments}
         files = {file.path: file for file in comparison.files if file.path in paths}
         if paths - files.keys():
-            raise HTTPException(status_code=422, detail="File is not in this comparison")
+            raise UnprocessableInputError(detail="File is not in this comparison")
         for path, file in files.items():
             if not file.diff_loaded:
                 files[path] = await self.repository_service.get_diff_file(
@@ -101,9 +98,7 @@ class ReviewService:
         }
         for comment in comments:
             if not comment.body.strip() or (comment.path, comment.side, comment.line) not in anchors:
-                raise HTTPException(
-                    status_code=422, detail="Line comments must have text and refer to a visible diff line."
-                )
+                raise UnprocessableInputError(detail="Line comments must have text and refer to a visible diff line.")
         return files
 
     @staticmethod
@@ -184,7 +179,7 @@ class ReviewService:
         pull = await self._pull(owner, repo, number)
         review = await self.store.get_review(pull.id, review_id)
         if review is None:
-            raise HTTPException(status_code=404, detail="Review not found")
+            raise NotFoundError(detail="Review not found")
         return review
 
     async def get_comment_context(
@@ -193,7 +188,7 @@ class ReviewService:
         """Serve legacy comments without sending the entire highlighted file to the browser."""
         review = await self._review(owner, repo, number, review_id)
         if index >= len(review.line_comments):
-            raise HTTPException(status_code=404, detail="Review comment not found")
+            raise NotFoundError(detail="Review comment not found")
         comment = self._comment_public(review.line_comments[index])
         if comment.context is not None:
             return comment.context
@@ -207,23 +202,23 @@ class ReviewService:
         """Publish a reply on its original thread, including after merging or new pushes."""
         review = await self._review(owner, repo, number, review_id)
         if not body.body.strip():
-            raise HTTPException(status_code=422, detail="Add a reply before submitting")
+            raise UnprocessableInputError(detail="Add a reply before submitting")
         parent = None
         index = body.comment_index
         if body.reply_to is not None:
             link = next((link for link in review.comments if link.comment.id == body.reply_to), None)
             if link is None:
-                raise HTTPException(status_code=404, detail="Review comment not found")
+                raise NotFoundError(detail="Review comment not found")
             parent = link.comment
             index = review.line_comments.index(link) if link.path is not None else None
         elif index is not None:
             if index >= len(review.line_comments):
-                raise HTTPException(status_code=404, detail="Review comment not found")
+                raise NotFoundError(detail="Review comment not found")
             parent = review.line_comments[index].comment
         else:
             parent = review.summary
         if parent is None:
-            raise HTTPException(status_code=422, detail="This review has no overall comment to reply to")
+            raise UnprocessableInputError(detail="This review has no overall comment to reply to")
         reply = Comment(
             issue_id=review.pull_request_id,
             author_id=user.id,
@@ -262,7 +257,7 @@ class ReviewService:
         comparison = await self._comparison(owner, repo, pull)
         self._validate_revision(body, comparison)
         if body.path not in {file.path for file in comparison.files}:
-            raise HTTPException(status_code=422, detail="File is not in this comparison")
+            raise UnprocessableInputError(detail="File is not in this comparison")
         workspace = await self.store.workspace(pull.id, user.id, for_update=True)
         current = self._workspace_public(workspace, comparison)
         paths = set(current.reviewed_paths)
@@ -276,9 +271,9 @@ class ReviewService:
         """Submit an immutable review and its comments as a single operation."""
         pull = await self._pull(owner, repo, number)
         if body.state == ReviewState.APPROVED and pull.author_id == user.id:
-            raise HTTPException(status_code=403, detail="You cannot approve your own pull request")
+            raise PermissionDeniedError(detail="You cannot approve your own pull request")
         if pull.state != IssueState.OPEN:
-            raise HTTPException(status_code=409, detail="Only open pull requests can be reviewed")
+            raise ConflictError(detail="Only open pull requests can be reviewed")
         comparison = await self._comparison(owner, repo, pull)
         self._validate_revision(body, comparison)
         files = await self._validate_comments(owner, repo, body.comments, comparison)
@@ -287,7 +282,7 @@ class ReviewService:
             and not body.body.strip()
             and not body.comments
         ):
-            raise HTTPException(status_code=422, detail="Add an overall comment or a line comment before submitting")
+            raise UnprocessableInputError(detail="Add an overall comment or a line comment before submitting")
         review = PullRequestReview(
             pull_request_id=pull.id,
             author_id=user.id,

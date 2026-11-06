@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from fastapi import HTTPException
-
 from app.config import settings
 from app.entities.repositories import Repository as RepositoryEntity
+from app.exceptions import ConflictError, InvalidInputError
 from app.schemas.repositories import (
     BlameContent,
     BranchInfo,
@@ -43,6 +42,7 @@ if TYPE_CHECKING:
     from app.entities.users import User
     from app.schemas.releases import TagsPublic
     from app.schemas.repository_activity import GitActivityHistory
+    from app.services.authorization import AuthorizationService
 
 
 async def ensure_repository(
@@ -81,12 +81,14 @@ class RepositoryService:
         cache_client: AbstractCacheClient,
         repository_store: RepositoryStore,
         star_store: StarStore,
+        authorization: AuthorizationService,
     ) -> None:
         """Bind the Git client, metadata stores, and response cache."""
         self.git = git
         self.cache_client = cache_client
         self.repository_store = repository_store
         self.star_store = star_store
+        self.authorization = authorization
 
     def _cache_group(self, owner: str, name: str) -> str:
         """Build the cache group for a repository.
@@ -118,23 +120,9 @@ class RepositoryService:
         return {"Cache-Control": CACHE_CONTROL_REVALIDATE}
 
     async def _is_private(self, owner: str, name: str) -> bool:
-        """Resolve whether a repository is private, caching the answer briefly.
-
-        Args:
-            owner: Owner name.
-            name: Repository name.
-
-        Returns:
-            True if the repository exists and is private.
-        """
-        group = self._cache_group(owner, name)
-        cached = await self.cache_client.get("private", group=group)
-        if cached is not None:
-            return cached == "1"
-        entity = await self.repository_store.find_by_owner_and_name(owner, name)
-        is_private = entity is not None and entity.is_private
-        await self.cache_client.set("private", "1" if is_private else "0", ttl=settings.CACHE_TTL, group=group)
-        return is_private
+        """Read current visibility so a privacy change cannot use stale CDN headers."""
+        entity = await self.repository_store.get_by_owner_and_name(owner, name)
+        return entity.is_private
 
     @staticmethod
     def _build_schema(entity: RepositoryEntity, stars_count: int, forks_count: int) -> Repository:
@@ -155,7 +143,9 @@ class RepositoryService:
             description=entity.description,
             default_branch=entity.default_branch,
             is_private=entity.is_private,
-            fork_of=f"{entity.fork_of.owner.name}/{entity.fork_of.name}" if entity.fork_of is not None else None,
+            fork_of=f"{entity.fork_of.owner.name}/{entity.fork_of.name}"
+            if entity.fork_of is not None and not entity.fork_of.is_private
+            else None,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -195,20 +185,24 @@ class RepositoryService:
             for entity in entities
         ]
 
-    async def list_repositories(self) -> RepositoriesPublic:
+    async def list_repositories(self, user: User | None = None) -> RepositoriesPublic:
         """List all repositories.
 
         Returns:
             RepositoriesPublic with the discovered repositories.
         """
         entities = await self.repository_store.get_all(offset=0, limit=10000)
+        entities = await self.authorization.visible_repositories(entities, user)
         data = await self._to_schemas(entities)
         return RepositoriesPublic(data=data, count=len(data))
 
-    async def get_user_repositories(self, owner_id: uuid.UUID, offset: int = 0, limit: int = 100) -> RepositoriesPublic:
+    async def get_user_repositories(
+        self, owner_id: uuid.UUID, offset: int = 0, limit: int = 100, user: User | None = None
+    ) -> RepositoriesPublic:
         """List repositories owned by a principal.
 
         Args:
+            user: Authenticated viewer, or anonymous for public reads.
             owner_id: The principal id of the repository owner.
             offset: Pagination offset.
             limit: Maximum number of repositories.
@@ -217,6 +211,7 @@ class RepositoryService:
             RepositoriesPublic with the owner's repositories.
         """
         entities = await self.repository_store.get_by_owner(owner_id, offset, limit)
+        entities = await self.authorization.visible_repositories(entities, user)
         data = await self._to_schemas(entities)
         return RepositoriesPublic(data=data, count=len(data))
 
@@ -236,16 +231,17 @@ class RepositoryService:
         entity = await self.repository_store.get_by_owner_and_name(owner, name)
         return await self._to_schema(entity)
 
-    async def _editable_repository(self, owner: str, name: str, user: User) -> RepositoryEntity:
+    async def _editable_repository(
+        self, owner: str, name: str, user: User, permission: str = "repository:write"
+    ) -> RepositoryEntity:
         """Resolve a repository and require its owner or an administrator."""
         entity = await self.repository_store.get_by_owner_and_name(owner, name)
-        if entity.owner_id != user.id and not user.is_superuser:
-            raise HTTPException(status_code=403, detail="Only the repository owner can change settings")
+        await self.authorization.require(entity, user, permission)
         return entity
 
     async def delete_repository(self, owner: str, name: str, user: User) -> None:
         """Delete repository data and metadata, retaining independent forks."""
-        entity = await self._editable_repository(owner, name, user)
+        entity = await self._editable_repository(owner, name, user, "repository:delete")
         owner = entity.owner.name
         forks = await self.repository_store.list_by_fork_of(entity.id, limit=10000)
         await self.git.delete_repository(owner, name)
@@ -256,8 +252,12 @@ class RepositoryService:
         if entity.fork_of is not None:
             await self.cache_client.invalidate(self._cache_group(entity.fork_of.owner.name, entity.fork_of.name))
 
-    async def create_repository(self, owner: str, name: str) -> Repository:
+    async def create_repository(self, owner: str, name: str, *, is_private: bool = False) -> Repository:
         """Create Git storage and its metadata record."""
+        entity = await self.repository_store.find_by_owner_and_name(owner, name)
+        if entity is None:
+            owner_id, _ = await self.repository_store.resolve_owner(owner)
+            await self.repository_store.add(RepositoryEntity(name=name, owner_id=owner_id, is_private=is_private))
         await self.git.create_repository(owner, name)
         await ensure_repository(self.repository_store, owner, name)
         entity = await self.repository_store.get_by_owner_and_name(owner, name)
@@ -281,12 +281,14 @@ class RepositoryService:
     async def update_repository(self, owner: str, name: str, body: RepositoryUpdate, user: User) -> Repository:
         """Save settings, keeping Git storage and the default HEAD in sync."""
         entity = await self._editable_repository(owner, name, user)
+        if body.is_private is False and entity.fork_of is not None and entity.fork_of.is_private:
+            raise InvalidInputError(detail="Forks of private repositories must remain private")
         owner = entity.owner.name
         new_name = body.name or name
         if new_name in (".", "..") or new_name.endswith(".git"):
-            raise HTTPException(status_code=400, detail="Invalid repository name")
+            raise InvalidInputError(detail="Invalid repository name")
         if new_name != name and await self.repository_store.find_by_owner_and_name(owner, new_name) is not None:
-            raise HTTPException(status_code=409, detail="A repository with that name already exists")
+            raise ConflictError(detail="A repository with that name already exists")
         if body.default_branch is not None and body.default_branch != entity.default_branch:
             await self.git.set_default_branch(owner, name, body.default_branch)
         if new_name != name:

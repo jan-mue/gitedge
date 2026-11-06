@@ -25,3 +25,13 @@ class NewPassword(GitEdgeBaseModel):
 
     token: str
     new_password: str = Field(min_length=8, max_length=40)
+
+
+class WorkflowGitToken(GitEdgeBaseModel):
+    """Verified job credential, restricted to one repository's Git reads."""
+
+    sub: str
+    repo: uuid.UUID
+    run: uuid.UUID
+    scope: str
+    exp: int

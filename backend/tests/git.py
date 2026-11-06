@@ -4,6 +4,10 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import httpx2
+
+from tests.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD
+
 
 def run_git(cwd: Path, args: list[str]) -> str:
     """Run a git command and return its output.
@@ -66,6 +70,7 @@ def push_repo(
         if tag:
             run_git(source_dir, ["tag", tag])
 
+        configure_git_auth(app_url, repo_name, source_dir)
         run_git(source_dir, ["remote", "add", "origin", remote_url])
         run_git(source_dir, ["push", "-u", "--force", "origin", "main"])
         if tag:
@@ -78,3 +83,27 @@ def push_repo(
             run_git(source_dir, ["commit", "-m", f"Add {branch}"])
             run_git(source_dir, ["push", "-u", "--force", "origin", branch])
             run_git(source_dir, ["checkout", "main"])
+
+
+def superuser_headers(app_url: str) -> dict[str, str]:
+    """Authenticate integration setup requests as the seeded administrator."""
+    response = httpx2.post(
+        f"{app_url}/api/v1/login/access-token", data={"username": FIRST_SUPERUSER, "password": FIRST_SUPERUSER_PASSWORD}
+    )
+    response.raise_for_status()
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+def configure_git_auth(app_url: str, repo_name: str, source_dir: Path) -> None:
+    """Create a repository and authenticate pushes from a temporary checkout."""
+    headers = superuser_headers(app_url)
+    owner, name = repo_name.removesuffix(".git").split("/")
+    response = httpx2.post(f"{app_url}/api/v1/repositories/", json={"owner": owner, "name": name}, headers=headers)
+    assert response.status_code in (201, 409), response.text
+    result = subprocess.run(
+        ["git", "config", "http.extraHeader", f"Authorization: {headers['Authorization']}"],
+        cwd=source_dir,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, "Could not configure Git authentication"
