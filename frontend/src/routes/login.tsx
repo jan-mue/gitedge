@@ -129,6 +129,11 @@ function Login() {
               "Sign-ups are disabled."
             )}
           </AuthFooter>
+          <AuthFooter>
+            <RouterLink to="/explore" appearance="underline">
+              Browse public repositories
+            </RouterLink>
+          </AuthFooter>
         </AuthForm>
       </Form>
     </AuthLayout>

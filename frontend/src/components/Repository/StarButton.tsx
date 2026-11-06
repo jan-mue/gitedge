@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useNavigate } from "@tanstack/react-router"
 import { Star } from "lucide-react"
 import { useState } from "react"
 import {
@@ -10,6 +11,7 @@ import {
   starsUnstarRepositoryMutation,
 } from "@/client/@tanstack/react-query.gen"
 import { Button, Link as RouterLink } from "@/components/design-system"
+import { useRepositoryViewer } from "@/hooks/useRepositoryViewer"
 import { StarListMenu } from "./StarListMenu"
 
 interface StarButtonProps {
@@ -19,10 +21,13 @@ interface StarButtonProps {
 
 const StarButton = ({ owner, repo }: StarButtonProps) => {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const { authenticated, repository } = useRepositoryViewer(owner, repo)
   const [animating, setAnimating] = useState(false)
 
   const { data: state } = useQuery({
     ...starsGetStarStateOptions({ path: { owner, repo } }),
+    enabled: authenticated,
   })
 
   const mutation = useMutation({
@@ -42,10 +47,14 @@ const StarButton = ({ owner, repo }: StarButtonProps) => {
       queryClient.invalidateQueries({ queryKey: repositoriesListRepositoriesQueryKey() })
     },
   })
-  const isStarred = state?.is_starred ?? false
-  const count = state?.stars_count ?? 0
+  const isStarred = authenticated && (state?.is_starred ?? false)
+  const count = (authenticated ? state?.stars_count : repository?.stars_count) ?? 0
 
   const handleClick = () => {
+    if (!authenticated) {
+      navigate({ to: "/login" })
+      return
+    }
     if (!isStarred) {
       setAnimating(true)
       setTimeout(() => setAnimating(false), 600)
@@ -59,7 +68,7 @@ const StarButton = ({ owner, repo }: StarButtonProps) => {
         type="button"
         onClick={handleClick}
         aria-pressed={isStarred}
-        disabled={mutation.isPending || star.isPending || !state}
+        disabled={mutation.isPending || star.isPending || (authenticated && !state)}
         variant="repository"
         size="compact"
         shape="start"
@@ -83,7 +92,7 @@ const StarButton = ({ owner, repo }: StarButtonProps) => {
       </RouterLink>
       <StarListMenu
         repository={`${owner}/${repo}`}
-        disabled={mutation.isPending || star.isPending || !state}
+        disabled={!authenticated || mutation.isPending || star.isPending || !state}
         ensureStarred={() => (isStarred ? Promise.resolve() : star.mutateAsync({ path: { owner, repo } }))}
       />
     </div>

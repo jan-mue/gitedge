@@ -1,7 +1,13 @@
+import { HttpResponse } from "msw"
 import type { ReactNode } from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 
-import { handleForksListForks, handleStarsGetStarState, handleWatchersGetWatchState } from "@/client/msw.gen"
+import {
+  handleForksListForks,
+  handleRepositoriesGetRepository,
+  handleStarsGetStarState,
+  handleWatchersGetWatchState,
+} from "@/client/msw.gen"
 import { server } from "@/test/server"
 import { render, screen, waitFor } from "@/test/test-utils"
 import RepoHeader from "./RepoHeader"
@@ -18,7 +24,18 @@ vi.mock("@tanstack/react-router", () => ({
 
 describe("RepoHeader", () => {
   beforeEach(() => {
+    vi.mocked(localStorage.getItem).mockReturnValue(null)
     server.use(
+      handleRepositoriesGetRepository({
+        body: {
+          owner: "owner",
+          name: "repo",
+          stars_count: 2,
+          watchers_count: 3,
+          created_at: "2026-11-06T12:00:00Z",
+          updated_at: "2026-11-06T12:00:00Z",
+        },
+      }),
       handleStarsGetStarState({ body: { is_starred: false, stars_count: 2 } }),
       handleWatchersGetWatchState({ body: { is_watching: false, watchers_count: 3 } }),
       handleForksListForks({ body: { data: [], count: 4 } }),
@@ -49,5 +66,17 @@ describe("RepoHeader", () => {
       expect(screen.getByTestId("watch-count")).toHaveTextContent("3")
       expect(screen.getByTestId("fork-count")).toHaveTextContent("4")
     })
+  })
+
+  test("anonymous readers see public counts without fetching account state", async () => {
+    const accountRequest = vi.fn(() => HttpResponse.json({}, { status: 401 }))
+    server.use(handleStarsGetStarState(accountRequest), handleWatchersGetWatchState(accountRequest))
+    render(<RepoHeader owner="owner" repo="repo" />)
+    await waitFor(() => {
+      expect(screen.getByTestId("star-count")).toHaveTextContent("2")
+      expect(screen.getByTestId("watch-count")).toHaveTextContent("3")
+    })
+    expect(accountRequest).not.toHaveBeenCalled()
+    expect(screen.getByRole("button", { name: "Notification settings" })).toBeDisabled()
   })
 })

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { ChevronDown, Inbox, LogOut, Plus, Settings, ShieldCheck, User } from "lucide-react"
 import { useRef, useState } from "react"
+import type { UserPublic } from "@/client"
 import {
   notificationsListNotificationsOptions,
   organizationsCreateOrganizationMutation,
@@ -30,7 +31,7 @@ import {
   SelectField,
   Textarea,
 } from "@/components/design-system"
-import useAuth from "@/hooks/useAuth"
+import useAuth, { isLoggedIn } from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -38,6 +39,7 @@ const GlobalNav = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user, logout } = useAuth()
+  const authenticated = isLoggedIn()
   const { showErrorToast } = useCustomToast()
 
   const [showNewRepo, setShowNewRepo] = useState(false)
@@ -58,6 +60,7 @@ const GlobalNav = () => {
 
   const { data: organizations } = useQuery({
     ...organizationsListOrganizationsOptions(),
+    enabled: !!user,
   })
 
   const ownerOptions = [username, ...(organizations?.data.map((org) => org.name) ?? [])].filter(Boolean)
@@ -89,92 +92,53 @@ const GlobalNav = () => {
     <>
       <nav className="border-b border-border bg-secondary">
         <div className="container mx-auto flex h-12 max-w-7xl items-center justify-between gap-2 px-4">
-          <RouterLink to="/" appearance="brand">
+          <RouterLink to={authenticated ? "/" : "/explore"} appearance="brand">
             <Logo size="compact" asLink={false} />
           </RouterLink>
 
           <div className="flex items-center gap-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  data-testid="create-menu"
-                  aria-label="Create repository or organization"
-                  variant="create"
-                  size="create"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" appearance="create">
-                <DropdownMenuItem onClick={() => setShowNewRepo(true)}>New Repository</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowNewOrg(true)}>New Organization</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {authenticated ? (
+              <>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      data-testid="create-menu"
+                      aria-label="Create repository or organization"
+                      variant="create"
+                      size="create"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" appearance="create">
+                    <DropdownMenuItem onClick={() => setShowNewRepo(true)}>New Repository</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowNewOrg(true)}>New Organization</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-            <RouterLink
-              to="/notifications"
-              appearance="notificationNav"
-              title="Notifications"
-              aria-label={`Notifications, ${unread} unread`}
-            >
-              <Inbox className="h-5 w-5" />
-              {unread > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
-                  {unread > 99 ? "99+" : unread}
-                </span>
-              )}
-            </RouterLink>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  data-testid="user-menu"
-                  aria-label="Open user menu"
-                  variant="avatar"
-                  size="icon-sm"
+                <RouterLink
+                  to="/notifications"
+                  appearance="notificationNav"
+                  title="Notifications"
+                  aria-label={`Notifications, ${unread} unread`}
                 >
-                  {(user?.display_name || username || "U").slice(0, 1).toUpperCase()}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" appearance="account">
-                <div className="px-3 py-2 text-sm">
-                  <p className="font-medium text-foreground">{user?.display_name || username}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <RouterLink to="/profile/$username" params={{ username }} appearance="item">
-                    <User className="h-4 w-4" />
-                    Profile
-                  </RouterLink>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <RouterLink to="/settings" appearance="item">
-                    <Settings className="h-4 w-4" />
-                    Settings
-                  </RouterLink>
-                </DropdownMenuItem>
-                {user?.is_superuser && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <RouterLink to="/admin" appearance="item">
-                        <ShieldCheck className="h-4 w-4" />
-                        Site Administration
-                      </RouterLink>
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem appearance="destructive" onClick={logout}>
-                  <LogOut className="h-4 w-4" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <Inbox className="h-5 w-5" />
+                  {unread > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                      {unread > 99 ? "99+" : unread}
+                    </span>
+                  )}
+                </RouterLink>
+
+                <AccountMenu user={user} logout={logout} />
+              </>
+            ) : (
+              <RouterLink to="/login" appearance="action">
+                Sign in
+              </RouterLink>
+            )}
           </div>
         </div>
       </nav>
@@ -301,3 +265,51 @@ const GlobalNav = () => {
 }
 
 export default GlobalNav
+
+const AccountMenu = ({ user, logout }: { user: UserPublic | undefined; logout: () => void }) => {
+  const username = user?.name ?? ""
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" data-testid="user-menu" aria-label="Open user menu" variant="avatar" size="icon-sm">
+          {(user?.display_name || username || "U").slice(0, 1).toUpperCase()}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" appearance="account">
+        <div className="px-3 py-2 text-sm">
+          <p className="font-medium text-foreground">{user?.display_name || username}</p>
+          <p className="text-xs text-muted-foreground">{user?.email}</p>
+        </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <RouterLink to="/profile/$username" params={{ username }} appearance="item">
+            <User className="h-4 w-4" />
+            Profile
+          </RouterLink>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <RouterLink to="/settings" appearance="item">
+            <Settings className="h-4 w-4" />
+            Settings
+          </RouterLink>
+        </DropdownMenuItem>
+        {user?.is_superuser && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <RouterLink to="/admin" appearance="item">
+                <ShieldCheck className="h-4 w-4" />
+                Site Administration
+              </RouterLink>
+            </DropdownMenuItem>
+          </>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem appearance="destructive" onClick={logout}>
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}

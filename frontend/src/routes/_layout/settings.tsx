@@ -8,6 +8,7 @@ import { NotificationPreferences } from "@/components/UserSettings/NotificationP
 import PersonalAccessTokens from "@/components/UserSettings/PersonalAccessTokens"
 import UserInformation from "@/components/UserSettings/UserInformation"
 import useAuth from "@/hooks/useAuth"
+import { requireSession } from "@/lib/route-auth"
 
 const tabsConfig = [
   { value: "my-profile", title: "My profile", component: UserInformation },
@@ -18,6 +19,7 @@ const tabsConfig = [
 ]
 
 export const Route = createFileRoute("/_layout/settings")({
+  beforeLoad: requireSession,
   component: UserSettings,
   validateSearch: z.object({
     tab: z.enum(["my-profile", "notifications", "password", "tokens", "danger-zone"]).optional().catch(undefined),

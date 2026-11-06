@@ -78,7 +78,9 @@ async def delete_comment(
 async def list_reactions(
     comment_id: uuid.UUID,
     comment_service: CommentServiceDep,
-    current_user: Annotated[User, Depends(require_comment_permission("repository:read"))],
+    current_user: Annotated[
+        User | None, Depends(require_comment_permission("repository:read", user_dep=OptionalRepositoryUser))
+    ],
 ) -> ReactionsPublic:
     """List comment reactions."""
     return await comment_service.list_reactions(comment_id, current_user)
