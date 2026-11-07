@@ -68,8 +68,16 @@ const NotificationStory = () => {
       path: "$owner/$repo/issues/$number",
       component: NotificationReturnBanner,
     })
+    const actions = createRoute({
+      getParentRoute: () => layout,
+      path: "$owner/$repo/actions",
+      validateSearch: (search: Record<string, unknown>) => ({
+        run: typeof search.run === "string" ? search.run : undefined,
+      }),
+      component: NotificationReturnBanner,
+    })
     return createRouter({
-      routeTree: root.addChildren([layout.addChildren([center, discussion])]),
+      routeTree: root.addChildren([layout.addChildren([center, discussion, actions])]),
       history: createMemoryHistory({ initialEntries: ["/notifications"] }),
     })
   })
@@ -135,5 +143,21 @@ export const Inbox: Story = {}
 export const Empty: Story = {
   beforeEach: () => {
     notifications = []
+  },
+}
+
+export const WorkflowFailures: Story = {
+  beforeEach: () => {
+    notifications = [
+      {
+        ...fixtures[0],
+        number: null,
+        title: "CI failed: Backend tests",
+        kind: "workflow_failed",
+        category: "workflow",
+        reason: "triggered",
+        url: "/gitedge/gitedge/actions?run=439fd127-ec83-440e-bca6-d63c710ac13d",
+      },
+    ]
   },
 }

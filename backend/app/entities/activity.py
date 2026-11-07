@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 class ActivityKind(StrEnum):
     """Kinds of activity recorded in the feed."""
 
+    WORKFLOW_FAILED = "workflow_failed"
     STAR = "star"
     WATCH = "watch"
     FORK = "fork"
@@ -39,6 +40,7 @@ class ActivityKind(StrEnum):
 class ActivityTargetType(StrEnum):
     """Types of targets an activity event can reference."""
 
+    WORKFLOW_RUN = "workflow_run"
     REPOSITORY = "repository"
     ISSUE = "issue"
     PULL_REQUEST = "pull_request"
@@ -57,6 +59,7 @@ class Activity(Base):
     kind: Mapped[ActivityKind] = mapped_column(string_enum(ActivityKind, 40), nullable=False)
     title: Mapped[str | None] = mapped_column(Text, nullable=True)
     target_type: Mapped[ActivityTargetType | None] = mapped_column(string_enum(ActivityTargetType, 40), nullable=True)
+    target_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     target_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     comment_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("comment.id", ondelete="SET NULL"), nullable=True, index=True

@@ -862,6 +862,12 @@ class FakeActivityStore(FakeCrudStore[Activity], ActivityStore):
     entity_name = "Activity"
 
     @override
+    async def add_once(self, activity: Activity) -> Activity:
+        if activity.id not in self.items:
+            self.persist(activity)
+        return self._hydrate(self.items[activity.id])
+
+    @override
     async def list_pull_request_events(self, repo_id: uuid.UUID, number: int) -> list[Activity]:
         """Read only state events belonging to this pull request, oldest first."""
         return [
@@ -1220,9 +1226,17 @@ class FakeNotificationStore(FakeCrudStore[Notification], NotificationStore):
         }
 
     @override
-    async def add_many(self, notifications: list[Notification]) -> None:
+    async def add_many(self, notifications: list[Notification]) -> list[Notification]:
+        inserted = []
         for notification in notifications:
+            if any(
+                existing.user_id == notification.user_id and existing.activity_id == notification.activity_id
+                for existing in self.items.values()
+            ):
+                continue
             self.persist(notification)
+            inserted.append(notification)
+        return inserted
 
     @override
     async def audience(self, activity: Activity, mentions: set[str]) -> list[tuple[User, str]]:

@@ -5,7 +5,7 @@ import {
 } from "@/client/msw.gen"
 
 export const notificationPreferenceHandlers = () => {
-  let categories = ["pull", "issue", "release", "mention", "repository"]
+  let categories = ["pull", "issue", "release", "mention", "repository", "workflow"]
   return [
     handleNotificationsGetRepositoryPreferences(() => HttpResponse.json({ categories })),
     handleNotificationsSetRepositoryPreferences(async ({ request }) => {

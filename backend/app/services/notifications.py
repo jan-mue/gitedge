@@ -53,6 +53,8 @@ def activity_url(activity: Activity) -> str:
     path = f"/{quote(repo.owner.name, safe='')}/{quote(repo.name, safe='')}"
     if activity.target_type in ("issue", "pull_request") and activity.target_number is not None:
         path += f"/{'pulls' if activity.target_type == 'pull_request' else 'issues'}/{activity.target_number}"
+    elif activity.target_type == "workflow_run" and activity.target_id is not None:
+        path += f"/actions?run={activity.target_id}"
     elif activity.target_type == "release":
         path += "/releases"
     if activity.comment_id is not None:
@@ -84,16 +86,25 @@ class NotificationService:
             return
         mentions = mentioned_users(text) - mentioned_users(previous_text)
         candidates = await self.store.audience(activity, mentions)
+        if activity.kind == "workflow_failed":
+            candidates.append((activity.actor, "triggered"))
         repository = await self.repository_store.get(activity.repo_id)
         visible = {
-            user.id for user in await self.authorization.visible_users(repository, [user for user, _ in candidates])
+            user.id
+            for user in await self.authorization.visible_users(
+                repository,
+                [user for user, _ in candidates],
+                "actions:read" if activity.kind == "workflow_failed" else "repository:read",
+            )
         }
         audience = [(user, reason) for user, reason in candidates if user.id in visible]
         preferences = await self.store.delivery_preferences([user.id for user, _ in audience], activity)
         deliveries = []
         for user, reason in audience:
             category = (
-                NotificationCategory.MENTION
+                NotificationCategory.WORKFLOW
+                if activity.kind == "workflow_failed"
+                else NotificationCategory.MENTION
                 if reason == "mentioned"
                 else NotificationCategory.PULL
                 if activity.target_type == "pull_request"
@@ -111,9 +122,12 @@ class NotificationService:
             notification = Notification(user_id=user.id, activity_id=activity.id, reason=reason, category=category)
             notification.activity = activity
             deliveries.append((user, notification, preference.email))
-        await self.store.add_many([notification for _, notification, _ in deliveries])
+        inserted = {
+            notification.id
+            for notification in await self.store.add_many([notification for _, notification, _ in deliveries])
+        }
         for user, notification, email in deliveries:
-            if settings.emails_enabled and email:
+            if notification.id in inserted and settings.emails_enabled and email:
                 subject, html = self._email_content(activity, notification.id)
                 self.background_tasks.add_task(self._send_email, user.email, subject, html)
 
@@ -131,7 +145,7 @@ class NotificationService:
         """Snapshot content before the request session closes."""
         url = activity_url(activity)
         path, separator, fragment = url.partition("#")
-        url = f"{settings.FRONTEND_HOST.rstrip('/')}{path}?from=notifications&n={notification_id}"
+        url = f"{settings.FRONTEND_HOST.rstrip('/')}{path}{'&' if '?' in path else '?'}from=notifications&n={notification_id}"
         if separator:
             url += f"#{fragment}"
         repo = activity.repo

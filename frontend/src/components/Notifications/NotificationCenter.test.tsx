@@ -26,8 +26,12 @@ const notification: NotificationPublic = {
   unsubscribed: false,
 }
 
-const setup = (initial = "/notifications", reason = notification.reason) => {
-  let entry = { ...notification, reason }
+const setup = (
+  initial = "/notifications",
+  reason = notification.reason,
+  override: Partial<NotificationPublic> = {},
+) => {
+  let entry = { ...notification, reason, ...override }
   server.use(
     handleNotificationsListNotifications(({ request }) => {
       const params = new URL(request.url).searchParams
@@ -71,14 +75,36 @@ const setup = (initial = "/notifications", reason = notification.reason) => {
     path: "$owner/$repo/issues/$number",
     component: NotificationReturnBanner,
   })
+  const actions = createRoute({
+    getParentRoute: () => layout,
+    path: "$owner/$repo/actions",
+    validateSearch: (search: Record<string, unknown>) => ({
+      run: typeof search.run === "string" ? search.run : undefined,
+    }),
+    component: NotificationReturnBanner,
+  })
   const router = createRouter({
-    routeTree: root.addChildren([layout.addChildren([center, issue])]),
+    routeTree: root.addChildren([layout.addChildren([center, issue, actions])]),
     history: createMemoryHistory({ initialEntries: [initial] }),
   })
   return { ...render(<RouterProvider router={router} />), router }
 }
 
 describe("notification center", () => {
+  test("opens the exact failed run and preserves notification return context", async () => {
+    const run = "439fd127-ec83-440e-bca6-d63c710ac13d"
+    const { user, router } = setup("/notifications", "triggered", {
+      kind: "workflow_failed",
+      category: "workflow",
+      number: null,
+      title: "CI failed: Test",
+      url: `/owner/demo/actions?run=${run}`,
+    })
+    await user.click(await screen.findByRole("link", { name: /CI failed: Test/ }))
+    await waitFor(() => expect(router.state.location.pathname).toBe("/owner/demo/actions"))
+    expect(router.state.location.search).toMatchObject({ run, from: "notifications", n: notification.id })
+  })
+
   test.each([
     ["mentioned", "Mentioned"],
     ["author", "Authored"],

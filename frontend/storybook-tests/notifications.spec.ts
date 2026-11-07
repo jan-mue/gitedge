@@ -131,3 +131,21 @@ test("notification columns separate actions, emphasize descriptions, and return 
   expect(decoration).toEqual({ shadow: "none", border: "0px" })
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
 })
+
+test("workflow failures link to the exact run and expose delivery preferences", async ({ page }, testInfo) => {
+  const theme = testInfo.project.name.startsWith("dark") ? "dark" : "light"
+  await page.goto(
+    `/iframe.html?id=patterns-notifications-inbox--workflow-failures&viewMode=story&globals=theme:${theme}`,
+  )
+  const notification = page.getByRole("link", { name: /CI failed: Backend tests/ })
+  await expect(notification).toBeVisible()
+  await expect(notification).toHaveAttribute("href", /run=439fd127-ec83-440e-bca6-d63c710ac13d/)
+  await page.getByRole("button", { name: "Manage", exact: true }).click()
+  const preference = page.getByRole("switch", { name: "Workflow failures", exact: true })
+  await expect(preference).toBeChecked()
+  await preference.click()
+  await expect(preference).not.toBeChecked()
+  await page.keyboard.press("Escape")
+  await notification.click()
+  await expect(page.getByRole("link", { name: "Back to notifications" })).toBeVisible()
+})

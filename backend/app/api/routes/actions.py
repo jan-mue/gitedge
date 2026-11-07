@@ -252,7 +252,7 @@ async def download_cache(token: str, payload_id: uuid.UUID, service: ActionsServ
 
 @router.post("/actions/internal/{operation}", status_code=202, include_in_schema=False)
 async def queue_delivery(
-    operation: Literal["dispatch", "inspect", "cleanup", "reconcile"],
+    operation: Literal["dispatch", "inspect", "cleanup", "notify", "reconcile"],
     request: Request,
     service: ActionsServiceDep,
     signature: Annotated[str, Header(alias="Upstash-Signature")] = "",

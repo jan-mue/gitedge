@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, override
@@ -29,7 +30,6 @@ from app.permissions import repository_visibility
 from app.schemas.notifications import NotificationCategory, NotificationFilter
 
 if TYPE_CHECKING:
-    import uuid
     from typing import Any
 
     from sqlalchemy import Select
@@ -44,7 +44,7 @@ _NOTIFICATION_OPTIONS = (
 
 def notification_thread(activity: Activity) -> str:
     """Use the same key for every event in a discussion."""
-    return f"{activity.target_type or 'repository'}:{activity.target_number or 0}"
+    return f"{activity.target_type or 'repository'}:{activity.target_id or activity.target_number or 0}"
 
 
 @dataclass
@@ -83,7 +83,7 @@ class NotificationStore(CrudStore[Notification], ABC):
         """Load all recipients' delivery settings in a bounded number of queries."""
 
     @abstractmethod
-    async def add_many(self, notifications: list[Notification]) -> None:
+    async def add_many(self, notifications: list[Notification]) -> list[Notification]:
         """Persist the event's notifications together, populating their IDs."""
 
     @abstractmethod
@@ -204,11 +204,42 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
         return preferences
 
     @override
-    async def add_many(self, notifications: list[Notification]) -> None:
+    async def add_many(self, notifications: list[Notification]) -> list[Notification]:
         """Use SQLAlchemy's batched insert and a single commit for this activity."""
-        if notifications:
-            self.db.add_all(notifications)
-            await self.db.commit()
+        if not notifications:
+            return []
+        for notification in notifications:
+            notification.id = notification.id or uuid.uuid4()
+        saved = {
+            notification.id: notification
+            for notification in await self.db.scalars(
+                insert(Notification)
+                .values(
+                    [
+                        {
+                            "id": n.id,
+                            "user_id": n.user_id,
+                            "activity_id": n.activity_id,
+                            "reason": n.reason,
+                            "category": n.category,
+                            "is_read": bool(n.is_read),
+                            "is_archived": bool(n.is_archived),
+                        }
+                        for n in notifications
+                    ]
+                )
+                .on_conflict_do_nothing(index_elements=[Notification.user_id, Notification.activity_id])
+                .returning(Notification)
+            )
+        }
+        await self.db.commit()
+        inserted = []
+        for notification in notifications:
+            if row := saved.pop(notification.id, None):
+                notification.created_at, notification.updated_at = row.created_at, row.updated_at
+                notification.is_read, notification.is_archived = row.is_read, row.is_archived
+                inserted.append(notification)
+        return inserted
 
     @staticmethod
     async def _inbox_query(user: User) -> Select[Notification]:

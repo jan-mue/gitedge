@@ -27,6 +27,7 @@ class ActivityPublic(GitEdgeBaseModel):
     repo_owner: str | None = None
     repo_name: str | None = None
     target_type: ActivityTargetType | None = None
+    target_id: uuid.UUID | None = None
     target_number: int | None = None
     created_at: datetime
     preview: ActivityTargetPreview | None = None

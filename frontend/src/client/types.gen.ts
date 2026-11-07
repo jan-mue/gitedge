@@ -176,7 +176,7 @@ export type ActivitiesPublic = {
  *
  * Kinds of activity recorded in the feed.
  */
-export type ActivityKind = 'star' | 'watch' | 'fork' | 'issue_open' | 'issue_close' | 'issue_reopen' | 'comment' | 'comment_edit' | 'reaction' | 'issue_edit' | 'pull_request_edit' | 'pull_request_open' | 'pull_request_merge' | 'pull_request_close' | 'pull_request_reopen' | 'release';
+export type ActivityKind = 'workflow_failed' | 'star' | 'watch' | 'fork' | 'issue_open' | 'issue_close' | 'issue_reopen' | 'comment' | 'comment_edit' | 'reaction' | 'issue_edit' | 'pull_request_edit' | 'pull_request_open' | 'pull_request_merge' | 'pull_request_close' | 'pull_request_reopen' | 'release';
 
 /**
  * ActivityOverview
@@ -267,6 +267,10 @@ export type ActivityPublic = {
     repo_name?: string | null;
     target_type?: ActivityTargetType | null;
     /**
+     * Target Id
+     */
+    target_id?: string | null;
+    /**
      * Target Number
      */
     target_number?: number | null;
@@ -327,7 +331,7 @@ export type ActivityTargetPreview = {
  *
  * Types of targets an activity event can reference.
  */
-export type ActivityTargetType = 'repository' | 'issue' | 'pull_request' | 'release';
+export type ActivityTargetType = 'workflow_run' | 'repository' | 'issue' | 'pull_request' | 'release';
 
 /**
  * BlameContent
@@ -1252,7 +1256,7 @@ export type NewPassword = {
  *
  * Categories of activity delivered to the notification center.
  */
-export type NotificationCategory = 'issue' | 'pull' | 'mention' | 'release' | 'repository';
+export type NotificationCategory = 'workflow' | 'issue' | 'pull' | 'mention' | 'release' | 'repository';
 
 /**
  * NotificationPreferences

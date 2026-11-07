@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, override
 
 from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.clients.database import CrudStore, SQLStore
@@ -31,6 +32,10 @@ _PREVIEW_LENGTH = 4000
 
 class ActivityStore(CrudStore[Activity], ABC):
     """Abstract activity store with activity-specific queries."""
+
+    @abstractmethod
+    async def add_once(self, activity: Activity) -> Activity:
+        """Persist an event idempotently by its source identity."""
 
     @abstractmethod
     async def list_pull_request_events(self, repo_id: uuid.UUID, number: int) -> list[Activity]:
@@ -67,6 +72,19 @@ class SQLActivityStore(ActivityStore, SQLStore[Activity]):
             db: SQLAlchemy async session.
         """
         super().__init__(db, Activity)
+
+    @override
+    async def add_once(self, activity: Activity) -> Activity:
+        values = {
+            column.name: getattr(activity, column.name)
+            for column in Activity.__table__.columns
+            if getattr(activity, column.name) is not None
+        }
+        await self.db.execute(insert(Activity).values(**values).on_conflict_do_nothing(index_elements=[Activity.id]))
+        await self.db.commit()
+        return (
+            await self.db.scalars(select(Activity).options(*_ACTIVITY_OPTIONS).where(Activity.id == activity.id))
+        ).one()
 
     @override
     async def list_pull_request_events(self, repo_id: uuid.UUID, number: int) -> list[Activity]:

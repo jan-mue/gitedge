@@ -1,6 +1,7 @@
 import type { ActivityKind, NotificationPublic } from "@/client"
 
 const events: Record<ActivityKind, { label: string; description: string }> = {
+  workflow_failed: { label: "Workflow failed", description: "A workflow you follow failed" },
   star: { label: "Starred", description: "Starred this repository" },
   watch: { label: "Watching", description: "Started watching this repository" },
   fork: { label: "Forked", description: "Forked this repository" },

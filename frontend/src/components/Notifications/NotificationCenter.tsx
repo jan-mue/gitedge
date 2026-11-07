@@ -45,6 +45,7 @@ import { categoryMeta, RepositoryNotificationPreferences } from "./RepositoryNot
 import type { NotificationSearch } from "./search"
 
 const reasons = [
+  { id: "triggered", label: "Triggered workflows", icon: Bell },
   { id: "mentioned", label: "Mentioned", icon: AtSign },
   { id: "participating", label: "Participating", icon: MessageSquare },
   { id: "reaction", label: "Reactions", icon: SmilePlus },
@@ -399,7 +400,9 @@ export const NotificationCenter = () => {
                 {items.map((n) => {
                   const meta = categoryMeta[n.category]
                   const event = notificationEvent(n)
-                  const [path, hash] = n.url.split("#")
+                  const destination = new URL(n.url, window.location.origin)
+                  const path = destination.pathname
+                  const hash = destination.hash.slice(1)
                   return (
                     <NotificationItem
                       key={n.id}
@@ -478,7 +481,7 @@ export const NotificationCenter = () => {
                       <Link
                         to={path}
                         hash={hash}
-                        search={origin(n)}
+                        search={{ ...Object.fromEntries(destination.searchParams), ...origin(n) }}
                         appearance="notificationTarget"
                         onClick={() => {
                           if (!n.is_read) patch([n.id], { is_read: true })

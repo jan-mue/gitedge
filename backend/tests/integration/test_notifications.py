@@ -113,11 +113,39 @@ async def test_notification_batch_rolls_back_together(infrastructure: dict[str, 
             users, activity = await setup_audience(db, 2)
             entries = [
                 Notification(user_id=user.id, activity_id=activity.id, category="issue", reason="subscribed")
-                for user in [*users, users[0]]
+                for user in users
             ]
+            entries.append(
+                Notification(user_id=uuid.uuid4(), activity_id=activity.id, category="issue", reason="subscribed")
+            )
             with pytest.raises(IntegrityError):
                 await SQLNotificationStore(db).add_many(entries)
             await db.rollback()
             assert await db.scalar(select(func.count()).select_from(Notification)) == 0
+    finally:
+        await engine.dispose()
+
+
+async def test_notification_batches_suppress_duplicate_deliveries(infrastructure: dict[str, str]) -> None:
+    engine = create_async_engine(infrastructure["DATABASE_URL"])
+    try:
+        async with create_session_factory(engine)() as db:
+            users, activity = await setup_audience(db, 2)
+            store = SQLNotificationStore(db)
+            entries = [
+                Notification(user_id=user.id, activity_id=activity.id, category="workflow", reason="triggered")
+                for user in [*users, users[0]]
+            ]
+            inserted = await store.add_many(entries)
+            assert len(inserted) == 2
+            assert all(entry.created_at and entry.updated_at for entry in inserted)
+            assert all(entry.is_read is False and entry.is_archived is False for entry in inserted)
+            assert await store.add_many(entries) == []
+            assert (
+                await db.scalar(
+                    select(func.count()).select_from(Notification).where(Notification.activity_id == activity.id)
+                )
+                == 2
+            )
     finally:
         await engine.dispose()

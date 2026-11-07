@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from app.entities.users import User
     from app.schemas.actions import CacheEntry, CacheIdentity
     from app.services.actions.cache import ActionsCacheService
+    from app.services.actions.notifications import WorkflowFailureNotifications
     from app.services.authorization import AuthorizationService
     from app.services.repositories import RepositoryService
 
@@ -63,6 +64,7 @@ class ActionsService:
         *,
         compiler: WorkflowCompiler,
         authorization: AuthorizationService,
+        notifications: WorkflowFailureNotifications,
         queue: ActionsQueue,
         provider: str,
         max_timeout: int,
@@ -72,6 +74,7 @@ class ActionsService:
         cache: ActionsCacheService | None = None,
     ) -> None:
         """Inject data access and sandbox clients; keep provider policy out of workflows."""
+        self.notifications = notifications
         self.authorization = authorization
         self.compiler = compiler
         self.store = store
@@ -85,7 +88,7 @@ class ActionsService:
         self.scheduler = RunScheduler(max_parallel)
         self.queue = queue
         self.events = WorkflowEvents(repositories, repository_store, pull_requests, self.trigger, authorization)
-        self.dispatcher = ActionsDispatcher(store, sandbox, queue, self.scheduler, secrets or {})
+        self.dispatcher = ActionsDispatcher(store, sandbox, queue, self.scheduler, secrets or {}, notifications)
 
     async def repository(
         self, owner: str, name: str, user: User | None = None, *, write: bool = False
@@ -140,6 +143,7 @@ class ActionsService:
         sha, canonical = await self.repositories.action_revision(owner, name, ref)
         index = await self.repositories.get_file_index(owner, name, sha)
         event = snapshot_event(event, repository, owner, name, sha, canonical, actor)
+        event = event.model_copy(update={"sender": await self.notifications.actor(actor)})
         run_ids = []
         for path in workflow_paths(index.paths, workflow):
             raw = (await self.repositories.get_raw(owner, name, sha, path, follow_symlinks=True)).decode()

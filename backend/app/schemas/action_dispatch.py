@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-type DeliveryKind = Literal["dispatch", "inspect", "cleanup"]
+type DeliveryKind = Literal["dispatch", "inspect", "cleanup", "notify"]
 
 
 class Delivery(BaseModel):
