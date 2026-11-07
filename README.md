@@ -240,6 +240,10 @@ stored in GitHub secrets. Publication is disabled for PRs. The image publisher
 and CodeQL security check run only in GitHub; CodeQL tools and its GitEdge
 fixture are excluded from runner images.
 
+Cache metadata is repository-scoped in PostgreSQL. Immutable, checksummed cache
+archives use the existing Blob/S3 provider; sandbox agents transfer them through
+scoped controller capabilities. Cache archives are bounded to 32 MiB.
+
 Supported events are push, pull request and manual dispatch. Static matrices
 support include/exclude and require `fail-fast: false` for multiple variants.
 Filters use minimatch with ordered exclusion and re-inclusion. Dynamic matrices,

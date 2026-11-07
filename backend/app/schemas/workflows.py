@@ -147,6 +147,7 @@ class JobInput(BaseModel):
     secrets: dict[str, str]
     restore_url: str
     complete_url: str
+    cache_url: str
 
 
 class CompilerIssue(BaseModel):
