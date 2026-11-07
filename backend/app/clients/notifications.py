@@ -209,9 +209,10 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
         if not notifications:
             return []
         for notification in notifications:
-            notification.id = uuid.uuid4()
-        inserted = set(
-            await self.db.scalars(
+            notification.id = notification.id or uuid.uuid4()
+        saved = {
+            notification.id: notification
+            for notification in await self.db.scalars(
                 insert(Notification)
                 .values(
                     [
@@ -221,16 +222,24 @@ class SQLNotificationStore(NotificationStore, SQLStore[Notification]):
                             "activity_id": n.activity_id,
                             "reason": n.reason,
                             "category": n.category,
+                            "is_read": bool(n.is_read),
+                            "is_archived": bool(n.is_archived),
                         }
                         for n in notifications
                     ]
                 )
                 .on_conflict_do_nothing(index_elements=[Notification.user_id, Notification.activity_id])
-                .returning(Notification.id)
+                .returning(Notification)
             )
-        )
+        }
         await self.db.commit()
-        return [notification for notification in notifications if notification.id in inserted]
+        inserted = []
+        for notification in notifications:
+            if row := saved.pop(notification.id, None):
+                notification.created_at, notification.updated_at = row.created_at, row.updated_at
+                notification.is_read, notification.is_archived = row.is_read, row.is_archived
+                inserted.append(notification)
+        return inserted
 
     @staticmethod
     async def _inbox_query(user: User) -> Select[Notification]:
