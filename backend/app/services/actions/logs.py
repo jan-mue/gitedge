@@ -18,6 +18,7 @@ from app.exceptions import (
     NotFoundError,
     PermissionDeniedError,
     RedisUnavailableError,
+    WorkflowError,
 )
 from app.schemas.action_logs import LOG_PAGE_BYTES, LOG_STREAM_SECONDS, LogChunk, LogEnd, LogPage, LogRecord
 from app.services.actions.capabilities import authorize_report, report_payload
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 MAX_PAGE_RECORDS = 1000
+MAX_LOG_BYTES = 16 * 1024 * 1024
 
 
 def current_attempt(state: RunState | None, capability: Capability, *, terminal: bool = False) -> WorkflowAttempt:
@@ -80,18 +82,14 @@ class ActionsLogService:
         checksum = hashlib.sha256(payload).hexdigest()
         chunk_id = uuid.uuid5(attempt_id, str(chunk.from_seq))
         key = f"actions/{capability.repo}/{capability.run}/attempts/{attempt_id}/logs/{chunk.from_seq}-{checksum}.json"
+        async with self.runs.transaction(capability.run, capability.repo) as state:
+            attempt = current_attempt(state, capability, terminal=True)
+            if not await self._new_chunk(attempt, chunk, checksum, len(payload)):
+                return chunk.to_seq
         await self.blobs.put(key, payload)
         async with self.runs.transaction(capability.run, capability.repo) as state:
             attempt = current_attempt(state, capability, terminal=True)
-            if chunk.from_seq <= (attempt.log_seq or 0):
-                previous = await self.indexes.chunk(chunk_id)
-                if not previous or previous.checksum != checksum or previous.to_seq != chunk.to_seq:
-                    raise ConflictError("Log retry changed a committed chunk")
-            elif attempt.status not in {"starting", "running"}:
-                raise PermissionDeniedError("Attempt has completed")
-            elif chunk.from_seq != (attempt.log_seq or 0) + 1:
-                raise ConflictError("Log sequence has a gap")
-            else:
+            if await self._new_chunk(attempt, chunk, checksum, len(payload)):
                 self.indexes.stage(
                     WorkflowLogChunk(
                         id=chunk_id,
@@ -104,12 +102,27 @@ class ActionsLogService:
                     )
                 )
                 attempt.log_seq = chunk.to_seq
+                attempt.log_bytes = (attempt.log_bytes or 0) + len(payload)
         try:
             async with asyncio.timeout(0.25):
                 await self.redis.stream_add(self._tail(attempt_id), chunk.to_seq, payload.decode())
         except (RedisUnavailableError, TimeoutError) as error:
             logger.warning("Recent Actions log delivery unavailable: %s", error)
         return chunk.to_seq
+
+    async def _new_chunk(self, attempt: WorkflowAttempt, chunk: LogChunk, checksum: str, size: int) -> bool:
+        if chunk.from_seq <= (attempt.log_seq or 0):
+            previous = await self.indexes.chunk(uuid.uuid5(attempt.id, str(chunk.from_seq)))
+            if not previous or previous.checksum != checksum or previous.to_seq != chunk.to_seq:
+                raise ConflictError("Log retry changed a committed chunk")
+            return False
+        if attempt.status not in {"starting", "running"}:
+            raise PermissionDeniedError("Attempt has completed")
+        if chunk.from_seq != (attempt.log_seq or 0) + 1:
+            raise ConflictError("Log sequence has a gap")
+        if (attempt.log_bytes or 0) + size > MAX_LOG_BYTES:
+            raise WorkflowError("Attempt logs exceed 16 MiB")
+        return True
 
     async def page(self, repo_id: uuid.UUID, run_id: uuid.UUID, attempt_id: uuid.UUID, after: int) -> LogPage:
         """Read contiguous records from the recent tail or immutable archive."""

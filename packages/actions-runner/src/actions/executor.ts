@@ -4,13 +4,14 @@ import type { JobStatus } from "../domain/job.ts"
 import { type ActionStep, type Environment, type JsonValue, stringify, type WorkflowStep } from "../domain/workflow.ts"
 import type { ExpressionEngine } from "../expressions/evaluator.ts"
 import type { ExecutionScope, JobEnvironment } from "../runtime/environment.ts"
-import { inside, type Workspace } from "../runtime/files.ts"
+import { existingInside, type Workspace } from "../runtime/files.ts"
 import type { JobLogger } from "../runtime/logger.ts"
 import type { ProcessExecutor } from "../runtime/process.ts"
 import type { ActionResolver } from "./resolver.ts"
 
 interface PostAction {
   file: string
+  root: string
   environment: Environment
   scope: ExecutionScope
   condition: JsonValue
@@ -87,11 +88,12 @@ export class ActionExecutor {
       if (result !== "success") throw new Error(`Composite action ${uses}: ${result}`)
       return
     }
-    const entrypoint = (path: string) => inside(action.repositoryRoot, resolve(action.directory, path))
+    const entrypoint = (path: string) => existingInside(action.repositoryRoot, resolve(action.directory, path))
     const state: Environment = {}
     if (runs.post)
       this.posts.push({
-        file: entrypoint(runs.post),
+        file: await entrypoint(runs.post),
+        root: action.repositoryRoot,
         environment,
         scope: child,
         condition: runs["post-if"] ?? "always()",
@@ -104,7 +106,7 @@ export class ActionExecutor {
     ) {
       await this.process.run({
         command: this.node,
-        args: [entrypoint(runs.pre)],
+        args: [await entrypoint(runs.pre)],
         cwd: this.workspace.source,
         environment,
         step: id,
@@ -115,7 +117,7 @@ export class ActionExecutor {
     }
     await this.process.run({
       command: this.node,
-      args: [entrypoint(runs.main)],
+      args: [await entrypoint(runs.main)],
       cwd: this.workspace.source,
       environment: { ...environment, ...stateEnvironment(state) },
       step: id,
@@ -135,7 +137,7 @@ export class ActionExecutor {
         await this.logger.emit("Post action cleanup", post.step)
         await this.process.run({
           command: this.node,
-          args: [post.file],
+          args: [await existingInside(post.root, post.file)],
           environment: { ...this.environment.snapshot(post.environment), ...stateEnvironment(post.state) },
           cwd: this.workspace.source,
           step: post.step,

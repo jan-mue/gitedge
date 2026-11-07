@@ -1,11 +1,12 @@
-import type { JobSpec, StepResult } from "../domain/job.ts"
+import type { JobSpec, JobStatus, StepResult } from "../domain/job.ts"
 import type { Environment, JsonObject, JsonValue } from "../domain/workflow.ts"
+import type { ExpressionEngine } from "../expressions/evaluator.ts"
 import type { Workspace } from "./files.ts"
 
 export class JobEnvironment {
   private readonly exported: Environment = {}
   readonly base: Environment = {}
-  readonly protected: Environment
+  readonly reservedEnvironment: Environment
 
   constructor(
     readonly input: JobSpec,
@@ -15,7 +16,7 @@ export class JobEnvironment {
     for (const [key, value] of Object.entries(Bun.env))
       if (value !== undefined && !/^GITEDGE_(JOB|JOB_ENCODING|JOB_ROOT|RESTORE_URL)$/.test(key)) this.base[key] = value
     const env = input.env
-    this.protected = {
+    this.reservedEnvironment = {
       ...env,
       ...storage,
       GITHUB_WORKSPACE: workspace.source,
@@ -40,7 +41,23 @@ export class JobEnvironment {
   snapshot(...layers: Environment[]): Environment {
     const environment = { ...this.base }
     for (const layer of layers) Object.assign(environment, layer)
-    return { ...environment, ...this.exported, ...this.protected }
+    return { ...environment, ...this.exported, ...this.reservedEnvironment }
+  }
+
+  async resolve(
+    scope: ExecutionScope,
+    expressions: ExpressionEngine,
+    status: JobStatus,
+    inherited: Environment,
+  ): Promise<Environment> {
+    const context = (env: Environment) => ({ ...scope.expressionContext(), env })
+    const workflow = await expressions.environment(this.input.workflow.env, context(this.snapshot(inherited)), status)
+    const job = await expressions.environment(
+      this.input.job.config.env,
+      context(this.snapshot(workflow, inherited)),
+      status,
+    )
+    return this.snapshot(workflow, job, inherited)
   }
 
   export(values: Environment): void {
@@ -53,7 +70,7 @@ export class JobEnvironment {
   }
 
   github(): JsonObject {
-    const env = this.protected
+    const env = this.reservedEnvironment
     return {
       ...this.input.event,
       repository: env.GITHUB_REPOSITORY || "",

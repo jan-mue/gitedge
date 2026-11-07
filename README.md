@@ -470,9 +470,44 @@ streaming starts. Lost Redis data replays from Blob/S3. The viewer keeps a
 bounded recent window and offers a full log download. Secret masking happens before segment boundaries.
 
 Artifacts and structured completion results are pushed directly by the agent.
-Completion waits for the final log ACK and releases dependent jobs through the
-outbox. Sandbox clients only check liveness; they never fetch log, result or
-artifact files. Rebuild prepared images/snapshots for version-four manifests.
+Completion waits for the final log ACK, persists the first report, and remains
+pending until the provider independently observes the launcher exit. The provider
+exit code overrides the reported code; only then can cleanup and dependency release
+proceed through the outbox. Sandbox clients never fetch job-writable completion
+markers, logs or artifact files. Rebuild prepared images/snapshots for these changes.
+
+### Actions trust boundary
+
+The backend owns authorization, attempt fencing, job deadlines and sandbox
+destruction. Treat the entire job sandbox, including its Bun agent, results,
+outputs and artifacts, as untrusted. A successful provider exit proves process
+completion; it does not prove that arbitrary workflow code performed its claimed
+checks. Reserved environment values implement Actions precedence, not credential
+isolation. Agent and steps share an unprivileged identity; prepared agent and
+action installations remain owned by root. No provider administrator credentials
+enter the sandbox.
+
+Pull request jobs receive a repository-scoped read-only Git token and their own
+attempt capabilities, but no repository secrets or shared cache capability.
+Push and manual jobs are trusted repository code and can read configured secrets.
+Git transport authorization is implemented separately by the PyCasbin stack.
+
+`ACTIONS_EGRESS_HOSTS` is an operator-managed HTTPS allowlist for Vercel
+sandboxes. It defaults to GitHub, npm, PyPI, Node and uv release endpoints.
+The controller is also allowed. Vercel applies this policy outside the microVM
+and denies private, loopback, metadata and IPv6 destinations. Docker is used
+for local testing with ordinary container networking and a host gateway for
+the local backend.
+
+Provider lifetimes and backend deadlines bound the whole sandbox, including
+descendants that escape a process group. Internal cancellation closes output
+readers and terminates the ordinary step process group. Output lines above
+64 KiB are discarded with a truncation notice; agent logs are capped at 8 MiB
+and the backend archives at most 16 MiB per attempt. Command files must be regular,
+non-symlink files of at most 1 MiB. Existing action paths, entrypoints, working
+directories and exported artifact paths resolve symlinks before containment
+checks. These checks reduce accidental access; they do not establish a separate
+OS boundary against same-identity code or eliminate filesystem races.
 
 ## License
 

@@ -75,6 +75,8 @@ class WorkflowAttempt(Base):
     artifact_key: Mapped[str | None] = mapped_column(String(512))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     log_seq: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    log_bytes: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    completion: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
 class WorkflowLogChunk(Base):

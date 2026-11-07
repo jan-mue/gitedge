@@ -4,7 +4,11 @@ import type { JobEnvironment } from "./environment.ts"
 import { readText, writeFile } from "./files.ts"
 import type { JobLogger } from "./logger.ts"
 
+export const COMMAND_FILE_BYTES = 1024 * 1024
+const OUTPUT_LINE_CHARACTERS = 64 * 1024
+
 export function parseFileCommands(text: string): Environment {
+  if (Buffer.byteLength(text) > COMMAND_FILE_BYTES) throw new Error("Workflow file commands exceed 1 MiB")
   const values: Environment = {}
   const lines = text.replace(/\r\n/g, "\n").split("\n")
   for (let index = 0; index < lines.length; index++) {
@@ -41,10 +45,12 @@ export class CommandFiles {
   }
 
   async collect(environment: JobEnvironment, outputs: Environment, state: Environment): Promise<void> {
-    Object.assign(outputs, parseFileCommands(await readText(this.paths.GITHUB_OUTPUT)))
-    Object.assign(state, parseFileCommands(await readText(this.paths.GITHUB_STATE)))
-    environment.export(parseFileCommands(await readText(this.paths.GITHUB_ENV)))
-    environment.prependPaths((await readText(this.paths.GITHUB_PATH)).split(/\r?\n/).filter(Boolean))
+    const contents = await Promise.all(Object.values(this.paths).map((path) => readText(path, COMMAND_FILE_BYTES)))
+    const [env, output, path, saved] = contents
+    Object.assign(outputs, parseFileCommands(output))
+    Object.assign(state, parseFileCommands(saved))
+    environment.export(parseFileCommands(env))
+    environment.prependPaths(path.split(/\r?\n/).filter(Boolean))
   }
 }
 
@@ -53,6 +59,7 @@ const decode = (value: string) =>
 
 export class OutputCommands {
   private stopped: string | undefined
+  private commandBytes = 0
 
   constructor(
     private readonly environment: JobEnvironment,
@@ -74,6 +81,8 @@ export class OutputCommands {
       return
     }
     const name = match[1]
+    this.commandBytes += Buffer.byteLength(line)
+    if (this.commandBytes > COMMAND_FILE_BYTES) throw new Error("Workflow output commands exceed 1 MiB")
     const value = decode(match[3])
     const properties: Environment = {}
     for (const item of (match[2] || "").split(",")) {
@@ -104,17 +113,39 @@ export class OutputCommands {
     }
   }
 
-  async consume(stream: ReadableStream<Uint8Array>): Promise<void> {
+  async consume(stream: ReadableStream<Uint8Array>, signal?: AbortSignal): Promise<void> {
     const decoder = new TextDecoder()
     let pending = ""
-    for await (const part of stream) {
-      if (pending.length + part.byteLength > 1024 * 1024) throw new Error("Process output line exceeds 1 MiB")
-      pending += decoder.decode(part, { stream: true })
-      const lines = pending.split(/\r?\n/)
-      pending = lines.pop() || ""
-      for (const line of lines) await this.line(line)
+    let discarded = false
+    const reader = stream.getReader()
+    const abort = () => void reader.cancel()
+    signal?.addEventListener("abort", abort, { once: true })
+    if (signal?.aborted) abort()
+    try {
+      while (true) {
+        const { value: part, done } = await reader.read()
+        if (done) break
+        const pieces = decoder.decode(part, { stream: true }).split("\n")
+        for (const [index, piece] of pieces.entries()) {
+          if (!discarded) {
+            if (pending.length + piece.length > OUTPUT_LINE_CHARACTERS) {
+              pending = ""
+              discarded = true
+              await this.logger.emit("[Output truncated: line exceeds 64 KiB]", this.step)
+            } else pending += piece
+          }
+          if (index < pieces.length - 1) {
+            if (!discarded) await this.line(pending.replace(/\r$/, ""))
+            pending = ""
+            discarded = false
+          }
+        }
+      }
+    } finally {
+      signal?.removeEventListener("abort", abort)
+      reader.releaseLock()
     }
     pending += decoder.decode()
-    if (pending) await this.line(pending)
+    if (pending && !discarded) await this.line(pending)
   }
 }

@@ -1,7 +1,6 @@
 import { mkdir } from "node:fs/promises"
 import { join } from "node:path"
 import { errorMessage, type JobInput, type JobResult, jobSchema } from "./domain/job.ts"
-import { writeFile } from "./runtime/files.ts"
 import { JobLog, JobLogger } from "./runtime/logger.ts"
 import { JobReporter } from "./runtime/reporter.ts"
 import { ArtifactState } from "./storage/artifact-state.ts"
@@ -65,10 +64,6 @@ export async function launch(
       code = 1
       result = { ...result, status: "failure", error: errorMessage(error) }
       await logger.emit(result.error || "Artifact export failed")
-    }
-    if (!reporter.enabled) {
-      await writeFile(join(root, "result.json"), JSON.stringify({ ...result, attempt: input.attempt }))
-      await writeFile(join(root, "exit-code"), String(code))
     }
     await log.close()
     const response = await reporter.post(

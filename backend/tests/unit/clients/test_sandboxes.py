@@ -10,7 +10,7 @@ import pytest
 from aiodocker.exceptions import DockerError
 from vercel.sandbox import SandboxStatus
 
-from app.clients.sandboxes import DockerSandboxClient, SandboxError, VercelSandboxClient
+from app.clients.sandboxes import DockerSandboxClient, SandboxError, SandboxExecution, VercelSandboxClient
 from app.schemas.runners import LinuxRunner, RunnerImage
 
 if TYPE_CHECKING:
@@ -42,6 +42,11 @@ async def test_docker_provisioning_does_not_pull_images_or_upload_source(
     config = sdk.containers.create.call_args.kwargs["config"]
     assert config["Image"] == images[runner].image
     assert config["HostConfig"]["CapDrop"] == ["ALL"]
+    assert config["User"] == "10001:10001"
+    assert config["HostConfig"]["ExtraHosts"] == ["host.docker.internal:host-gateway"]
+    assert "NetworkMode" not in config["HostConfig"]
+    sdk.containers.create.assert_awaited_once()
+    sdk.networks.create.assert_not_called()
     assert "Binds" not in config["HostConfig"]
     assert "Volumes" not in config
     assert not any(value.startswith("source=") for value in config["Env"])
@@ -60,6 +65,10 @@ async def test_vercel_uses_prepared_snapshot_and_never_receives_source(
     kwargs = create.call_args.kwargs
     assert kwargs["region"] == "iad1"
     assert kwargs["persistent"] is False
+    assert kwargs["network_policy"].mode == "custom"
+    assert set(kwargs["network_policy"].allow) == {"gitedge.invalid"}
+    assert "169.254.0.0/16" in kwargs["network_policy"].subnets.deny
+    assert box.create_process.call_args.kwargs["sudo"] is False
     assert kwargs["image"] is None
     assert kwargs["source"].snapshot_id == "snapshot-123"
     assert kwargs["env"]["GITEDGE_JOB_ENCODING"] == "deflate"
@@ -73,7 +82,7 @@ async def test_checking_expired_vercel_sandbox_never_resumes_or_reads_it(
 ) -> None:
     box = mocker.MagicMock(status=SandboxStatus.STOPPED)
     mocker.patch("app.clients.sandboxes.get_sandbox", new=mocker.AsyncMock(return_value=box))
-    assert not await VercelSandboxClient(images).is_running("job")
+    assert await VercelSandboxClient(images).status("job") == SandboxExecution(False)
     box.query_processes.assert_not_called()
     box.fs.read_bytes.assert_not_called()
 
@@ -85,7 +94,7 @@ async def test_vercel_checks_only_process_liveness(
     box = mocker.MagicMock(status=SandboxStatus.RUNNING)
     box.query_processes = mocker.AsyncMock(return_value=[mocker.Mock(returncode=None if running else 0)])
     mocker.patch("app.clients.sandboxes.get_sandbox", new=mocker.AsyncMock(return_value=box))
-    assert await VercelSandboxClient(images).is_running("job") == running
+    assert await VercelSandboxClient(images).status("job") == SandboxExecution(running, None if running else 0)
     box.fs.read_bytes.assert_not_called()
 
 
@@ -98,7 +107,7 @@ async def test_docker_liveness_never_downloads_an_archive(
     container.show = mocker.AsyncMock(return_value={"State": {"Status": "running"}})
     sdk.containers.get = mocker.AsyncMock(return_value=container)
     mocker.patch("app.clients.sandboxes.Docker", return_value=sdk)
-    assert await DockerSandboxClient(images).is_running("job")
+    assert await DockerSandboxClient(images).status("job") == SandboxExecution(True)
     container.get_archive.assert_not_called()
 
 

@@ -1,0 +1,18 @@
+name: Untrusted job boundary
+on: workflow_dispatch
+jobs:
+  attacker:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bun {0}
+        run: |
+          await Bun.write("/gitedge/result.json", JSON.stringify({status: "success", steps: {}, outputs: {}}))
+          await Bun.write("/gitedge/exit-code", "0")
+          console.log("Forged completion markers written")
+          await Bun.sleep(15000)
+          process.exit(7)
+  dependent:
+    needs: attacker
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Must be skipped"

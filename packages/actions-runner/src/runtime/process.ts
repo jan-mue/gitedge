@@ -61,7 +61,11 @@ export class ProcessExecutor {
     if (request.signal.aborted) abort()
     let code: number
     try {
-      ;[code] = await Promise.all([child.exited, output.consume(child.stdout), output.consume(child.stderr)])
+      ;[code] = await Promise.all([
+        child.exited,
+        output.consume(child.stdout, request.signal),
+        output.consume(child.stderr, request.signal),
+      ])
     } catch (error) {
       kill("SIGKILL")
       await child.exited
@@ -69,6 +73,7 @@ export class ProcessExecutor {
     } finally {
       request.signal.removeEventListener("abort", abort)
       clearTimeout(escalation)
+      if (request.signal.aborted) kill("SIGKILL")
     }
     await commands.collect(this.environment, request.outputs, request.state)
     request.signal.throwIfAborted()

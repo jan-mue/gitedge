@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { mkdtemp, rm } from "node:fs/promises"
 import { createServer } from "node:http"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -63,7 +63,7 @@ test("agent pushes ordered logs and artifacts before completing, without sandbox
 test("a job deadline kills its process and still exports a failed result", async () => {
   const root = await mkdtemp(join(tmpdir(), "gitedge-timeout-"))
   try {
-    const { code } = await launch(
+    const { code, result } = await launch(
       {
         workflow:
           "on: workflow_dispatch\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sleep 30\n",
@@ -74,8 +74,8 @@ test("a job deadline kills its process and still exports a failed result", async
       { root },
     )
     assert.equal(code, 124)
-    assert.equal(await readFile(join(root, "exit-code"), "utf8"), "124")
-    assert.equal(JSON.parse(await readFile(join(root, "result.json"), "utf8")).status, "failure")
+    assert.equal(result.status, "failure")
+    assert.equal(await Bun.file(join(root, "exit-code")).exists(), false)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

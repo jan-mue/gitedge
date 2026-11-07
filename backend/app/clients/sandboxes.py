@@ -4,17 +4,21 @@ import base64
 import json
 import zlib
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from http import HTTPStatus
 from typing import TYPE_CHECKING, override
+from urllib.parse import urlsplit
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
 
     from app.schemas.runners import LinuxRunner, RunnerImage
 
 from aiodocker import Docker
 from aiodocker.exceptions import DockerError
 from vercel.sandbox import (
+    NetworkPolicy,
+    NetworkPolicySubnets,
     SandboxApiError,
     SandboxResources,
     SandboxStatus,
@@ -27,6 +31,14 @@ from vercel.sandbox import SandboxError as VercelSandboxError
 
 class SandboxError(RuntimeError):
     """A provider could not create, inspect, or clean up a job sandbox."""
+
+
+@dataclass(frozen=True)
+class SandboxExecution:
+    """Provider-observed launcher state, independent of job reports."""
+
+    running: bool
+    exit_code: int | None = None
 
 
 class AbstractSandboxClient(ABC):
@@ -50,8 +62,8 @@ class AbstractSandboxClient(ABC):
         ...
 
     @abstractmethod
-    async def is_running(self, name: str) -> bool:
-        """Check liveness without reading sandbox files or resuming it."""
+    async def status(self, name: str) -> SandboxExecution:
+        """Observe the launcher without reading sandbox files or resuming it."""
         ...
 
     @abstractmethod
@@ -62,6 +74,22 @@ class AbstractSandboxClient(ABC):
 
 MAX_VERCEL_ENV_BYTES = 4096
 CLEANUP_GRACE_SECONDS = 30
+PRIVATE_SUBNETS = (
+    "0.0.0.0/8",
+    "10.0.0.0/8",
+    "100.64.0.0/10",
+    "127.0.0.0/8",
+    "169.254.0.0/16",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+    "192.0.0.0/24",
+    "192.0.2.0/24",
+    "198.18.0.0/15",
+    "198.51.100.0/24",
+    "203.0.113.0/24",
+    "224.0.0.0/3",
+    "::/0",
+)
 
 
 class DockerSandboxClient(AbstractSandboxClient):
@@ -80,6 +108,7 @@ class DockerSandboxClient(AbstractSandboxClient):
                 str(lifetime + CLEANUP_GRACE_SECONDS),
                 "/usr/local/bin/gitedge-launch",
             ],
+            "User": "10001:10001",
             "Env": [f"GITEDGE_JOB={files['input.json'].decode()}"],
             "HostConfig": {
                 "Memory": 2 * 1024**3,
@@ -106,14 +135,16 @@ class DockerSandboxClient(AbstractSandboxClient):
             raise SandboxError(f"Docker sandbox start failed: {exc}") from exc
 
     @override
-    async def is_running(self, name: str) -> bool:
+    async def status(self, name: str) -> SandboxExecution:
         try:
             async with Docker(api_version="v1.45") as client:
                 container = await client.containers.get(name)
-                return (await container.show())["State"]["Status"] in {"running", "created"}
+                state = (await container.show())["State"]
+                running = state["Status"] in {"running", "created"}
+                return SandboxExecution(running, None if running else state.get("ExitCode"))
         except DockerError as exc:
             if exc.status == HTTPStatus.NOT_FOUND:
-                return False
+                return SandboxExecution(False)
             raise SandboxError(f"Docker sandbox status failed: {exc}") from exc
 
     @override
@@ -134,9 +165,18 @@ class DockerSandboxClient(AbstractSandboxClient):
 class VercelSandboxClient(AbstractSandboxClient):
     """Launch detached one-shot jobs; provider credentials never enter the VM."""
 
-    def __init__(self, images: Mapping[LinuxRunner, RunnerImage], region: str | None = None) -> None:
+    def __init__(
+        self,
+        images: Mapping[LinuxRunner, RunnerImage],
+        region: str | None = None,
+        *,
+        controller_url: str = "https://gitedge.invalid",
+        egress_hosts: Sequence[str] = (),
+    ) -> None:
         """Use prebuilt VCR images or matching snapshots for each Linux release."""
         super().__init__(images)
+        self.controller_url = controller_url
+        self.egress_hosts = tuple(egress_hosts)
         self.region = region
 
     @override
@@ -145,6 +185,9 @@ class VercelSandboxClient(AbstractSandboxClient):
     ) -> None:
         """Boot a prepared image and pass only a small job descriptor."""
         image = self._image(runner)
+        controller = urlsplit(self.controller_url)
+        if controller.scheme != "https" or not controller.hostname:
+            raise SandboxError("Vercel jobs require an HTTPS controller URL")
         descriptor = files["input.json"]
         environment = {
             "RUNNER_TOOL_CACHE": "/opt/hostedtoolcache",
@@ -168,6 +211,10 @@ class VercelSandboxClient(AbstractSandboxClient):
                     source=SnapshotSource(snapshot_id=image.snapshot_id) if image.snapshot_id else None,
                     region=self.region,
                     persistent=False,
+                    network_policy=NetworkPolicy.custom(
+                        allow={host: [] for host in (*self.egress_hosts, controller.hostname)},
+                        subnets=NetworkPolicySubnets(deny=PRIVATE_SUBNETS),
+                    ),
                     execution_time_limit=lifetime + CLEANUP_GRACE_SECONDS,
                     resources=SandboxResources(vcpus=2),
                     env=environment,
@@ -183,21 +230,25 @@ class VercelSandboxClient(AbstractSandboxClient):
             if not inline:
                 await box.fs.write_bytes("/gitedge/job.json", descriptor)
             await box.create_process(
-                "/usr/local/bin/gitedge-launch", kill_after=lifetime + CLEANUP_GRACE_SECONDS, sudo=True
+                "/usr/local/bin/gitedge-launch", kill_after=lifetime + CLEANUP_GRACE_SECONDS, sudo=False
             )
         except VercelSandboxError as exc:
             raise SandboxError(f"Vercel sandbox start failed: {exc}") from exc
 
     @override
-    async def is_running(self, name: str) -> bool:
+    async def status(self, name: str) -> SandboxExecution:
         try:
             box = await get_sandbox(name=name)
             if box.status != SandboxStatus.RUNNING:
-                return False
-            return any(process.returncode is None for process in await box.query_processes())
+                return SandboxExecution(False)
+            processes = await box.query_processes()
+            if len(processes) != 1:
+                return SandboxExecution(False)
+            code = processes[0].returncode
+            return SandboxExecution(code is None, code)
         except SandboxApiError as exc:
             if exc.status_code == HTTPStatus.NOT_FOUND:
-                return False
+                return SandboxExecution(False)
             raise SandboxError(f"Vercel sandbox status failed: {exc}") from exc
         except VercelSandboxError as exc:
             raise SandboxError(f"Vercel sandbox status failed: {exc}") from exc

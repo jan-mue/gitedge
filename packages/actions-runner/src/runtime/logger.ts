@@ -16,6 +16,7 @@ interface LogRecord {
 const ackSchema = z.object({ acked_seq: z.number().int().nonnegative() })
 const CHUNK_BYTES = 64 * 1024
 const SPOOL_BYTES = 16 * 1024 * 1024
+const LOG_BYTES = 8 * 1024 * 1024
 
 export class JobLog implements LogSink {
   private pending = Promise.resolve()
@@ -23,6 +24,8 @@ export class JobLog implements LogSink {
   private buffered = 0
   private spooled = 0
   private localBytes = 0
+  private totalBytes = 0
+  private truncated = false
   private sequence = 0
   private readonly files: { path: string; to: number; size: number }[] = []
   private readonly timer: ReturnType<typeof setInterval>
@@ -55,8 +58,15 @@ export class JobLog implements LogSink {
     return this.sequence
   }
 
-  write(entry: LogEntry): Promise<void> {
+  write(input: LogEntry): Promise<void> {
     return this.enqueue(async () => {
+      if (this.truncated) return
+      this.totalBytes += Buffer.byteLength(input.msg)
+      let entry = input
+      if (this.totalBytes > LOG_BYTES) {
+        this.truncated = true
+        entry = { msg: "[Output truncated: job log exceeds 8 MiB]" }
+      }
       const characters = Array.from(entry.msg)
       const count = Math.max(1, Math.ceil(characters.length / 4096))
       for (let part = 0; part < count; part++) {

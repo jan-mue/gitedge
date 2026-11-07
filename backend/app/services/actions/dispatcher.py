@@ -9,8 +9,9 @@ from typing import TYPE_CHECKING
 
 from app.clients.sandboxes import AbstractSandboxClient, SandboxError
 from app.config import settings
-from app.exceptions import ActionsUnavailableError, WorkflowError
+from app.exceptions import ActionsUnavailableError, ConflictError, WorkflowError
 from app.schemas.action_dispatch import AttemptIdentity, Capability, Delivery
+from app.schemas.action_logs import JobCompletion
 from app.services.actions.inputs import build_job_input
 from app.services.actions.logs import current_attempt
 from app.services.actions.runtime import finish_job, redact
@@ -22,7 +23,6 @@ if TYPE_CHECKING:
     from app.clients.actions import ActionsStore, RunState
     from app.clients.qstash import ActionsQueue
     from app.entities.actions import WorkflowAttempt, WorkflowOutbox
-    from app.schemas.action_logs import JobCompletion
     from app.schemas.actions import ActionJob
 
 
@@ -124,20 +124,27 @@ class ActionsDispatcher:
         async with self.store.transaction(work.run_id) as state:
             if state and (attempt := self._owned(state, work)):
                 attempt.status, attempt.claim, attempt.lease_until = "running", None, None
+                attempt.deadline = datetime.now(UTC) + timedelta(seconds=work.job.timeout_seconds)
                 self.scheduler.inspect_later(state, attempt, 0)
                 accepted = True
         if not accepted:
             await self.sandbox.delete(work.sandbox)
 
     async def _check_status(self, work: ClaimedJob, message: WorkflowOutbox) -> None:
-        running = await self.sandbox.is_running(work.sandbox)
+        execution = await self.sandbox.status(work.sandbox)
         async with self.store.transaction(work.run_id) as state:
             if state and (attempt := self._owned(state, work)):
                 attempt.claim, attempt.lease_until = None, None
                 if datetime.now(UTC) >= attempt.deadline:
                     self.scheduler.fail(state, attempt, "Job exceeded timeout-minutes", retry=False)
-                elif not running:
-                    self.scheduler.fail(state, attempt, "Sandbox exited without a completion report")
+                elif not execution.running:
+                    if attempt.completion is None or execution.exit_code is None:
+                        self.scheduler.fail(state, attempt, "Sandbox exited without a verifiable completion report")
+                    elif (job := state.job(attempt)) is not None:
+                        completion = JobCompletion.model_validate(attempt.completion)
+                        completion.exit_code = execution.exit_code
+                        finish_job(job, completion, self._secrets(work.repo_id))
+                        self.scheduler.finish(state, attempt, job, attempt.artifact_key)
                 else:
                     self.scheduler.inspect_later(state, attempt)
             if state:
@@ -179,17 +186,17 @@ class ActionsDispatcher:
                 self.scheduler.advance(state)
 
     async def complete(self, capability: Capability, completion: JobCompletion) -> None:
-        """Commit a terminal result and release dependencies idempotently."""
+        """Persist an untrusted report; provider observation finalizes the attempt."""
         async with self.store.transaction(capability.run, capability.repo) as state:
             attempt = current_attempt(state, capability, terminal=True)
             if completion.last_seq != (attempt.log_seq or 0):
                 raise ActionsUnavailableError("Completion is waiting for acknowledged logs")
             if state and attempt.status in {"starting", "running"}:
-                job = state.job(attempt)
-                if job is not None:
-                    finish_job(job, completion, self._secrets(capability.repo))
-                    attempt.claim, attempt.lease_until = None, None
-                    self.scheduler.finish(state, attempt, job, attempt.artifact_key)
+                report = completion.model_dump(mode="json")
+                if attempt.completion is not None and attempt.completion != report:
+                    raise ConflictError("Completion retry changed the reported result")
+                attempt.completion = report
+                self.scheduler.inspect_later(state, attempt, 1)
         await self.flush()
 
     async def cancel(self, repo_id: uuid.UUID, run_id: uuid.UUID) -> bool:

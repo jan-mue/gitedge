@@ -4,9 +4,12 @@ jobs:
   long:
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          echo 'Long job started'
-          sleep 600
+      - shell: bun {0}
+        run: |
+          const child = Bun.spawn(["setsid", "sleep", "600"], {stdin: "ignore", stdout: "inherit", stderr: "inherit"})
+          await Bun.write("/gitedge/escaped.pid", String(child.pid))
+          console.log("Long job started")
+          await Bun.sleep(600000)
   dependent:
     needs: long
     runs-on: ubuntu-latest

@@ -35,7 +35,8 @@ export class WorkflowRunner {
       root: workspace.state,
       run: input.env.GITHUB_RUN_ID || "local",
       job: input.attempt.id,
-      cache: options.cache || new ControllerCacheClient(input.cache_url, options.signal),
+      cache:
+        options.cache || (input.cache_url ? new ControllerCacheClient(input.cache_url, options.signal) : undefined),
       restoreArtifacts: options.restoreArtifacts,
     })
     const logger = new JobLogger(options.log, [...Object.values(input.secrets), input.report_token || ""])
@@ -47,11 +48,11 @@ export class WorkflowRunner {
       const context: JsonObject = {
         github,
         runner: {
-          name: environment.protected.RUNNER_NAME,
+          name: environment.reservedEnvironment.RUNNER_NAME,
           os: "Linux",
-          arch: environment.protected.RUNNER_ARCH,
+          arch: environment.reservedEnvironment.RUNNER_ARCH,
           temp: workspace.temporary,
-          tool_cache: environment.protected.RUNNER_TOOL_CACHE,
+          tool_cache: environment.reservedEnvironment.RUNNER_TOOL_CACHE,
           environment: "self-hosted",
         },
         matrix: input.job.matrix,
