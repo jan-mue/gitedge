@@ -14,6 +14,7 @@ from app.schemas.base import GitEdgeBaseModel
 class NotificationCategory(StrEnum):
     """Categories of activity delivered to the notification center."""
 
+    WORKFLOW = "workflow"
     ISSUE = "issue"
     PULL = "pull"
     MENTION = "mention"

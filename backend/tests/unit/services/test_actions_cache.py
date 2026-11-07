@@ -8,6 +8,7 @@ import pytest
 from app.exceptions import PayloadTooLargeError
 from app.schemas.actions import CacheIdentity
 from app.services.actions.cache import STATE_LIMIT, ActionsCacheService
+from app.services.actions.notifications import WorkflowFailureNotifications
 from app.services.actions.service import ActionsService
 from app.services.authorization import AuthorizationService
 from tests.unit.utils.actions import FakeActionsQueue, FakeActionsStore, FakeWorkflowCompiler
@@ -114,6 +115,7 @@ async def test_repository_deletion_removes_cache_archives_and_preserves_other_re
         mocker.AsyncMock(),
         compiler=FakeWorkflowCompiler(),
         authorization=mocker.AsyncMock(spec=AuthorizationService),
+        notifications=mocker.AsyncMock(spec=WorkflowFailureNotifications),
         queue=FakeActionsQueue(),
         provider="docker",
         max_timeout=60,

@@ -44,9 +44,25 @@ class RunState:
         """Find the job still owned by this attempt."""
         return next((job for job in self.jobs if job.id == attempt.job_id and job.attempt_id == attempt.id), None)
 
-    def attempt(self, attempt_id: uuid.UUID) -> WorkflowAttempt | None:
+    def attempt(self, attempt_id: uuid.UUID | None) -> WorkflowAttempt | None:
         """Find an execution generation within this run."""
         return next((attempt for attempt in self.attempts if attempt.id == attempt_id), None)
+
+    @property
+    def outbox(self) -> list[WorkflowOutbox]:
+        """Include one durable notification command for a final failed run."""
+        if self.run.status != "failure":
+            return self.messages
+        return [
+            *self.messages,
+            WorkflowOutbox(
+                id=uuid.uuid5(self.run.id, "workflow-failed"),
+                run_id=self.run.id,
+                attempt_id=None,
+                kind="notify",
+                due_at=datetime.now(UTC),
+            ),
+        ]
 
     def enqueue(self, kind: DeliveryKind, attempt: WorkflowAttempt, delay: float = 0, key: str = "") -> None:
         """Append an idempotent command to the current transaction."""
@@ -117,7 +133,7 @@ class SQLActionsStore(ActionsStore, SQLStore[WorkflowRun]):
         return {
             column.name: value
             for column in entity.__table__.columns
-            if (value := getattr(entity, column.name)) is not None
+            if (value := getattr(entity, column.name)) is not None or column.nullable
         }
 
     async def _save(self, state: RunState) -> None:
@@ -125,11 +141,9 @@ class SQLActionsStore(ActionsStore, SQLStore[WorkflowRun]):
         state.run.updated_at = datetime.now(UTC)
         self.db.add_all(state.attempts)
         await self.db.flush()
-        if state.messages:
+        if messages := state.outbox:
             await self.db.execute(
-                insert(WorkflowOutbox)
-                .values([self._values(message) for message in state.messages])
-                .on_conflict_do_nothing()
+                insert(WorkflowOutbox).values([self._values(message) for message in messages]).on_conflict_do_nothing()
             )
         if state.acknowledged:
             await self.db.execute(

@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from app.clients.qstash import ActionsQueue
     from app.entities.actions import WorkflowAttempt, WorkflowOutbox
     from app.schemas.actions import ActionJob
+    from app.services.actions.notifications import WorkflowFailureNotifications
 
 
 @dataclass
@@ -50,8 +51,10 @@ class ActionsDispatcher:
         queue: ActionsQueue,
         scheduler: RunScheduler,
         secrets: dict[str, dict[str, str]],
+        notifications: WorkflowFailureNotifications,
     ) -> None:
         """Separate durable transitions from sandbox, storage, and broker I/O."""
+        self.notifications = notifications
         self.store, self.sandbox = store, sandbox
         self.queue, self.scheduler, self.secrets = queue, scheduler, secrets
 
@@ -59,7 +62,9 @@ class ActionsDispatcher:
         """Apply one idempotent command from an authenticated delivery."""
         if message.acknowledged_at:
             return
-        if message.kind == "cleanup":
+        if message.kind == "notify":
+            await self._notify(message)
+        elif message.kind == "cleanup":
             await self._cleanup(message)
         elif work := await self._claim(message):
             try:
@@ -71,6 +76,16 @@ class ActionsDispatcher:
             except (SandboxError, TimeoutError) as error:
                 await self._retry(work, message, error)
         await self.flush()
+
+    async def _notify(self, message: WorkflowOutbox) -> None:
+        async with self.store.transaction(message.run_id) as state:
+            if state is None:
+                return
+            run = state.run
+        await self.notifications.notify(run)
+        async with self.store.transaction(message.run_id) as state:
+            if state is not None:
+                state.acknowledged.append(message.id)
 
     async def _claim(self, message: WorkflowOutbox) -> ClaimedJob | None:
         async with self.store.transaction(message.run_id) as state:

@@ -58,6 +58,7 @@ from app.schemas.action_logs import LogCursor
 from app.schemas.token import TokenPayload, WorkflowGitToken
 from app.services.actions.cache import ActionsCacheService
 from app.services.actions.logs import ActionsLogService
+from app.services.actions.notifications import WorkflowFailureNotifications
 from app.services.actions.service import ActionsService
 from app.services.activity import ActivityService
 from app.services.authorization import AuthorizationService
@@ -823,6 +824,8 @@ def get_actions_service(
     sandbox: SandboxClientDep,
     compiler: WorkflowCompilerDep,
     authorization: AuthorizationServiceDep,
+    activity: ActivityServiceDep,
+    users: UserStoreDep,
     queue: ActionsQueueDep,
 ) -> ActionsService:
     """Inject one sandbox provider and durable workflow cache storage."""
@@ -834,6 +837,7 @@ def get_actions_service(
         sandbox,
         compiler=compiler,
         authorization=authorization,
+        notifications=WorkflowFailureNotifications(activity, repository_store, users),
         queue=queue,
         provider=settings.ACTIONS_PROVIDER,
         max_timeout=settings.ACTIONS_MAX_TIMEOUT,

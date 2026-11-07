@@ -14,6 +14,7 @@ import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import useCustomToast from "@/hooks/useCustomToast"
 
 export const activityActions: Record<string, string> = {
+  workflow_failed: "triggered a failed workflow in",
   star: "starred",
   watch: "started watching",
   fork: "forked",
@@ -68,6 +69,8 @@ const TargetLink = ({
         params={{ owner, repo, number: String(activity.target_number) }}
       />
     )
+  if (activity.target_type === "workflow_run" && activity.target_id)
+    return <Link {...props} to="/$owner/$repo/actions" params={{ owner, repo }} search={{ run: activity.target_id }} />
   if (activity.target_type === "release")
     return <Link {...props} to="/$owner/$repo/releases" params={{ owner, repo }} />
   return <Link {...props} to="/$owner/$repo" params={{ owner, repo }} />

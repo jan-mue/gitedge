@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from app.clients.sandboxes import AbstractSandboxClient
 from app.entities.actions import WorkflowRun
+from app.services.actions.notifications import WorkflowFailureNotifications
 from app.services.actions.service import ActionsService
 from app.services.authorization import AuthorizationService
 from tests.unit.utils.actions import FakeActionsQueue, FakeActionsStore, FakeWorkflowCompiler
@@ -60,6 +61,7 @@ async def test_pr_checks_follow_the_head_and_ignore_other_prs_and_old_deliveries
         sandbox,
         compiler=FakeWorkflowCompiler(),
         authorization=mocker.AsyncMock(spec=AuthorizationService),
+        notifications=mocker.AsyncMock(spec=WorkflowFailureNotifications),
         queue=queue,
         provider="docker",
         max_timeout=60,
@@ -97,6 +99,7 @@ async def test_push_to_an_open_pr_triggers_synchronize(mocker: MockerFixture, fa
         mocker.AsyncMock(spec=AbstractSandboxClient),
         compiler=FakeWorkflowCompiler(),
         authorization=mocker.AsyncMock(spec=AuthorizationService),
+        notifications=mocker.AsyncMock(spec=WorkflowFailureNotifications),
         queue=FakeActionsQueue(),
         provider="docker",
         max_timeout=60,

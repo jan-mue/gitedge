@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AtSign, CircleDot, GitPullRequest, Tag, Users } from "lucide-react"
+import { AtSign, CircleDot, CircleX, GitPullRequest, Tag, Users } from "lucide-react"
 import { useId } from "react"
 import {
   notificationsGetRepositoryPreferencesOptions,
@@ -21,6 +21,7 @@ import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
 export const categoryMeta = {
+  workflow: { label: "Workflow failures", icon: CircleX, color: "text-destructive" },
   pull: { label: "Pull requests", icon: GitPullRequest, color: "text-success" },
   issue: { label: "Issues", icon: CircleDot, color: "text-success" },
   release: { label: "Releases", icon: Tag, color: "text-warning" },

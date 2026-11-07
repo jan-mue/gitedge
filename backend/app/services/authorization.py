@@ -88,7 +88,9 @@ class AuthorizationService:
         enforcer = await self._repository_enforcer([repository], user)
         return enforcer.enforce(self._actor(user), self._resource(repository), permission, "account")
 
-    async def visible_users(self, repository: Repository, users: list[User]) -> list[User]:
+    async def visible_users(
+        self, repository: Repository, users: list[User], permission: str = "repository:read"
+    ) -> list[User]:
         """Authorize a whole notification audience using one current relationship graph."""
         if not users:
             return []
@@ -98,7 +100,7 @@ class AuthorizationService:
             [repository_domain(repository.owner_id, repository.id), parent, f"{parent}/*"],
         )
         resource = self._resource(repository)
-        return [user for user in users if enforcer.enforce(self._actor(user), resource, "repository:read", "account")]
+        return [user for user in users if enforcer.enforce(self._actor(user), resource, permission, "account")]
 
     async def visible_repositories(self, repositories: list[Repository], user: User | None) -> list[Repository]:
         """Use one filtered AsyncEnforcer for a bounded repository batch."""

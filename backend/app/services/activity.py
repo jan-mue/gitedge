@@ -131,6 +131,8 @@ class ActivityService:
         target_type: ActivityTargetType | None = None,
         target_number: int | None = None,
         comment_id: uuid.UUID | None = None,
+        event_id: uuid.UUID | None = None,
+        target_id: uuid.UUID | None = None,
         text: str = "",
         previous_text: str = "",
     ) -> Activity:
@@ -144,6 +146,8 @@ class ActivityService:
             target_type: Optional target type.
             target_number: Optional target number within the repository.
             comment_id: The specific comment referenced by a comment event.
+            event_id: Stable source identity used to deduplicate repeated deliveries.
+            target_id: UUID target such as a workflow run.
             text: Description or comment text containing mentions.
             previous_text: Original text, used to avoid repeating old mentions on edits.
 
@@ -158,8 +162,13 @@ class ActivityService:
             target_type=target_type,
             target_number=target_number,
             comment_id=comment_id,
+            target_id=target_id,
         )
-        await self.activity_store.add(activity)
+        if event_id is None:
+            await self.activity_store.add(activity)
+        else:
+            activity.id = event_id
+            activity = await self.activity_store.add_once(activity)
         activity.actor = actor
         activity.repo = repo
         if self.notification_service is not None:
@@ -253,5 +262,6 @@ class ActivityService:
             repo_name=repo.name if repo is not None else None,
             target_type=activity.target_type,
             target_number=activity.target_number,
+            target_id=activity.target_id,
             created_at=activity.created_at,
         )

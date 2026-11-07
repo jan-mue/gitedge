@@ -103,8 +103,8 @@ class WorkflowOutbox(Base):
     run_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("workflow_run.id", ondelete="CASCADE"), index=True
     )
-    attempt_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("workflow_attempt.id", ondelete="CASCADE")
+    attempt_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workflow_attempt.id", ondelete="CASCADE"), nullable=True
     )
     kind: Mapped[str] = mapped_column(String(16))
     due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)

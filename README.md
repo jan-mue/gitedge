@@ -214,6 +214,12 @@ access tokens require `actions:read` or `actions:write` and an explicit reposito
 selection; `actions:write` includes read access. Job checkout credentials only
 authorize Git reads in their own repository.
 
+Final workflow failures notify the initiator, repository owner and authorized
+watchers through the notification center, with failed job names and a link to
+the run. The Workflow failures category, thread mutes and email opt-in use the
+existing notification preferences. QStash retries reuse stable event and
+recipient identities to avoid duplicate inbox entries and emails.
+
 Start the local compiler from the repository root:
 
 ```shell

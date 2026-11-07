@@ -45,6 +45,9 @@ jobs:
           await Bun.sleep(6000)
           console.log("Live step finished")
 """)
+    (workflow.parent / "failure.yaml").write_text(
+        "name: Browser failure\non: workflow_dispatch\njobs:\n  fail:\n    runs-on: ubuntu-latest\n    steps:\n      - run: exit 7\n"
+    )
     run_git(source, ["add", "."])
     run_git(source, ["commit", "-m", "Browser CI fixture"])
     run_git(source, ["remote", "add", "origin", f"{backend_url}/admin/browser-actions.git"])
@@ -96,6 +99,18 @@ jobs:
             expect(page.get_by_role("heading", name="Browser CI", exact=True)).to_be_visible()
             page.get_by_role("button", name="success Say hello").click()
             expect(page.get_by_text("Hello from the sandbox", exact=False).first).to_be_visible()
+            page.goto(f"{app_url}/admin/browser-actions/actions")
+            page.get_by_role("button", name="failure.yaml", exact=True).click()
+            page.get_by_role("button", name="Run workflow", exact=True).click()
+            expect(page.get_by_role("img", name="failure", exact=True).first).to_be_visible(timeout=180000)
+            failed_run = api.get("/api/v1/repositories/admin/browser-actions/actions/runs").json()[0]
+            page.goto(f"{app_url}/notifications")
+            notification = page.get_by_role("link", name="Browser failure failed: fail", exact=False)
+            expect(notification).to_be_visible(timeout=60000)
+            notification.click()
+            expect(page.get_by_role("heading", name="Browser failure", exact=True)).to_be_visible()
+            assert f"run={failed_run['id']}" in page.url
+            expect(page.get_by_role("link", name="Back to notifications")).to_be_visible()
 
         finally:
             runs = api.get("/api/v1/repositories/admin/browser-actions/actions/runs")

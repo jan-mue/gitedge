@@ -12,6 +12,7 @@ import pytest
 from app.clients.sandboxes import AbstractSandboxClient, SandboxError, SandboxExecution
 from app.entities.actions import WorkflowRun
 from app.exceptions import ActionsUnavailableError, ConflictError, PermissionDeniedError
+from app.services.actions.notifications import WorkflowFailureNotifications
 from app.services.actions.service import ActionsService
 from app.services.actions.workflows import instantiate_jobs
 from app.services.authorization import AuthorizationService
@@ -43,6 +44,7 @@ def execution(mocker: MockerFixture, fake_stores: FakeStores) -> Execution:
         sandbox,
         compiler=FakeWorkflowCompiler(),
         authorization=mocker.AsyncMock(spec=AuthorizationService),
+        notifications=mocker.AsyncMock(spec=WorkflowFailureNotifications),
         queue=queue,
         provider="docker",
         max_timeout=60,
@@ -167,6 +169,7 @@ async def test_inspection_retry_resumes_its_lease_after_a_database_lock_failure(
     mocker.patch.object(store, "transaction", side_effect=fail_after_observation)
     with pytest.raises(ActionsUnavailableError, match="Workflow transition is busy"):
         await service.dispatcher.deliver(command)
+    assert command.attempt_id is not None
     attempt = store.attempts[command.attempt_id]
     assert attempt.lease_until is not None
     assert attempt.lease_until > datetime.now(UTC)
@@ -229,6 +232,7 @@ async def test_provisioning_retries_are_bounded_and_resources_are_cleaned(execut
     run = await add_run(execution)
     sandbox.start.side_effect = SandboxError("provider failed")
     for _ in range(3):
+        assert not pending(store, "notify")
         await service.dispatcher.deliver(pending(store, "dispatch")[0])
     for command in pending(store, "cleanup"):
         await service.dispatcher.deliver(command)
@@ -236,6 +240,7 @@ async def test_provisioning_retries_are_bounded_and_resources_are_cleaned(execut
     assert run.status == "failure"
     assert run.jobs[0]["sandbox"] is None
     assert [attempt.generation for attempt in store.attempts.values()] == [1, 2, 3]
+    assert len(pending(store, "notify")) == 1
 
 
 async def test_completion_push_is_idempotent_and_never_inspects_files(execution: Execution) -> None:

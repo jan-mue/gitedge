@@ -23,6 +23,7 @@ from app.constants import BACKEND_DIR
 from app.schemas.workflows import CompiledWorkflow
 from tests.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD
 from tests.git import run_git
+from tests.integration.test_notification_emails import messages_for, wait_for_messages
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -159,16 +160,59 @@ def test_push_runs_matrix_jobs_in_separate_sandboxes(
     assert not asyncio.run(has_remaining_jobs())
 
 
-def test_failed_jobs_skip_dependents_but_run_always_cleanup(actions_repo: tuple[httpx.Client, Path, str]) -> None:
+def test_failed_jobs_skip_dependents_and_notify_once(
+    actions_repo: tuple[httpx.Client, Path, str],
+    infrastructure: dict[str, str],
+    mailpit_http_url: str,
+    qstash: QStash,
+    backend_url: str,
+    xprocess: XProcess,
+) -> None:
     client, _, path = actions_repo
     wait_for_run(client, path)
-    dispatch = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/failure.yaml"})
-    dispatch.raise_for_status()
-    run = wait_for_run(client, path, dispatch.json()["id"])
-    assert run["status"] == "failure", json.dumps(run, indent=2)
-    assert [job["status"] for job in run["jobs"]] == ["failure", "skipped", "success"]
-    assert "Cleanup ran" in job_log(client, path, run)
-    assert "Failure reported" in job_log(client, path, run, 2)
+    preferences = client.get("/api/v1/notifications/preferences").json()
+    recipient = client.get("/api/v1/users/me").json()["email"]
+    client.put("/api/v1/notifications/preferences", json={"email": True}).raise_for_status()
+    try:
+        with httpx.Client(base_url=mailpit_http_url) as mailpit:
+            before = len(messages_for(mailpit, recipient))
+            dispatch = client.post(f"{path}/dispatch", json={"workflow": ".gitedge/workflow/failure.yaml"})
+            dispatch.raise_for_status()
+            run = wait_for_run(client, path, dispatch.json()["id"])
+            assert run["status"] == "failure", json.dumps(run, indent=2)
+            assert [job["status"] for job in run["jobs"]] == ["failure", "skipped", "success"]
+            assert "Cleanup ran" in job_log(client, path, run)
+            assert "Failure reported" in job_log(client, path, run, 2)
+            emails = wait_for_messages(mailpit, recipient, before + 1)
+            response = client.get("/api/v1/notifications/", params={"reason": "triggered"})
+            response.raise_for_status()
+            entries = [
+                entry
+                for entry in response.json()["data"]
+                if entry["url"] == f"/admin/actions-fixture/actions?run={run['id']}"
+            ]
+            assert len(entries) == 1
+            assert entries[0]["category"] == "workflow"
+            assert entries[0]["kind"] == "workflow_failed"
+            assert any("Failure conditions failed" in email["Subject"] for email in emails)
+            db_url = infrastructure["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
+            with psycopg.connect(db_url) as connection:
+                message = connection.execute(
+                    "SELECT id FROM workflow_outbox WHERE run_id = %s AND kind = 'notify'", (run["id"],)
+                ).fetchone()
+                assert message is not None
+            log = Path(str(xprocess.getinfo("backend").logpath))
+            offset = log.stat().st_size
+            qstash.message.publish_json(
+                url=f"{backend_url.replace('127.0.0.1', 'host.docker.internal')}/api/v1/actions/internal/notify",
+                body={"version": 1, "id": str(message[0])},
+                deduplication_id=str(uuid.uuid4()),
+            )
+            wait_for_access(log, offset, "notify", 202)
+            assert client.get("/api/v1/notifications/", params={"reason": "triggered"}).json()["count"] == 1
+            assert len(messages_for(mailpit, recipient)) == before + 1
+    finally:
+        client.put("/api/v1/notifications/preferences", json={"email": preferences["email"]}).raise_for_status()
 
 
 def test_tooling_actions_cache_and_artifacts(

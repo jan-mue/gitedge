@@ -1,5 +1,6 @@
 """GitHub-compatible event payloads with an internal event discriminator."""
 
+import uuid
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, TypeAdapter
@@ -8,6 +9,7 @@ from pydantic import BaseModel, Field, TypeAdapter
 class EventActor(BaseModel):
     """Identity included in repository and sender contexts."""
 
+    id: uuid.UUID | None = None
     login: str
     name: str = ""
     type: Literal["User", "Organization"] = "User"

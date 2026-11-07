@@ -46,7 +46,7 @@ class FakeActionsStore(ActionsStore):
         state.run.updated_at = datetime.now(UTC)
         for attempt in state.attempts:
             self.attempts[attempt.id] = attempt
-        for message in state.messages:
+        for message in state.outbox:
             self.messages.setdefault(message.id, message)
         for message_id in state.acknowledged:
             if message_id in self.messages:
