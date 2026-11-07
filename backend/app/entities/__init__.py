@@ -1,4 +1,13 @@
 from app.entities.activity import Activity
+from app.entities.agents import (
+    AgentEnvironment,
+    AgentEnvironmentRepository,
+    AgentMessage,
+    AgentRun,
+    AgentSession,
+    AgentTrace,
+    AgentTraceRange,
+)
 from app.entities.authorization import Team
 from app.entities.casbin import CasbinRule
 from app.entities.comments import Comment
@@ -23,6 +32,13 @@ from app.entities.watchers import Watcher
 
 __all__ = [
     "Activity",
+    "AgentEnvironment",
+    "AgentEnvironmentRepository",
+    "AgentMessage",
+    "AgentRun",
+    "AgentSession",
+    "AgentTrace",
+    "AgentTraceRange",
     "CasbinRule",
     "Comment",
     "CommentReaction",

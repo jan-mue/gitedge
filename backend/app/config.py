@@ -81,6 +81,16 @@ class Settings(BaseSettings):
         env_ignore_empty=True,
         extra="ignore",
     )
+    AGENTS_ENABLED: bool = False
+    AGENTS_SANDBOX: Literal["vercel", "kubernetes"] = "kubernetes"
+    AGENTS_KUBERNETES_WARMPOOL: str = "gitedge-agents"
+    AGENTS_KUBERNETES_NAMESPACE: str = "default"
+    RESTATE_INGRESS_URL: str = "http://localhost:8080"
+    RESTATE_AUTH_TOKEN: str = ""
+    RESTATE_IDENTITY_PUBLIC_KEY: str = ""
+    AGENTS_OPENAI_ENDPOINTS: dict[str, str] = {}
+    AGENTS_MODELS: list[str] = ["openai:gpt-4.1-mini"]
+
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str = secrets.token_urlsafe(32)
     # 60 minutes * 24 hours * 8 days = 8 days

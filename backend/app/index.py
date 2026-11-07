@@ -72,3 +72,8 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 # This allows git clients to use clean URLs without the /api/v1/ prefix.
 # Excluded from OpenAPI docs to avoid duplicate operation IDs with /api/v1/ routes.
 app.include_router(git.router, include_in_schema=False)
+
+if settings.AGENTS_ENABLED:
+    from app.agents.runtime import restate_app
+
+    app.mount("/restate", restate_app())

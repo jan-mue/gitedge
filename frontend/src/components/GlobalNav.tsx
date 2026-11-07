@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { ChevronDown, Inbox, LogOut, Plus, Settings, ShieldCheck, User } from "lucide-react"
+import { Bot, ChevronDown, Inbox, LogOut, Plus, Settings, ShieldCheck, User } from "lucide-react"
 import { useRef, useState } from "react"
 import {
   notificationsListNotificationsOptions,
@@ -10,6 +10,7 @@ import {
   repositoriesCreateRepositoryMutation,
   repositoriesListRepositoriesQueryKey,
 } from "@/client/@tanstack/react-query.gen"
+import { AgentNotifications } from "@/components/Agents/AgentNotifications"
 import {
   Button,
   ChoiceInput,
@@ -94,6 +95,11 @@ const GlobalNav = () => {
           </RouterLink>
 
           <div className="flex items-center gap-3">
+            <AgentNotifications />
+            <RouterLink to="/agents" appearance="item">
+              <Bot className="h-4 w-4" />
+              Agents
+            </RouterLink>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

@@ -36,6 +36,11 @@ dependencies = [
     "upstash-redis==1.8.0",
     "uvicorn==0.54.0",
     "vercel==0.11.6",
+    "pydantic-ai-harness[coder]==0.64.0",
+    "restate-sdk[client,pydantic-ai,serde]==1.2.0",
+    "k8s-agent-sandbox==1.0.9",
+    "pydantic-ai-slim[ag-ui,anthropic,mcp,openai]==2.64.0",
+    "httpx==0.28.1",
 ]
 
 [dependency-groups]
@@ -50,7 +55,8 @@ dev = [
     "pytest-playwright==0.10.0",
     "pytest-socket==0.8.1",
     "pytest-xprocess==1.0.2",
-    "testcontainers[mailpit,minio,postgres,redis]==4.15.0",
+    "restate-sdk[harness]==1.2.0",
+    "testcontainers[k3s,mailpit,minio,ollama,postgres,redis]==4.15.0",
     "types-pygments==2.21.0.20260819",
 ]
 
