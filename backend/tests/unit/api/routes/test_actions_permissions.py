@@ -66,11 +66,12 @@ def test_actions_pat_intersects_scopes_and_repository_selection(
     assert client.get(f"{API}/repositories/owner/other/actions/runs", headers=credential).status_code == 403
 
 
+@pytest.mark.parametrize("git_suffix", [".git", ""])
 @pytest.mark.parametrize(
     ("scope", "expired", "status"), [("git:read", False, 200), ("git:write", False, 401), ("git:read", True, 401)]
 )
 def test_checkout_token_is_repository_scoped_and_read_only(
-    client: TestClient, fake_stores: FakeStores, scope: str, *, expired: bool, status: int
+    client: TestClient, fake_stores: FakeStores, scope: str, git_suffix: str, *, expired: bool, status: int
 ) -> None:
     owner = add_user(fake_stores, "owner")
     repository = add_repository(fake_stores, owner)
@@ -87,9 +88,9 @@ def test_checkout_token_is_repository_scoped_and_read_only(
         algorithm="HS256",
     )
     credential = ("x-access-token", token)
-    path = f"{API}/owner/repo.git"
+    path = f"{API}/owner/repo{git_suffix}"
     assert client.get(f"{path}/info/refs?service=git-upload-pack", auth=credential).status_code == status
     assert client.post(f"{path}/git-receive-pack", auth=credential).status_code == (403 if status == 200 else 401)
-    assert client.get(f"{API}/owner/other.git/info/refs?service=git-upload-pack", auth=credential).status_code == (
-        403 if status == 200 else 401
-    )
+    assert client.get(
+        f"{API}/owner/other{git_suffix}/info/refs?service=git-upload-pack", auth=credential
+    ).status_code == (403 if status == 200 else 401)

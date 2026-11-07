@@ -86,6 +86,13 @@ async def _handle_git_request(
 
 
 @router.get(
+    "/{owner}/{repo}/info/refs",
+    include_in_schema=False,
+    dependencies=[
+        Depends(require_permission(git_discovery_permission, user_dep=GitUser, challenge='Basic realm="GitEdge"'))
+    ],
+)
+@router.get(
     "/{owner}/{repo}.git/info/refs",
     dependencies=[
         Depends(require_permission(git_discovery_permission, user_dep=GitUser, challenge='Basic realm="GitEdge"'))
@@ -112,6 +119,11 @@ async def get_info_refs(
 
 
 @router.get(
+    "/{owner}/{repo}/HEAD",
+    include_in_schema=False,
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
+@router.get(
     "/{owner}/{repo}.git/HEAD",
     dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
@@ -136,6 +148,11 @@ async def get_head(
 
 
 @router.get(
+    "/{owner}/{repo}/objects/info/packs",
+    include_in_schema=False,
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
+@router.get(
     "/{owner}/{repo}.git/objects/info/packs",
     dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
@@ -159,6 +176,11 @@ async def get_info_packs(
     return await _handle_git_request(request, f"{owner}/{repo}.git", "/objects/info/packs", repository_service)
 
 
+@router.get(
+    "/{owner}/{repo}/objects/{prefix:path}/{suffix}",
+    include_in_schema=False,
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
 @router.get(
     "/{owner}/{repo}.git/objects/{prefix:path}/{suffix}",
     dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
@@ -188,6 +210,11 @@ async def get_loose_object(
 
 
 @router.get(
+    "/{owner}/{repo}/objects/pack/{pack_file}",
+    include_in_schema=False,
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
+@router.get(
     "/{owner}/{repo}.git/objects/pack/{pack_file}",
     dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
@@ -214,6 +241,11 @@ async def get_pack_file(
 
 
 @router.post(
+    "/{owner}/{repo}/git-upload-pack",
+    include_in_schema=False,
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
+@router.post(
     "/{owner}/{repo}.git/git-upload-pack",
     dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
@@ -237,6 +269,11 @@ async def git_upload_pack(
     return await _handle_git_request(request, f"{owner}/{repo}.git", "/git-upload-pack", repository_service)
 
 
+@router.post(
+    "/{owner}/{repo}/git-receive-pack",
+    include_in_schema=False,
+    dependencies=[Depends(require_permission("git:write", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
 @router.post(
     "/{owner}/{repo}.git/git-receive-pack",
     dependencies=[Depends(require_permission("git:write", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
