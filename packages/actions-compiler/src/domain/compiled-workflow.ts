@@ -3,7 +3,7 @@ import { z } from "zod"
 
 export const compiledWorkflowSchema = z
   .object({
-    version: z.literal(1),
+    version: z.literal(2),
     matched: z.boolean(),
     workflowName: z.string(),
     dispatch: z.boolean(),

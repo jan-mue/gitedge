@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "matched": true,
   "workflowName": "Parallel jobs",
   "dispatch": false,
@@ -7,6 +7,7 @@
   "jobs": [
     {
       "id": "a:0",
+      "runner": "ubuntu-24.04",
       "key": "a",
       "name": "a",
       "needs": [],
@@ -31,6 +32,7 @@
     },
     {
       "id": "b:0",
+      "runner": "ubuntu-24.04",
       "key": "b",
       "name": "b",
       "needs": [],
@@ -55,6 +57,7 @@
     },
     {
       "id": "c:0",
+      "runner": "ubuntu-24.04",
       "key": "c",
       "name": "c",
       "needs": [],

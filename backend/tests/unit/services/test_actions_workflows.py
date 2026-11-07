@@ -26,7 +26,7 @@ def test_golden_manifest_preserves_agent_fields_without_parsing_yaml() -> None:
 def test_manifest_contract_rejects_incompatible_versions_and_unknown_fields() -> None:
     payload = compiled_fixture().model_dump(mode="json", by_alias=True, exclude_none=True)
     with pytest.raises(ValidationError):
-        CompiledWorkflow.model_validate({**payload, "version": 2})
+        CompiledWorkflow.model_validate({**payload, "version": 3})
     with pytest.raises(ValidationError):
         CompiledWorkflow.model_validate({**payload, "futureLanguage": {}})
     assert (

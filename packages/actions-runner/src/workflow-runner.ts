@@ -47,6 +47,7 @@ export class WorkflowRunner {
       const context: JsonObject = {
         github,
         runner: {
+          name: environment.protected.RUNNER_NAME,
           os: "Linux",
           arch: environment.protected.RUNNER_ARCH,
           temp: workspace.temporary,

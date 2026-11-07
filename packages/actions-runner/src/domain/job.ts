@@ -4,7 +4,7 @@ import { compiledJobSchema, expressionsSchema, workflowContextSchema } from "./c
 const statusSchema = z.enum(["success", "failure", "cancelled", "skipped"])
 const strings = z.record(z.string(), z.string())
 export const jobSchema = z.object({
-  version: z.literal(3),
+  version: z.literal(4),
   attempt: z
     .object({ id: z.uuid(), job_id: z.string(), generation: z.number().int().positive(), fence: z.uuid() })
     .strict(),
