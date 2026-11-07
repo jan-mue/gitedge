@@ -10,7 +10,6 @@ import { NotificationReturnBanner } from "./NotificationReturnBanner"
 import { notificationOriginSchema, notificationSearchSchema } from "./search"
 
 const entries = [
-  ["gitedge/gitedge", null, "CI failed: Backend tests", "workflow", "triggered", 2],
   ["gitedge/gitedge", 11192, "bug: Security vulnerability in GitEdge v14.0.2", "issue", "subscribed", 4],
   [
     "gitedge/gitedge",
@@ -37,22 +36,17 @@ const fixtures: NotificationPublic[] = entries.map(([repo, number, title, catego
   category,
   reason,
   kind:
-    category === "workflow"
-      ? "workflow_failed"
-      : category === "pull"
-        ? "pull_request_open"
-        : category === "release"
-          ? "release"
-          : category === "repository"
-            ? "watch"
-            : category === "mention"
-              ? "comment"
-              : "issue_open",
+    category === "pull"
+      ? "pull_request_open"
+      : category === "release"
+        ? "release"
+        : category === "repository"
+          ? "watch"
+          : category === "mention"
+            ? "comment"
+            : "issue_open",
   actor: "alice",
-  url:
-    category === "workflow"
-      ? `/${repo}/actions?run=439fd127-ec83-440e-bca6-d63c710ac13d`
-      : `/${repo}/issues/${number ?? 1}`,
+  url: `/${repo}/issues/${number ?? 1}`,
   created_at: new Date(Date.now() - minutes * 60_000).toISOString(),
   is_read: index > 5,
   is_archived: false,
@@ -74,8 +68,16 @@ const NotificationStory = () => {
       path: "$owner/$repo/issues/$number",
       component: NotificationReturnBanner,
     })
+    const actions = createRoute({
+      getParentRoute: () => layout,
+      path: "$owner/$repo/actions",
+      validateSearch: (search: Record<string, unknown>) => ({
+        run: typeof search.run === "string" ? search.run : undefined,
+      }),
+      component: NotificationReturnBanner,
+    })
     return createRouter({
-      routeTree: root.addChildren([layout.addChildren([center, discussion])]),
+      routeTree: root.addChildren([layout.addChildren([center, discussion, actions])]),
       history: createMemoryHistory({ initialEntries: ["/notifications"] }),
     })
   })
@@ -141,5 +143,21 @@ export const Inbox: Story = {}
 export const Empty: Story = {
   beforeEach: () => {
     notifications = []
+  },
+}
+
+export const WorkflowFailures: Story = {
+  beforeEach: () => {
+    notifications = [
+      {
+        ...fixtures[0],
+        number: null,
+        title: "CI failed: Backend tests",
+        kind: "workflow_failed",
+        category: "workflow",
+        reason: "triggered",
+        url: "/gitedge/gitedge/actions?run=439fd127-ec83-440e-bca6-d63c710ac13d",
+      },
+    ]
   },
 }
