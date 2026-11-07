@@ -31,6 +31,7 @@ def actions_repo(app_url: str, tmp_path: Path) -> Generator[tuple[httpx.Client, 
         login.raise_for_status()
         token = login.json()["access_token"]
         client.headers["Authorization"] = f"Bearer {token}"
+        client.post("/api/v1/repositories/", json={"owner": "admin", "name": "actions-fixture"}).raise_for_status()
         source = tmp_path / "source"
         source.mkdir()
         run_git(source, ["init", "-b", "main"])

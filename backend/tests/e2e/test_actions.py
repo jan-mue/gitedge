@@ -9,7 +9,7 @@ import pytest
 from playwright.sync_api import expect
 
 from tests.conftest import FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD
-from tests.git import run_git
+from tests.git import configure_git_auth, run_git
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -42,6 +42,7 @@ jobs:
     run_git(source, ["add", "."])
     run_git(source, ["commit", "-m", "Browser CI fixture"])
     run_git(source, ["remote", "add", "origin", f"{backend_url}/admin/browser-actions.git"])
+    configure_git_auth(backend_url, "admin/browser-actions.git", source)
     run_git(source, ["push", "origin", "main"])
     with httpx.Client(base_url=backend_url, timeout=180) as api:
         login = api.post(
