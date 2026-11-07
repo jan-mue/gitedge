@@ -5,6 +5,7 @@ import {
   handleActionsDispatchWorkflow,
   handleActionsListRuns,
   handleActionsListWorkflows,
+  handleActionsLogHistory,
   handleAuthorizationGetPermissions,
 } from "@/client/msw.gen"
 import { server } from "@/test/server"
@@ -29,8 +30,8 @@ const run: ActionRun = {
       key: "test",
       name: "Test",
       status: "success",
-      steps: [{ id: "hello", name: "Say hello", status: "success", log: "<script>untrusted</script>" }],
-      log: "complete log",
+      attempt_id: "11111111-1111-4111-8111-111111111111",
+      steps: [{ id: "hello", name: "Say hello", status: "success" }],
     },
   ],
 }
@@ -94,9 +95,21 @@ describe("Actions", () => {
   })
 
   test("expands plain-text step logs without rendering workflow HTML", async () => {
-    const { user, container } = render(<RunDetail run={run} canManage={false} cancelling={false} onCancel={vi.fn()} />)
+    server.use(
+      handleActionsLogHistory({
+        body: {
+          attempt_id: "11111111-1111-4111-8111-111111111111",
+          next_seq: 1,
+          complete: true,
+          records: [{ seq: 1, msg: "<script>untrusted</script>", step_id: "hello", end: true }],
+        },
+      }),
+    )
+    const { user, container } = render(
+      <RunDetail owner="owner" repo="repo" run={run} canManage={false} cancelling={false} onCancel={vi.fn()} />,
+    )
     await user.click(screen.getByRole("button", { name: /Say hello/ }))
-    expect(screen.getByText("<script>untrusted</script>")).toBeVisible()
+    expect((await screen.findAllByText("<script>untrusted</script>"))[0]).toBeVisible()
     expect(container.querySelector("script")).toBeNull()
   })
 

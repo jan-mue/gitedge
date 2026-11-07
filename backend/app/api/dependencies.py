@@ -5,9 +5,10 @@ from __future__ import annotations
 import logging
 from functools import cache
 from typing import TYPE_CHECKING, Annotated
+from uuid import UUID  # noqa: TC003 — FastAPI resolves dependency annotations at runtime.
 
 import jwt
-from fastapi import BackgroundTasks, Depends, Request
+from fastapi import BackgroundTasks, Depends, Header, Query, Request, Response
 from fastapi.security import APIKeyHeader, HTTPBasic, HTTPBasicCredentials, OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
@@ -15,6 +16,7 @@ from redis_fastapi import get_async_redis
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clients.action_logs import ActionsLogStore, SQLActionsLogStore
 from app.clients.actions import ActionsStore, SQLActionsStore
 from app.clients.actions_cache import ActionsCacheStore, SQLActionsCacheStore
 from app.clients.activity import ActivityStore, SQLActivityStore
@@ -52,8 +54,10 @@ from app.config import settings
 from app.entities.users import User
 from app.exceptions import AuthenticationError, InvalidPersonalAccessTokenError, PermissionDeniedError
 from app.permissions import account_can
+from app.schemas.action_logs import LogCursor
 from app.schemas.token import TokenPayload, WorkflowGitToken
 from app.services.actions.cache import ActionsCacheService
+from app.services.actions.logs import ActionsLogService
 from app.services.actions.service import ActionsService
 from app.services.activity import ActivityService
 from app.services.authorization import AuthorizationService
@@ -956,3 +960,52 @@ async def get_git_basic_user(
     if user is not None and security.verify_password(basic.password, user.hashed_password)[0] and user.is_active:
         return user
     raise InvalidPersonalAccessTokenError()
+
+
+def get_actions_log_store(db: SessionDep) -> ActionsLogStore:
+    """Share the request session for atomic log indexes."""
+    return SQLActionsLogStore(db)
+
+
+ActionsLogStoreDep = Annotated[ActionsLogStore, Depends(get_actions_log_store)]
+
+
+def get_actions_log_service(
+    store: ActionsStoreDep,
+    indexes: ActionsLogStoreDep,
+    blobs: BlobStorageClientDep,
+    redis: RedisClientDep,
+) -> ActionsLogService:
+    """Wire durable log storage and optional recent delivery."""
+    return ActionsLogService(store, indexes, blobs, redis, settings.ACTIONS_SECRETS)
+
+
+ActionsLogServiceDep = Annotated[ActionsLogService, Depends(get_actions_log_service)]
+
+
+async def get_actions_log_cursor(
+    response: Response,
+    owner: str,
+    repo: str,
+    run_id: UUID,
+    attempt_id: UUID,
+    service: ActionsServiceDep,
+    logs: ActionsLogServiceDep,
+    user: OptionalRepositoryUser,
+    after: Annotated[int, Query(ge=0)] = 0,
+    last_event_id: Annotated[int | None, Header(alias="Last-Event-ID", ge=0)] = None,
+) -> LogCursor:
+    """Validate access and the first replay page before streaming headers are sent."""
+    response.headers["Cache-Control"] = "private, no-store"
+    repository = await service.repository(owner, repo, user)
+    cursor = LogCursor(
+        repo_id=repository.id,
+        run_id=run_id,
+        attempt_id=attempt_id,
+        after=last_event_id if last_event_id is not None else after,
+    )
+    await logs.page(cursor.repo_id, cursor.run_id, cursor.attempt_id, cursor.after)
+    return cursor
+
+
+ActionsLogCursorDep = Annotated[LogCursor, Depends(get_actions_log_cursor)]

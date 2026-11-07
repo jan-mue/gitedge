@@ -6,13 +6,16 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import jwt
+from pydantic import ValidationError
 
 from app.config import settings
-from app.exceptions import PermissionDeniedError
-from app.schemas.action_dispatch import Capability
+from app.exceptions import PermissionDeniedError, WorkflowError
+from app.schemas.action_dispatch import AttemptIdentity, Capability
 from app.utils import security
 
 if TYPE_CHECKING:
+    import uuid
+
     from app.clients.actions import ActionsStore
     from app.entities.actions import WorkflowAttempt, WorkflowRun
     from app.schemas.actions import ActionJob
@@ -49,3 +52,31 @@ async def authorize_capability(
     if capability.scope != scope or not await store.current(capability, allow_terminal):
         raise PermissionDeniedError("Sandbox capability is stale or has the wrong scope")
     return capability
+
+
+async def authorize_report(
+    store: ActionsStore, attempt_id: uuid.UUID, authorization: str, *, terminal: bool = False
+) -> Capability:
+    """Bind a Bearer capability to the callback attempt."""
+    capability = await authorize_capability(
+        store, authorization.removeprefix("Bearer "), "actions:report", allow_terminal=terminal
+    )
+    if capability.id != attempt_id:
+        raise PermissionDeniedError("Sandbox attempt does not match the callback")
+    return capability
+
+
+def report_payload[T: AttemptIdentity](model: type[T], body: bytes, capability: Capability) -> T:
+    """Validate the report schema and exact attempt identity."""
+    try:
+        result = model.model_validate_json(body)
+    except ValidationError as error:
+        raise WorkflowError("Invalid sandbox report") from error
+    if (result.id, result.job_id, result.generation, result.fence) != (
+        capability.id,
+        capability.job_id,
+        capability.generation,
+        capability.fence,
+    ):
+        raise PermissionDeniedError("Report belongs to another attempt")
+    return result

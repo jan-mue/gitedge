@@ -1,24 +1,18 @@
 from __future__ import annotations
 
-import asyncio
 import base64
-import io
 import json
 import secrets
-import tarfile
 import zlib
-from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 import pytest
 from aiodocker.exceptions import DockerError
-from vercel.sandbox import SandboxApiError, SandboxPathNotFoundError, SandboxStatus
+from vercel.sandbox import SandboxStatus
 
 from app.clients.sandboxes import DockerSandboxClient, SandboxError, VercelSandboxClient
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
     from pytest_mock import MockerFixture
 
 
@@ -58,100 +52,32 @@ async def test_vercel_uses_prepared_snapshot_and_never_receives_source(mocker: M
     box.fs.write_bytes.assert_not_called()
 
 
-async def test_inspecting_expired_vercel_sandbox_never_resumes_it(mocker: MockerFixture) -> None:
+async def test_checking_expired_vercel_sandbox_never_resumes_or_reads_it(mocker: MockerFixture) -> None:
     box = mocker.MagicMock(status=SandboxStatus.STOPPED)
     mocker.patch("app.clients.sandboxes.get_sandbox", new=mocker.AsyncMock(return_value=box))
-    result = await VercelSandboxClient("prepared").inspect("job")
-    assert result.running is False
+    assert not await VercelSandboxClient("prepared").is_running("job")
     box.query_processes.assert_not_called()
     box.fs.read_bytes.assert_not_called()
 
 
-async def test_completed_vercel_job_reads_results_concurrently_without_process_polling(mocker: MockerFixture) -> None:
-    box = mocker.MagicMock(status=SandboxStatus.RUNNING)
-    readers = 0
-    all_reading = asyncio.Event()
-
-    async def read(path: str) -> bytes:
-        nonlocal readers
-        if path == "/gitedge/exit-code":
-            return b"0"
-        readers += 1
-        if readers == 3:
-            all_reading.set()
-        await asyncio.wait_for(all_reading.wait(), timeout=1)
-        return b"result"
-
-    box.fs.read_bytes = mocker.AsyncMock(side_effect=read)
-    mocker.patch("app.clients.sandboxes.get_sandbox", new=mocker.AsyncMock(return_value=box))
-    snapshot = await VercelSandboxClient("prepared").inspect("job")
-    assert not snapshot.running
-    assert snapshot.files["exit-code"] == b"0"
-    assert len(snapshot.files) == 4
-    box.query_processes.assert_not_called()
-
-
 @pytest.mark.parametrize("running", [True, False])
-async def test_vercel_live_reads_avoid_archives_and_recheck_marker_after_a_process_finishes(
-    mocker: MockerFixture, running: bool
-) -> None:
+async def test_vercel_checks_only_process_liveness(mocker: MockerFixture, running: bool) -> None:
     box = mocker.MagicMock(status=SandboxStatus.RUNNING)
     box.query_processes = mocker.AsyncMock(return_value=[mocker.Mock(returncode=None if running else 0)])
-    paths: list[str] = []
-
-    async def read(path: str) -> bytes:
-        paths.append(path)
-        if paths == ["/gitedge/exit-code"]:
-            raise SandboxPathNotFoundError(path, operation="read", cwd=None, cause=mocker.Mock(spec=SandboxApiError))
-        return b"0" if path == "/gitedge/exit-code" else b"result"
-
-    box.fs.read_bytes = mocker.AsyncMock(side_effect=read)
     mocker.patch("app.clients.sandboxes.get_sandbox", new=mocker.AsyncMock(return_value=box))
-    snapshot = await VercelSandboxClient("prepared").inspect("job")
-    assert snapshot.running == running
-    if running:
-        assert paths == ["/gitedge/exit-code", "/gitedge/log.jsonl"]
-    else:
-        assert paths.count("/gitedge/exit-code") == 2
-        assert snapshot.files["exit-code"] == b"0"
+    assert await VercelSandboxClient("prepared").is_running("job") == running
+    box.fs.read_bytes.assert_not_called()
 
 
-async def test_docker_reads_complete_result_when_job_finishes_during_inspection(mocker: MockerFixture) -> None:
+async def test_docker_liveness_never_downloads_an_archive(mocker: MockerFixture) -> None:
     sdk = mocker.MagicMock()
     sdk.__aenter__.return_value = sdk
-    container = mocker.Mock(id="job")
+    container = mocker.Mock()
     container.show = mocker.AsyncMock(return_value={"State": {"Status": "running"}})
     sdk.containers.get = mocker.AsyncMock(return_value=container)
-    expected = {"log.jsonl": b"hello\n", "result.json": b'{"status":"success"}', "exit-code": b"0"}
-    finished = False
-
-    @asynccontextmanager
-    async def archive(_path: str, *, method: str, params: dict[str, str]) -> AsyncGenerator[object]:
-        nonlocal finished
-        assert method == "GET"
-        name = params["path"].rsplit("/", 1)[-1]
-        if name == "exit-code":
-            finished = True
-        if name not in expected or (name == "result.json" and not finished):
-            raise DockerError(404, "No such file")
-        output = io.BytesIO()
-        with tarfile.open(fileobj=output, mode="w") as tar:
-            entry = tarfile.TarInfo(name)
-            entry.size = len(expected[name])
-            tar.addfile(entry, io.BytesIO(expected[name]))
-
-        async def chunks() -> AsyncGenerator[bytes]:
-            yield output.getvalue()
-
-        response = mocker.Mock()
-        response.content.iter_chunked.return_value = chunks()
-        yield response
-
-    mocker.patch.object(sdk, "_query", side_effect=archive)
     mocker.patch("app.clients.sandboxes.Docker", return_value=sdk)
-    snapshot = await DockerSandboxClient("prepared").inspect("job")
-    assert snapshot.running
-    assert snapshot.files == expected
+    assert await DockerSandboxClient("prepared").is_running("job")
+    container.get_archive.assert_not_called()
 
 
 async def test_vercel_refuses_job_time_image_preparation(mocker: MockerFixture) -> None:

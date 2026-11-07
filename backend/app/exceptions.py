@@ -190,3 +190,7 @@ class InsufficientTokenRepositoryError(PermissionDeniedError):
     """A token does not include the requested repository."""
 
     default_detail = "Token does not have access to this repository"
+
+
+class RedisUnavailableError(RuntimeError):
+    """Recent log delivery failed at the Redis transport or protocol boundary."""
