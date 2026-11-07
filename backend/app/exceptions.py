@@ -178,6 +178,14 @@ class CompilerUnavailableError(RuntimeError):
     """The workflow compiler is unconfigured, unavailable, or incompatible."""
 
 
+class ActionsUnavailableError(RuntimeError):
+    """A durable Actions delivery must be retried."""
+
+
+class InvalidDeliveryError(ValueError):
+    """A queue delivery failed authentication."""
+
+
 class InsufficientTokenRepositoryError(PermissionDeniedError):
     """A token does not include the requested repository."""
 

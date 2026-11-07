@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 from pydantic import (
     EmailStr,
+    Field,
     HttpUrl,
     PostgresDsn,
     computed_field,
@@ -131,6 +132,14 @@ class Settings(BaseSettings):
     # Actions jobs use a fixed operator image; workflows cannot select host privileges.
     ACTIONS_PROVIDER: Literal["docker", "vercel"] = "docker"
     ACTIONS_COMPILER_URL: str | None = None
+    QSTASH_URL: str = "https://qstash.upstash.io"
+    QSTASH_TOKEN: str | None = None
+    QSTASH_CURRENT_SIGNING_KEY: str | None = None
+    QSTASH_NEXT_SIGNING_KEY: str | None = None
+    ACTIONS_INSPECT_INTERVAL: int = Field(default=5, ge=1)
+    ACTIONS_RECONCILE_INTERVAL: int = Field(default=30, ge=1)
+    ACTIONS_PROVISION_LEASE: int = Field(default=45, ge=1, le=240)
+    ACTIONS_MAX_ATTEMPTS: int = Field(default=3, ge=1, le=10)
     ACTIONS_IMAGE: str = "gitedge-actions:local"
     ACTIONS_MAX_TIMEOUT: int = 1200
     ACTIONS_MAX_PARALLEL: int = 2

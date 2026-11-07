@@ -38,6 +38,7 @@ from app.clients.notifications import NotificationStore, SQLNotificationStore
 from app.clients.organizations import OrganizationStore, SQLOrganizationStore
 from app.clients.personal_access_tokens import PersonalAccessTokenStore, SQLPersonalAccessTokenStore
 from app.clients.pull_requests import PullRequestStore, SQLPullRequestStore
+from app.clients.qstash import ActionsQueue
 from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClient
 from app.clients.releases import ReleaseStore, SQLReleaseStore
 from app.clients.repositories import RepositoryStore, SQLRepositoryStore
@@ -797,6 +798,14 @@ def get_workflow_compiler() -> WorkflowCompiler:
 WorkflowCompilerDep = Annotated[WorkflowCompiler, Depends(get_workflow_compiler)]
 
 
+def get_actions_queue(request: Request) -> ActionsQueue:
+    """Inject the durable QStash HTTP client."""
+    return request.state.actions_queue
+
+
+ActionsQueueDep = Annotated[ActionsQueue, Depends(get_actions_queue)]
+
+
 def get_actions_service(
     store: ActionsStoreDep,
     repositories: RepositoryServiceDep,
@@ -807,6 +816,7 @@ def get_actions_service(
     sandbox: SandboxClientDep,
     compiler: WorkflowCompilerDep,
     authorization: AuthorizationServiceDep,
+    queue: ActionsQueueDep,
 ) -> ActionsService:
     """Inject one sandbox provider and durable workflow cache storage."""
     return ActionsService(
@@ -817,6 +827,7 @@ def get_actions_service(
         sandbox,
         compiler=compiler,
         authorization=authorization,
+        queue=queue,
         provider=settings.ACTIONS_PROVIDER,
         max_timeout=settings.ACTIONS_MAX_TIMEOUT,
         max_parallel=settings.ACTIONS_MAX_PARALLEL,
