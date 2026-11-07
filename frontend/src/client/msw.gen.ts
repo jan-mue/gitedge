@@ -2,7 +2,7 @@
 
 import { http, type HttpHandler, HttpResponse, type HttpResponseResolver, type RequestHandlerOptions as RequestHandlerOptions2 } from 'msw';
 
-import type { activityGetFeedResponses, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsResponses, agentsCreateEnvironmentData, agentsCreateEnvironmentResponses, agentsCreateSessionData, agentsCreateSessionResponses, agentsEnvironmentsResponses, agentsEventsResponses, agentsMessagesResponses, agentsModelsResponses, agentsNotificationsResponses, agentsSessionsResponses, agentsStatusResponses, agentsSubmitData, agentsSubmitResponses, authorizationCreateTeamData, authorizationCreateTeamResponses, authorizationDeleteTeamResponses, authorizationGetOrganizationPermissionsResponses, authorizationGetPermissionsResponses, authorizationListCollaboratorsResponses, authorizationListCollaboratorTeamsResponses, authorizationListMembersResponses, authorizationListTeamMembersResponses, authorizationListTeamsResponses, authorizationRemoveCollaboratorResponses, authorizationRemoveMemberResponses, authorizationRemoveTeamMemberResponses, authorizationSearchCollaboratorCandidatesResponses, authorizationSearchMemberCandidatesResponses, authorizationSetCollaboratorData, authorizationSetCollaboratorResponses, authorizationSetMemberData, authorizationSetMemberResponses, authorizationSetTeamMemberResponses, ClientOptions, commentsAddReactionData, commentsAddReactionResponses, commentsCreateCommentData, commentsCreateCommentResponses, commentsDeleteCommentResponses, commentsListCommentsResponses, commentsListReactionsResponses, commentsRemoveReactionData, commentsRemoveReactionResponses, commentsUpdateCommentData, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryResponses, forksListForksResponses, gitGetHeadResponses, gitGetInfoPacksResponses, gitGetInfoRefsResponses, gitGetLooseObjectResponses, gitGetPackFileResponses, gitGitReceivePackResponses, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenResponses, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordResponses, loginTestTokenResponses, notificationsArchiveRepositoryResponses, notificationsGetPreferencesResponses, notificationsGetRepositoryPreferencesResponses, notificationsListNotificationsResponses, notificationsMarkAllReadResponses, notificationsSetPreferencesData, notificationsSetPreferencesResponses, notificationsSetRepositoryPreferencesData, notificationsSetRepositoryPreferencesResponses, notificationsUpdateNotificationsData, notificationsUpdateNotificationsResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationResponses, organizationsListOrganizationsResponses, personalAccessTokensCreateTokenData, personalAccessTokensCreateTokenResponses, personalAccessTokensListTokensResponses, personalAccessTokensRepositoryOptionsResponses, personalAccessTokensRevokeTokenData, personalAccessTokensRevokeTokenResponses, personalAccessTokensRotateTokenData, personalAccessTokensRotateTokenResponses, privateCreateUserData, privateCreateUserResponses, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseResponses, releasesGetReleaseResponses, releasesListReleasesResponses, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseResponses, repositoriesCompareRevisionsResponses, repositoriesCreateIssueData, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryResponses, repositoriesGetBlameResponses, repositoriesGetBlobResponses, repositoriesGetCommitResponses, repositoriesGetDiffFileResponses, repositoriesGetFileIndexResponses, repositoriesGetIssueResponses, repositoriesGetPullRequestCommitsResponses, repositoriesGetPullRequestEventsResponses, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestMergeabilityResponses, repositoriesGetPullRequestResponses, repositoriesGetRawResponses, repositoriesGetReadmeResponses, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceResponses, repositoriesGetStatisticsResponses, repositoriesGetTreeResponses, repositoriesListBranchesResponses, repositoriesListCommitsResponses, repositoriesListIssuesResponses, repositoriesListPullRequestsResponses, repositoriesListRepositoriesResponses, repositoriesMergePullRequestData, repositoriesMergePullRequestResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryResponses, reviewsGetCommentContextResponses, reviewsGetWorkspaceResponses, reviewsListReviewsResponses, reviewsMarkReviewedData, reviewsMarkReviewedResponses, reviewsReplyToReviewData, reviewsReplyToReviewResponses, reviewsSaveDraftData, reviewsSaveDraftResponses, reviewsSubmitReviewData, reviewsSubmitReviewResponses, starsGetStarStateResponses, starsListStargazersResponses, starsListStarredRepositoriesResponses, starsStarRepositoryResponses, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserResponses, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeResponses, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserMeData, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckResponses, utilsPreviewMarkdownData, utilsPreviewMarkdownResponses, utilsTestEmailResponses, watchersGetWatchStateResponses, watchersListWatchersResponses, watchersUnwatchRepositoryResponses, watchersWatchRepositoryResponses } from './types.gen';
+import type { activityGetFeedResponses, activityGetRepositoryActivityResponses, activityGetRepositoryActivityStatisticsResponses, agentsCancelRunResponses, agentsCreateEnvironmentData, agentsCreateEnvironmentResponses, agentsCreateSessionData, agentsCreateSessionResponses, agentsCredentialsResponses, agentsEnvironmentsResponses, agentsEventsResponses, agentsMessagesResponses, agentsModelsResponses, agentsNotificationsResponses, agentsProvidersResponses, agentsReadNotificationResponses, agentsRemoveCredentialsResponses, agentsRunsResponses, agentsSaveCredentialsData, agentsSaveCredentialsResponses, agentsSessionsResponses, agentsStatusResponses, agentsSubmitData, agentsSubmitResponses, agentsUpdateEnvironmentData, agentsUpdateEnvironmentResponses, agentsUpdateSessionData, agentsUpdateSessionResponses, authorizationCreateTeamData, authorizationCreateTeamResponses, authorizationDeleteTeamResponses, authorizationGetOrganizationPermissionsResponses, authorizationGetPermissionsResponses, authorizationListCollaboratorsResponses, authorizationListCollaboratorTeamsResponses, authorizationListMembersResponses, authorizationListTeamMembersResponses, authorizationListTeamsResponses, authorizationRemoveCollaboratorResponses, authorizationRemoveMemberResponses, authorizationRemoveTeamMemberResponses, authorizationSearchCollaboratorCandidatesResponses, authorizationSearchMemberCandidatesResponses, authorizationSetCollaboratorData, authorizationSetCollaboratorResponses, authorizationSetMemberData, authorizationSetMemberResponses, authorizationSetTeamMemberResponses, ClientOptions, commentsAddReactionData, commentsAddReactionResponses, commentsCreateCommentData, commentsCreateCommentResponses, commentsDeleteCommentResponses, commentsListCommentsResponses, commentsListReactionsResponses, commentsRemoveReactionData, commentsRemoveReactionResponses, commentsUpdateCommentData, commentsUpdateCommentResponses, forksForkRepositoryData, forksForkRepositoryResponses, forksListForksResponses, gitGetHeadResponses, gitGetInfoPacksResponses, gitGetInfoRefsResponses, gitGetLooseObjectResponses, gitGetPackFileResponses, gitGitReceivePackResponses, gitGitUploadPackResponses, loginLoginAccessTokenData, loginLoginAccessTokenResponses, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordResponses, loginTestTokenResponses, notificationsArchiveRepositoryResponses, notificationsGetPreferencesResponses, notificationsGetRepositoryPreferencesResponses, notificationsListNotificationsResponses, notificationsMarkAllReadResponses, notificationsSetPreferencesData, notificationsSetPreferencesResponses, notificationsSetRepositoryPreferencesData, notificationsSetRepositoryPreferencesResponses, notificationsUpdateNotificationsData, notificationsUpdateNotificationsResponses, organizationsCreateOrganizationData, organizationsCreateOrganizationResponses, organizationsListOrganizationsResponses, personalAccessTokensCreateTokenData, personalAccessTokensCreateTokenResponses, personalAccessTokensListTokensResponses, personalAccessTokensRepositoryOptionsResponses, personalAccessTokensRevokeTokenData, personalAccessTokensRevokeTokenResponses, personalAccessTokensRotateTokenData, personalAccessTokensRotateTokenResponses, privateCreateUserData, privateCreateUserResponses, profilesListUserRepositoriesResponses, profilesListUserStarredRepositoriesResponses, profilesReadUserByUsernameResponses, releasesCreateReleaseData, releasesCreateReleaseResponses, releasesGetReleaseResponses, releasesListReleasesResponses, releasesListTagsResponses, releasesUpdateReleaseData, releasesUpdateReleaseResponses, repositoriesCompareRevisionsResponses, repositoriesCreateIssueData, repositoriesCreateIssueResponses, repositoriesCreatePullRequestData, repositoriesCreatePullRequestResponses, repositoriesCreateRepositoryData, repositoriesCreateRepositoryResponses, repositoriesDeleteRepositoryResponses, repositoriesGetBlameResponses, repositoriesGetBlobResponses, repositoriesGetCommitResponses, repositoriesGetDiffFileResponses, repositoriesGetFileIndexResponses, repositoriesGetIssueResponses, repositoriesGetPullRequestCommitsResponses, repositoriesGetPullRequestEventsResponses, repositoriesGetPullRequestFilesResponses, repositoriesGetPullRequestMergeabilityResponses, repositoriesGetPullRequestResponses, repositoriesGetRawResponses, repositoriesGetReadmeResponses, repositoriesGetRepositoryInfoResponses, repositoriesGetRepositoryResponses, repositoriesGetSourceResponses, repositoriesGetStatisticsResponses, repositoriesGetTreeResponses, repositoriesListBranchesResponses, repositoriesListCommitsResponses, repositoriesListIssuesResponses, repositoriesListPullRequestsResponses, repositoriesListRepositoriesResponses, repositoriesMergePullRequestData, repositoriesMergePullRequestResponses, repositoriesUpdateIssueData, repositoriesUpdateIssueResponses, repositoriesUpdatePullRequestData, repositoriesUpdatePullRequestResponses, repositoriesUpdateRepositoryData, repositoriesUpdateRepositoryResponses, reviewsGetCommentContextResponses, reviewsGetWorkspaceResponses, reviewsListReviewsResponses, reviewsMarkReviewedData, reviewsMarkReviewedResponses, reviewsReplyToReviewData, reviewsReplyToReviewResponses, reviewsSaveDraftData, reviewsSaveDraftResponses, reviewsSubmitReviewData, reviewsSubmitReviewResponses, starsGetStarStateResponses, starsListStargazersResponses, starsListStarredRepositoriesResponses, starsStarRepositoryResponses, starsUnstarRepositoryResponses, usersCreateUserData, usersCreateUserResponses, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserMeResponses, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserMeData, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckResponses, utilsPreviewMarkdownData, utilsPreviewMarkdownResponses, utilsTestEmailResponses, watchersGetWatchStateResponses, watchersListWatchersResponses, watchersUnwatchRepositoryResponses, watchersWatchRepositoryResponses } from './types.gen';
 
 export type RequestHandlerOptions = RequestHandlerOptions2 & {
     baseUrl?: ClientOptions['baseUrl'];
@@ -4123,6 +4123,37 @@ export function handleAgentsCreateSession(response?: HandleAgentsCreateSessionRe
     }, options);
 }
 
+export type HandleAgentsRunsResponse = {
+    body: agentsRunsResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/agents/sessions/{session_id}/runs` operation.
+ */
+export function handleAgentsRuns(response?: HandleAgentsRunsResponse | HttpResponseResolver<{
+    session_id: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<{
+        session_id: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/agents/sessions/:session_id/runs`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
 export type HandleAgentsSubmitResponse = {
     body: agentsSubmitResponses[202];
     status?: 202;
@@ -4263,6 +4294,246 @@ export function handleAgentsMessages(response?: HandleAgentsMessagesResponse | H
         const body = response?.body;
         if (body !== undefined) {
             return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAgentsUpdateEnvironmentResponse = {
+    body: agentsUpdateEnvironmentResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `PUT /api/v1/agents/environments/{environment_id}` operation.
+ */
+export function handleAgentsUpdateEnvironment(response?: HandleAgentsUpdateEnvironmentResponse | HttpResponseResolver<{
+    environment_id: string;
+}, agentsUpdateEnvironmentData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.put<{
+        environment_id: string;
+    }, agentsUpdateEnvironmentData['body']>(`${options?.baseUrl ?? '*'}/api/v1/agents/environments/:environment_id`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAgentsUpdateSessionResponse = {
+    body: agentsUpdateSessionResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `PATCH /api/v1/agents/sessions/{session_id}` operation.
+ */
+export function handleAgentsUpdateSession(response?: HandleAgentsUpdateSessionResponse | HttpResponseResolver<{
+    session_id: string;
+}, agentsUpdateSessionData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.patch<{
+        session_id: string;
+    }, agentsUpdateSessionData['body']>(`${options?.baseUrl ?? '*'}/api/v1/agents/sessions/:session_id`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAgentsReadNotificationResponse = {
+    body: agentsReadNotificationResponses[204];
+    status?: 204;
+};
+
+/**
+ * Handler for the `POST /api/v1/agents/runs/{run_id}/read` operation.
+ */
+export function handleAgentsReadNotification(response?: HandleAgentsReadNotificationResponse | HttpResponseResolver<{
+    run_id: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.post<{
+        run_id: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/agents/runs/:run_id/read`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return new HttpResponse(body, { status: response?.status ?? 204 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAgentsCredentialsResponse = {
+    body: agentsCredentialsResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/agents/credentials` operation.
+ */
+export function handleAgentsCredentials(response?: HandleAgentsCredentialsResponse | HttpResponseResolver<never, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<never, never>(`${options?.baseUrl ?? '*'}/api/v1/agents/credentials`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAgentsRemoveCredentialsResponse = {
+    body: agentsRemoveCredentialsResponses[204];
+    status?: 204;
+};
+
+/**
+ * Handler for the `DELETE /api/v1/agents/credentials/{provider}` operation.
+ */
+export function handleAgentsRemoveCredentials(response?: HandleAgentsRemoveCredentialsResponse | HttpResponseResolver<{
+    provider: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.delete<{
+        provider: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/agents/credentials/:provider`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return new HttpResponse(body, { status: response?.status ?? 204 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAgentsSaveCredentialsResponse = {
+    body: agentsSaveCredentialsResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `PUT /api/v1/agents/credentials/{provider}` operation.
+ */
+export function handleAgentsSaveCredentials(response?: HandleAgentsSaveCredentialsResponse | HttpResponseResolver<{
+    provider: string;
+}, agentsSaveCredentialsData['body']>, options?: RequestHandlerOptions): HttpHandler {
+    return http.put<{
+        provider: string;
+    }, agentsSaveCredentialsData['body']>(`${options?.baseUrl ?? '*'}/api/v1/agents/credentials/:provider`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAgentsProvidersResponse = {
+    body: agentsProvidersResponses[200];
+    status?: 200;
+};
+
+/**
+ * Handler for the `GET /api/v1/agents/providers` operation.
+ */
+export function handleAgentsProviders(response?: HandleAgentsProvidersResponse | HttpResponseResolver<never, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.get<never, never>(`${options?.baseUrl ?? '*'}/api/v1/agents/providers`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 200 });
+        }
+        if (options?.responseFallback === 'passthrough') {
+            return;
+        }
+        return new Response('Not Implemented', {
+            status: 501,
+            statusText: 'Not Implemented'
+        });
+    }, options);
+}
+
+export type HandleAgentsCancelRunResponse = {
+    body: agentsCancelRunResponses[202];
+    status?: 202;
+};
+
+/**
+ * Handler for the `POST /api/v1/agents/runs/{run_id}/cancel` operation.
+ */
+export function handleAgentsCancelRun(response?: HandleAgentsCancelRunResponse | HttpResponseResolver<{
+    run_id: string;
+}, never>, options?: RequestHandlerOptions): HttpHandler {
+    return http.post<{
+        run_id: string;
+    }, never>(`${options?.baseUrl ?? '*'}/api/v1/agents/runs/:run_id/cancel`, info => {
+        if (typeof response === 'function') {
+            return response(info);
+        }
+        const body = response?.body;
+        if (body !== undefined) {
+            return HttpResponse.json(body, { status: response?.status ?? 202 });
         }
         if (options?.responseFallback === 'passthrough') {
             return;
@@ -4796,6 +5067,10 @@ export type MswHandlerFactories = {
      */
     agentsCreateSession: typeof handleAgentsCreateSession;
     /**
+     * Handler for the `GET /api/v1/agents/sessions/{session_id}/runs` operation.
+     */
+    agentsRuns: typeof handleAgentsRuns;
+    /**
      * Handler for the `POST /api/v1/agents/sessions/{session_id}/runs` operation.
      */
     agentsSubmit: typeof handleAgentsSubmit;
@@ -4815,6 +5090,38 @@ export type MswHandlerFactories = {
      * Handler for the `GET /api/v1/agents/sessions/{session_id}/messages` operation.
      */
     agentsMessages: typeof handleAgentsMessages;
+    /**
+     * Handler for the `PUT /api/v1/agents/environments/{environment_id}` operation.
+     */
+    agentsUpdateEnvironment: typeof handleAgentsUpdateEnvironment;
+    /**
+     * Handler for the `PATCH /api/v1/agents/sessions/{session_id}` operation.
+     */
+    agentsUpdateSession: typeof handleAgentsUpdateSession;
+    /**
+     * Handler for the `POST /api/v1/agents/runs/{run_id}/read` operation.
+     */
+    agentsReadNotification: typeof handleAgentsReadNotification;
+    /**
+     * Handler for the `GET /api/v1/agents/credentials` operation.
+     */
+    agentsCredentials: typeof handleAgentsCredentials;
+    /**
+     * Handler for the `DELETE /api/v1/agents/credentials/{provider}` operation.
+     */
+    agentsRemoveCredentials: typeof handleAgentsRemoveCredentials;
+    /**
+     * Handler for the `PUT /api/v1/agents/credentials/{provider}` operation.
+     */
+    agentsSaveCredentials: typeof handleAgentsSaveCredentials;
+    /**
+     * Handler for the `GET /api/v1/agents/providers` operation.
+     */
+    agentsProviders: typeof handleAgentsProviders;
+    /**
+     * Handler for the `POST /api/v1/agents/runs/{run_id}/cancel` operation.
+     */
+    agentsCancelRun: typeof handleAgentsCancelRun;
 };
 
 export type CreateMswHandlersResult = {
@@ -4962,11 +5269,20 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
         agentsCreateEnvironment: wrap(handleAgentsCreateEnvironment),
         agentsSessions: wrap(handleAgentsSessions),
         agentsCreateSession: wrap(handleAgentsCreateSession),
+        agentsRuns: wrap(handleAgentsRuns),
         agentsSubmit: wrap(handleAgentsSubmit),
         agentsStatus: wrap(handleAgentsStatus),
         agentsEvents: wrap(handleAgentsEvents),
         agentsNotifications: wrap(handleAgentsNotifications),
-        agentsMessages: wrap(handleAgentsMessages)
+        agentsMessages: wrap(handleAgentsMessages),
+        agentsUpdateEnvironment: wrap(handleAgentsUpdateEnvironment),
+        agentsUpdateSession: wrap(handleAgentsUpdateSession),
+        agentsReadNotification: wrap(handleAgentsReadNotification),
+        agentsCredentials: wrap(handleAgentsCredentials),
+        agentsRemoveCredentials: wrap(handleAgentsRemoveCredentials),
+        agentsSaveCredentials: wrap(handleAgentsSaveCredentials),
+        agentsProviders: wrap(handleAgentsProviders),
+        agentsCancelRun: wrap(handleAgentsCancelRun)
     };
     const all: CreateMswHandlersResult['all'] = (options = {}) => {
         type OverrideValue<R> = R | [
@@ -5011,9 +5327,12 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.gitGetPackFile, overrides.gitGetPackFile),
             invoke(pick.gitGetLooseObject, overrides.gitGetLooseObject),
             invoke(pick.personalAccessTokensRepositoryOptions, overrides.personalAccessTokensRepositoryOptions),
+            invoke(pick.agentsRuns, overrides.agentsRuns),
             invoke(pick.agentsSubmit, overrides.agentsSubmit),
             invoke(pick.agentsEvents, overrides.agentsEvents),
             invoke(pick.agentsMessages, overrides.agentsMessages),
+            invoke(pick.agentsReadNotification, overrides.agentsReadNotification),
+            invoke(pick.agentsCancelRun, overrides.agentsCancelRun),
             invoke(pick.notificationsGetRepositoryPreferences, overrides.notificationsGetRepositoryPreferences),
             invoke(pick.notificationsSetRepositoryPreferences, overrides.notificationsSetRepositoryPreferences),
             invoke(pick.authorizationRemoveMember, overrides.authorizationRemoveMember),
@@ -5062,6 +5381,10 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.starsListStarredRepositories, overrides.starsListStarredRepositories),
             invoke(pick.activityGetFeed, overrides.activityGetFeed),
             invoke(pick.agentsStatus, overrides.agentsStatus),
+            invoke(pick.agentsUpdateEnvironment, overrides.agentsUpdateEnvironment),
+            invoke(pick.agentsUpdateSession, overrides.agentsUpdateSession),
+            invoke(pick.agentsRemoveCredentials, overrides.agentsRemoveCredentials),
+            invoke(pick.agentsSaveCredentials, overrides.agentsSaveCredentials),
             invoke(pick.authorizationListMembers, overrides.authorizationListMembers),
             invoke(pick.authorizationListTeams, overrides.authorizationListTeams),
             invoke(pick.authorizationCreateTeam, overrides.authorizationCreateTeam),
@@ -5097,6 +5420,8 @@ export function createMswHandlers(config: RequestHandlerOptions = {}): CreateMsw
             invoke(pick.agentsSessions, overrides.agentsSessions),
             invoke(pick.agentsCreateSession, overrides.agentsCreateSession),
             invoke(pick.agentsNotifications, overrides.agentsNotifications),
+            invoke(pick.agentsCredentials, overrides.agentsCredentials),
+            invoke(pick.agentsProviders, overrides.agentsProviders),
             invoke(pick.loginRecoverPassword, overrides.loginRecoverPassword),
             invoke(pick.loginRecoverPasswordHtmlContent, overrides.loginRecoverPasswordHtmlContent),
             invoke(pick.usersDeleteUser, overrides.usersDeleteUser),

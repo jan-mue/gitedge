@@ -737,6 +737,34 @@ export type CreateRepositoryRequest = {
 };
 
 /**
+ * CredentialCreate
+ *
+ * A provider key or JSON OAuth credential bundle, accepted only over authenticated TLS.
+ */
+export type CredentialCreate = {
+    /**
+     * Label
+     */
+    label: string;
+};
+
+/**
+ * CredentialPublic
+ *
+ * Safe connection metadata; credentials cannot be read back by the browser.
+ */
+export type CredentialPublic = {
+    /**
+     * Provider
+     */
+    provider: string;
+    /**
+     * Label
+     */
+    label: string;
+};
+
+/**
  * DataSource
  *
  * Bytes carried inline.
@@ -961,6 +989,30 @@ export type EnvironmentPublic = {
      * Instructions
      */
     instructions: string;
+    /**
+     * Repositories
+     */
+    repositories?: Array<string>;
+};
+
+/**
+ * EnvironmentUpdate
+ *
+ * Edit setup configuration; the next setup run publishes a new base image.
+ */
+export type EnvironmentUpdate = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Setup Script
+     */
+    setup_script?: string;
+    /**
+     * Instructions
+     */
+    instructions?: string;
 };
 
 /**
@@ -1821,6 +1873,26 @@ export type ProfilePublic = {
      */
     display_name?: string | null;
     principal_type: PrincipalType;
+};
+
+/**
+ * ProviderPublic
+ *
+ * Supported account connections without endpoint secrets.
+ */
+export type ProviderPublic = {
+    /**
+     * Provider
+     */
+    provider: string;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Auth
+     */
+    auth?: 'key' | 'chatgpt';
 };
 
 /**
@@ -2826,6 +2898,22 @@ export type RunPublic = {
      * Error
      */
     error: string | null;
+    /**
+     * Prompt
+     */
+    prompt: string;
+    /**
+     * Model
+     */
+    model: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Finished At
+     */
+    finished_at: string | null;
 };
 
 /**
@@ -2870,6 +2958,38 @@ export type SessionPublic = {
      * Kind
      */
     kind: string;
+    /**
+     * Pinned
+     */
+    pinned?: boolean;
+    /**
+     * Archived
+     */
+    archived?: boolean;
+    /**
+     * Active Run
+     */
+    active_run?: string | null;
+};
+
+/**
+ * SessionUpdate
+ *
+ * Persistent sidebar preferences.
+ */
+export type SessionUpdate = {
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Pinned
+     */
+    pinned?: boolean | null;
+    /**
+     * Archived
+     */
+    archived?: boolean | null;
 };
 
 /**
@@ -3523,6 +3643,22 @@ export type WatchersPublic = {
      * Count
      */
     count: number;
+};
+
+/**
+ * CredentialCreate
+ *
+ * A provider key or JSON OAuth credential bundle, accepted only over authenticated TLS.
+ */
+export type CredentialCreateWritable = {
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Secret
+     */
+    secret: string;
 };
 
 export type notificationsListNotificationsData = {
@@ -7879,6 +8015,38 @@ export type agentsCreateSessionResponses = {
 
 export type agentsCreateSessionResponse = agentsCreateSessionResponses[keyof agentsCreateSessionResponses];
 
+export type agentsRunsData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/sessions/{session_id}/runs';
+};
+
+export type agentsRunsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsRunsError = agentsRunsErrors[keyof agentsRunsErrors];
+
+export type agentsRunsResponses = {
+    /**
+     * Response Agents-Runs
+     *
+     * Successful Response
+     */
+    200: Array<RunPublic>;
+};
+
+export type agentsRunsResponse = agentsRunsResponses[keyof agentsRunsResponses];
+
 export type agentsSubmitData = {
     body: RunCreate;
     path: {
@@ -8022,3 +8190,219 @@ export type agentsMessagesResponses = {
 };
 
 export type agentsMessagesResponse = agentsMessagesResponses[keyof agentsMessagesResponses];
+
+export type agentsUpdateEnvironmentData = {
+    body: EnvironmentUpdate;
+    path: {
+        /**
+         * Environment Id
+         */
+        environment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/environments/{environment_id}';
+};
+
+export type agentsUpdateEnvironmentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsUpdateEnvironmentError = agentsUpdateEnvironmentErrors[keyof agentsUpdateEnvironmentErrors];
+
+export type agentsUpdateEnvironmentResponses = {
+    /**
+     * Successful Response
+     */
+    200: EnvironmentPublic;
+};
+
+export type agentsUpdateEnvironmentResponse = agentsUpdateEnvironmentResponses[keyof agentsUpdateEnvironmentResponses];
+
+export type agentsUpdateSessionData = {
+    body: SessionUpdate;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/sessions/{session_id}';
+};
+
+export type agentsUpdateSessionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsUpdateSessionError = agentsUpdateSessionErrors[keyof agentsUpdateSessionErrors];
+
+export type agentsUpdateSessionResponses = {
+    /**
+     * Successful Response
+     */
+    200: SessionPublic;
+};
+
+export type agentsUpdateSessionResponse = agentsUpdateSessionResponses[keyof agentsUpdateSessionResponses];
+
+export type agentsReadNotificationData = {
+    body?: never;
+    path: {
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/runs/{run_id}/read';
+};
+
+export type agentsReadNotificationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsReadNotificationError = agentsReadNotificationErrors[keyof agentsReadNotificationErrors];
+
+export type agentsReadNotificationResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type agentsReadNotificationResponse = agentsReadNotificationResponses[keyof agentsReadNotificationResponses];
+
+export type agentsCredentialsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/agents/credentials';
+};
+
+export type agentsCredentialsResponses = {
+    /**
+     * Response Agents-Credentials
+     *
+     * Successful Response
+     */
+    200: Array<CredentialPublic>;
+};
+
+export type agentsCredentialsResponse = agentsCredentialsResponses[keyof agentsCredentialsResponses];
+
+export type agentsRemoveCredentialsData = {
+    body?: never;
+    path: {
+        /**
+         * Provider
+         */
+        provider: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/credentials/{provider}';
+};
+
+export type agentsRemoveCredentialsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsRemoveCredentialsError = agentsRemoveCredentialsErrors[keyof agentsRemoveCredentialsErrors];
+
+export type agentsRemoveCredentialsResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type agentsRemoveCredentialsResponse = agentsRemoveCredentialsResponses[keyof agentsRemoveCredentialsResponses];
+
+export type agentsSaveCredentialsData = {
+    body: CredentialCreateWritable;
+    path: {
+        /**
+         * Provider
+         */
+        provider: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/credentials/{provider}';
+};
+
+export type agentsSaveCredentialsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsSaveCredentialsError = agentsSaveCredentialsErrors[keyof agentsSaveCredentialsErrors];
+
+export type agentsSaveCredentialsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CredentialPublic;
+};
+
+export type agentsSaveCredentialsResponse = agentsSaveCredentialsResponses[keyof agentsSaveCredentialsResponses];
+
+export type agentsProvidersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/agents/providers';
+};
+
+export type agentsProvidersResponses = {
+    /**
+     * Response Agents-Providers
+     *
+     * Successful Response
+     */
+    200: Array<ProviderPublic>;
+};
+
+export type agentsProvidersResponse = agentsProvidersResponses[keyof agentsProvidersResponses];
+
+export type agentsCancelRunData = {
+    body?: never;
+    path: {
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/runs/{run_id}/cancel';
+};
+
+export type agentsCancelRunErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsCancelRunError = agentsCancelRunErrors[keyof agentsCancelRunErrors];
+
+export type agentsCancelRunResponses = {
+    /**
+     * Successful Response
+     */
+    202: RunPublic;
+};
+
+export type agentsCancelRunResponse = agentsCancelRunResponses[keyof agentsCancelRunResponses];

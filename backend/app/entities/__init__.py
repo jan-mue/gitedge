@@ -1,5 +1,6 @@
 from app.entities.activity import Activity
 from app.entities.agents import (
+    AgentCredential,
     AgentEnvironment,
     AgentEnvironmentRepository,
     AgentMessage,
@@ -32,6 +33,7 @@ from app.entities.watchers import Watcher
 
 __all__ = [
     "Activity",
+    "AgentCredential",
     "AgentEnvironment",
     "AgentEnvironmentRepository",
     "AgentMessage",

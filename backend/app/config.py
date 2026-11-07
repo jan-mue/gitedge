@@ -88,7 +88,16 @@ class Settings(BaseSettings):
     RESTATE_INGRESS_URL: str = "http://localhost:8080"
     RESTATE_AUTH_TOKEN: str = ""
     RESTATE_IDENTITY_PUBLIC_KEY: str = ""
-    AGENTS_OPENAI_ENDPOINTS: dict[str, str] = {}
+    AGENTS_MAX_ACTIVE_RUNS: int = 5
+    AGENTS_MAX_REQUESTS: int = 100
+    AGENTS_SANDBOX_TIMEOUT: int = 1800
+    AGENTS_OPENAI_ENDPOINTS: dict[str, str] = {
+        "opencode-zen": "https://opencode.ai/zen/v1",
+        "opencode-go": "https://opencode.ai/zen/go/v1",
+        "openrouter": "https://openrouter.ai/api/v1",
+        "mistral": "https://api.mistral.ai/v1",
+        "vercel": "https://ai-gateway.vercel.sh/v1",
+    }
     AGENTS_MODELS: list[str] = ["openai:gpt-4.1-mini"]
 
     API_V1_STR: str = "/api/v1"
@@ -181,6 +190,8 @@ class Settings(BaseSettings):
         for host in self.DATABASE_URL.hosts():
             self._check_default_secret("DATABASE_URL password", host["password"])
         self._check_default_secret("FIRST_SUPERUSER_PASSWORD", self.FIRST_SUPERUSER_PASSWORD)
+        if self.AGENTS_ENABLED and "SECRET_KEY" not in self.model_fields_set:
+            raise ValueError("Agents require a persistent SECRET_KEY for encrypted provider connections")
 
         return self
 

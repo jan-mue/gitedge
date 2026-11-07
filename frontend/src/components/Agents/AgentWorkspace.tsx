@@ -1,252 +1,295 @@
-import { HttpAgent, type Message } from "@ag-ui/client"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowUp, Plus, Server, SquarePen, Terminal } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
-import { repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
-import { Button, ChoiceInput, Input, Label, SelectField, Textarea } from "@/components/design-system"
-import { durableAgentStream } from "./durable-stream"
-
-type Environment = { id: string; name: string; snapshot_id: string | null }
-type Session = { id: string; title: string; kind: string; environment_id: string }
-type Run = { id: string; status: string }
-const base = `${import.meta.env.VITE_API_URL ?? ""}/api/v1/agents`
-const headers = () => ({
-  Authorization: `Bearer ${localStorage.getItem("access_token") ?? ""}`,
-  "Content-Type": "application/json",
-})
-async function api<T>(path: string, body?: unknown): Promise<T> {
-  const response = await fetch(`${base}${path}`, {
-    method: body === undefined ? "GET" : "POST",
-    headers: headers(),
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
-  if (!response.ok) throw new Error((await response.json()).detail ?? "Agent request failed")
-  return response.json()
-}
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useNavigate, useSearch } from "@tanstack/react-router"
+import {
+  Archive,
+  KeyRound,
+  Loader2,
+  Menu,
+  PanelRight,
+  Pin,
+  Plus,
+  Search,
+  Server,
+  Settings,
+  SquarePen,
+} from "lucide-react"
+import { useState } from "react"
+import { Button, Dialog, DialogContent, DialogTitle, Input, SelectField } from "@/components/design-system"
+import { AgentComposer, AgentConversation } from "./AgentConversation"
+import { agentApi, type EnvironmentPublic, type SessionPublic } from "./api"
+import { CredentialDialog } from "./CredentialDialog"
+import { EnvironmentDialog } from "./EnvironmentDialog"
 
 export const AgentWorkspace = () => {
+  const navigate = useNavigate()
+  const search = useSearch({ from: "/_layout/agents" })
   const query = useQueryClient()
-  const [selected, setSelected] = useState<Session | null>(null)
-  const [environment, setEnvironment] = useState("")
-  const [prompt, setPrompt] = useState("")
+  const [environmentId, setEnvironmentId] = useState("")
   const [model, setModel] = useState("")
-  const [name, setName] = useState("")
-  const [repositories, setRepositories] = useState<string[]>([])
-  const [setup, setSetup] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState("")
-  const [answer, setAnswer] = useState("")
-  const [logs, setLogs] = useState("")
-  const agent = useRef<HttpAgent | null>(null)
-  const repositoryList = useQuery(repositoriesListRepositoriesOptions())
-  const envs = useQuery({ queryKey: ["agent-environments"], queryFn: () => api<Environment[]>("/environments") })
-  const sessions = useQuery({ queryKey: ["agent-sessions"], queryFn: () => api<Session[]>("/sessions") })
-  const models = useQuery({ queryKey: ["agent-models"], queryFn: () => api<string[]>("/models") })
-  const history = useQuery({
-    queryKey: ["agent-messages", selected?.id],
-    queryFn: () => api<Message[]>(`/sessions/${selected?.id}/messages`),
-    enabled: !!selected,
+  const [filter, setFilter] = useState("")
+  const [environmentDialog, setEnvironmentDialog] = useState(false)
+  const [editing, setEditing] = useState<EnvironmentPublic>()
+  const [credentials, setCredentials] = useState(false)
+  const [mobile, setMobile] = useState(false)
+  const [details, setDetails] = useState(false)
+  const envs = useQuery({
+    queryKey: ["agent-environments"],
+    queryFn: () => agentApi<EnvironmentPublic[]>("/environments"),
   })
-  useEffect(() => () => agent.current?.abortRun(), [])
-  const createEnvironment = async () => {
-    setError("")
-    try {
-      const env = await api<Environment>("/environments", {
-        name,
-        repositories,
-      })
-      await query.invalidateQueries({ queryKey: ["agent-environments"] })
-      setEnvironment(env.id)
-      setSetup(false)
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Unable to create environment")
-    }
+  const sessions = useQuery({
+    queryKey: ["agent-sessions"],
+    queryFn: () => agentApi<SessionPublic[]>("/sessions"),
+    refetchInterval: 5000,
+  })
+  const models = useQuery({ queryKey: ["agent-models"], queryFn: () => agentApi<string[]>("/models") })
+  const selected = sessions.data?.find((chat) => chat.id === search.session)
+  const environment = envs.data?.find((env) => env.id === (selected?.environment_id || environmentId))
+  const currentModel = model || models.data?.[0] || ""
+  const select = (session?: string) => {
+    navigate({ to: "/agents", search: session ? { session } : {} })
+    setMobile(false)
   }
-  const send = async () => {
-    if (!prompt.trim() || busy) return
-    setBusy(true)
-    setError("")
-    setAnswer("")
-    setLogs("")
-    try {
-      let chat = selected
-      if (!chat) {
-        const env = envs.data?.find((item) => item.id === environment)
-        if (!env) throw new Error("Choose an environment first")
-        chat = await api<Session>("/sessions", {
-          environment_id: env.id,
-          title: prompt.slice(0, 200),
-          kind: env.snapshot_id ? "coding" : "setup",
-        })
-        setSelected(chat)
-        await query.invalidateQueries({ queryKey: ["agent-sessions"] })
-      }
-      const run = await api<Run>(`/sessions/${chat.id}/runs`, {
-        request_id: crypto.randomUUID(),
-        prompt,
-        model: model || models.data?.[0],
-      })
-      setPrompt("")
-      const client = new HttpAgent({
-        url: `${base}/runs/${run.id}/events`,
-        threadId: chat.id,
-        fetch: (url, init) => durableAgentStream(url, headers(), init.signal),
-      })
-      agent.current = client
-      await client.runAgent(
-        { runId: run.id },
-        {
-          onTextMessageContentEvent: ({ event }) => setAnswer((text) => text + event.delta),
-          onCustomEvent: ({ event }) => {
-            if (event.name === "bash_output") setLogs((text) => text + String(event.value.chunk))
-          },
-        },
-      )
-      await query.invalidateQueries({ queryKey: ["agent-environments"] })
-      await query.invalidateQueries({ queryKey: ["agent-messages", chat.id] })
-      setAnswer("")
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Agent run failed")
-    } finally {
-      setBusy(false)
-    }
+  const patch = useMutation({
+    mutationFn: ({ id, ...body }: { id: string; pinned?: boolean; archived?: boolean }) =>
+      agentApi(`/sessions/${id}`, body, "PATCH"),
+    onSuccess: () => query.invalidateQueries({ queryKey: ["agent-sessions"] }),
+  })
+  const create = async (prompt: string) => {
+    if (!environment) throw new Error("Choose an environment first")
+    const chat = await agentApi<SessionPublic>("/sessions", {
+      environment_id: environment.id,
+      title: prompt.slice(0, 200),
+      kind: environment.snapshot_id ? "coding" : "setup",
+    })
+    query.setQueryData<SessionPublic[]>(["agent-sessions"], (old) => [chat, ...(old ?? [])])
+    await agentApi(`/sessions/${chat.id}/runs`, { request_id: crypto.randomUUID(), prompt, model: currentModel })
+    select(chat.id)
+    await query.invalidateQueries({ queryKey: ["agent-sessions"] })
   }
-  return (
-    <div className="flex min-h-[calc(100vh-3rem)] bg-background">
-      <aside className="w-64 shrink-0 border-r border-border bg-secondary p-3 max-md:hidden">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="font-semibold">Agents</h1>
-          <SquarePen className="size-4" />
-        </div>
-        <Button
-          variant="ghost"
-          onClick={() => {
-            setSelected(null)
-            setAnswer("")
-            setLogs("")
-          }}
-        >
+  const setup = useMutation({
+    mutationFn: async () => {
+      if (!environment) throw new Error("Choose an environment first")
+      const chat = await agentApi<SessionPublic>("/sessions", {
+        environment_id: environment.id,
+        title: `Set up ${environment.name}`,
+        kind: "setup",
+      })
+      await query.invalidateQueries({ queryKey: ["agent-sessions"] })
+      select(chat.id)
+    },
+  })
+  const sidebar = (
+    <div className="flex h-full flex-col">
+      <div className="flex h-12 items-center justify-between px-4">
+        <h1 className="font-semibold">Agents</h1>
+        <SquarePen className="size-4 text-muted-foreground" />
+      </div>
+      <div className="px-3">
+        <Button variant="agentChat" onClick={() => select()}>
           <Plus className="size-4" />
           New chat
         </Button>
-        <h2 className="mt-6 mb-2 text-xs text-muted-foreground">Recents</h2>
-        {sessions.data?.map((chat) => (
-          <Button
-            key={chat.id}
-            variant="ghost"
-            disabled={busy}
-            onClick={() => {
-              setSelected(chat)
-              setAnswer("")
-              setLogs("")
-            }}
-          >
-            {chat.kind === "setup" && <Server className="size-4" />}
-            {chat.title}
-          </Button>
-        ))}
-      </aside>
-      <main className="mx-auto flex w-full max-w-4xl flex-col p-6">
-        <header className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">
-            {selected?.kind === "setup" ? "Environment setup" : (selected?.title ?? "What should we build?")}
-          </h2>
-          <Button variant="outline" onClick={() => setSetup(!setup)}>
-            New environment
-          </Button>
-        </header>
-        {setup && (
-          <div className="mb-6 space-y-3 rounded-lg border border-border p-4">
-            <Label htmlFor="environment-name">Environment name</Label>
-            <Input id="environment-name" value={name} onChange={(e) => setName(e.target.value)} />
-            <fieldset className="space-y-2">
-              <legend className="mb-2 text-sm">Repositories</legend>
-              {repositoryList.data?.data.map((repository) => {
-                const name = `${repository.owner}/${repository.name}`
-                return (
-                  <label key={name} htmlFor={`agent-repo-${name}`} className="flex items-center gap-2 text-sm">
-                    <ChoiceInput
-                      id={`agent-repo-${name}`}
-                      type="checkbox"
-                      checked={repositories.includes(name)}
-                      onChange={(event) =>
-                        setRepositories((previous) =>
-                          event.target.checked ? [...previous, name] : previous.filter((value) => value !== name),
-                        )
-                      }
-                    />
-                    {name}
-                  </label>
-                )
-              })}
-              {repositoryList.data?.data.length === 0 && (
-                <p className="text-sm text-muted-foreground">Create a repository to prepare your first environment.</p>
-              )}
-            </fieldset>
-            <Button onClick={createEnvironment}>Create environment</Button>
-          </div>
-        )}
-        {!selected && (
-          <div className="space-y-4">
-            <p className="text-muted-foreground">
-              Prepare a repository environment in a setup chat, then fork its snapshot for coding tasks.
-            </p>
-            <SelectField
-              aria-label="Environment"
-              value={environment}
-              onValueChange={setEnvironment}
-              options={(envs.data ?? []).map((env) => ({
-                value: env.id,
-                label: `${env.name}${env.snapshot_id ? "" : " · setup required"}`,
-              }))}
-            />
-          </div>
-        )}
-        {(error || envs.error) && (
-          <p role="alert" className="my-4 text-destructive">
-            {error || envs.error?.message}
-          </p>
-        )}
-        <div className="my-6 flex-1 whitespace-pre-wrap text-sm" aria-live="polite">
-          {history.data?.map((message) => (
-            <div key={message.id} className="mb-4">
-              <strong>{message.role}</strong>
-              <p>{"content" in message && typeof message.content === "string" ? message.content : ""}</p>
-            </div>
-          ))}
-          {answer || (busy ? "Starting cloud agent…" : "")}
-        </div>
-        {logs && (
-          <details open className="mb-4 rounded-lg border border-border p-3">
-            <summary className="flex items-center gap-2 text-sm">
-              <Terminal className="size-4" />
-              Command output
-            </summary>
-            <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap font-mono text-xs">{logs}</pre>
-          </details>
-        )}
-        <div className="rounded-lg border border-border bg-secondary p-3">
-          <Label htmlFor="agent-prompt">Message agent</Label>
-          <Textarea
-            id="agent-prompt"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Describe a task…"
-            disabled={busy}
+        <div className="relative my-3">
+          <Search className="pointer-events-none absolute left-2 top-2 size-4 text-muted-foreground" />
+          <Input
+            aria-label="Search chats"
+            appearance="search"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            placeholder="Search chats…"
           />
-          <div className="mt-3 flex items-end justify-between gap-3">
-            <SelectField
-              aria-label="Model"
-              value={model || models.data?.[0] || ""}
-              onValueChange={setModel}
-              options={(models.data ?? []).map((value) => ({ value, label: value }))}
-            />
-            <Button onClick={send} disabled={busy || !prompt.trim()} aria-label="Send message">
-              <ArrowUp className="size-4" />
+        </div>
+      </div>
+      <div className="flex-1 space-y-5 overflow-auto px-2 py-2">
+        {[true, false].map((pinned) => (
+          <section key={String(pinned)}>
+            <h2 className="mb-2 px-2 text-xs text-muted-foreground">{pinned ? "Pinned" : "Recents"}</h2>
+            {sessions.data
+              ?.filter((chat) => !!chat.pinned === pinned && chat.title.toLowerCase().includes(filter.toLowerCase()))
+              .map((chat) => (
+                <Button
+                  key={chat.id}
+                  variant="agentChat"
+                  aria-pressed={selected?.id === chat.id}
+                  onClick={() => select(chat.id)}
+                >
+                  {chat.kind === "setup" && <Server className="size-4 text-muted-foreground" />}
+                  <span className="flex-1 truncate">{chat.title}</span>
+                  {chat.active_run && <Loader2 className="size-3 animate-spin text-primary" />}
+                </Button>
+              ))}
+          </section>
+        ))}
+      </div>
+      <div className="space-y-1 border-t border-border p-2">
+        <Button variant="agentChat" onClick={() => setCredentials(true)}>
+          <KeyRound className="size-4 text-muted-foreground" />
+          AI credentials
+        </Button>
+        <Button
+          variant="agentChat"
+          onClick={() => {
+            setEditing(undefined)
+            setEnvironmentDialog(true)
+          }}
+        >
+          <Server className="size-4 text-muted-foreground" />
+          New environment
+        </Button>
+      </div>
+    </div>
+  )
+  return (
+    <div className="flex h-[calc(100dvh-3rem)] min-h-0 overflow-hidden bg-background">
+      <aside className="hidden w-72 shrink-0 border-r border-border bg-secondary md:block">{sidebar}</aside>
+      <main className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              visibility="mobile"
+              aria-label="Open chats"
+              onClick={() => setMobile(true)}
+            >
+              <Menu className="size-4" />
+            </Button>
+            <span className="truncate text-sm font-medium">{selected?.title ?? "New chat"}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {selected && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={selected.pinned ? "Unpin chat" : "Pin chat"}
+                  onClick={() => patch.mutate({ id: selected.id, pinned: !selected.pinned })}
+                >
+                  <Pin className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Archive chat"
+                  disabled={!!selected.active_run}
+                  onClick={() => {
+                    patch.mutate({ id: selected.id, archived: true })
+                    select()
+                  }}
+                >
+                  <Archive className="size-4" />
+                </Button>
+              </>
+            )}
+            <Button variant="outline" size="compact" onClick={() => setDetails(!details)}>
+              <PanelRight className="size-4" />
+              Environment
             </Button>
           </div>
-        </div>
+        </header>
+        {(envs.error || sessions.error || patch.error || setup.error) && (
+          <p role="alert" className="p-4 text-sm text-destructive">
+            {envs.error?.message || sessions.error?.message || patch.error?.message || setup.error?.message}
+          </p>
+        )}
+        <datalist id="agent-model-options">
+          {models.data?.map((value) => (
+            <option key={value} value={value} />
+          ))}
+        </datalist>
+        {selected ? (
+          <AgentConversation key={selected.id} session={selected} model={currentModel} onModelChange={setModel} />
+        ) : (
+          <>
+            <div className="flex flex-1 flex-col items-center justify-center gap-5 px-4">
+              <SquarePen className="size-8 text-muted-foreground" />
+              <h2 className="text-2xl font-semibold">What should we build?</h2>
+              <p className="max-w-md text-center text-sm text-muted-foreground">
+                Choose a prepared environment or set up your repositories for cloud coding.
+              </p>
+              <div className="w-full max-w-md">
+                <SelectField
+                  aria-label="Environment"
+                  value={environmentId}
+                  onValueChange={setEnvironmentId}
+                  options={(envs.data ?? []).map((env) => ({
+                    value: env.id,
+                    label: `${env.name}${env.snapshot_id ? "" : " · setup required"}`,
+                  }))}
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditing(undefined)
+                  setEnvironmentDialog(true)
+                }}
+              >
+                <Plus className="size-4" />
+                New environment
+              </Button>
+            </div>
+            <div className="mx-auto w-full max-w-3xl px-4 pb-6">
+              <AgentComposer model={currentModel} onModelChange={setModel} onSend={create} pending={false} />
+            </div>
+          </>
+        )}
       </main>
+      {details && (
+        <aside className="w-72 shrink-0 space-y-5 overflow-auto border-l border-border bg-secondary p-4 max-lg:absolute max-lg:inset-y-12 max-lg:right-0 max-lg:z-20">
+          <h2 className="font-medium">Environment</h2>
+          {environment ? (
+            <>
+              <div>
+                <p className="text-sm font-medium">{environment.name}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {environment.snapshot_id ? "Ready for coding chats" : "Setup required"}
+                </p>
+              </div>
+              <ul className="space-y-2 text-sm">
+                {environment.repositories?.map((repository) => (
+                  <li key={repository}>{repository}</li>
+                ))}
+              </ul>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => {
+                  setEditing(environment)
+                  setEnvironmentDialog(true)
+                }}
+              >
+                <Settings className="size-4" />
+                Edit environment
+              </Button>
+              <Button variant="outline" fullWidth onClick={() => setup.mutate()}>
+                Open setup chat
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Each coding chat starts from the prepared environment and keeps its own changes.
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Choose an environment to view its repositories and setup.</p>
+          )}
+        </aside>
+      )}
+      <EnvironmentDialog
+        open={environmentDialog}
+        onOpenChange={setEnvironmentDialog}
+        environment={editing}
+        onSaved={(value) => {
+          setEnvironmentId(value.id)
+          setDetails(true)
+        }}
+      />
+      <CredentialDialog open={credentials} onOpenChange={setCredentials} />
+      <Dialog open={mobile} onOpenChange={setMobile}>
+        <DialogContent appearance="compact">
+          <DialogTitle>Chats</DialogTitle>
+          <div className="h-[70dvh]">{sidebar}</div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

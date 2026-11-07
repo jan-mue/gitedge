@@ -40,6 +40,8 @@ class FilesystemTestSandbox(SnapshotableSandboxClient):
 class MemoryAgentStreams:
     def __init__(self) -> None:
         self.records: dict[tuple[str, str], str] = {}
+        self.cancelled_runs: set[str] = set()
+        self.attempts: dict[tuple[str, int], int] = {}
 
     async def append(self, run_id: str, event_id: str, event: str) -> str:
         self.records.setdefault((run_id, event_id), event)
@@ -47,3 +49,11 @@ class MemoryAgentStreams:
 
     async def history(self, run_id: str) -> list[str]:
         return [value for (key, _event_id), value in self.records.items() if key == run_id]
+
+    async def attempt(self, run_id: str, step: int) -> int:
+        key = (run_id, step)
+        self.attempts[key] = self.attempts.get(key, 0) + 1
+        return self.attempts[key]
+
+    async def cancelled(self, run_id: str) -> bool:
+        return run_id in self.cancelled_runs

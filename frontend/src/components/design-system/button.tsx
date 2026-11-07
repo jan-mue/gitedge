@@ -9,6 +9,8 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
+        agentChat:
+          "w-full justify-start gap-2 rounded-md px-2 py-1.5 text-left font-normal hover:bg-accent aria-pressed:bg-accent aria-pressed:font-medium",
         notificationSidebar:
           "w-full justify-between gap-2 px-3 py-1.5 rounded text-sm text-left font-normal text-foreground hover:bg-accent aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:font-medium",
         notificationChip:
@@ -58,6 +60,8 @@ export const buttonVariants = cva(
       },
       size: {
         notificationMarkAll: "h-auto px-3 py-1",
+        agentChat:
+          "w-full justify-start gap-2 rounded-md px-2 py-1.5 text-left font-normal hover:bg-accent aria-pressed:bg-accent aria-pressed:font-medium",
         notificationSidebar: "h-auto px-3 py-1.5",
         notificationChip: "h-auto px-2.5 py-1",
         notificationTab: "h-auto px-3 py-1",

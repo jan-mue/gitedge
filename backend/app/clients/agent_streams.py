@@ -5,6 +5,7 @@ import json
 import re
 from typing import TYPE_CHECKING, Protocol, cast
 
+from restate import TerminalError
 from upstash_redis.asyncio import Redis
 
 if TYPE_CHECKING:
@@ -18,8 +19,14 @@ local prior = redis.call('HGET', KEYS[2], ARGV[1])
 if prior then return prior end
 local id = redis.call('XADD', KEYS[1], '*', 'event', ARGV[2])
 redis.call('HSET', KEYS[2], ARGV[1], id)
+redis.call('EXPIRE', KEYS[1], 604800)
+redis.call('EXPIRE', KEYS[2], 604800)
 return id
 """
+
+
+class AgentRunCancelledError(TerminalError):
+    """An authorized user requested cooperative cancellation."""
 
 
 class AgentEventStore(Protocol):
@@ -31,6 +38,14 @@ class AgentEventStore(Protocol):
 
     async def history(self, run_id: str) -> list[str]:
         """Return ordered native events for transformer reconstruction."""
+        ...
+
+    async def attempt(self, run_id: str, step: int) -> int:
+        """Allocate a new streamed model attempt."""
+        ...
+
+    async def cancelled(self, run_id: str) -> bool:
+        """Check a durable cancellation request."""
         ...
 
 
@@ -69,7 +84,7 @@ class AgentStreamStore:
                 for position, fields in entries:
                     found = True
                     cursor = position.decode() if isinstance(position, bytes) else str(position)
-                    payload = fields.get("event")
+                    payload = fields.get("event") if "event" in fields else fields.get(b"event")
                     if payload is None:
                         raise ValueError("Corrupt agent stream entry")
                     if isinstance(payload, bytes):
@@ -92,9 +107,28 @@ class AgentStreamStore:
         payloads = []
         for _stream, entries in batches:
             for _position, fields in entries:
-                payload = fields.get("event")
+                payload = fields.get("event") if "event" in fields else fields.get(b"event")
                 if isinstance(payload, bytes):
                     payload = payload.decode()
                 if payload is not None:
                     payloads.append(str(payload))
         return payloads
+
+    async def attempt(self, run_id: str, step: int) -> int:
+        """Allocate an attempt only when an actual model request executes, never on journal replay."""
+        key = f"agents:{{{run_id}}}:model:{step}:attempt"
+        if isinstance(self.client, Redis):
+            result = await self.client.incr(key)
+            await self.client.expire(key, 604800)
+        else:
+            result = await self.client.execute_command("INCR", key)
+            await self.client.execute_command("EXPIRE", key, 604800)
+        return int(result)
+
+    async def cancel(self, run_id: str) -> None:
+        """Persist cancellation independently of the browser connection."""
+        await self.client.set(f"agents:{{{run_id}}}:cancel", "1", ex=604800)
+
+    async def cancelled(self, run_id: str) -> bool:
+        """Check cancellation while a model or detached command is running."""
+        return bool(await self.client.get(f"agents:{{{run_id}}}:cancel"))

@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, UUID, CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, UUID, CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.entities.base import Base
@@ -41,6 +41,8 @@ class AgentSession(Base):
     title: Mapped[str] = mapped_column(String(200))
     kind: Mapped[str] = mapped_column(String(20), default="coding")
     snapshot_id: Mapped[str | None] = mapped_column(Text)
+    pinned: Mapped[bool] = mapped_column(default=False, server_default=false())
+    archived: Mapped[bool] = mapped_column(default=False, server_default=false())
 
 
 class AgentRun(Base):
@@ -55,7 +57,7 @@ class AgentRun(Base):
     status: Mapped[str] = mapped_column(String(20), default="pending")
     invocation_id: Mapped[str | None] = mapped_column(Text)
     error: Mapped[str | None] = mapped_column(Text)
-    notification_read: Mapped[bool] = mapped_column(default=False)
+    notification_read: Mapped[bool] = mapped_column(default=False, server_default=false())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -68,6 +70,7 @@ class AgentMessage(Base):
     position: Mapped[int] = mapped_column(Integer)
     role: Mapped[str] = mapped_column(String(20))
     parts: Mapped[list[dict]] = mapped_column(JSON)
+    message_metadata: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}")
 
 
 class AgentTrace(Base):
@@ -97,3 +100,14 @@ class AgentTraceRange(Base):
     model_id: Mapped[str | None] = mapped_column(String(250))
     content_hash: Mapped[str | None] = mapped_column(String(200))
     conversation_url: Mapped[str | None] = mapped_column(Text)
+
+
+class AgentCredential(Base):
+    """An account-owned provider connection; plaintext never leaves the backend."""
+
+    __tablename__ = "agent_credential"
+    __table_args__ = (UniqueConstraint("user_id", "provider"),)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("user.id", ondelete="CASCADE"), index=True)
+    provider: Mapped[str] = mapped_column(String(100))
+    label: Mapped[str] = mapped_column(String(200))
+    encrypted_secret: Mapped[str] = mapped_column(Text)

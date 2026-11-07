@@ -18,11 +18,23 @@ from app.api.dependencies import (
     RepositoryStoreDep,
     SessionDep,
 )
+from app.clients.agent_credentials import AgentCredentialStore
 from app.clients.agent_repositories import AgentRepositoryClient
 from app.clients.agents import AgentStore
 from app.config import settings
-from app.exceptions import NotFoundError
-from app.schemas.agents import EnvironmentCreate, EnvironmentPublic, RunCreate, RunPublic, SessionCreate, SessionPublic
+from app.schemas.agents import (
+    CredentialCreate,
+    CredentialPublic,
+    EnvironmentCreate,
+    EnvironmentPublic,
+    EnvironmentUpdate,
+    ProviderPublic,
+    RunCreate,
+    RunPublic,
+    SessionCreate,
+    SessionPublic,
+    SessionUpdate,
+)
 from app.services.agents import AgentService
 
 
@@ -43,7 +55,13 @@ def service(
     blobs: BlobStorageClientDep,
 ) -> AgentService:
     """Wire the service using the application's request-scoped stores."""
-    return AgentService(AgentRepositoryClient(git, repositories, blobs), AgentStore(db), repositories, authorization)
+    return AgentService(
+        AgentRepositoryClient(git, repositories, blobs),
+        AgentCredentialStore(db),
+        AgentStore(db),
+        repositories,
+        authorization,
+    )
 
 
 AgentServiceDep = Annotated[AgentService, Depends(service)]
@@ -58,7 +76,7 @@ async def models(_user: CurrentUser) -> list[str]:
 @router.get("/environments")
 async def environments(user: CurrentUser, agents: AgentServiceDep) -> list[EnvironmentPublic]:
     """List private repository collections."""
-    return [EnvironmentPublic.model_validate(item) for item in await agents.store.environments(user.id)]
+    return await agents.list_environments(user)
 
 
 @router.post("/environments", status_code=201)
@@ -70,7 +88,7 @@ async def create_environment(body: EnvironmentCreate, user: CurrentUser, agents:
 @router.get("/sessions")
 async def sessions(user: CurrentUser, agents: AgentServiceDep) -> list[SessionPublic]:
     """List private conversations."""
-    return [SessionPublic.model_validate(item) for item in await agents.store.sessions(user.id)]
+    return await agents.list_sessions(user)
 
 
 @router.post("/sessions", status_code=201)
@@ -88,11 +106,7 @@ async def submit(session_id: uuid.UUID, body: RunCreate, user: CurrentUser, agen
 @router.get("/runs/{run_id}")
 async def status(run_id: uuid.UUID, user: CurrentUser, agents: AgentServiceDep) -> RunPublic:
     """Get an authorized turn status."""
-    turn = await agents.store.run(run_id)
-    if turn is None:
-        raise NotFoundError("Run not found")
-    await agents.session(turn.session_id, user)
-    return RunPublic.model_validate(turn)
+    return RunPublic.model_validate(await agents.get_run(run_id, user))
 
 
 @router.get("/runs/{run_id}/events")
@@ -120,3 +134,80 @@ async def messages(session_id: uuid.UUID, user: CurrentUser, agents: AgentServic
     await agents.session(session_id, user)
     history = ModelMessagesTypeAdapter.validate_python(await agents.store.history(session_id))
     return AGUIAdapter.dump_messages(history)
+
+
+@router.put("/environments/{environment_id}")
+async def update_environment(
+    environment_id: uuid.UUID, body: EnvironmentUpdate, user: CurrentUser, agents: AgentServiceDep
+) -> EnvironmentPublic:
+    """Edit a setup script and instructions for the next setup run."""
+    return await agents.update_environment(environment_id, body, user)
+
+
+@router.patch("/sessions/{session_id}")
+async def update_session(
+    session_id: uuid.UUID, body: SessionUpdate, user: CurrentUser, agents: AgentServiceDep
+) -> SessionPublic:
+    """Persist chat names, pinning, and archiving."""
+    return await agents.update_session(session_id, body, user)
+
+
+@router.get("/sessions/{session_id}/runs")
+async def runs(session_id: uuid.UUID, user: CurrentUser, agents: AgentServiceDep) -> list[RunPublic]:
+    """Find durable invocations for reattachment after a refresh."""
+    await agents.session(session_id, user)
+    return [RunPublic.model_validate(item) for item in await agents.store.runs(session_id)]
+
+
+@router.post("/runs/{run_id}/read", status_code=204)
+async def read_notification(run_id: uuid.UUID, user: CurrentUser, agents: AgentServiceDep) -> None:
+    """Dismiss a completed or failed run notification."""
+    await agents.store.mark_read(await agents.get_run(run_id, user))
+
+
+@router.get("/credentials")
+async def credentials(user: CurrentUser, agents: AgentServiceDep) -> list[CredentialPublic]:
+    """List provider connection metadata."""
+    return await agents.provider_connections(user)
+
+
+@router.put("/credentials/{provider}")
+async def save_credentials(
+    provider: str, body: CredentialCreate, user: CurrentUser, agents: AgentServiceDep
+) -> CredentialPublic:
+    """Replace an API key or ChatGPT connection file; secrets cannot be read back."""
+    return await agents.save_connection(provider, body, user)
+
+
+@router.delete("/credentials/{provider}", status_code=204)
+async def remove_credentials(provider: str, user: CurrentUser, agents: AgentServiceDep) -> None:
+    """Revoke this account's provider connection."""
+    await agents.credentials.remove(user.id, provider)
+
+
+@router.get("/providers")
+async def providers(_user: CurrentUser) -> list[ProviderPublic]:
+    """Discover configured native and OpenAI-compatible account providers."""
+    names = {
+        "openai": "OpenAI",
+        "openai-chatgpt": "ChatGPT subscription",
+        "anthropic": "Anthropic",
+        "opencode-go": "OpenCode Go",
+        "opencode-zen": "OpenCode Zen",
+        "openrouter": "OpenRouter",
+        "mistral": "Mistral",
+        "vercel": "Vercel AI Gateway",
+    }
+    return [
+        ProviderPublic(provider=key, label=names.get(key, key), auth="chatgpt" if key == "openai-chatgpt" else "key")
+        for key in ["openai", "openai-chatgpt", "anthropic", *settings.AGENTS_OPENAI_ENDPOINTS]
+    ]
+
+
+@router.post("/runs/{run_id}/cancel", status_code=202)
+async def cancel_run(run_id: uuid.UUID, user: CurrentUser, agents: AgentServiceDep) -> RunPublic:
+    """Request a durable stop without tying cancellation to a browser connection."""
+    turn = await agents.get_run(run_id, user)
+    if turn.status in {"pending", "running"}:
+        await stream_store().cancel(str(run_id))
+    return RunPublic.model_validate(turn)

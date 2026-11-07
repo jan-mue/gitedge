@@ -30,7 +30,7 @@ def test_snapshot_contract_is_separate() -> None:
 
 
 async def test_workspace_requires_shell_for_string() -> None:
-    async def output(stream: str, chunk: str) -> None:
+    async def output(stream: str, chunk: str, _command_id: str, _sequence: int) -> None:
         pass
 
     workspace = SandboxWorkspace(LocalTestSandbox(), "test", output)
@@ -49,7 +49,7 @@ async def test_command_receipt_reattaches_without_reexecuting(tmp_path: Path) ->
 
     output_chunks = []
 
-    async def output(stream: str, chunk: str) -> None:
+    async def output(stream: str, chunk: str, _command_id: str, _sequence: int) -> None:
         output_chunks.append((stream, chunk))
 
     command = "echo called >> count; echo hello; echo warning >&2; exit 7"

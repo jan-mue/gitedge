@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pydantic_ai.workspaces import CommandResult
 
-OutputSink = Callable[[str, str], Awaitable[None]]
+OutputSink = Callable[[str, str, str, int], Awaitable[None]]
 
 
 class SandboxClient(ABC):
@@ -50,6 +50,10 @@ class SnapshotableSandboxClient(SandboxClient):
     @abstractmethod
     async def start(self, name: str, snapshot_id: str | None = None) -> None:
         """Create or attach to a named machine, optionally from a snapshot."""
+
+    async def stop_named(self, name: str) -> None:
+        """Stop an existing machine after process loss, without creating a replacement."""
+        raise NotImplementedError("Provider does not support named cleanup")
 
     @abstractmethod
     async def snapshot(self, snapshot_id: str) -> str:

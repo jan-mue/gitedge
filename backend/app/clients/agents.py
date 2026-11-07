@@ -4,10 +4,12 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.clients.database import SQLStore
+from app.clients.repositories import SQLRepositoryStore
+from app.config import settings
 from app.entities.agents import (
     AgentEnvironment,
     AgentEnvironmentRepository,
@@ -17,6 +19,8 @@ from app.entities.agents import (
     AgentTrace,
     AgentTraceRange,
 )
+from app.entities.users import User
+from app.exceptions import ConflictError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,7 +66,9 @@ class AgentStore(SQLStore[AgentSession]):
         """List owned conversations in recency order."""
         return list(
             await self.db.scalars(
-                select(AgentSession).where(AgentSession.user_id == user_id).order_by(AgentSession.updated_at.desc())
+                select(AgentSession)
+                .where(AgentSession.user_id == user_id, AgentSession.archived.is_(False))
+                .order_by(AgentSession.updated_at.desc())
             )
         )
 
@@ -78,6 +84,23 @@ class AgentStore(SQLStore[AgentSession]):
 
     async def create_run(self, turn: AgentRun) -> AgentRun:
         """Atomically deduplicate concurrent submissions by conversation/request ID."""
+        await self.db.execute(
+            select(User.id).where(User.id == (await self.get(turn.session_id)).user_id).with_for_update()
+        )
+        existing = await self.request(turn.session_id, turn.request_id)
+        if existing is not None:
+            await self.db.commit()
+            return existing
+        user_id = (await self.get(turn.session_id)).user_id
+        count = await self.db.scalar(
+            select(func.count())
+            .select_from(AgentRun)
+            .join(AgentSession)
+            .where(AgentSession.user_id == user_id, AgentRun.status.in_(["pending", "running"]))
+        )
+        if count is not None and count >= settings.AGENTS_MAX_ACTIVE_RUNS:
+            await self.db.rollback()
+            raise ConflictError("Too many active agent runs")
         await self.db.execute(
             insert(AgentRun)
             .values(
@@ -109,12 +132,15 @@ class AgentStore(SQLStore[AgentSession]):
             .where(AgentRun.session_id == session_id)
             .order_by(AgentRun.created_at, AgentMessage.position)
         )
-        return [{"kind": message.role, "parts": message.parts} for message in messages]
+        return [{**message.message_metadata, "kind": message.role, "parts": message.parts} for message in messages]
 
     async def finish(
         self, run: AgentRun, session: AgentSession, snapshot: str, messages: list[dict], traces: list[RepositoryTrace]
     ) -> None:
         """Commit conversation, latest image, and successful terminal state together."""
+        persisted = await self.db.scalar(select(AgentRun.status).where(AgentRun.id == run.id))
+        if persisted == "completed":
+            return
         session.snapshot_id = snapshot
         run.status = "completed"
         run.finished_at = datetime.now(UTC)
@@ -140,7 +166,13 @@ class AgentStore(SQLStore[AgentSession]):
             )
         self.db.add_all(
             [
-                AgentMessage(run_id=run.id, position=index, role=message["kind"], parts=message["parts"])
+                AgentMessage(
+                    run_id=run.id,
+                    position=index,
+                    role=message["kind"],
+                    parts=message["parts"],
+                    message_metadata={key: value for key, value in message.items() if key not in {"kind", "parts"}},
+                )
                 for index, message in enumerate(messages)
             ]
         )
@@ -152,7 +184,7 @@ class AgentStore(SQLStore[AgentSession]):
 
     async def fail(self, run: AgentRun, message: str) -> None:
         """Persist terminal failure for workspace notifications."""
-        run.status = "failed"
+        run.status = "cancelled" if message == "AgentRunCancelledError" else "failed"
         run.error = message
         run.finished_at = datetime.now(UTC)
         await self.db.commit()
@@ -172,3 +204,37 @@ class AgentStore(SQLStore[AgentSession]):
                 .limit(50)
             )
         )
+
+    async def runs(self, session_id: uuid.UUID) -> list[AgentRun]:
+        """Read turns in execution order for reconnect and notifications."""
+        return list(
+            await self.db.scalars(
+                select(AgentRun).where(AgentRun.session_id == session_id).order_by(AgentRun.created_at)
+            )
+        )
+
+    async def active_run(self, session_id: uuid.UUID) -> AgentRun | None:
+        """Find work that should survive a browser refresh."""
+        return await self.db.scalar(
+            select(AgentRun)
+            .where(AgentRun.session_id == session_id, AgentRun.status.in_(["pending", "running"]))
+            .order_by(AgentRun.created_at)
+            .limit(1)
+        )
+
+    async def mark_read(self, run: AgentRun) -> None:
+        """Dismiss a terminal notification after ownership has been checked."""
+        run.notification_read = True
+        await self.db.commit()
+
+    async def save_environment(self, environment: AgentEnvironment, data: dict[str, str]) -> None:
+        """Persist editable configuration without mutating existing forked images."""
+        for key, value in data.items():
+            setattr(environment, key, value)
+        await self.db.commit()
+
+    async def repository_names(self, environment_id: uuid.UUID) -> list[str]:
+        """Resolve collection members for display through their existing stores."""
+        repositories = SQLRepositoryStore(self.db)
+        members = [await repositories.get(key) for key in await self.repositories(environment_id)]
+        return [f"{repo.owner.name}/{repo.name}" for repo in members]

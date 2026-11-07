@@ -3,7 +3,7 @@
 from typing import override
 
 from pydantic_ai.workspaces import CommandResult
-from vercel.sandbox import Sandbox, SnapshotSource, get_or_create_sandbox
+from vercel.sandbox import Sandbox, SnapshotSource, get_or_create_sandbox, get_sandbox
 
 from app.clients.sandbox import SnapshotableSandboxClient
 
@@ -21,6 +21,7 @@ class VercelSandboxClient(SnapshotableSandboxClient):
             name=name,
             source=SnapshotSource(snapshot_id=snapshot_id) if snapshot_id else None,
             persistent=True,
+            execution_time_limit=1800,
         )
         await self.execute("mkdir -p /workspace /opt/gitedge")
 
@@ -44,3 +45,8 @@ class VercelSandboxClient(SnapshotableSandboxClient):
     async def stop(self) -> None:
         if self.machine is not None:
             await self.machine.stop()
+
+    @override
+    async def stop_named(self, name: str) -> None:
+        machine = await get_sandbox(name=name, resume=False)
+        await machine.stop()
