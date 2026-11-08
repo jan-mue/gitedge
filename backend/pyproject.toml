@@ -233,4 +233,4 @@ report.show_missing = true
 report.sort = "-Cover"
 
 [tool.vercel]
-scripts.build = "uv run bash scripts/prestart.sh"
+scripts.build = "uv run --no-sync bash scripts/prestart.sh"
