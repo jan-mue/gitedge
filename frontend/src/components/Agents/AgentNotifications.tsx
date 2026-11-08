@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Bell, Check, CircleAlert } from "lucide-react"
 import {
+  agentsNotificationsOptions,
+  agentsNotificationsQueryKey,
+  agentsReadNotificationMutation,
+} from "@/client/@tanstack/react-query.gen"
+import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -9,25 +14,13 @@ import {
   DropdownMenuTrigger,
   Link,
 } from "@/components/design-system"
-import { agentApi, type RunPublic } from "./api"
-
+import { extractErrorMessage } from "@/utils"
 export const AgentNotifications = () => {
   const query = useQueryClient()
-  const { data = [] } = useQuery({
-    queryKey: ["agent-notifications"],
-    queryFn: async () => {
-      const result = await fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/v1/agents/notifications`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("access_token") ?? ""}` },
-      })
-      if (result.status === 503) return [] as RunPublic[]
-      if (!result.ok) throw new Error("Unable to fetch agent notifications")
-      return result.json() as Promise<RunPublic[]>
-    },
-    refetchInterval: 15000,
-  })
+  const { data = [] } = useQuery({ ...agentsNotificationsOptions(), refetchInterval: 15000 })
   const read = useMutation({
-    mutationFn: (id: string) => agentApi(`/runs/${id}/read`, {}),
-    onSuccess: () => query.invalidateQueries({ queryKey: ["agent-notifications"] }),
+    ...agentsReadNotificationMutation(),
+    onSuccess: () => query.invalidateQueries({ queryKey: agentsNotificationsQueryKey() }),
   })
   if (!data.length) return null
   return (
@@ -48,7 +41,7 @@ export const AgentNotifications = () => {
               to="/agents"
               search={{ session: run.session_id }}
               appearance="item"
-              onClick={() => read.mutate(run.id)}
+              onClick={() => read.mutate({ path: { run_id: run.id } })}
             >
               {run.status === "completed" ? (
                 <Check className="size-4 text-success" />
@@ -63,7 +56,7 @@ export const AgentNotifications = () => {
         ))}
         {read.error && (
           <p role="alert" className="p-2 text-xs text-destructive">
-            {read.error.message}
+            {extractErrorMessage(read.error)}
           </p>
         )}
       </DropdownMenuContent>

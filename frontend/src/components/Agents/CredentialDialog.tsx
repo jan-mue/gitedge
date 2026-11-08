@@ -4,6 +4,13 @@ import { KeyRound, Trash2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import {
+  agentsCredentialsOptions,
+  agentsCredentialsQueryKey,
+  agentsProvidersOptions,
+  agentsRemoveCredentialsMutation,
+  agentsSaveCredentialsMutation,
+} from "@/client/@tanstack/react-query.gen"
+import {
   Button,
   Dialog,
   DialogContent,
@@ -15,7 +22,7 @@ import {
   Label,
   SelectField,
 } from "@/components/design-system"
-import { agentApi, type CredentialPublic, type ProviderPublic } from "./api"
+import { extractErrorMessage } from "@/utils"
 
 const credentialSchema = z.object({
   provider: z.string().min(1, "Select a provider"),
@@ -26,16 +33,8 @@ type Values = z.infer<typeof credentialSchema>
 
 export const CredentialDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) => {
   const query = useQueryClient()
-  const providers = useQuery({
-    queryKey: ["agent-providers"],
-    queryFn: () => agentApi<ProviderPublic[]>("/providers"),
-    enabled: open,
-  })
-  const connections = useQuery({
-    queryKey: ["agent-credentials"],
-    queryFn: () => agentApi<CredentialPublic[]>("/credentials"),
-    enabled: open,
-  })
+  const providers = useQuery({ ...agentsProvidersOptions(), enabled: open })
+  const connections = useQuery({ ...agentsCredentialsOptions(), enabled: open })
   const form = useForm<Values>({
     resolver: zodResolver(credentialSchema),
     defaultValues: { provider: "openai", label: "", secret: "" },
@@ -43,15 +42,15 @@ export const CredentialDialog = ({ open, onOpenChange }: { open: boolean; onOpen
   const provider = form.watch("provider")
   const oauth = providers.data?.find((value) => value.provider === provider)?.auth === "chatgpt"
   const save = useMutation({
-    mutationFn: ({ provider, ...body }: Values) => agentApi(`/credentials/${provider}`, body, "PUT"),
+    ...agentsSaveCredentialsMutation(),
     onSuccess: async () => {
       form.reset({ provider, label: "", secret: "" })
-      await query.invalidateQueries({ queryKey: ["agent-credentials"] })
+      await query.invalidateQueries({ queryKey: agentsCredentialsQueryKey() })
     },
   })
   const remove = useMutation({
-    mutationFn: (provider: string) => agentApi(`/credentials/${provider}`, undefined, "DELETE"),
-    onSuccess: () => query.invalidateQueries({ queryKey: ["agent-credentials"] }),
+    ...agentsRemoveCredentialsMutation(),
+    onSuccess: () => query.invalidateQueries({ queryKey: agentsCredentialsQueryKey() }),
   })
   const close = (value: boolean) => {
     if (!value) form.reset()
@@ -87,14 +86,19 @@ export const CredentialDialog = ({ open, onOpenChange }: { open: boolean; onOpen
                 size="icon-sm"
                 aria-label={`Remove ${connection.label}`}
                 disabled={remove.isPending}
-                onClick={() => remove.mutate(connection.provider)}
+                onClick={() => remove.mutate({ path: { provider: connection.provider } })}
               >
                 <Trash2 className="size-4" />
               </Button>
             </div>
           ))}
         </div>
-        <form className="space-y-4" onSubmit={form.handleSubmit((values) => save.mutate(values))}>
+        <form
+          className="space-y-4"
+          onSubmit={form.handleSubmit(({ provider, label, secret }) =>
+            save.mutate({ path: { provider }, body: { label, secret } }),
+          )}
+        >
           <div className="space-y-2">
             <Label htmlFor="agent-provider">Provider</Label>
             <SelectField
@@ -152,9 +156,9 @@ export const CredentialDialog = ({ open, onOpenChange }: { open: boolean; onOpen
               {error.message}
             </p>
           ))}
-          {(save.error || remove.error || providers.error) && (
+          {(save.error ?? remove.error ?? providers.error) && (
             <p role="alert" className="text-sm text-destructive">
-              {save.error?.message || remove.error?.message || providers.error?.message}
+              {extractErrorMessage(save.error ?? remove.error ?? providers.error)}
             </p>
           )}
           <DialogFooter>

@@ -1,4 +1,5 @@
 import asyncio
+import sys
 from typing import TYPE_CHECKING, override
 
 import pytest
@@ -38,6 +39,7 @@ async def test_workspace_requires_shell_for_string() -> None:
         await workspace.run("echo unsafe")
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Requires Linux flock and setsid")
 async def test_command_receipt_reattaches_without_reexecuting(tmp_path: Path) -> None:
     class TestSandbox(LocalTestSandbox):
         @override

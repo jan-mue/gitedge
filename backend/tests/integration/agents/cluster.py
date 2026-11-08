@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import httpx
+import httpx2
 import yaml
 from k8s_agent_sandbox import SandboxClient
 from k8s_agent_sandbox.models import SandboxDirectConnectionConfig
@@ -72,7 +72,7 @@ def install(cluster: AgentK3SContainer) -> SandboxClient:
         build.extend(["--secret", f"id=proxy_ca,src={certificate}"])
     subprocess.run([*build, str(context)], check=True)
     load_image(cluster, docker.images.get("gitedge-agent-runtime:dev"))
-    with httpx.Client(follow_redirects=True, timeout=60) as http:
+    with httpx2.Client(follow_redirects=True, timeout=60) as http:
         response = http.get(
             f"https://github.com/kubernetes-sigs/agent-sandbox/releases/download/{AGENT_SANDBOX_VERSION}/sandbox-with-extensions.yaml"
         )

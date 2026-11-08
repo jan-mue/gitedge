@@ -5,7 +5,7 @@ import shlex
 from typing import TYPE_CHECKING
 
 from dulwich.bundle import create_bundle_from_repo, write_bundle
-from starlette.concurrency import run_in_threadpool
+from fastapi.concurrency import run_in_threadpool
 
 if TYPE_CHECKING:
     import uuid

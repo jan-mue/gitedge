@@ -3,7 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { repositoriesListRepositoriesOptions } from "@/client/@tanstack/react-query.gen"
+import {
+  agentsCreateEnvironmentMutation,
+  agentsEnvironmentsQueryKey,
+  agentsUpdateEnvironmentMutation,
+  repositoriesListRepositoriesOptions,
+} from "@/client/@tanstack/react-query.gen"
 import {
   Button,
   ChoiceInput,
@@ -17,7 +22,8 @@ import {
   Label,
   Textarea,
 } from "@/components/design-system"
-import { agentApi, type EnvironmentPublic } from "./api"
+import { extractErrorMessage } from "@/utils"
+import type { EnvironmentPublic } from "./api"
 
 const environmentSchema = z.object({
   name: z.string().trim().min(1, "Enter a name").max(200),
@@ -58,17 +64,27 @@ export const EnvironmentDialog = ({
       )
   }, [open, environment, form])
   const selected = form.watch("repositories")
-  const save = useMutation({
-    mutationFn: (values: Values) =>
-      environment
-        ? agentApi<EnvironmentPublic>(`/environments/${environment.id}`, values, "PUT")
-        : agentApi<EnvironmentPublic>("/environments", values),
-    onSuccess: async (value) => {
-      await query.invalidateQueries({ queryKey: ["agent-environments"] })
-      onSaved(value)
-      onOpenChange(false)
-    },
-  })
+  const saved = async (value: EnvironmentPublic) => {
+    await query.invalidateQueries({ queryKey: agentsEnvironmentsQueryKey() })
+    onSaved(value)
+    onOpenChange(false)
+  }
+  const create = useMutation({ ...agentsCreateEnvironmentMutation(), onSuccess: saved })
+  const update = useMutation({ ...agentsUpdateEnvironmentMutation(), onSuccess: saved })
+  const save = (values: Values) => {
+    if (environment) {
+      update.mutate({
+        path: { environment_id: environment.id },
+        body: {
+          name: values.name,
+          setup_script: values.setup_script,
+          instructions: values.instructions,
+        },
+      })
+      return
+    }
+    create.mutate({ body: values })
+  }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent appearance="access">
@@ -78,7 +94,7 @@ export const EnvironmentDialog = ({
             Prepare repositories once in a setup chat, then reuse the environment for independent coding chats.
           </DialogDescription>
         </DialogHeader>
-        <form className="space-y-5" onSubmit={form.handleSubmit((values) => save.mutate(values))}>
+        <form className="space-y-5" onSubmit={form.handleSubmit(save)}>
           <div className="space-y-2">
             <Label htmlFor="agent-environment-name">Name</Label>
             <Input id="agent-environment-name" {...form.register("name")} aria-invalid={!!form.formState.errors.name} />
@@ -153,16 +169,16 @@ export const EnvironmentDialog = ({
               placeholder="Project conventions and how to run checks…"
             />
           </div>
-          {save.error && (
+          {(create.error ?? update.error) && (
             <p role="alert" className="text-sm text-destructive">
-              {save.error.message}
+              {extractErrorMessage(create.error ?? update.error)}
             </p>
           )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" loading={save.isPending}>
+            <Button type="submit" loading={create.isPending || update.isPending}>
               {environment ? "Save changes" : "Create environment"}
             </Button>
           </DialogFooter>

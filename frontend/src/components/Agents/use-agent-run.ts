@@ -1,6 +1,13 @@
 import { HttpAgent, type Message } from "@ag-ui/client"
 import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
+import {
+  agentsEnvironmentsQueryKey,
+  agentsMessagesQueryKey,
+  agentsNotificationsQueryKey,
+  agentsRunsQueryKey,
+  agentsSessionsQueryKey,
+} from "@/client/@tanstack/react-query.gen"
 import { agentHeaders, agentsBase, type RunPublic } from "./api"
 import { durableAgentStream } from "./durable-stream"
 
@@ -67,18 +74,18 @@ export const useAgentRun = (sessionId: string, run: RunPublic | undefined, histo
       .then(async () => {
         if (!mounted) return
         await Promise.all([
-          query.invalidateQueries({ queryKey: ["agent-environments"] }),
-          query.invalidateQueries({ queryKey: ["agent-sessions"] }),
-          query.invalidateQueries({ queryKey: ["agent-messages", sessionId] }),
-          query.invalidateQueries({ queryKey: ["agent-runs", sessionId] }),
-          query.invalidateQueries({ queryKey: ["agent-notifications"] }),
+          query.invalidateQueries({ queryKey: agentsEnvironmentsQueryKey() }),
+          query.invalidateQueries({ queryKey: agentsSessionsQueryKey() }),
+          query.invalidateQueries({ queryKey: agentsMessagesQueryKey({ path: { session_id: sessionId } }) }),
+          query.invalidateQueries({ queryKey: agentsRunsQueryKey({ path: { session_id: sessionId } }) }),
+          query.invalidateQueries({ queryKey: agentsNotificationsQueryKey() }),
         ])
       })
       .catch((reason) => {
         if (mounted && !stopped) setError(reason instanceof Error ? reason.message : "Unable to connect to the agent")
         if (mounted) {
-          query.invalidateQueries({ queryKey: ["agent-sessions"] })
-          query.invalidateQueries({ queryKey: ["agent-runs", sessionId] })
+          query.invalidateQueries({ queryKey: agentsSessionsQueryKey() })
+          query.invalidateQueries({ queryKey: agentsRunsQueryKey({ path: { session_id: sessionId } }) })
         }
       })
       .finally(() => {

@@ -2,12 +2,22 @@ import type { Message } from "@ag-ui/client"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowUp, Loader2, Square, SquareTerminal, User } from "lucide-react"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import {
+  agentsCancelRunMutation,
+  agentsMessagesOptions,
+  agentsMessagesQueryKey,
+  agentsRunsOptions,
+  agentsRunsQueryKey,
+  agentsSessionsQueryKey,
+  agentsSubmitMutation,
+} from "@/client/@tanstack/react-query.gen"
 import { Button, Input, Label, MarkdownText, Textarea } from "@/components/design-system"
-import { agentApi, type RunPublic, type SessionPublic } from "./api"
-import { useAgentRun } from "./use-agent-run"
+import { extractErrorMessage } from "@/utils"
+import type { RunPublic, SessionPublic } from "./api"
+import { type CommandLog, useAgentRun } from "./use-agent-run"
 
 const promptSchema = z.object({ prompt: z.string().trim().min(1).max(100000) })
 export const AgentComposer = ({
@@ -24,27 +34,32 @@ export const AgentComposer = ({
   onStop?: () => void
 }) => {
   const form = useForm<{ prompt: string }>({ resolver: zodResolver(promptSchema), defaultValues: { prompt: "" } })
-  const send = useMutation({
-    mutationFn: async (values: { prompt: string }) => {
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState("")
+  const send = async (values: { prompt: string }) => {
+    setSending(true)
+    setError("")
+    try {
       await onSend(values.prompt)
       form.reset()
-    },
-  })
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to send message")
+    } finally {
+      setSending(false)
+    }
+  }
   return (
-    <form
-      className="rounded-xl border border-border bg-secondary p-3 shadow-sm"
-      onSubmit={form.handleSubmit((values) => send.mutate(values))}
-    >
+    <form className="rounded-xl border border-border bg-secondary p-3 shadow-sm" onSubmit={form.handleSubmit(send)}>
       <Label htmlFor="agent-message">Message agent</Label>
       <Textarea
         id="agent-message"
         {...form.register("prompt")}
         placeholder="Describe a task…"
-        disabled={pending || send.isPending}
+        disabled={pending || sending}
         onKeyDown={(event) => {
           if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
             event.preventDefault()
-            form.handleSubmit((values) => send.mutate(values))()
+            form.handleSubmit(send)()
           }
         }}
       />
@@ -68,30 +83,31 @@ export const AgentComposer = ({
           <Button
             type="submit"
             size="icon"
-            disabled={!form.watch("prompt").trim() || pending || send.isPending || !model}
+            disabled={!form.watch("prompt").trim() || pending || sending || !model}
             aria-label="Send message"
           >
             <ArrowUp className="size-4" />
           </Button>
         )}
       </div>
-      {(send.error || form.formState.errors.prompt) && (
+      {(error || form.formState.errors.prompt) && (
         <p role="alert" className="mt-3 text-sm text-destructive">
-          {send.error?.message || form.formState.errors.prompt?.message}
+          {error || form.formState.errors.prompt?.message}
         </p>
       )}
     </form>
   )
 }
 
-const MessageView = ({ message }: { message: Message }) => {
+const messageText = (message: Message) => {
   const content = "content" in message ? message.content : undefined
-  const text =
-    typeof content === "string"
-      ? content
-      : Array.isArray(content)
-        ? content.map((part) => ("text" in part ? part.text : "")).join("\n")
-        : ""
+  if (typeof content === "string") return content
+  if (!Array.isArray(content)) return ""
+  return content.map((part) => ("text" in part ? part.text : "")).join("\n")
+}
+
+const MessageView = ({ message }: { message: Message }) => {
+  const text = messageText(message)
   if (message.role === "tool")
     return (
       <details className="rounded-lg border border-border p-3 text-sm">
@@ -121,6 +137,92 @@ const MessageView = ({ message }: { message: Message }) => {
   )
 }
 
+const SetupHeader = () => (
+  <div className="mb-8 text-center">
+    <SquareTerminal className="mx-auto mb-3 size-8 text-muted-foreground" />
+    <h2 className="text-xl font-semibold">Environment setup</h2>
+    <p className="mt-2 text-sm text-muted-foreground">
+      Get the repositories and dependencies ready for cloud coding chats.
+    </p>
+  </div>
+)
+
+const MessageList = ({ messages, loading }: { messages: Message[]; loading: boolean }) => (
+  <>
+    {loading && <p className="text-sm text-muted-foreground">Loading conversation…</p>}
+    {messages.map((message) => (
+      <MessageView key={message.id} message={message} />
+    ))}
+  </>
+)
+
+const RunStatus = ({ active, busy }: { active?: RunPublic; busy: boolean }) => {
+  if (!active && !busy) return null
+  return (
+    <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+      <Loader2 className="size-4 animate-spin" />
+      {active?.status === "pending" ? "Preparing cloud workspace…" : "Agent is working…"}
+    </p>
+  )
+}
+
+const CommandLogs = ({ logs }: { logs: CommandLog[] }) => (
+  <>
+    {logs.map((log) => (
+      <details key={log.commandId} className="rounded-lg border border-border p-3">
+        <summary className="cursor-pointer text-sm">
+          <SquareTerminal className="mr-2 inline size-4" />
+          Command output
+        </summary>
+        <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap font-mono text-xs">
+          {Object.values(log.lines).map((line, index) => (
+            <span
+              key={`${line.stream}:${line.sequence}:${index}`}
+              className={line.stream === "stderr" ? "text-warning" : undefined}
+            >
+              {line.chunk}
+            </span>
+          ))}
+        </pre>
+      </details>
+    ))}
+  </>
+)
+
+const RunFailures = ({ turns }: { turns?: RunPublic[] }) => (
+  <>
+    {turns
+      ?.filter((turn) => turn.status === "failed" || turn.status === "cancelled")
+      .map((turn) => (
+        <p key={turn.id} className="text-sm text-muted-foreground">
+          {turn.status === "cancelled" ? "Run stopped" : `Run failed: ${turn.error ?? "Unknown error"}`}
+        </p>
+      ))}
+  </>
+)
+
+const ConversationError = ({
+  message,
+  active,
+  onReconnect,
+}: {
+  message: string
+  active: boolean
+  onReconnect: () => void
+}) => {
+  if (!message) return null
+  return (
+    <div role="alert" className="space-y-2 text-sm text-destructive">
+      <p>{message}</p>
+      {active && (
+        <Button variant="outline" onClick={onReconnect}>
+          Reconnect
+        </Button>
+      )}
+    </div>
+  )
+}
+
 export const AgentConversation = ({
   session,
   model,
@@ -132,91 +234,52 @@ export const AgentConversation = ({
 }) => {
   const query = useQueryClient()
   const history = useQuery({
-    queryKey: ["agent-messages", session.id],
-    queryFn: () => agentApi<Message[]>(`/sessions/${session.id}/messages`),
+    ...agentsMessagesOptions({ path: { session_id: session.id } }),
     staleTime: Infinity,
   })
   const turns = useQuery({
-    queryKey: ["agent-runs", session.id],
-    queryFn: () => agentApi<RunPublic[]>(`/sessions/${session.id}/runs`),
+    ...agentsRunsOptions({ path: { session_id: session.id } }),
     refetchInterval: 5000,
   })
   const lastFinished = turns.data
     ?.filter((turn) => turn.status !== "pending" && turn.status !== "running")
     .slice(-1)[0]?.id
   useEffect(() => {
-    if (lastFinished) query.invalidateQueries({ queryKey: ["agent-messages", session.id] })
+    if (lastFinished)
+      query.invalidateQueries({ queryKey: agentsMessagesQueryKey({ path: { session_id: session.id } }) })
   }, [lastFinished, query, session.id])
   const active = turns.data?.find((turn) => turn.status === "pending" || turn.status === "running")
-  const live = useAgentRun(session.id, active, history.data ?? [], !history.isPending && !history.isFetching)
+  const historyMessages = (history.data ?? []) as unknown as Message[]
+  const live = useAgentRun(session.id, active, historyMessages, !history.isPending && !history.isFetching)
+  const submitRun = useMutation({ ...agentsSubmitMutation() })
   const submit = async (prompt: string) => {
-    await agentApi(`/sessions/${session.id}/runs`, { request_id: crypto.randomUUID(), prompt, model })
-    await query.invalidateQueries({ queryKey: ["agent-runs", session.id] })
-    await query.invalidateQueries({ queryKey: ["agent-sessions"] })
+    await submitRun.mutateAsync({
+      path: { session_id: session.id },
+      body: { request_id: crypto.randomUUID(), prompt, model },
+    })
+    await query.invalidateQueries({ queryKey: agentsRunsQueryKey({ path: { session_id: session.id } }) })
+    await query.invalidateQueries({ queryKey: agentsSessionsQueryKey() })
   }
   const cancel = useMutation({
-    mutationFn: () => agentApi(`/runs/${active?.id}/cancel`, {}),
-    onSuccess: () => query.invalidateQueries({ queryKey: ["agent-runs", session.id] }),
+    ...agentsCancelRunMutation(),
+    onSuccess: () => query.invalidateQueries({ queryKey: agentsRunsQueryKey({ path: { session_id: session.id } }) }),
   })
-  const messages = live.messages.length > 0 ? live.messages : (history.data ?? [])
+  const messages = live.messages.length > 0 ? live.messages : historyMessages
+  const error =
+    (history.error ? extractErrorMessage(history.error) : "") ||
+    (turns.error ? extractErrorMessage(turns.error) : "") ||
+    live.error ||
+    (cancel.error ? extractErrorMessage(cancel.error) : "")
   return (
     <>
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl space-y-7 px-4 py-8">
-          {session.kind === "setup" && (
-            <div className="mb-8 text-center">
-              <SquareTerminal className="mx-auto mb-3 size-8 text-muted-foreground" />
-              <h2 className="text-xl font-semibold">Environment setup</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Get the repositories and dependencies ready for cloud coding chats.
-              </p>
-            </div>
-          )}
-          {history.isPending && <p className="text-sm text-muted-foreground">Loading conversation…</p>}
-          {messages.map((message) => (
-            <MessageView key={message.id} message={message} />
-          ))}
-          {(active || live.busy) && (
-            <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              {active?.status === "pending" ? "Preparing cloud workspace…" : "Agent is working…"}
-            </p>
-          )}
-          {Object.values(live.logs).map((log) => (
-            <details key={log.commandId} className="rounded-lg border border-border p-3">
-              <summary className="cursor-pointer text-sm">
-                <SquareTerminal className="mr-2 inline size-4" />
-                Command output
-              </summary>
-              <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap font-mono text-xs">
-                {Object.values(log.lines).map((line, index) => (
-                  <span
-                    key={`${line.stream}:${line.sequence}:${index}`}
-                    className={line.stream === "stderr" ? "text-warning" : undefined}
-                  >
-                    {line.chunk}
-                  </span>
-                ))}
-              </pre>
-            </details>
-          ))}
-          {turns.data
-            ?.filter((turn) => turn.status === "failed" || turn.status === "cancelled")
-            .map((turn) => (
-              <p key={turn.id} className="text-sm text-muted-foreground">
-                {turn.status === "cancelled" ? "Run stopped" : `Run failed: ${turn.error ?? "Unknown error"}`}
-              </p>
-            ))}
-          {(history.error || turns.error || live.error || cancel.error) && (
-            <div role="alert" className="space-y-2 text-sm text-destructive">
-              <p>{history.error?.message || turns.error?.message || live.error || cancel.error?.message}</p>
-              {active && (
-                <Button variant="outline" onClick={live.reconnect}>
-                  Reconnect
-                </Button>
-              )}
-            </div>
-          )}
+          {session.kind === "setup" && <SetupHeader />}
+          <MessageList messages={messages} loading={history.isPending} />
+          <RunStatus active={active} busy={live.busy} />
+          <CommandLogs logs={live.logs} />
+          <RunFailures turns={turns.data} />
+          <ConversationError message={error} active={!!active} onReconnect={live.reconnect} />
         </div>
       </div>
       <div className="mx-auto w-full max-w-3xl px-4 pb-6 pt-2">
@@ -225,7 +288,7 @@ export const AgentConversation = ({
           onModelChange={onModelChange}
           onSend={submit}
           pending={!!active || live.busy}
-          onStop={() => cancel.mutate()}
+          onStop={() => active && cancel.mutate({ path: { run_id: active.id } })}
         />
         <p className="mt-2 text-center text-xs text-muted-foreground">
           Cloud runs continue when you close this page. Ctrl/⌘ + Enter to send.
