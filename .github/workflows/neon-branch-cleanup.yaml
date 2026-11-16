@@ -9,13 +9,28 @@ permissions:
 
 jobs:
   delete-branch:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !startsWith(github.head_ref, 'renovate/')
     runs-on: ubuntu-latest
     environment: neon
     steps:
+      - name: Validate preview branch name
+        id: validate
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [[ "$HEAD_REF" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "safe=true" >> "$GITHUB_OUTPUT"
+            echo "branch=preview/$HEAD_REF" >> "$GITHUB_OUTPUT"
+          else
+            echo "safe=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Delete Neon preview branch
+        if: steps.validate.outputs.safe == 'true'
+        continue-on-error: true
         uses: neondatabase/delete-branch-action@4468d825d5a88ef4012f1705a82f02ec3072f776 # v3.2.1
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
-          branch: preview/${{ github.head_ref }}
+          branch: ${{ steps.validate.outputs.branch }}
           api_key: ${{ secrets.NEON_API_KEY }}
