@@ -31,7 +31,7 @@ dependencies = [
     "python-multipart==0.0.33",
     "redis[hiredis]==8.1.0",
     "sentry-sdk==2.73.0",
-    "sqlalchemy[asyncio]==2.1.6",
+    "sqlalchemy[asyncio]==2.1.8",
     "tenacity==9.2.1",
     "upstash-redis==1.8.0",
     "uvicorn==0.54.0",
