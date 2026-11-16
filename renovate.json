@@ -16,6 +16,12 @@
         "oven/bun"
       ],
       "groupName": "Bun runtime"
+    },
+    {
+      "matchPackageNames": [
+        "docker/dockerfile"
+      ],
+      "pinDigests": false
     }
   ]
 }
