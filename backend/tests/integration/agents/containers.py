@@ -7,14 +7,14 @@ from testcontainers.community.k3s import K3SContainer
 from testcontainers.community.ollama import OllamaContainer
 
 # renovate: datasource=docker depName=rancher/k3s
-K3S_IMAGE = "rancher/k3s:v1.35.0-k3s1"
+K3S_IMAGE = "rancher/k3s:v1.37.2-k3s1"
 # renovate: datasource=docker depName=ollama/ollama
-OLLAMA_IMAGE = "ollama/ollama:0.18.0"
+OLLAMA_IMAGE = "ollama/ollama:0.40.16"
 # renovate: datasource=docker depName=restatedev/restate
-RESTATE_IMAGE = "restatedev/restate:1.7.2"
+RESTATE_IMAGE = "restatedev/restate:1.8.1"
 # renovate: datasource=github-releases depName=kubernetes-sigs/agent-sandbox
-AGENT_SANDBOX_VERSION = "v1.0.2"
-AGENT_SANDBOX_REVISION = "993fd4aa9f576b8374b8810ef45e7305ed2dd95d"
+AGENT_SANDBOX_VERSION = "v1.0.11"
+AGENT_SANDBOX_REVISION = "890de53a4dd18e35313173e6dc34d9559b1a9733"
 OLLAMA_MODEL = "qwen3.5:0.8b"
 
 

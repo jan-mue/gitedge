@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 import restate
-from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.agents.coding import run_coding_agent
@@ -18,7 +18,11 @@ async def test_ollama_durable_turn(agent_ollama: OllamaContainer, tmp_path: Path
     endpoint = agent_ollama.get_endpoint()
     sandbox = FilesystemTestSandbox(tmp_path)
     streams = MemoryAgentStreams()
-    model = OpenAIChatModel(OLLAMA_MODEL, provider=OpenAIProvider(base_url=f"{endpoint}/v1", api_key="ollama"))
+    model = OpenAIChatModel(
+        OLLAMA_MODEL,
+        provider=OpenAIProvider(base_url=f"{endpoint}/v1", api_key="ollama"),
+        settings=OpenAIChatModelSettings(openai_reasoning_effort="none"),
+    )
     service = restate.Service("OllamaCodingTest")
 
     @service.handler()

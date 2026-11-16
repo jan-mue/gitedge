@@ -25,7 +25,7 @@ ROUTER_FILES = ("serviceaccount.yaml", "rbac.yaml", "deployment.yaml", "service.
 
 def command(cluster: AgentK3SContainer, arguments: list[str]) -> str:
     """Execute kubectl in the cluster container and surface the actual failure."""
-    result = cluster.exec(["k3s", "kubectl", *arguments])
+    result = cluster.exec(["kubectl", *arguments])
     if result.exit_code:
         raise RuntimeError(result.output.decode())
     return result.output.decode()
@@ -56,7 +56,18 @@ def load_image(cluster: AgentK3SContainer, image: Image) -> None:
             archive.add(source, arcname="gitedge-image.tar")
         with archive_path.open("rb") as archive:
             cluster.get_wrapped_container().put_archive("/tmp", archive)
-        result = cluster.exec(["k3s", "ctr", "images", "import", "/tmp/gitedge-image.tar"])
+        result = cluster.exec(
+            [
+                "ctr",
+                "--address",
+                "/run/k3s/containerd/containerd.sock",
+                "--namespace",
+                "k8s.io",
+                "images",
+                "import",
+                "/tmp/gitedge-image.tar",
+            ]
+        )
         if result.exit_code:
             raise RuntimeError(result.output.decode())
         cluster.exec(["rm", "/tmp/gitedge-image.tar"])

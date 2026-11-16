@@ -33,6 +33,18 @@ services:
     volumes:
       - minio_data:/data
 
+  restate:
+    image: restatedev/restate:1.8.1
+    restart: always
+    ports:
+      - "8080:8080"
+      - "9070:9070"
+    environment:
+      RESTATE_BOOTSTRAP_NUM_PARTITIONS: "1"
+      RESTATE_DEFAULT_NUM_PARTITIONS: "1"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   postgres_data:
   minio_data:
