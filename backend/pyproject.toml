@@ -43,7 +43,7 @@ dev = [
     "coverage==7.17.2",
     "deptry==0.25.1",
     "httpx2==2.16.0",
-    "inline-snapshot[black]==0.36.1",
+    "inline-snapshot[black]==0.36.2",
     "pytest==9.2.0",
     "pytest-asyncio==1.4.1.post1",
     "pytest-mock==3.17.0",
