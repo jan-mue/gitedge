@@ -22,7 +22,6 @@ if TYPE_CHECKING:
 class FakeActionsStore(ActionsStore):
     def __init__(self) -> None:
         self.runs: dict[UUID, WorkflowRun] = {}
-        self.locked_runs: set[UUID] = set()
 
     @override
     async def add_run(self, run: WorkflowRun) -> WorkflowRun:
@@ -47,22 +46,14 @@ class FakeActionsStore(ActionsStore):
         return [
             (run.repo_id, run.id)
             for run in self.runs.values()
-            if (run.status in {"running", "queued"} or any(job.get("sandbox") for job in run.jobs))
-            and (repo_id is None or run.repo_id == repo_id)
+            if run.status in {"running", "queued"} and (repo_id is None or run.repo_id == repo_id)
         ]
 
     @override
     @asynccontextmanager
     async def locked(self, repo_id: UUID, run_id: UUID) -> AsyncGenerator[WorkflowRun | None]:
         run = self.runs.get(run_id)
-        if run is None or run.repo_id != repo_id or run_id in self.locked_runs:
-            yield None
-            return
-        self.locked_runs.add(run_id)
-        try:
-            yield run
-        finally:
-            self.locked_runs.remove(run_id)
+        yield run if run and run.repo_id == repo_id else None
 
 
 def compiled_fixture(name: str = "basic") -> CompiledWorkflow:

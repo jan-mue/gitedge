@@ -6,23 +6,6 @@ from typing import Any
 
 from app.schemas.actions import ActionJob, ActionStatus
 
-MAX_LOG_BYTES = 32 * 1024
-TRUNCATION_MARKER = "\n... log truncated ...\n"
-
-
-def bounded_log(value: str, limit: int = MAX_LOG_BYTES) -> str:
-    """Keep the beginning and end of a UTF-8 log within its persistence budget."""
-    encoded = value.encode()
-    if len(encoded) <= limit:
-        return value
-    marker = TRUNCATION_MARKER.encode()
-    if limit <= len(marker):
-        return marker[:limit].decode(errors="ignore")
-    remaining = limit - len(marker)
-    head = remaining // 2
-    tail = remaining - head
-    return encoded[:head].decode(errors="ignore") + TRUNCATION_MARKER + encoded[-tail:].decode(errors="ignore")
-
 
 def redact(value: str, secrets: dict[str, str]) -> str:
     """Keep configured secrets out of persisted errors and logs, including SDK failures."""
@@ -38,7 +21,6 @@ def update_logs(job: ActionJob, data: bytes, secrets: dict[str, str]) -> None:
     for step in job.steps:
         step.log = ""
     by_id = {step.id: step for step in job.steps}
-    step_lines: dict[str, list[str]] = {step.id: [] for step in job.steps}
     for raw in data.decode("utf-8", errors="replace").splitlines():
         try:
             entry: dict[str, Any] = json.loads(raw)
@@ -53,17 +35,13 @@ def update_logs(job: ActionJob, data: bytes, secrets: dict[str, str]) -> None:
         step_id = str(step_ids[0]) if isinstance(step_ids, list) and step_ids else str(step_ids)
         step = by_id.get(step_id)
         if step is not None:
-            step_lines[step.id].append(message)
+            step.log += redact(message, secrets) + "\n"
             status = entry.get("stepResult")
             if status in {"success", "failure", "skipped", "cancelled"}:
                 step.status = ActionStatus(status)
             elif step.status == ActionStatus.QUEUED:
                 step.status = ActionStatus.RUNNING
-    job.log = bounded_log(redact("\n".join(lines), secrets))
-    step_budget = MAX_LOG_BYTES // max(1, len(job.steps))
-    for step in job.steps:
-        value = "".join(line + "\n" for line in step_lines[step.id])
-        step.log = bounded_log(redact(value, secrets), step_budget)
+    job.log = redact("\n".join(lines), secrets)
 
 
 def finish_job(job: ActionJob, files: dict[str, bytes], secrets: dict[str, str]) -> None:

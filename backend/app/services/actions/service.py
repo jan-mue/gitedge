@@ -230,16 +230,12 @@ class ActionsService:
             error=run.error,
         )
 
-    @staticmethod
-    def _needs_advance(run: WorkflowRun) -> bool:
-        return run.status not in TERMINAL or any(job.get("sandbox") for job in run.jobs)
-
     async def list_runs(self, owner: str, name: str, user: User | None) -> list[ActionRun]:
         """Authorize private history, advance active jobs and return recent runs."""
         repository = await self._repository(owner, name, user)
         runs = await self.store.list_runs(repository.id)
         for run in runs:
-            if self._needs_advance(run):
+            if run.status not in TERMINAL:
                 await self.scheduler.advance(repository.id, run.id)
         return [self.public(run) for run in await self.store.list_runs(repository.id)]
 
@@ -258,7 +254,7 @@ class ActionsService:
             key = (run.workflow, run.event_name)
             if key in selected:
                 continue
-            if self._needs_advance(run):
+            if run.status not in TERMINAL:
                 await self.scheduler.advance(repository.id, run.id)
             selected[key] = run
         return PullRequestChecks(head_sha=sha, runs=[self.public(run) for run in selected.values()])
@@ -359,8 +355,6 @@ class ActionsService:
         for repo_id, run_id in await self.store.active_runs(repository.id):
             if repo_id == repository.id:
                 await self.scheduler.cancel(repo_id, run_id)
-        if await self.store.active_runs(repository.id):
-            raise ServiceUnavailableError("Workflow sandboxes are still stopping; retry repository deletion")
         return repository.id
 
     async def delete_repository_blobs(self, repo_id: uuid.UUID) -> None:

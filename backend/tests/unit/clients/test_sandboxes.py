@@ -196,7 +196,7 @@ async def test_docker_uploads_large_descriptor_before_starting_a_created_contain
         with tarfile.open(fileobj=io.BytesIO(data)) as archive:
             assert archive.getnames() == ["job.json"]
             member = archive.getmember("job.json")
-            assert member.mode == 0o600
+            assert member.mode == 0o644
             handle = archive.extractfile(member)
             assert handle is not None
             assert handle.read() == descriptor

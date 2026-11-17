@@ -110,7 +110,7 @@ class DockerSandboxClient(AbstractSandboxClient):
                     with tarfile.open(fileobj=archive_data, mode="w") as archive:
                         member = tarfile.TarInfo("job.json")
                         member.size = len(descriptor)
-                        member.mode = 0o600
+                        member.mode = 0o644
                         archive.addfile(member, io.BytesIO(descriptor))
                     await container.put_archive("/gitedge", archive_data.getvalue())
                 await container.start()
