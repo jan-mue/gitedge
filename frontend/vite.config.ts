@@ -54,6 +54,7 @@ export default defineConfig({
   },
   define: {
     "import.meta.env.VITE_API_URL": JSON.stringify(resolveApiUrl()),
+    "import.meta.env.VITE_VERCEL_ENV": JSON.stringify(process.env.VERCEL_ENV ?? "development"),
   },
   plugins: [
     tanstackRouter({

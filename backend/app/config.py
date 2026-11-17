@@ -115,6 +115,7 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str
     SENTRY_DSN: HttpUrl | None = None
+    SENTRY_SAMPLE_RATE: float = 1.0
     DATABASE_URL: PostgresDsn
 
     @field_validator("DATABASE_URL", mode="before")

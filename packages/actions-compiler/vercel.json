@@ -3,6 +3,11 @@
   "bunVersion": "1.4.x",
   "buildCommand": "",
   "installCommand": "bun install --frozen-lockfile",
+  "git": {
+    "deploymentEnabled": {
+      "renovate/*": false
+    }
+  },
   "functions": {
     "api/compile.ts": {
       "maxDuration": 10
