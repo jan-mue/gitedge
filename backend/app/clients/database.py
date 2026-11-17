@@ -105,7 +105,8 @@ class SQLStore[T: Base](CrudStore[T]):
         Args:
             primary_key: Primary key of the entity.
         """
-        return await self.db.scalar(select(self.entity_class).where(self.entity_class.id == primary_key))
+        statement = select(self.entity_class).where(self.entity_class.id == primary_key)
+        return await self.db.scalar(statement)
 
     @override
     async def get(self, primary_key: uuid.UUID) -> T:
