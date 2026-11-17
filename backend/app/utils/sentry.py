@@ -13,7 +13,7 @@ from app.config import settings
 
 def init_sentry() -> None:
     """Initialize Sentry when a DSN is configured."""
-    if not settings.SENTRY_DSN:
+    if not settings.SENTRY_DSN or settings.VERCEL_ENV == "development":
         return
 
     sentry_sdk.init(

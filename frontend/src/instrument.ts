@@ -6,6 +6,7 @@ export function initSentry(router: AnyRouter): void {
   if (!dsn) return
 
   const apiUrl = import.meta.env.VITE_API_URL
+  const tracesSampleRate = Number(import.meta.env.VITE_SENTRY_SAMPLE_RATE ?? "1.0")
 
   Sentry.init({
     dsn,
@@ -15,7 +16,7 @@ export function initSentry(router: AnyRouter): void {
       Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
       Sentry.replayIntegration(),
     ],
-    tracesSampleRate: 1.0,
+    tracesSampleRate: Number.isFinite(tracesSampleRate) ? tracesSampleRate : 1.0,
     tracePropagationTargets: apiUrl ? [/^\//, apiUrl] : [/^\//],
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
