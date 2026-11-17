@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Star } from "lucide-react"
 import { useState } from "react"
+import type { StarState } from "@/client"
 import {
   repositoriesListRepositoriesQueryKey,
   starsGetStarStateOptions,
@@ -25,22 +26,20 @@ const StarButton = ({ owner, repo }: StarButtonProps) => {
     ...starsGetStarStateOptions({ path: { owner, repo } }),
   })
 
+  const handleSuccess = (next: StarState) => {
+    queryClient.setQueryData(starsGetStarStateQueryKey({ path: { owner, repo } }), next)
+    queryClient.invalidateQueries({ queryKey: starsListStargazersQueryKey({ path: { owner, repo } }) })
+    queryClient.invalidateQueries({ queryKey: repositoriesListRepositoriesQueryKey() })
+  }
+
   const mutation = useMutation({
     ...(state?.is_starred ? starsUnstarRepositoryMutation() : starsStarRepositoryMutation()),
-    onSuccess: (next) => {
-      queryClient.setQueryData(starsGetStarStateQueryKey({ path: { owner, repo } }), next)
-      queryClient.invalidateQueries({ queryKey: starsListStargazersQueryKey({ path: { owner, repo } }) })
-      queryClient.invalidateQueries({ queryKey: repositoriesListRepositoriesQueryKey() })
-    },
+    onSuccess: handleSuccess,
   })
 
   const star = useMutation({
     ...starsStarRepositoryMutation(),
-    onSuccess: (next) => {
-      queryClient.setQueryData(starsGetStarStateQueryKey({ path: { owner, repo } }), next)
-      queryClient.invalidateQueries({ queryKey: starsListStargazersQueryKey({ path: { owner, repo } }) })
-      queryClient.invalidateQueries({ queryKey: repositoriesListRepositoriesQueryKey() })
-    },
+    onSuccess: handleSuccess,
   })
   const isStarred = state?.is_starred ?? false
   const count = state?.stars_count ?? 0
