@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import TYPE_CHECKING, override
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.clients.database import SQLStore
@@ -97,7 +97,12 @@ class SQLActionsStore(ActionsStore, SQLStore[WorkflowRun]):
     @override
     async def active_runs(self, repo_id: UUID | None = None) -> list[tuple[UUID, UUID]]:
         """List active runs for repository cancellation."""
-        query = select(WorkflowRun.repo_id, WorkflowRun.id).where(WorkflowRun.status.in_(["queued", "running"]))
+        query = select(WorkflowRun.repo_id, WorkflowRun.id).where(
+            or_(
+                WorkflowRun.status.in_(["queued", "running"]),
+                WorkflowRun.jobs.path_exists("$[*] ? (@.sandbox != null)"),
+            )
+        )
         query = query.where(WorkflowRun.repo_id == repo_id) if repo_id is not None else query.limit(50)
         rows = await self.db.execute(query.order_by(WorkflowRun.updated_at))
         return [(row.repo_id, row.id) for row in rows]

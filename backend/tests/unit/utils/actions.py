@@ -47,7 +47,8 @@ class FakeActionsStore(ActionsStore):
         return [
             (run.repo_id, run.id)
             for run in self.runs.values()
-            if run.status in {"running", "queued"} and (repo_id is None or run.repo_id == repo_id)
+            if (run.status in {"running", "queued"} or any(job.get("sandbox") for job in run.jobs))
+            and (repo_id is None or run.repo_id == repo_id)
         ]
 
     @override

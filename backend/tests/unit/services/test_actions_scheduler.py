@@ -216,3 +216,18 @@ async def test_run_with_no_remaining_jobs_finishes_without_claiming_provider_wor
     assert run.status == "success"
     assert run.completed_at is not None
     launch.assert_not_awaited()
+
+
+async def test_cancelled_run_with_failed_cleanup_remains_discoverable_for_retry(
+    mocker: MockerFixture, scheduled_run: tuple[RunScheduler, FakeActionsStore, WorkflowRun]
+) -> None:
+    scheduler, store, run = scheduled_run
+    await scheduler.advance(run.repo_id, run.id)
+    cleanup = mocker.patch.object(scheduler.sandbox, "delete", side_effect=SandboxError("Provider unavailable"))
+    assert await scheduler.cancel(run.repo_id, run.id)
+    assert run.status == "cancelled"
+    assert await store.active_runs(run.repo_id) == [(run.repo_id, run.id)]
+    cleanup.side_effect = None
+    assert await scheduler.advance(run.repo_id, run.id)
+    assert await store.active_runs(run.repo_id) == []
+    assert run.jobs[0]["sandbox"] is None
