@@ -3,7 +3,6 @@
 import logging
 from typing import TYPE_CHECKING
 
-import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -14,6 +13,7 @@ from app.api.routes import git
 from app.config import settings
 from app.exceptions import ApplicationError, CompilerUnavailableError, EmailDeliveryError, WorkflowError
 from app.lifespan import lifespan
+from app.utils.sentry import init_sentry
 from app.utils.setup_logging import setup_logging
 
 if TYPE_CHECKING:
@@ -31,8 +31,7 @@ def custom_generate_unique_id(route: APIRoute) -> str:
     return route.name
 
 
-if settings.SENTRY_DSN and settings.VERCEL_ENV != "development":
-    sentry_sdk.init(dsn=str(settings.SENTRY_DSN), enable_tracing=True)
+init_sentry()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

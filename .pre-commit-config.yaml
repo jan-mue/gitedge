@@ -29,13 +29,13 @@ repos:
       - id: hadolint-docker
         entry: ghcr.io/hadolint/hadolint:v2.15.1 hadolint
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 25bcf95026b96e2dd3c0aec3090c3d6ef6ca2e6c # frozen: v0.17.3
+    rev: c0f278f1254ccc8fb09676bcdb8d847e7db493e5 # frozen: v0.17.4
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
   - repo: https://github.com/astral-sh/ty-pre-commit
-    rev: 18b2b8bb1b9b90d2d21283756e89b07fc9c747bf # frozen: v0.0.95
+    rev: 3770e13b40bb462aff3ae635783fac7a7cc844bb # frozen: v0.0.100
     hooks:
       - id: ty
   - repo: https://github.com/codespell-project/codespell
@@ -59,7 +59,7 @@ repos:
     hooks:
       - id: actionlint
   - repo: https://github.com/tox-dev/pyproject-fmt
-    rev: 50e0f3aee9dc5747a5f173f79a7417403c18dda6 # frozen: v2.30.3
+    rev: 3c6e76e10abcae02303212289efed3413350769c # frozen: v2.30.6
     hooks:
       - id: pyproject-fmt
   - repo: https://github.com/DavidAnson/markdownlint-cli2
@@ -69,7 +69,7 @@ repos:
         args: [--fix]
         exclude: CHANGELOG\.md
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 46787482b9fb2003c56e0f7592e312ef381829d9 # frozen: 0.13.6
+    rev: d1df990f871e616da38bb602a2671d5e840b9989 # frozen: 0.13.7
     hooks:
       - id: uv-lock
   - repo: https://github.com/fpgmaas/deptry.git
@@ -86,7 +86,7 @@ repos:
     hooks:
       - id: shfmt
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: c92afdf2c6ca336aaa8f39e2bd8d48f62dbd8e1f # frozen: v1.31.1
+    rev: 06a39750ec31860bb44f2acf67182c40016cd1e7 # frozen: v1.32.0
     hooks:
       - id: zizmor
   - repo: https://github.com/jendrikseipp/vulture
@@ -105,7 +105,7 @@ repos:
         files: '\.(py|ts|tsx)$|^\.ast-grep/|^sgconfig\.yml$'
         pass_filenames: false
         additional_dependencies:
-          - ast-grep-cli==0.51.0
+          - ast-grep-cli==0.51.1
 
       - id: ast-grep-test
         name: ast-grep rule tests
@@ -114,7 +114,7 @@ repos:
         files: '^\.ast-grep/|^sgconfig\.yml$'
         pass_filenames: false
         additional_dependencies:
-          - ast-grep-cli==0.51.0
+          - ast-grep-cli==0.51.1
 
       - id: pyproject-pinned-deps
         name: Check pyproject dependencies are pinned
