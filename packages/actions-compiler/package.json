@@ -12,7 +12,7 @@
   "dependencies": {
     "@actions/expressions": "0.3.61",
     "@actions/workflow-parser": "0.3.61",
-    "minimatch": "11.0.5",
+    "minimatch": "11.0.6",
     "zod": "4.6.7",
     "@vercel/oidc": "4.0.8",
     "@gitedge/actions-runner": "workspace:*"
