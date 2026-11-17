@@ -14,7 +14,7 @@ import pytest
 from aiodocker.exceptions import DockerError
 from vercel.sandbox import SandboxApiError, SandboxPathNotFoundError, SandboxStatus
 
-from app.clients.sandboxes import DockerSandboxClient, SandboxError, VercelSandboxClient
+from app.clients.sandboxes import MAX_DOCKER_ENV_BYTES, DockerSandboxClient, SandboxError, VercelSandboxClient
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -180,3 +180,37 @@ async def test_docker_missing_container_cleanup_is_idempotent(mocker: MockerFixt
     mocker.patch("app.clients.sandboxes.Docker", return_value=sdk)
     await DockerSandboxClient("prepared").delete("absent")
     sdk.__aexit__.assert_awaited_once()
+
+
+@pytest.mark.parametrize("existing", [False, True])
+async def test_docker_uploads_large_descriptor_before_starting_a_created_container(
+    mocker: MockerFixture, existing: bool
+) -> None:
+    sdk = mocker.MagicMock()
+    sdk.__aenter__.return_value = sdk
+    container = mocker.Mock()
+    descriptor = json.dumps({"event": {"changed_paths": ["file"] * MAX_DOCKER_ENV_BYTES}}).encode()
+
+    async def upload(path: str, data: bytes) -> None:
+        assert path == "/gitedge"
+        with tarfile.open(fileobj=io.BytesIO(data)) as archive:
+            assert archive.getnames() == ["job.json"]
+            member = archive.getmember("job.json")
+            assert member.mode == 0o600
+            handle = archive.extractfile(member)
+            assert handle is not None
+            assert handle.read() == descriptor
+        container.start.assert_not_awaited()
+
+    container.put_archive = mocker.AsyncMock(side_effect=upload)
+    container.start = mocker.AsyncMock()
+    container.show = mocker.AsyncMock(return_value={"State": {"Status": "created"}})
+    sdk.containers.create = mocker.AsyncMock(return_value=container)
+    sdk.containers.get = mocker.AsyncMock(return_value=container)
+    if existing:
+        sdk.containers.create.side_effect = DockerError(409, "Already exists")
+    mocker.patch("app.clients.sandboxes.Docker", return_value=sdk)
+    await DockerSandboxClient("prepared").start("job", {"input.json": descriptor}, 60)
+    assert sdk.containers.create.call_args.kwargs["config"]["Env"] == []
+    container.put_archive.assert_awaited_once()
+    container.start.assert_awaited_once()

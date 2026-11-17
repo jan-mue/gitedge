@@ -14,7 +14,13 @@ from app.config import settings
 from app.entities.actions import WorkflowRun
 from app.entities.issues import IssueState
 from app.entities.principals import PrincipalType
-from app.exceptions import NotFoundError, PermissionDeniedError, ServiceUnavailableError, WorkflowError
+from app.exceptions import (
+    InvalidInputError,
+    NotFoundError,
+    PermissionDeniedError,
+    ServiceUnavailableError,
+    WorkflowError,
+)
 from app.schemas.actions import ActionJob, ActionRun, ActionStatus, PullRequestChecks, WorkflowInfo
 from app.schemas.workflow_events import (
     DispatchEvent,
@@ -153,11 +159,12 @@ class ActionsService:
         )
         run_ids = []
         for path in workflow_paths(index.paths, workflow):
-            raw = (await self.repositories.get_raw(owner, name, sha, path, follow_symlinks=True)).decode()
+            raw = ""
             compiled = None
             error = None
             jobs: list[ActionJob] = []
             try:
+                raw = (await self.repositories.get_raw(owner, name, sha, path, follow_symlinks=True)).decode()
                 if not isinstance(event, PushEvent | PullRequestEvent | DispatchEvent):
                     raise WorkflowError(f"Unsupported workflow event: {event.event_name}")
                 context = CompileEvent(
@@ -175,7 +182,7 @@ class ActionsService:
                 if not compiled.matched:
                     continue
                 jobs = instantiate_jobs(compiled, self.max_timeout)
-            except WorkflowError as exc:
+            except (WorkflowError, NotFoundError, InvalidInputError, UnicodeDecodeError, OSError) as exc:
                 logger.warning("Invalid workflow %s in %s/%s: %s", path, owner, name, exc)
                 error = str(exc)
             run = WorkflowRun(

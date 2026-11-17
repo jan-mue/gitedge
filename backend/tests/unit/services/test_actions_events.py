@@ -4,8 +4,12 @@ import asyncio
 import uuid
 from typing import TYPE_CHECKING
 
+import pytest
+
 from app.clients.sandboxes import AbstractSandboxClient, SandboxError
 from app.entities.actions import WorkflowRun
+from app.exceptions import InvalidInputError, NotFoundError, WorkflowError
+from app.schemas.workflow_events import PushEvent
 from app.services.actions.service import ActionsService
 from app.services.actions.workflows import instantiate_jobs
 from app.services.authorization import AuthorizationService
@@ -193,3 +197,54 @@ async def test_push_to_an_open_pr_triggers_synchronize(mocker: MockerFixture, fa
     await service.on_push("owner", "repo", {"refs/heads/feature": "a" * 40}, {"refs/heads/feature": "b" * 40}, user)
     trigger.assert_awaited_once()
     on_pull.assert_awaited_once_with("owner", "repo", 7, "feature", "main", user, action="synchronize")
+
+
+@pytest.mark.parametrize(
+    "unreadable",
+    [
+        b"\xff",
+        NotFoundError("Dangling workflow symlink"),
+        WorkflowError("Workflow symlink must stay inside its repository"),
+        InvalidInputError("Workflow target is not a file"),
+        OSError("Cannot read workflow"),
+    ],
+)
+async def test_unreadable_workflow_records_failure_without_aborting_other_workflows(
+    mocker: MockerFixture, fake_stores: FakeStores, unreadable: bytes | Exception
+) -> None:
+    repository = mocker.Mock(
+        id=uuid.uuid4(),
+        is_private=False,
+        default_branch="main",
+        owner=mocker.Mock(display_name="Owner", principal_type="user"),
+    )
+    repository_store = mocker.AsyncMock()
+    repository_store.get_by_owner_and_name.return_value = repository
+    repositories = mocker.AsyncMock()
+    paths = [".gitedge/workflow/bad.yaml", ".gitedge/workflow/good.yaml"]
+    repositories.get_file_index.return_value = mocker.Mock(paths=paths)
+    repositories.action_revision.return_value = ("a" * 40, "refs/heads/main")
+    repositories.get_raw.side_effect = [unreadable, b"valid workflow"]
+    store = FakeActionsStore()
+    service = ActionsService(
+        store,
+        repositories,
+        repository_store,
+        fake_stores.blob,
+        mocker.AsyncMock(spec=AbstractSandboxClient),
+        compiler=FakeWorkflowCompiler(),
+        authorization=mocker.AsyncMock(spec=AuthorizationService),
+        provider="docker",
+        max_timeout=60,
+        max_parallel=1,
+    )
+    advance = mocker.patch.object(service.scheduler, "advance", new_callable=mocker.AsyncMock)
+    await service.trigger("owner", "repo", "main", PushEvent(), actor="owner", event_key="push-1")
+    runs = list(store.runs.values())
+    assert [run.workflow for run in runs] == paths
+    assert runs[0].status == "failure"
+    assert runs[0].error
+    assert runs[0].completed_at is not None
+    assert runs[0].definition == ""
+    assert runs[1].status == "queued"
+    assert advance.await_count == 2

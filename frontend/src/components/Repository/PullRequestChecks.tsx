@@ -17,8 +17,10 @@ export const PullRequestChecks = ({
 }) => {
   const query = useQuery({
     ...actionsGetPullRequestChecksOptions({ path: { owner, repo, number } }),
-    refetchInterval: (query) =>
-      open || query.state.data?.runs.some((run) => ["queued", "running"].includes(run.status)) ? 2000 : false,
+    refetchInterval: (query) => {
+      if (query.state.data?.runs.some((run) => ["queued", "running"].includes(run.status))) return 2000
+      return open ? 30000 : false
+    },
   })
   const checks =
     query.data?.runs.flatMap((run) =>

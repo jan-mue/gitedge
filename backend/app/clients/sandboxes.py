@@ -57,6 +57,7 @@ class AbstractSandboxClient(ABC):
 
 
 MAX_VERCEL_ENV_BYTES = 4096
+MAX_DOCKER_ENV_BYTES = 64 * 1024
 MAX_FILE_BYTES = 32 * 1024 * 1024
 CLEANUP_GRACE_SECONDS = 30
 # Read the marker first: if it exists, subsequent result/state reads are complete.
@@ -72,6 +73,8 @@ class DockerSandboxClient(AbstractSandboxClient):
 
     @override
     async def start(self, name: str, files: dict[str, bytes], lifetime: int) -> None:
+        descriptor = files["input.json"]
+        inline = len(b"GITEDGE_JOB=" + descriptor) <= MAX_DOCKER_ENV_BYTES
         config = {
             "Image": self.image,
             "Cmd": [
@@ -81,7 +84,7 @@ class DockerSandboxClient(AbstractSandboxClient):
                 str(lifetime + CLEANUP_GRACE_SECONDS),
                 "/usr/local/bin/gitedge-launch",
             ],
-            "Env": [f"GITEDGE_JOB={files['input.json'].decode()}"],
+            "Env": [f"GITEDGE_JOB={descriptor.decode()}"] if inline else [],
             "HostConfig": {
                 "Memory": 2 * 1024**3,
                 "NanoCpus": 2_000_000_000,
@@ -102,6 +105,14 @@ class DockerSandboxClient(AbstractSandboxClient):
                     container = await client.containers.get(name)
                     if (await container.show())["State"]["Status"] != "created":
                         return
+                if not inline:
+                    archive_data = io.BytesIO()
+                    with tarfile.open(fileobj=archive_data, mode="w") as archive:
+                        member = tarfile.TarInfo("job.json")
+                        member.size = len(descriptor)
+                        member.mode = 0o600
+                        archive.addfile(member, io.BytesIO(descriptor))
+                    await container.put_archive("/gitedge", archive_data.getvalue())
                 await container.start()
         except DockerError as exc:
             raise SandboxError(f"Docker sandbox start failed: {exc}") from exc
