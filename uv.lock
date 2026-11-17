@@ -845,7 +845,6 @@ dev = [
     { name = "pytest-playwright" },
     { name = "pytest-socket" },
     { name = "pytest-xprocess" },
-    { name = "respx" },
     { name = "testcontainers", extra = ["mailpit", "minio", "redis"] },
     { name = "types-pygments" },
 ]
@@ -895,7 +894,6 @@ dev = [
     { name = "pytest-playwright", specifier = "==0.10.0" },
     { name = "pytest-socket", specifier = "==0.8.1" },
     { name = "pytest-xprocess", specifier = "==1.0.2" },
-    { name = "respx", specifier = "==0.23.1" },
     { name = "testcontainers", extras = ["mailpit", "minio", "postgres", "redis"], specifier = "==4.15.0" },
     { name = "types-pygments", specifier = "==2.21.0.20260819" },
 ]
