@@ -9,6 +9,8 @@ p, admin, repository:write, token
 p, owner, repository:delete, token
 p, read, git:read, token
 p, write, git:write, token
+p, read, actions:read, token
+p, write, actions:write, token
 p, read, issues:write, token
 p, write, issues:moderate, account
 p, read, pull_requests:write, token
@@ -37,3 +39,4 @@ g, write, read
 g, org_admin, org_member
 g, org_admin, owner
 g, git:write, git:read
+g, actions:write, actions:read

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, Response
 
 from app.api.dependencies import (
+    ActionsServiceDep,
     AuthorizationServiceDep,
     CurrentUser,
     IssueServiceDep,
@@ -397,9 +398,15 @@ async def create_pull_request(
         User,
         Depends(require_permission("pull_requests:write", user_dep=RepositoryUser)),
     ],
+    actions: ActionsServiceDep,
+    background_tasks: BackgroundTasks,
 ) -> PullRequestPublic:
     """Create a new pull request."""
-    return await pull_request_service.create_pull_request(owner, repo, body, current_user)
+    pull_request = await pull_request_service.create_pull_request(owner, repo, body, current_user)
+    background_tasks.add_task(
+        actions.on_pull_request, owner, repo, pull_request.number, body.head_branch, body.base_branch, current_user
+    )
+    return pull_request
 
 
 @router.get(
@@ -589,6 +596,9 @@ async def delete_repository(
         User,
         Depends(require_permission("repository:delete", user_dep=RepositoryUser)),
     ],
+    actions: ActionsServiceDep,
 ) -> None:
     """Permanently delete a repository as the owner or administrator."""
+    repo_id = await actions.cancel_repository(owner, repo, current_user)
     await repository_service.delete_repository(owner, repo, current_user)
+    await actions.delete_repository_blobs(repo_id)

@@ -8,7 +8,9 @@ from fastapi.params import Depends as Dependency
 
 from app.api.dependencies import AuthorizationServiceDep, CommentStoreDep, OptionalUser, RepositoryUser
 from app.entities.users import User
-from app.exceptions import AuthenticationError
+from app.exceptions import AuthenticationError, PermissionDeniedError
+from app.permissions import Actor, Resource, policy_enforcer
+from app.schemas.token import WorkflowGitToken
 from app.services.personal_access_tokens import AuthenticatedToken
 
 if TYPE_CHECKING:
@@ -42,6 +44,18 @@ def require_permission(
         repository = await authorization.repositories.get_by_owner_and_name(owner, repo)
         action = operation if isinstance(operation, str) else operation(request)
         await require_token_access(request, repository.id, action)
+        workflow_token = getattr(request.state, "workflow_git_token", None)
+        if isinstance(workflow_token, WorkflowGitToken):
+            enforcer = await policy_enforcer()
+            if not enforcer.enforce(
+                Actor(workflow_token.scope, repository_ids=(str(workflow_token.repo),)),
+                Resource("/workflow", id=str(repository.id)),
+                action,
+                "token",
+            ):
+                raise PermissionDeniedError("Job token lacks the requested repository permission")
+            response.headers["Cache-Control"] = "private, no-store"
+            return None
         try:
             await authorization.require(repository, current_user, action)
         except AuthenticationError as error:

@@ -116,6 +116,8 @@ class AuthorizationService:
         enforcer = await self._repository_enforcer([repository], user)
         actor, resource = self._actor(user), self._resource(repository)
         return RepositoryPermissions(
+            actions_read=enforcer.enforce(actor, resource, "actions:read", "account"),
+            actions_write=enforcer.enforce(actor, resource, "actions:write", "account"),
             read=enforcer.enforce(actor, resource, "repository:read", "account"),
             write=enforcer.enforce(actor, resource, "git:write", "account"),
             admin=enforcer.enforce(actor, resource, "repository:write", "account"),

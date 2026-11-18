@@ -317,12 +317,21 @@ def test_current_privacy_and_permissions(client: TestClient, fake_stores: FakeSt
     repo = add_repository(fake_stores, owner, private=False)
     url = f"{API}/repositories/owner/repo"
     assert client.get(url).headers["cache-control"].startswith("public")
-    assert client.get(f"{url}/permissions").json() == {"read": True, "write": False, "admin": False, "owner": False}
+    assert client.get(f"{url}/permissions").json() == {
+        "read": True,
+        "write": False,
+        "admin": False,
+        "owner": False,
+        "actions_read": True,
+        "actions_write": False,
+    }
     assert client.get(f"{url}/permissions", headers=headers(owner)).json() == {
         "read": True,
         "write": True,
         "admin": True,
         "owner": True,
+        "actions_read": True,
+        "actions_write": True,
     }
     repo.is_private = True
     assert client.get(url).status_code == 401
@@ -434,7 +443,14 @@ def test_permissions_resolves_grants_once_and_preserves_denials(
     url = f"{API}/repositories/owner/repo/permissions"
     response = client.get(url, headers=headers(reader))
     assert response.status_code == 200
-    assert response.json() == {"read": True, "write": True, "admin": False, "owner": False}
+    assert response.json() == {
+        "read": True,
+        "write": True,
+        "admin": False,
+        "owner": False,
+        "actions_read": True,
+        "actions_write": True,
+    }
     assert response.headers["cache-control"] == "private, no-store"
     lookup.assert_awaited_once()
     fake_stores.authorization.items.clear()

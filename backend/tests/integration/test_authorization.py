@@ -179,7 +179,14 @@ async def check_batched_repository_roles(
     for candidate in [repository, sibling, direct, foreign]:
         assert await authorization.can(candidate, admin, "repository:delete")
     permissions = await authorization.permissions(repository, member)
-    assert permissions.model_dump() == {"read": True, "write": True, "admin": False, "owner": False}
+    assert permissions.model_dump() == {
+        "read": True,
+        "write": True,
+        "admin": False,
+        "owner": False,
+        "actions_read": True,
+        "actions_write": True,
+    }
     await authorization.repositories.delete(sibling)
     await authorization.repositories.delete(direct)
     await authorization.repositories.delete(foreign)

@@ -9,6 +9,7 @@ from pytest_socket import disable_socket
 
 from app.api.dependencies import (
     check_database_connection,
+    get_actions_store,
     get_activity_store,
     get_authorization_store,
     get_blob_client,
@@ -26,9 +27,11 @@ from app.api.dependencies import (
     get_star_store,
     get_user_store,
     get_watcher_store,
+    get_workflow_compiler,
 )
 from app.index import app
 from app.services.crud import CrudService
+from tests.unit.utils.actions import FakeActionsStore, FakeWorkflowCompiler
 from tests.unit.utils.fakes import FakeStores, build_fake_stores
 from tests.unit.utils.user import EMAIL_TEST_USER, authentication_token_from_email
 from tests.unit.utils.utils import get_superuser_token_headers
@@ -49,6 +52,9 @@ def pytest_runtest_setup() -> None:
 def fake_stores() -> Generator[FakeStores]:
     """Override the data access stores with in-memory fakes."""
     fakes = build_fake_stores()
+    actions = FakeActionsStore()
+    app.dependency_overrides[get_workflow_compiler] = FakeWorkflowCompiler
+    app.dependency_overrides[get_actions_store] = lambda: actions
     app.dependency_overrides[get_personal_access_token_store] = lambda: fakes.personal_access_tokens
     app.dependency_overrides[get_authorization_store] = lambda: fakes.authorization
     app.dependency_overrides[get_user_store] = lambda: fakes.users
@@ -69,6 +75,8 @@ def fake_stores() -> Generator[FakeStores]:
 
     yield fakes
 
+    app.dependency_overrides.pop(get_actions_store, None)
+    app.dependency_overrides.pop(get_workflow_compiler, None)
     app.dependency_overrides.pop(get_personal_access_token_store, None)
     app.dependency_overrides.pop(get_authorization_store, None)
     app.dependency_overrides.pop(get_user_store, None)

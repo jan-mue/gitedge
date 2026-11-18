@@ -7,9 +7,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, status
 
-from app.api.dependencies import GitUser, RepositoryServiceDep
+from app.api.dependencies import ActionsServiceDep, GitUser, RepositoryServiceDep
 from app.api.permissions import require_permission
 from app.clients.git.types import GitHttpRequest
 from app.utils.cache_headers import CACHE_CONTROL_NO_STORE
@@ -86,6 +86,13 @@ async def _handle_git_request(
 
 
 @router.get(
+    "/{owner}/{repo}/info/refs",
+    include_in_schema=False,
+    dependencies=[
+        Depends(require_permission(git_discovery_permission, user_dep=GitUser, challenge='Basic realm="GitEdge"'))
+    ],
+)
+@router.get(
     "/{owner}/{repo}.git/info/refs",
     dependencies=[
         Depends(require_permission(git_discovery_permission, user_dep=GitUser, challenge='Basic realm="GitEdge"'))
@@ -112,6 +119,11 @@ async def get_info_refs(
 
 
 @router.get(
+    "/{owner}/{repo}/HEAD",
+    include_in_schema=False,
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
+@router.get(
     "/{owner}/{repo}.git/HEAD",
     dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
@@ -136,6 +148,11 @@ async def get_head(
 
 
 @router.get(
+    "/{owner}/{repo}/objects/info/packs",
+    include_in_schema=False,
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
+@router.get(
     "/{owner}/{repo}.git/objects/info/packs",
     dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
@@ -159,6 +176,11 @@ async def get_info_packs(
     return await _handle_git_request(request, f"{owner}/{repo}.git", "/objects/info/packs", repository_service)
 
 
+@router.get(
+    "/{owner}/{repo}/objects/{prefix:path}/{suffix}",
+    include_in_schema=False,
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
 @router.get(
     "/{owner}/{repo}.git/objects/{prefix:path}/{suffix}",
     dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
@@ -188,6 +210,11 @@ async def get_loose_object(
 
 
 @router.get(
+    "/{owner}/{repo}/objects/pack/{pack_file}",
+    include_in_schema=False,
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
+@router.get(
     "/{owner}/{repo}.git/objects/pack/{pack_file}",
     dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
@@ -214,6 +241,11 @@ async def get_pack_file(
 
 
 @router.post(
+    "/{owner}/{repo}/git-upload-pack",
+    include_in_schema=False,
+    dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
+@router.post(
     "/{owner}/{repo}.git/git-upload-pack",
     dependencies=[Depends(require_permission("git:read", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
@@ -238,6 +270,11 @@ async def git_upload_pack(
 
 
 @router.post(
+    "/{owner}/{repo}/git-receive-pack",
+    include_in_schema=False,
+    dependencies=[Depends(require_permission("git:write", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
+)
+@router.post(
     "/{owner}/{repo}.git/git-receive-pack",
     dependencies=[Depends(require_permission("git:write", user_dep=GitUser, challenge='Basic realm="GitEdge"'))],
 )
@@ -246,6 +283,9 @@ async def git_receive_pack(
     owner: str,
     repo: str,
     repository_service: RepositoryServiceDep,
+    actions: ActionsServiceDep,
+    user: GitUser,
+    background_tasks: BackgroundTasks,
 ) -> Response:
     """Handle git-receive-pack (push).
 
@@ -254,8 +294,17 @@ async def git_receive_pack(
         owner: Repository owner.
         repo: Repository name.
         repository_service: Repository service.
+        actions: Workflow orchestration service.
+        user: Authenticated event actor, when provided.
+        background_tasks: On-demand event dispatch after the push is persisted.
 
     Returns:
         Response with push result.
     """
-    return await _handle_git_request(request, f"{owner}/{repo}.git", "/git-receive-pack", repository_service)
+    await repository_service.ensure_loaded(owner, repo)
+    before = await repository_service.action_refs(owner, repo) if user else {}
+    response = await _handle_git_request(request, f"{owner}/{repo}.git", "/git-receive-pack", repository_service)
+    if user and response.status_code == status.HTTP_200_OK:
+        after = await repository_service.action_refs(owner, repo)
+        background_tasks.add_task(actions.on_push, owner, repo, before, after, user)
+    return response

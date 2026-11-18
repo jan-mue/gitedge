@@ -5,6 +5,160 @@ export type ClientOptions = {
 };
 
 /**
+ * ActionJob
+ *
+ * A single matrix variant, always assigned its own sandbox.
+ */
+export type ActionJob = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Compiled Id
+     */
+    compiled_id?: string | null;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Matrix
+     */
+    matrix?: {
+        [key: string]: JsonValue;
+    };
+    /**
+     * Needs
+     */
+    needs?: Array<string>;
+    status?: ActionStatus;
+    /**
+     * Sandbox
+     */
+    sandbox?: string | null;
+    /**
+     * Started At
+     */
+    started_at?: string | null;
+    /**
+     * Completed At
+     */
+    completed_at?: string | null;
+    /**
+     * Timeout Seconds
+     */
+    timeout_seconds?: number;
+    /**
+     * Outputs
+     */
+    outputs?: {
+        [key: string]: string;
+    };
+    /**
+     * Steps
+     */
+    steps?: Array<ActionStep>;
+    /**
+     * Log
+     */
+    log?: string;
+    /**
+     * Error
+     */
+    error?: string | null;
+    /**
+     * Continue On Error
+     */
+    continue_on_error?: boolean;
+};
+
+/**
+ * ActionRun
+ *
+ * Persisted run history exposed to the Actions UI.
+ */
+export type ActionRun = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Workflow
+     */
+    workflow: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Sha
+     */
+    sha: string;
+    /**
+     * Ref
+     */
+    ref: string;
+    /**
+     * Actor
+     */
+    actor: string;
+    /**
+     * Event Name
+     */
+    event_name: string;
+    status: ActionStatus;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Completed At
+     */
+    completed_at?: string | null;
+    /**
+     * Jobs
+     */
+    jobs: Array<ActionJob>;
+    /**
+     * Error
+     */
+    error?: string | null;
+};
+
+/**
+ * ActionStatus
+ *
+ * Workflow and job lifecycle states.
+ */
+export type ActionStatus = 'queued' | 'running' | 'success' | 'failure' | 'skipped' | 'cancelled';
+
+/**
+ * ActionStep
+ *
+ * One step and its masked, plain-text log.
+ */
+export type ActionStep = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    status?: ActionStatus;
+    /**
+     * Log
+     */
+    log?: string;
+};
+
+/**
  * ActivitiesPublic
  *
  * List of activity events.
@@ -957,6 +1111,8 @@ export type IssuesListPublic = {
     closed_count: number;
 };
 
+export type JsonValue = unknown;
+
 /**
  * LanguageStatistic
  *
@@ -1486,6 +1642,22 @@ export type ProfilePublic = {
      */
     display_name?: string | null;
     principal_type: PrincipalType;
+};
+
+/**
+ * PullRequestChecks
+ *
+ * Latest workflow results for the current pull request head commit.
+ */
+export type PullRequestChecks = {
+    /**
+     * Head Sha
+     */
+    head_sha: string;
+    /**
+     * Runs
+     */
+    runs: Array<ActionRun>;
 };
 
 /**
@@ -2063,6 +2235,14 @@ export type RepositoryNotificationPreferences = {
  */
 export type RepositoryPermissions = {
     /**
+     * Actions Read
+     */
+    actions_read?: boolean;
+    /**
+     * Actions Write
+     */
+    actions_write?: boolean;
+    /**
      * Read
      */
     read: boolean;
@@ -2550,7 +2730,7 @@ export type TokenRepositoryOption = {
  *
  * Operations a personal access token can authorize.
  */
-export type TokenScope = 'git:read' | 'git:write' | 'repository:read' | 'repository:write' | 'repository:delete' | 'issues:write' | 'pull_requests:write' | 'pull_requests:merge' | 'comments:write' | 'reviews:write' | 'releases:write';
+export type TokenScope = 'actions:read' | 'actions:write' | 'git:read' | 'git:write' | 'repository:read' | 'repository:write' | 'repository:delete' | 'issues:write' | 'pull_requests:write' | 'pull_requests:merge' | 'comments:write' | 'reviews:write' | 'releases:write';
 
 /**
  * TreeEntry
@@ -2833,6 +3013,48 @@ export type WatchersPublic = {
     count: number;
 };
 
+/**
+ * WorkflowDispatch
+ *
+ * Dispatch a workflow version from an existing repository revision.
+ */
+export type WorkflowDispatch = {
+    /**
+     * Workflow
+     */
+    workflow: string;
+    /**
+     * Ref
+     */
+    ref?: string;
+    /**
+     * Inputs
+     */
+    inputs?: {
+        [key: string]: string;
+    };
+};
+
+/**
+ * WorkflowInfo
+ *
+ * A workflow discovered at a revision.
+ */
+export type WorkflowInfo = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Dispatch
+     */
+    dispatch?: boolean;
+};
+
 export type notificationsListNotificationsData = {
     body?: never;
     path?: never;
@@ -3074,6 +3296,193 @@ export type notificationsArchiveRepositoryResponses = {
 };
 
 export type notificationsArchiveRepositoryResponse = notificationsArchiveRepositoryResponses[keyof notificationsArchiveRepositoryResponses];
+
+export type actionsListWorkflowsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: {
+        /**
+         * Ref
+         */
+        ref?: string;
+    };
+    url: '/api/v1/repositories/{owner}/{repo}/actions/workflows';
+};
+
+export type actionsListWorkflowsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type actionsListWorkflowsError = actionsListWorkflowsErrors[keyof actionsListWorkflowsErrors];
+
+export type actionsListWorkflowsResponses = {
+    /**
+     * Response Actions-List Workflows
+     *
+     * Successful Response
+     */
+    200: Array<WorkflowInfo>;
+};
+
+export type actionsListWorkflowsResponse = actionsListWorkflowsResponses[keyof actionsListWorkflowsResponses];
+
+export type actionsListRunsData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/actions/runs';
+};
+
+export type actionsListRunsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type actionsListRunsError = actionsListRunsErrors[keyof actionsListRunsErrors];
+
+export type actionsListRunsResponses = {
+    /**
+     * Response Actions-List Runs
+     *
+     * Successful Response
+     */
+    200: Array<ActionRun>;
+};
+
+export type actionsListRunsResponse = actionsListRunsResponses[keyof actionsListRunsResponses];
+
+export type actionsGetPullRequestChecksData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Number
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/pulls/{number}/checks';
+};
+
+export type actionsGetPullRequestChecksErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type actionsGetPullRequestChecksError = actionsGetPullRequestChecksErrors[keyof actionsGetPullRequestChecksErrors];
+
+export type actionsGetPullRequestChecksResponses = {
+    /**
+     * Successful Response
+     */
+    200: PullRequestChecks;
+};
+
+export type actionsGetPullRequestChecksResponse = actionsGetPullRequestChecksResponses[keyof actionsGetPullRequestChecksResponses];
+
+export type actionsDispatchWorkflowData = {
+    body: WorkflowDispatch;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/actions/dispatch';
+};
+
+export type actionsDispatchWorkflowErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type actionsDispatchWorkflowError = actionsDispatchWorkflowErrors[keyof actionsDispatchWorkflowErrors];
+
+export type actionsDispatchWorkflowResponses = {
+    /**
+     * Successful Response
+     */
+    201: ActionRun;
+};
+
+export type actionsDispatchWorkflowResponse = actionsDispatchWorkflowResponses[keyof actionsDispatchWorkflowResponses];
+
+export type actionsCancelRunData = {
+    body?: never;
+    path: {
+        /**
+         * Owner
+         */
+        owner: string;
+        /**
+         * Repo
+         */
+        repo: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{owner}/{repo}/actions/runs/{run_id}/cancel';
+};
+
+export type actionsCancelRunErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type actionsCancelRunError = actionsCancelRunErrors[keyof actionsCancelRunErrors];
+
+export type actionsCancelRunResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type actionsCancelRunResponse = actionsCancelRunResponses[keyof actionsCancelRunResponses];
 
 export type loginLoginAccessTokenData = {
     body: Body_login_login_access_token;

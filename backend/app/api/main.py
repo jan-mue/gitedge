@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import (
+    actions,
     activity,
     authorization,
     comments,
@@ -26,6 +27,7 @@ from app.config import settings
 
 api_router = APIRouter()
 api_router.include_router(notifications.router)
+api_router.include_router(actions.router)
 api_router.include_router(login.router)
 api_router.include_router(personal_access_tokens.router)
 api_router.include_router(users.router)

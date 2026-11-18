@@ -13,6 +13,8 @@ from app.schemas.base import GitEdgeBaseModel
 class TokenScope(StrEnum):
     """Operations a personal access token can authorize."""
 
+    ACTIONS_READ = "actions:read"
+    ACTIONS_WRITE = "actions:write"
     READ = "git:read"
     WRITE = "git:write"
     REPOSITORY_READ = "repository:read"

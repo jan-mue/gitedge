@@ -46,6 +46,8 @@ class CollaboratorPublic(CollaboratorInput):
 class RepositoryPermissions(GitEdgeBaseModel):
     """The current viewer's effective repository permissions."""
 
+    actions_read: bool = False
+    actions_write: bool = False
     read: bool
     write: bool
     admin: bool

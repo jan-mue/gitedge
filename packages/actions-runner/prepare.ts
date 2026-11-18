@@ -116,25 +116,9 @@ async function prepareTools() {
   await rm("/tmp/uv.tar.gz")
 }
 
-async function prepareCodeQL() {
-  const version = "2.27.2"
-  const directory = `/opt/hostedtoolcache/CodeQL/${version}/x64`
-  await mkdir(directory, { recursive: true })
-  await download(
-    `https://github.com/github/codeql-action/releases/download/codeql-bundle-v${version}/codeql-bundle-python-linux64.tar.zst`,
-    "/tmp/codeql.tar.zst",
-  )
-  await run("tar", "--zstd", "-xf", "/tmp/codeql.tar.zst", "-C", directory)
-  await run("chmod", "-R", "a+rX", directory)
-  await writeFile(`${directory}.complete`, "")
-  await rm("/tmp/codeql.tar.zst")
-}
-
-if (process.argv.includes("--codeql")) await prepareCodeQL()
-else if (process.argv.includes("--tools")) await prepareTools()
+if (process.argv.includes("--tools")) await prepareTools()
 else {
   await prepareActions()
   await prepareTools()
   await mkdir("/gitedge", { recursive: true })
-  await chmod("/usr/local/bin/gitedge-launch", 0o755)
 }

@@ -1,0 +1,24 @@
+name: Failure conditions
+on: workflow_dispatch
+jobs:
+  fail:
+    runs-on: ubuntu-latest
+    steps:
+      - id: failing
+        run: exit 7
+      - id: skipped
+        run: echo 'should not run'
+      - id: cleanup
+        if: always()
+        run: echo 'Cleanup ran'
+  dependent:
+    needs: fail
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'should not run'
+  report:
+    needs: fail
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'Failure reported'

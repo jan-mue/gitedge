@@ -1,3 +1,4 @@
+from app.entities.actions import WorkflowRun
 from app.entities.activity import Activity
 from app.entities.authorization import Team
 from app.entities.casbin import CasbinRule
@@ -44,4 +45,5 @@ __all__ = [
     "Team",
     "User",
     "Watcher",
+    "WorkflowRun",
 ]

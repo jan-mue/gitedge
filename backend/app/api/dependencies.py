@@ -15,6 +15,7 @@ from redis_fastapi import get_async_redis
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clients.actions import ActionsStore, SQLActionsStore
 from app.clients.activity import ActivityStore, SQLActivityStore
 from app.clients.authorization import AuthorizationStore, SQLAuthorizationStore
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
@@ -40,14 +41,17 @@ from app.clients.redis import AbstractRedisClient, RedisClient, UpstashRedisClie
 from app.clients.releases import ReleaseStore, SQLReleaseStore
 from app.clients.repositories import RepositoryStore, SQLRepositoryStore
 from app.clients.reviews import ReviewStore, SQLReviewStore
+from app.clients.sandboxes import AbstractSandboxClient, DockerSandboxClient, VercelSandboxClient
 from app.clients.stars import SQLStarStore, StarStore
 from app.clients.users import SQLUserStore, UserStore
 from app.clients.watchers import SQLWatcherStore, WatcherStore
+from app.clients.workflow_compiler import HttpWorkflowCompiler, WorkflowCompiler
 from app.config import settings
 from app.entities.users import User
 from app.exceptions import AuthenticationError, InvalidPersonalAccessTokenError, PermissionDeniedError
 from app.permissions import account_can
-from app.schemas.token import TokenPayload
+from app.schemas.token import TokenPayload, WorkflowGitToken
+from app.services.actions.service import ActionsService
 from app.services.activity import ActivityService
 from app.services.authorization import AuthorizationService
 from app.services.comments import CommentService
@@ -69,6 +73,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from sqlalchemy.ext.asyncio import async_sessionmaker
+
 
 logger = logging.getLogger(__name__)
 
@@ -754,6 +759,64 @@ def get_organization_service(
 OrganizationServiceDep = Annotated[OrganizationService, Depends(get_organization_service)]
 
 
+def get_actions_store(session: SessionDep) -> ActionsStore:
+    """Get the durable workflow store."""
+    return SQLActionsStore(session)
+
+
+ActionsStoreDep = Annotated[ActionsStore, Depends(get_actions_store)]
+
+
+def get_sandbox_client() -> AbstractSandboxClient:
+    """Select the configured job sandbox provider."""
+    if settings.ACTIONS_PROVIDER == "vercel":
+        return VercelSandboxClient(
+            settings.ACTIONS_IMAGE, settings.ACTIONS_VERCEL_SNAPSHOT, settings.ACTIONS_VERCEL_REGION
+        )
+    return DockerSandboxClient(settings.ACTIONS_IMAGE)
+
+
+SandboxClientDep = Annotated[AbstractSandboxClient, Depends(get_sandbox_client)]
+
+
+def get_workflow_compiler() -> WorkflowCompiler:
+    """Select the configured on-demand compiler HTTP endpoint."""
+    return HttpWorkflowCompiler(settings.ACTIONS_COMPILER_URL)
+
+
+WorkflowCompilerDep = Annotated[WorkflowCompiler, Depends(get_workflow_compiler)]
+
+
+def get_actions_service(
+    store: ActionsStoreDep,
+    repositories: RepositoryServiceDep,
+    repository_store: RepositoryStoreDep,
+    blobs: BlobStorageClientDep,
+    pull_requests: PullRequestStoreDep,
+    sandbox: SandboxClientDep,
+    compiler: WorkflowCompilerDep,
+    authorization: AuthorizationServiceDep,
+) -> ActionsService:
+    """Inject one sandbox provider and durable workflow cache storage."""
+    return ActionsService(
+        store,
+        repositories,
+        repository_store,
+        blobs,
+        sandbox,
+        compiler=compiler,
+        authorization=authorization,
+        provider=settings.ACTIONS_PROVIDER,
+        max_timeout=settings.ACTIONS_MAX_TIMEOUT,
+        max_parallel=settings.ACTIONS_MAX_PARALLEL,
+        secrets=settings.ACTIONS_SECRETS,
+        pull_requests=pull_requests,
+    )
+
+
+ActionsServiceDep = Annotated[ActionsService, Depends(get_actions_service)]
+
+
 def get_personal_access_token_store(session: SessionDep) -> PersonalAccessTokenStore:
     """Get the database-backed personal access token store."""
     return SQLPersonalAccessTokenStore(session)
@@ -834,17 +897,39 @@ async def get_git_user(
             return authenticated.user
         return await get_current_user(users, bearer)
     if basic is not None:
-        if basic.password.startswith("gitedge_pat_"):
-            authenticated = await tokens.authenticate(basic.password, username=basic.username)
-            request.state.personal_access_token = authenticated
-            return authenticated.user
-        user = await users.find_by_name(basic.username)
-        if user is not None and security.verify_password(basic.password, user.hashed_password)[0] and user.is_active:
-            return user
-        raise InvalidPersonalAccessTokenError()
+        return await get_git_basic_user(request, basic, users, tokens)
     if request.headers.get("Authorization") or request.headers.get("X-API-Key") is not None:
         raise InvalidPersonalAccessTokenError()
     return None
 
 
 GitUser = Annotated[User | None, Depends(get_git_user)]
+
+
+async def get_git_basic_user(
+    request: Request, basic: HTTPBasicCredentials, users: UserStore, tokens: PersonalAccessTokenService
+) -> User | None:
+    """Verify a password, PAT, or repository-scoped job checkout credential."""
+    if basic.username == "x-access-token":
+        try:
+            claims = jwt.decode(
+                basic.password,
+                settings.SECRET_KEY,
+                algorithms=[security.ALGORITHM],
+                options={"require": ["exp", "sub", "repo", "run", "scope"]},
+            )
+            token = WorkflowGitToken.model_validate(claims)
+        except (InvalidTokenError, ValidationError) as error:
+            raise InvalidPersonalAccessTokenError() from error
+        if token.sub != "actions" or token.scope != "git:read":
+            raise InvalidPersonalAccessTokenError()
+        request.state.workflow_git_token = token
+        return None
+    if basic.password.startswith("gitedge_pat_"):
+        authenticated = await tokens.authenticate(basic.password, username=basic.username)
+        request.state.personal_access_token = authenticated
+        return authenticated.user
+    user = await users.find_by_name(basic.username)
+    if user is not None and security.verify_password(basic.password, user.hashed_password)[0] and user.is_active:
+        return user
+    raise InvalidPersonalAccessTokenError()

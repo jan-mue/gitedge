@@ -11,7 +11,7 @@ from app.api.exception_handlers import application_exception_handler
 from app.api.main import api_router
 from app.api.routes import git
 from app.config import settings
-from app.exceptions import ApplicationError, EmailDeliveryError
+from app.exceptions import ApplicationError, CompilerUnavailableError, EmailDeliveryError, WorkflowError
 from app.lifespan import lifespan
 from app.utils.sentry import init_sentry
 from app.utils.setup_logging import setup_logging
@@ -56,6 +56,20 @@ async def email_delivery_exception_handler(request: Request, exc: EmailDeliveryE
 
 
 app.add_exception_handler(ApplicationError, application_exception_handler)
+
+
+@app.exception_handler(WorkflowError)
+async def workflow_exception_handler(_request: Request, exc: WorkflowError) -> JSONResponse:
+    """Report invalid workflows consistently across Actions endpoints."""
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(CompilerUnavailableError)
+async def compiler_exception_handler(request: Request, exc: CompilerUnavailableError) -> JSONResponse:
+    """Return a retryable status without exposing compiler credentials."""
+    logger.error("Workflow compiler unavailable - %s", request.url.path, exc_info=exc)
+    return JSONResponse(status_code=503, content={"detail": "Workflow compiler is unavailable"})
+
 
 app.add_middleware(
     CORSMiddleware,

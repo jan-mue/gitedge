@@ -80,6 +80,13 @@ const TokenSelect = ({
 
 const scopeGroups: { label: string; options: { value: TokenScope; label: string }[] }[] = [
   {
+    label: "Actions",
+    options: [
+      { value: "actions:read", label: "Read workflow runs and logs" },
+      { value: "actions:write", label: "Dispatch and cancel workflows" },
+    ],
+  },
+  {
     label: "Repository",
     options: [
       { value: "repository:read", label: "Read repository contents and discussions" },

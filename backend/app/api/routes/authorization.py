@@ -43,6 +43,8 @@ async def get_permissions(
     if authenticated is not None:
         permissions = RepositoryPermissions(
             read=permissions.read,
+            actions_read=permissions.actions_read and await authenticated.allows("actions:read"),
+            actions_write=permissions.actions_write and await authenticated.allows("actions:write"),
             write=permissions.write and await authenticated.allows("git:write"),
             admin=permissions.admin and await authenticated.allows("repository:write"),
             owner=permissions.owner and await authenticated.allows("repository:delete"),

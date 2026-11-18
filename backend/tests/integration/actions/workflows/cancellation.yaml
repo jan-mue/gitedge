@@ -1,0 +1,14 @@
+name: Cancellation
+on: workflow_dispatch
+jobs:
+  long:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo 'Long job started'
+          sleep 600
+  dependent:
+    needs: long
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'Should remain queued'

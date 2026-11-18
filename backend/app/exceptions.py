@@ -170,6 +170,14 @@ class EmailDeliveryError(Exception):
     """Raised when the email transport cannot deliver a message."""
 
 
+class WorkflowError(ValueError):
+    """A workflow is invalid or requests unsupported capabilities."""
+
+
+class CompilerUnavailableError(RuntimeError):
+    """The workflow compiler is unconfigured, unavailable, or incompatible."""
+
+
 class InsufficientTokenRepositoryError(PermissionDeniedError):
     """A token does not include the requested repository."""
 

@@ -206,6 +206,12 @@ container or Vercel Sandbox. Prepared images contain actions and toolchains;
 checkout transfers source at the immutable commit. JavaScript actions run under
 Node, while the agent runs under Bun.
 
+Casbin repository readers can view Actions runs and logs; writers can dispatch
+and cancel workflows. Organization and team grants use the same policy. Personal
+access tokens require `actions:read` or `actions:write` and an explicit repository
+selection; `actions:write` includes read access. Job checkout credentials only
+authorize Git reads in their own repository.
+
 Start the local compiler from the repository root:
 
 ```shell
@@ -218,6 +224,21 @@ to loopback in development; production uses an on-demand Function and never
 starts a compiler subprocess. Build the agent with
 `bun run --filter @gitedge/actions-runner build` before preparing an image or
 snapshot. Prepared runner labels support x64 Linux.
+
+The integration workflow builds the Ubuntu 24.04 image once with
+`docker/build-push-action` and per-version BuildKit caches. Test jobs download
+those image archives instead of rebuilding. After integration
+and browser checks pass on `main`, CI publishes OCI images with zstd compression
+to `vcr.vercel.com/jan-mue-projects/gitedge-backend/gitedge-actions`, tagged by
+Ubuntu release and commit SHA. Build summaries expose their digests.
+
+Configure a Vercel team OIDC policy granting VCR read/write access to GitHub
+repository `jan-mue/gitedge`, restricted to `refs/heads/main` and the publishing
+workflow. The pinned `vercel/vcr-action/login` exchanges the GitHub identity
+for short-lived credentials and revokes them afterward. No registry token is
+stored in GitHub secrets. Publication is disabled for PRs. The image publisher
+and CodeQL security check run only in GitHub; CodeQL tools and its GitEdge
+fixture are excluded from runner images.
 
 Supported events are push, pull request and manual dispatch. Static matrices
 support include/exclude and require `fail-fast: false` for multiple variants.
