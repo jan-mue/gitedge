@@ -5,11 +5,13 @@ import logging
 import secrets
 import warnings
 from enum import StrEnum
+from pathlib import Path
 from typing import Literal, Self
 from urllib.parse import urlsplit
 
 from pydantic import (
     EmailStr,
+    Field,
     HttpUrl,
     PostgresDsn,
     computed_field,
@@ -81,10 +83,12 @@ class Settings(BaseSettings):
         env_ignore_empty=True,
         extra="ignore",
     )
-    AGENTS_ENABLED: bool = False
-    AGENTS_SANDBOX: Literal["vercel", "kubernetes"] = "kubernetes"
-    AGENTS_KUBERNETES_WARMPOOL: str = "gitedge-agents"
-    AGENTS_KUBERNETES_NAMESPACE: str = "default"
+    AGENTS_SANDBOX: Literal["vercel", "smol"] = "smol"
+    AGENTS_SMOL_IMAGE: str = "python:3.14.10-slim-bookworm"
+    AGENTS_SMOL_CPUS: int = Field(default=2, gt=0)
+    AGENTS_SMOL_MEMORY_MB: int = Field(default=2048, gt=0)
+    AGENTS_SMOL_ALLOW_INTERNET_ACCESS: bool = False
+    AGENTS_SMOL_CHECKPOINT_DIR: Path = Path.home() / ".gitedge" / "checkpoints"
     RESTATE_INGRESS_URL: str = "http://localhost:8080"
     RESTATE_AUTH_TOKEN: str = ""
     RESTATE_IDENTITY_PUBLIC_KEY: str = ""
@@ -191,7 +195,7 @@ class Settings(BaseSettings):
         for host in self.DATABASE_URL.hosts():
             self._check_default_secret("DATABASE_URL password", host["password"])
         self._check_default_secret("FIRST_SUPERUSER_PASSWORD", self.FIRST_SUPERUSER_PASSWORD)
-        if self.AGENTS_ENABLED and "SECRET_KEY" not in self.model_fields_set:
+        if "SECRET_KEY" not in self.model_fields_set:
             raise ValueError("Agents require a persistent SECRET_KEY for encrypted provider connections")
 
         return self

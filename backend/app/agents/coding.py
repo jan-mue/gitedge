@@ -2,40 +2,44 @@
 
 import asyncio
 import json
+from dataclasses import dataclass, field
+from functools import partial
 from typing import TYPE_CHECKING, override
 from uuid import NAMESPACE_URL, uuid5
 
 from ag_ui.core import BaseEvent, CustomEvent, MessagesSnapshotEvent, UserMessage
 from pydantic import TypeAdapter
 from pydantic_ai import Agent, AgentRunResultEvent, RunContext
+from pydantic_ai.exceptions import UserError
 from pydantic_ai.messages import AgentStreamEvent
 from pydantic_ai.models import StreamedResponse
 from pydantic_ai.ui.ag_ui import AGUIAdapter, AGUIEventStream
 from pydantic_ai.usage import UsageLimits
 from pydantic_ai_harness.coder import Coder
+from pydantic_ai_harness.shell import CommandOutputEvent
 from restate import RunOptions
 from restate.ext.pydantic import RestateAgent
 
+from app.agents.cancellation import run_cancellable
+from app.agents.dependencies import CodingAgentDeps
 from app.agents.providers import resolve_model
-from app.agents.workspace import AgentWorkspace, SandboxWorkspace
-from app.clients.agent_streams import AgentRunCancelledError
+from app.agents.restate import RestateToolOrdering, RestateWorkspaceErrors
 from app.config import settings
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterable
+    from collections.abc import AsyncIterable, AsyncIterator
 
-    from pydantic_ai.messages import ModelMessage
+    from pydantic_ai.messages import CapabilityEvent, ModelMessage
     from pydantic_ai.models import Model
 
-    from app.clients.agent_streams import AgentEventStore
-    from app.clients.sandbox import SnapshotableSandboxClient
 
-
+@dataclass(kw_only=True)
 class StableAGUIEventStream(AGUIEventStream):
     """Deterministic IDs let a transformer reconstruct already delivered events."""
 
     message_sequence: int = 0
     namespace: str = ""
+    command_sequences: dict[str, int] = field(default_factory=dict)
 
     @override
     def new_message_id(self) -> str:
@@ -43,10 +47,24 @@ class StableAGUIEventStream(AGUIEventStream):
         self.message_id = str(uuid5(NAMESPACE_URL, f"{self.namespace}:{self.message_sequence}"))
         return self.message_id
 
+    @override
+    async def handle_capability_event(self, event: CapabilityEvent) -> AsyncIterator[BaseEvent]:
+        """Expose upstream shell output without intercepting workspace execution."""
+        if isinstance(event, CommandOutputEvent) and event.tool_call_id is not None:
+            command_id = event.tool_call_id
+            sequence = self.command_sequences.get(command_id, 0)
+            self.command_sequences[command_id] = sequence + 1
+            yield CustomEvent(
+                name="bash_output",
+                value={"command_id": command_id, "stream": "combined", "chunk": event.text, "sequence": sequence},
+            )
+        else:
+            async for output in super().handle_capability_event(event):
+                yield output
+
 
 async def run_coding_agent(
-    sandbox: SnapshotableSandboxClient,
-    streams: AgentEventStore,
+    deps: CodingAgentDeps,
     *,
     run_id: str,
     session_id: str,
@@ -62,20 +80,17 @@ async def run_coding_agent(
     callback executes again, its previous request did not commit; a protocol
     snapshot replaces that partial response before the new attempt streams.
     """
+    if deps.workspace is None:
+        raise UserError("A coding agent needs an application-selected workspace")
+    streams = deps.streams
 
     async def publish(identity: str, event: BaseEvent) -> None:
         await streams.append(run_id, identity, event.model_dump_json(by_alias=True, exclude_none=True))
 
-    async def output(stream: str, line: str, command_id: str, sequence: int) -> None:
-        event = CustomEvent(
-            name="bash_output", value={"command_id": command_id, "stream": stream, "chunk": line, "sequence": sequence}
-        )
-        await publish(f"bash:{command_id}:{stream}:{sequence}", event)
-
-    workspace = SandboxWorkspace(sandbox, run_id, output, lambda: streams.cancelled(run_id))
     agent = Agent(
         resolve_model(model) if isinstance(model, str) else model,
-        capabilities=[AgentWorkspace(backend=workspace), Coder(sub_agents=False)],
+        deps_type=CodingAgentDeps,
+        capabilities=[deps.sandbox, Coder(sub_agents=False), RestateToolOrdering(), RestateWorkspaceErrors()],
         instructions=instructions,
     )
     run_input = AGUIAdapter.build_run_input(
@@ -116,7 +131,7 @@ async def run_coding_agent(
     for raw in await streams.history(f"{run_id}:native"):
         await apply(json.loads(raw))
 
-    async def events(ctx: RunContext, source: AsyncIterable[AgentStreamEvent]) -> None:
+    async def events(ctx: RunContext[CodingAgentDeps], source: AsyncIterable[AgentStreamEvent]) -> None:
         step = ctx.run_step
         attempt = 0
         if isinstance(source, StreamedResponse):
@@ -128,8 +143,6 @@ async def run_coding_agent(
                     await apply(reset)
         index = 0
         async for native in source:
-            if await streams.cancelled(run_id):
-                raise AgentRunCancelledError("Run stopped")
             call = (
                 getattr(getattr(native, "part", None), "tool_call_id", None)
                 or getattr(getattr(native, "result", None), "tool_call_id", None)
@@ -148,8 +161,20 @@ async def run_coding_agent(
     durable = RestateAgent(
         agent, event_stream_handler=events, auto_wrap_tools=True, run_options=RunOptions(max_attempts=3)
     )
-    result = await durable.run(
-        prompt, message_history=history, usage_limits=UsageLimits(request_limit=settings.AGENTS_MAX_REQUESTS)
+    result = await run_cancellable(
+        partial(
+            durable.run,
+            prompt,
+            run_id=run_id,
+            message_history=history,
+            usage_limits=UsageLimits(request_limit=settings.AGENTS_MAX_REQUESTS),
+            # Redis already journals/deduplicates events; the SDK's auto-wrap callback
+            # returns an unawaited coroutine in restate-sdk 1.5.2.
+            event_stream_handler=events,
+            deps=deps,
+            workspace=deps.workspace,
+        ),
+        lambda: streams.cancelled(run_id),
     )
     index = 0
     async for event in transformer.handle_event(AgentRunResultEvent(result=result)):

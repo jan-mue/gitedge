@@ -4,13 +4,13 @@ import uuid
 from typing import Annotated
 
 from ag_ui.core import Message
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header
 from fastapi.responses import StreamingResponse
 from pydantic_ai.messages import ModelMessagesTypeAdapter
 from pydantic_ai.ui.ag_ui import AGUIAdapter
 
-from app.agents.runtime import stream_store
 from app.api.dependencies import (
+    AgentStreamsStoreDep,
     AuthorizationServiceDep,
     BlobStorageClientDep,
     CurrentUser,
@@ -37,14 +37,7 @@ from app.schemas.agents import (
 )
 from app.services.agents import AgentService
 
-
-def enabled() -> None:
-    """Keep deployment opt-in until Restate and sandbox infrastructure is configured."""
-    if not settings.AGENTS_ENABLED:
-        raise HTTPException(503, "GitEdge Agents is not configured")
-
-
-router = APIRouter(prefix="/agents", tags=["agents"], dependencies=[Depends(enabled)])
+router = APIRouter(prefix="/agents", tags=["agents"])
 
 
 def service(
@@ -111,12 +104,16 @@ async def status(run_id: uuid.UUID, user: CurrentUser, agents: AgentServiceDep) 
 
 @router.get("/runs/{run_id}/events")
 async def events(
-    run_id: uuid.UUID, user: CurrentUser, agents: AgentServiceDep, last_event_id: Annotated[str, Header()] = "0-0"
+    run_id: uuid.UUID,
+    user: CurrentUser,
+    agents: AgentServiceDep,
+    streams: AgentStreamsStoreDep,
+    last_event_id: Annotated[str, Header()] = "0-0",
 ) -> StreamingResponse:
     """Replay stored AG-UI protocol events from Last-Event-ID."""
     await status(run_id, user, agents)
     return StreamingResponse(
-        stream_store().read(str(run_id), last_event_id),
+        streams.read(str(run_id), last_event_id),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -205,9 +202,11 @@ async def providers(_user: CurrentUser) -> list[ProviderPublic]:
 
 
 @router.post("/runs/{run_id}/cancel", status_code=202)
-async def cancel_run(run_id: uuid.UUID, user: CurrentUser, agents: AgentServiceDep) -> RunPublic:
+async def cancel_run(
+    run_id: uuid.UUID, user: CurrentUser, agents: AgentServiceDep, streams: AgentStreamsStoreDep
+) -> RunPublic:
     """Request a durable stop without tying cancellation to a browser connection."""
     turn = await agents.get_run(run_id, user)
     if turn.status in {"pending", "running"}:
-        await stream_store().cancel(str(run_id))
+        await streams.cancel(str(run_id))
     return RunPublic.model_validate(turn)

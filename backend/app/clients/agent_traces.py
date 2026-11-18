@@ -2,12 +2,10 @@
 
 import re
 import shlex
-from typing import TYPE_CHECKING, TypedDict
+import uuid  # noqa: TC003 - Restate evaluates run_typed callback annotations
+from typing import TypedDict
 
-if TYPE_CHECKING:
-    import uuid
-
-    from app.clients.sandbox import SandboxClient
+from pydantic_ai.workspaces import Workspace, WorkspaceBackend
 
 
 class TraceFile(TypedDict):
@@ -26,14 +24,15 @@ class RepositoryTrace(TypedDict):
     files: list[TraceFile]
 
 
-async def capture_worktrees(sandbox: SandboxClient, repository_ids: list[uuid.UUID]) -> dict[str, str]:
+async def capture_worktrees(sandbox: WorkspaceBackend, repository_ids: list[uuid.UUID]) -> dict[str, str]:
     """Record working trees with a temporary index, preserving the user's staging area."""
     trees: dict[str, str] = {}
+    workspace = Workspace(sandbox)
     for repository_id in repository_ids:
         root = f"/workspace/{repository_id}"
         index = f"/opt/gitedge/trace-{repository_id}.index"
         command = f"cd {shlex.quote(root)} && export GIT_INDEX_FILE={index}; git read-tree HEAD && git add -A && git write-tree"
-        result = await sandbox.execute(command)
+        result = await workspace.run(["bash", "-c", command], timeout=300)
         if result.exit_code:
             raise RuntimeError(result.stderr)
         trees[str(repository_id)] = result.stdout.strip()
@@ -41,7 +40,7 @@ async def capture_worktrees(sandbox: SandboxClient, repository_ids: list[uuid.UU
 
 
 async def capture_traces(
-    sandbox: SandboxClient, repository_ids: list[uuid.UUID], baseline: dict[str, str]
+    sandbox: WorkspaceBackend, repository_ids: list[uuid.UUID], baseline: dict[str, str]
 ) -> list[RepositoryTrace]:
     """Attribute this turn's changes, including new files, rather than the whole session."""
     traces: list[RepositoryTrace] = []
@@ -50,8 +49,13 @@ async def capture_traces(
         root = f"/workspace/{repository_id}"
         before = shlex.quote(baseline[str(repository_id)])
         after = shlex.quote(current[str(repository_id)])
-        result = await sandbox.execute(
-            f"cd {shlex.quote(root)} && git rev-parse HEAD && git diff --no-ext-diff --no-color --unified=0 {before} {after} --"
+        result = await Workspace(sandbox).run(
+            [
+                "bash",
+                "-c",
+                f"cd {shlex.quote(root)} && git rev-parse HEAD && git diff --no-ext-diff --no-color --unified=0 {before} {after} --",
+            ],
+            timeout=300,
         )
         if result.exit_code:
             raise RuntimeError(result.stderr)

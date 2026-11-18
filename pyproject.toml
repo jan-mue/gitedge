@@ -2,7 +2,6 @@
 exclude-newer = "7 days"
 exclude-newer-package.certifi = false
 exclude-newer-package.genai-prices = false
-exclude-newer-package.k8s-agent-sandbox = false
 exclude-newer-package.pydantic-ai-harness = false
 exclude-newer-package.pydantic-ai-slim = false
 exclude-newer-package.pydantic-graph = false

@@ -2,22 +2,20 @@
 
 import io
 import shlex
+import uuid  # noqa: TC003 - Restate evaluates run_typed callback annotations
+from collections.abc import Awaitable, Callable  # noqa: TC003 - Restate callback annotations
 from typing import TYPE_CHECKING
 
 from dulwich.bundle import create_bundle_from_repo, write_bundle
 from fastapi.concurrency import run_in_threadpool
+from pydantic_ai.workspaces import CommandResult, Workspace, WorkspaceBackend
+
+from app.clients.blob_storage import BlobStorageClient  # noqa: TC001 - Restate callback annotations
 
 if TYPE_CHECKING:
-    import uuid
-    from collections.abc import Awaitable, Callable
-
-    from pydantic_ai.workspaces import CommandResult
-
-    from app.clients.blob_storage import BlobStorageClient
     from app.clients.git.blob_repository import BlobRepository
     from app.clients.git.repositories import GitClient
     from app.clients.repositories import RepositoryStore
-    from app.clients.sandbox import SandboxClient
 
 
 class AgentRepositoryClient:
@@ -51,7 +49,7 @@ class AgentRepositoryClient:
 
 
 async def prepare_environment(
-    sandbox: SandboxClient,
+    sandbox: WorkspaceBackend,
     blobs: BlobStorageClient,
     environment_id: uuid.UUID,
     repository_ids: list[uuid.UUID],
@@ -61,13 +59,14 @@ async def prepare_environment(
 ) -> list[dict[str, str | int]]:
     """Clone credential-free bundles and persist versioned setup files in each repo."""
     results: list[dict[str, str | int]] = []
+    workspace = Workspace(sandbox)
     for repository_id in repository_ids:
         image = await blobs.get(f"agents/environments/{environment_id}/{repository_id}.bundle")
         if image is None:
             raise FileNotFoundError("Repository bundle unavailable")
         path = f"/workspace/{repository_id}"
         bundle_path = f"/opt/gitedge/{repository_id}.bundle"
-        await sandbox.write_file(bundle_path, image)
+        await workspace.write_bytes(bundle_path, image)
         if image:
             command = f"test -d {path}/.git || (rm -rf /opt/gitedge/clone-{repository_id} && git clone {bundle_path} /opt/gitedge/clone-{repository_id} && mv /opt/gitedge/clone-{repository_id} {path})"
         else:
@@ -75,20 +74,25 @@ async def prepare_environment(
                 await blobs.get(f"agents/environments/{environment_id}/{repository_id}.branch") or b"main"
             ).decode()
             command = f"test -d {path}/.git || git init -b {shlex.quote(branch)} {path}"
-        result = await sandbox.execute(command)
+        result = await workspace.run(["bash", "-c", command], timeout=300)
         if result.exit_code:
             raise RuntimeError(result.stderr)
-        initialized = await sandbox.execute(
-            f"git -C {path} rev-parse HEAD >/dev/null 2>&1 || git -C {path} -c user.name=GitEdge -c user.email=agents@gitedge.invalid commit --allow-empty -m 'Initialize agent workspace'"
+        initialized = await workspace.run(
+            [
+                "bash",
+                "-c",
+                f"git -C {path} rev-parse HEAD >/dev/null 2>&1 || git -C {path} -c user.name=GitEdge -c user.email=agents@gitedge.invalid commit --allow-empty -m 'Initialize agent workspace'",
+            ],
+            timeout=300,
         )
         if initialized.exit_code:
             raise RuntimeError(initialized.stderr)
         if script:
-            await sandbox.write_file(f"{path}/.gitedge/agents/setup.sh", script.encode())
+            await workspace.write_bytes(f"{path}/.gitedge/agents/setup.sh", script.encode())
         if instructions:
-            await sandbox.write_file(f"{path}/.gitedge/agents/instructions.md", instructions.encode())
+            await workspace.write_bytes(f"{path}/.gitedge/agents/instructions.md", instructions.encode())
         command = f"cd {path} && if test -f .gitedge/agents/setup.sh; then bash .gitedge/agents/setup.sh; fi"
-        result = await execute(command) if execute else await sandbox.execute(command, timeout=900)
+        result = await execute(command) if execute else await workspace.run(["bash", "-c", command], timeout=900)
         results.append(
             {
                 "repository": str(repository_id),

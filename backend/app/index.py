@@ -7,8 +7,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.agents.runtime import restate_app
 from app.api.exception_handlers import application_exception_handler
 from app.api.main import api_router
+from app.api.restate import RestateDependencies
 from app.api.routes import git
 from app.config import settings
 from app.exceptions import ApplicationError, EmailDeliveryError
@@ -72,7 +74,5 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 # Excluded from OpenAPI docs to avoid duplicate operation IDs with /api/v1/ routes.
 app.include_router(git.router, include_in_schema=False)
 
-if settings.AGENTS_ENABLED:
-    from app.agents.runtime import restate_app
-
-    app.mount("/restate", restate_app())
+app.add_middleware(RestateDependencies, dependency_overrides_provider=app)
+app.mount("/restate", restate_app())

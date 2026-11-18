@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
+from app.clients.agent_traces import RepositoryTrace  # noqa: TC001 - Restate evaluates callback annotations at runtime
 from app.clients.database import SQLStore
 from app.clients.repositories import SQLRepositoryStore
 from app.config import settings
@@ -24,8 +25,6 @@ from app.exceptions import ConflictError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-    from app.clients.agent_traces import RepositoryTrace
 
 
 class AgentStore(SQLStore[AgentSession]):
@@ -187,6 +186,11 @@ class AgentStore(SQLStore[AgentSession]):
         run.status = "cancelled" if message == "AgentRunCancelledError" else "failed"
         run.error = message
         run.finished_at = datetime.now(UTC)
+        await self.db.commit()
+
+    async def save_snapshot(self, session: AgentSession, snapshot: str) -> None:
+        """Persist a recoverable image with concrete runtime callback annotations."""
+        session.snapshot_id = snapshot
         await self.db.commit()
 
     async def notifications(self, user_id: uuid.UUID) -> list[AgentRun]:

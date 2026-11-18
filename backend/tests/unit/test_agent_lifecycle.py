@@ -1,29 +1,30 @@
 from typing import TYPE_CHECKING
 
-from pydantic_ai.workspaces import CommandResult
+from vercel.sandbox import Sandbox, SandboxClient
 
-from app.agents.sandbox import RunSandbox
-from app.clients.sandbox import SnapshotableSandboxClient
+from app.agents.runtime import snapshot_workspace, stop_workspace
+from app.sandboxes.vercel import VercelSandboxBackend
 
 if TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
 
-async def test_replay_without_tool_steps_only_stops_existing_machine(mocker: MockerFixture) -> None:
-    provider = mocker.AsyncMock(spec=SnapshotableSandboxClient)
-    sandbox = RunSandbox(lambda: provider, "run-1", "image-1")
-    await sandbox.stop()
-    provider.start.assert_not_called()
-    provider.stop_named.assert_awaited_once_with("run-1")
+async def test_replayed_vercel_cleanup_uses_injected_client_without_resuming(mocker: MockerFixture) -> None:
+    client = mocker.create_autospec(SandboxClient, instance=True)
+    machine = mocker.create_autospec(Sandbox, instance=True)
+    client.get_sandbox.return_value = machine
+    backend = VercelSandboxBackend(client, name="run-1")
+    await stop_workspace(backend)
+    client.get_sandbox.assert_awaited_once_with(name="run-1")
+    client.get_or_create_sandbox.assert_not_awaited()
+    machine.stop.assert_awaited_once()
 
 
-async def test_tool_provisions_once_and_snapshots_before_stop(mocker: MockerFixture) -> None:
-    provider = mocker.AsyncMock(spec=SnapshotableSandboxClient)
-    provider.execute.return_value = CommandResult(exit_code=0, stdout="hello", stderr="")
-    provider.snapshot.return_value = "image-2"
-    sandbox = RunSandbox(lambda: provider, "run-1", "image-1")
-    assert (await sandbox.execute("echo hello")).stdout == "hello"
-    assert await sandbox.snapshot("next") == "image-2"
-    await sandbox.stop()
-    provider.start.assert_awaited_once_with("run-1", "image-1")
-    provider.stop.assert_awaited_once()
+async def test_vercel_uses_native_snapshots(mocker: MockerFixture) -> None:
+    client = mocker.create_autospec(SandboxClient, instance=True)
+    machine = mocker.create_autospec(Sandbox, instance=True)
+    machine.snapshot.return_value = mocker.Mock(id="native-snapshot")
+    backend = VercelSandboxBackend(client, name="run-1")
+    backend.machine = machine
+    assert await snapshot_workspace(backend) == "native-snapshot"
+    machine.snapshot.assert_awaited_once_with()

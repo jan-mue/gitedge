@@ -1,43 +1,47 @@
 from typing import TYPE_CHECKING
 
 import restate
-from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
-from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.agents.coding import run_coding_agent
-from tests.integration.agents.containers import OLLAMA_MODEL, RESTATE_IMAGE
-from tests.integration.agents.fakes import FilesystemTestSandbox, MemoryAgentStreams
+from tests.integration.agents.harness import agent_harness
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    from pydantic_ai.models.openai import OpenAIChatModel
+    from pydantic_ai_harness.smol_sandbox import SmolSandboxBackend
 
-    from testcontainers.community.ollama import OllamaContainer
+    from app.agents.dependencies import CodingAgentDeps
+    from app.clients.agent_streams import AgentStreamStore
 
 
-async def test_ollama_durable_turn(agent_ollama: OllamaContainer, tmp_path: Path) -> None:
-    endpoint = agent_ollama.get_endpoint()
-    sandbox = FilesystemTestSandbox(tmp_path)
-    streams = MemoryAgentStreams()
-    model = OpenAIChatModel(
-        OLLAMA_MODEL,
-        provider=OpenAIProvider(base_url=f"{endpoint}/v1", api_key="ollama"),
-        settings=OpenAIChatModelSettings(openai_reasoning_effort="none"),
-    )
+async def test_ollama_durable_turn(
+    agent_sandbox: SmolSandboxBackend,
+    agent_streams: AgentStreamStore,
+    agent_model: OpenAIChatModel,
+    agent_coding_deps: CodingAgentDeps,
+) -> None:
     service = restate.Service("OllamaCodingTest")
 
     @service.handler()
     async def run(_ctx: restate.Context, prompt: str) -> str:
         await run_coding_agent(
-            sandbox, streams, run_id="ollama-turn", session_id="ollama-session", prompt=prompt, model=model
+            agent_coding_deps,
+            run_id="ollama-turn",
+            session_id="ollama-session",
+            prompt=prompt,
+            model=agent_model,
         )
         return "done"
 
-    async with restate.create_test_harness(
-        restate.app([service]), restate_image=RESTATE_IMAGE, always_replay=True, disable_retries=True
-    ) as harness:
-        assert await harness.client.service_call(run, arg="Reply with hello. Do not use any tools.") == "done"
-    assert any(
-        "TEXT_MESSAGE_CONTENT" in event
-        for (run_id, _event_id), event in streams.records.items()
-        if run_id == "ollama-turn"
-    )
+    async with agent_harness(restate.app([service], protocol="request_response"), disable_retries=True) as harness:
+        assert (
+            await harness.client.service_call(
+                run,
+                arg='Call the shell tool with command "echo hello > /workspace/hello.txt; cat /workspace/hello.txt". Execute it now; do not just describe the command. Then reply briefly.',
+            )
+        ) == "done"
+    events = await agent_streams.history("ollama-turn")
+    result = await agent_sandbox.run(["cat", "/workspace/hello.txt"])
+    assert result.exit_code == 0, (result.stderr, events)
+    assert result.stdout == "hello\n", events
+    assert any("TEXT_MESSAGE_CONTENT" in event for event in events)
+    assert any("bash_output" in event for event in events)
