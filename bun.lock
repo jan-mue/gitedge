@@ -89,7 +89,7 @@
         "@actions/workflow-parser": "0.3.61",
         "@gitedge/actions-runner": "workspace:*",
         "@vercel/oidc": "4.0.8",
-        "minimatch": "11.0.6",
+        "minimatch": "11.0.7",
         "zod": "4.6.7",
       },
     },
@@ -97,7 +97,7 @@
       "name": "@gitedge/actions-runner",
       "dependencies": {
         "@actions/expressions": "0.3.61",
-        "minimatch": "11.0.6",
+        "minimatch": "11.0.7",
         "yaml": "2.9.1",
         "zod": "4.6.7",
       },
@@ -1314,7 +1314,7 @@
 
     "min-indent": ["min-indent@1.0.1", "", {}, "sha512-I9jwMn07Sy/IwOj3zVkVik2JTvgpaykDZEigL6Rx6N9LbMywwUSMtxET+7lVoDLLd3O3IXwJwvuuns8UB/HeAg=="],
 
-    "minimatch": ["minimatch@11.0.6", "", { "dependencies": { "@isaacs/nonrecursive-glob-match": "^1.1.0", "brace-expansion": "^5.0.12" } }, "sha512-6NZbDPQIRnsJFjJ9wbd5659OKaTHCqpPHdldE3WwArjxr5wLxHIwnx4eTGcPebpVBZZQbITvQQIx8K0VGXoT3Q=="],
+    "minimatch": ["minimatch@11.0.7", "", { "dependencies": { "@isaacs/nonrecursive-glob-match": "^1.1.0", "brace-expansion": "^5.0.12" } }, "sha512-Tnk+M9mPjqKDZlUd77eMSjPjhnlBIa1mABOwetMryIshUwi1YmOBdGFfQnHgn4Z8A66eLT8ENzJrxwYmKfqrZg=="],
 
     "minimist": ["minimist@1.2.8", "", {}, "sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA=="],
 
