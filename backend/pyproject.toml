@@ -9,10 +9,13 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
+    "ag-ui-protocol==1.0.0",
     "aiobotocore==3.10.0",
     "alembic==1.20.1",
+    "anyio==4.16.0",
     "botocore==1.43.117",
     "casbin-async-sqlalchemy-adapter==1.17.0",
+    "cryptography==50.0.2",
     "dulwich==1.2.21",
     "emails==1.1.3",
     "fastapi==0.162.5",
@@ -25,12 +28,19 @@ dependencies = [
     "pwdlib[argon2,bcrypt]==0.3.1",
     "pycasbin==2.8.0",
     "pydantic[email]==2.14.3",
+    "pydantic-ai-harness[coder,smol]==0.68.0",
+    "pydantic-ai-slim[ag-ui,anthropic,mcp,openai]==2.68.0",
     "pydantic-settings==2.16.2",
     "pygments==2.21.0",
     "pyjwt==2.15.1",
     "python-multipart==0.0.33",
     "redis[hiredis]==8.1.0",
+    "restate-sdk[client,pydantic-ai,serde]==1.5.2",
     "sentry-sdk==2.74.0",
+    """\
+    smolmachines==1.32.4; (platform_machine=='arm64' and sys_platform=='darwin') or (platform_machine=='aarch64' and \
+    sys_platform=='linux') or (platform_machine=='x86_64' and sys_platform=='linux')\
+    """,
     "sqlalchemy[asyncio]==2.1.8",
     "tenacity==9.2.1",
     "upstash-redis==1.9.0",
@@ -50,7 +60,8 @@ dev = [
     "pytest-playwright==0.10.0",
     "pytest-socket==0.8.1",
     "pytest-xprocess==1.0.2",
-    "testcontainers[mailpit,minio,postgres,redis]==4.15.0",
+    "restate-sdk[harness]==1.5.2",
+    "testcontainers[mailpit,minio,ollama,postgres,redis]==4.15.0",
     "types-pygments==2.21.0.20260819",
 ]
 
@@ -162,6 +173,22 @@ ignore_names = [
     # Group: reserved Pydantic/SQLAlchemy members
     "metadata",
     "model_config",
+    # Group: Restate/PydanticAI hook interface, consumed by the SDK
+    "request_context",
+    "turnstile",
+    # Group: Agent Trace and workspace serialized fields
+    "content_hash",
+    "contributor_type",
+    "conversation_url",
+    "end_line",
+    "model_id",
+    "pinned",
+    "start_line",
+    "tool_name",
+    "tool_version",
+    "trace_id",
+    "vcs_type",
+    "version",
     # Group: RepositoryChanges TypedDict keys
     "pack_deletes",
     "pack_uploads",
@@ -209,4 +236,4 @@ report.show_missing = true
 report.sort = "-Cover"
 
 [tool.vercel]
-scripts.build = "uv run bash scripts/prestart.sh"
+scripts.build = "uv run --no-sync bash scripts/prestart.sh"

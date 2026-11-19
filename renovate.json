@@ -23,5 +23,17 @@
       ],
       "pinDigests": false
     }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/backend/tests/integration/agents/containers\\.py$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n\\w+_IMAGE = \"[^\"\\n]+:(?<currentValue>[^\"\\n]+)\""
+      ],
+      "versioningTemplate": "docker"
+    }
   ]
 }
