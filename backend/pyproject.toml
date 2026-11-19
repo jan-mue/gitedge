@@ -21,7 +21,7 @@ dependencies = [
     "markdown-it-py[linkify]==4.3.0",
     "mdit-py-plugins==0.7.0",
     "merge3==1.0.0",
-    "psycopg[binary]==3.3.8",
+    "psycopg[binary]==3.3.9",
     "pwdlib[argon2,bcrypt]==0.3.1",
     "pycasbin==2.8.0",
     "pydantic[email]==2.14.3",
