@@ -55,7 +55,7 @@
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "0.99.0",
-    "@playwright/test": "1.65.0",
+    "@playwright/test": "1.65.1",
     "@storybook/addon-docs": "10.6.7",
     "@storybook/addon-mcp": "10.6.7",
     "@storybook/addon-themes": "10.6.7",
