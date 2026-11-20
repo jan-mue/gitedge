@@ -25,7 +25,7 @@ dependencies = [
     "pwdlib[argon2,bcrypt]==0.3.1",
     "pycasbin==2.8.0",
     "pydantic[email]==2.14.3",
-    "pydantic-settings==2.16.2",
+    "pydantic-settings==2.16.3",
     "pygments==2.21.0",
     "pyjwt==2.15.1",
     "python-multipart==0.0.33",
