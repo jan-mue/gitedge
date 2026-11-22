@@ -51,7 +51,7 @@ dev = [
     "pytest-socket==0.8.1",
     "pytest-xprocess==1.0.2",
     "testcontainers[mailpit,minio,postgres,redis]==4.15.0",
-    "types-pygments==2.21.0.20260819",
+    "types-pygments==2.21.0.20261115",
 ]
 
 [tool.ruff]
