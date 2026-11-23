@@ -22,7 +22,7 @@
     "@types/bun": "1.4.4",
     "@types/node": "26.6.5",
     "css-tree": "3.2.1",
-    "fallow": "3.43.1",
+    "fallow": "3.43.2",
     "typescript": "6.0.3",
     "vitest": "5.1.0",
     "@vitest/coverage-v8": "5.1.0",
