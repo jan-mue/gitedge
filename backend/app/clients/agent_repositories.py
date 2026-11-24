@@ -7,10 +7,12 @@ from collections.abc import Awaitable, Callable  # noqa: TC003 - Restate callbac
 from typing import TYPE_CHECKING
 
 from dulwich.bundle import create_bundle_from_repo, write_bundle
+from dulwich.refs import Ref, check_ref_format
 from fastapi.concurrency import run_in_threadpool
 from pydantic_ai.workspaces import CommandResult, Workspace, WorkspaceBackend
 
 from app.clients.blob_storage import BlobStorageClient  # noqa: TC001 - Restate callback annotations
+from app.exceptions import ConflictError, InvalidInputError
 
 if TYPE_CHECKING:
     from app.clients.git.blob_repository import BlobRepository
@@ -46,6 +48,78 @@ class AgentRepositoryClient:
             await self.blobs.put(
                 f"agents/environments/{environment_id}/{repository_id}.branch", repository.default_branch.encode()
             )
+
+    async def publish_branch(
+        self,
+        workspace: Workspace,
+        repository_id: uuid.UUID,
+        session_id: uuid.UUID,
+        base_branch: str,
+        branch: str,
+    ) -> str:
+        """Export an existing committed branch without staging, committing, or rewriting it."""
+        repository = await self.repositories.get(repository_id)
+        if branch.startswith("-") or not check_ref_format(Ref(f"refs/heads/{branch}".encode())):
+            raise InvalidInputError("Invalid publication branch")
+        if branch in {base_branch, repository.default_branch}:
+            raise InvalidInputError("The publication branch must not replace the base or default branch")
+        root = f"/workspace/{repository_id}"
+        artifact = f"/opt/gitedge/publication-{repository_id}-{session_id.hex}.bundle"
+        script = """
+set -euo pipefail
+cd "$1"
+branch=$2
+base_ref=$3
+artifact=$4
+base=$(git rev-parse --verify "$base_ref^{commit}")
+head=$(git rev-parse --verify "refs/heads/$branch^{commit}")
+if [ "$head" = "$base" ]; then
+  printf 'NO_CHANGES\\n'
+  exit 0
+fi
+if ! git diff --quiet "$base_ref" "refs/heads/$branch" -- .gitedge/agents; then
+  printf 'Setup metadata must not be committed to the publication branch.\\n' >&2
+  exit 1
+fi
+git bundle create "$artifact" "refs/heads/$branch" "^$base_ref"
+"""
+        _base, expected = await self.git.git_refs.branch_heads(
+            repository.owner.name, repository.name, base_branch, branch
+        )
+        result = await workspace.run(
+            ["bash", "-c", script, "bash", root, branch, f"refs/remotes/origin/{base_branch}", artifact],
+            timeout=300,
+        )
+        if result.exit_code:
+            raise InvalidInputError(result.stderr.strip() or "Create the branch and commit its changes with Git first")
+        if result.stdout.strip() == "NO_CHANGES":
+            raise ConflictError("There are no coding changes to publish")
+        await self.git.publish_agent_bundle(
+            repository.owner.name,
+            repository.name,
+            branch,
+            base_branch,
+            await workspace.read_bytes(artifact),
+            expected,
+        )
+        return branch
+
+
+async def configure_git(
+    sandbox: WorkspaceBackend, repository_ids: list[uuid.UUID], author_name: str, author_email: str
+) -> None:
+    """Configure a normal Git identity and ignore application-owned setup metadata."""
+    workspace = Workspace(sandbox)
+    for repository_id in repository_ids:
+        root = f"/workspace/{repository_id}"
+        for setting, value in (("user.name", author_name), ("user.email", author_email)):
+            result = await workspace.run(["git", "-C", root, "config", setting, value])
+            if result.exit_code:
+                raise InvalidInputError(result.stderr.strip() or "Unable to configure Git identity")
+        exclude = f"{root}/.git/info/exclude"
+        contents = await workspace.read_text(exclude)
+        if ".gitedge/agents/" not in contents.splitlines():
+            await workspace.write_text(exclude, contents.rstrip("\n") + "\n.gitedge/agents/\n")
 
 
 async def prepare_environment(

@@ -7,9 +7,8 @@ async def test_native_smol_commands_and_files() -> None:
     available, _code, reason = smol.local_availability()
     if not available:
         pytest.skip(reason or "Local virtualization is unavailable")
-    from pydantic_ai_harness.smol_sandbox import SmolSandbox, SmolSandboxBackend  # noqa: PLC0415 - optional host virtualization
-
-    sandbox = SmolSandboxBackend(image="python:3.14.10-slim-bookworm")
+    sandbox_module = pytest.importorskip("pydantic_ai_harness.smol_sandbox")
+    sandbox = sandbox_module.SmolSandboxBackend(image="python:3.14.10-slim-bookworm")
     try:
         workspace = Workspace(sandbox)
         assert await workspace.working_dir() == "/workspace"
@@ -30,4 +29,4 @@ async def test_native_smol_commands_and_files() -> None:
         assert await workspace.read_text("count") == "called\ncalled\n"
     finally:
         if sandbox.ref is not None:
-            await SmolSandbox().destroy(sandbox.ref)
+            await sandbox_module.SmolSandbox().destroy(sandbox.ref)

@@ -13,6 +13,8 @@ from app.services.repositories import ensure_repository
 from app.utils.markdown import render_markdown
 
 if TYPE_CHECKING:
+    import uuid
+
     from app.clients.issues import IssueStore
     from app.clients.repositories import RepositoryStore
     from app.entities.users import User
@@ -68,7 +70,9 @@ class IssueService:
             closed_count=await self.issue_store.count_by_state(repository.id, IssueState.CLOSED),
         )
 
-    async def create_issue(self, owner: str, name: str, body: IssueCreate, current_user: User) -> IssuePublic:
+    async def create_issue(
+        self, owner: str, name: str, body: IssueCreate, current_user: User, *, issue_id: uuid.UUID | None = None
+    ) -> IssuePublic:
         """Create a new issue.
 
         Args:
@@ -76,13 +80,23 @@ class IssueService:
             name: Repository name.
             body: Issue creation data.
             current_user: The authenticated user.
+            issue_id: Optional stable identity for a durable tool call.
 
         Returns:
             The created issue.
         """
         repository = await ensure_repository(self.repository_store, owner, name)
 
+        if issue_id is not None:
+            existing = await self.issue_store.find(issue_id)
+            if existing is not None:
+                if existing.repo_id != repository.id or existing.author_id != current_user.id:
+                    raise InvalidInputError("Issue identity belongs to another repository or author")
+                existing.author = current_user
+                return self._to_public(existing, owner, name)
+
         issue = Issue(
+            **({"id": issue_id} if issue_id is not None else {}),
             repo_id=repository.id,
             number=await self.issue_store.next_number(repository.id),
             title=body.title,

@@ -1,28 +1,35 @@
 """Container fixtures for agent runtime tests independent of the forge server."""
 
+from contextlib import asynccontextmanager
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
-from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
-from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.models.ollama import OllamaModel
+from pydantic_ai.models.openai import OpenAIChatModelSettings
+from pydantic_ai.providers.ollama import OllamaProvider
 from redis.asyncio import Redis
 from testcontainers.minio import MinioContainer
 from testcontainers.redis import RedisContainer
 
-from app.agents.runtime import stop_workspace
-from app.api.dependencies import get_coding_agent_deps
+from app.agents.dependencies import AgentDeps, SetupAgentDeps
+from app.agents.main import stop_workspace
 from app.clients.agent_streams import AgentStreamStore
 from app.clients.blob_storage import S3Client
-from tests.integration.agents.containers import OLLAMA_MODEL, ollama_container
+from tests.integration.agents.containers import OLLAMA_MODEL
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator, Callable, Generator
+    from contextlib import AbstractAsyncContextManager
 
     from pydantic_ai_harness.smol_sandbox import SmolSandbox, SmolSandboxBackend
     from testcontainers.community.ollama import OllamaContainer
 
-    from app.agents.dependencies import CodingAgentDeps
+
+type AgentRunResources = Callable[
+    [str | None], AbstractAsyncContextManager[tuple[SetupAgentDeps, SmolSandboxBackend, OllamaModel]]
+]
+type AgentModelResources = Callable[[str | None], AbstractAsyncContextManager[tuple[AgentDeps, OllamaModel]]]
 
 
 @pytest.fixture(autouse=True)
@@ -30,20 +37,11 @@ def _clean_repositories() -> None:
     """Agent SDK tests do not need the forge's unrelated database fixtures."""
 
 
-@pytest.fixture(scope="session")
-def agent_ollama() -> Generator[OllamaContainer]:
-
-    with ollama_container() as container:
-        container.pull_model(OLLAMA_MODEL)
-        assert any(model["model"].startswith("qwen3.5:0.8b") for model in container.list_models())
-        yield container
-
-
 @pytest.fixture
-async def agent_model(agent_ollama: OllamaContainer) -> AsyncGenerator[OpenAIChatModel]:
-    provider = OpenAIProvider(base_url=f"{agent_ollama.get_endpoint()}/v1", api_key="ollama")
+async def agent_model(agent_ollama: OllamaContainer) -> AsyncGenerator[OllamaModel]:
+    provider = OllamaProvider(base_url=f"{agent_ollama.get_endpoint()}/v1", api_key="ollama")
     try:
-        yield OpenAIChatModel(
+        yield OllamaModel(
             OLLAMA_MODEL, provider=provider, settings=OpenAIChatModelSettings(openai_reasoning_effort="none")
         )
     finally:
@@ -95,16 +93,16 @@ def agent_sandbox_capability() -> SmolSandbox:
     available, _code, reason = smol.local_availability()
     if not available:
         pytest.skip(reason or "Local virtualization is unavailable")
-    from pydantic_ai_harness.smol_sandbox import SmolSandbox  # noqa: PLC0415 - optional host virtualization
-
-    return SmolSandbox(image="python:3.14.10-slim-bookworm", memory_mb=512)
+    sandbox_module = pytest.importorskip("pydantic_ai_harness.smol_sandbox")
+    return sandbox_module.SmolSandbox(image="node:22.18.0-bookworm", memory_mb=512, allow_internet_access=False)
 
 
 @pytest.fixture
 async def agent_sandbox(agent_sandbox_capability: SmolSandbox) -> AsyncGenerator[SmolSandboxBackend]:
-    from pydantic_ai_harness.smol_sandbox import SmolSandboxBackend  # noqa: PLC0415 - optional host virtualization
-
-    sandbox = SmolSandboxBackend(image=agent_sandbox_capability.image, memory_mb=agent_sandbox_capability.memory_mb)
+    sandbox_module = pytest.importorskip("pydantic_ai_harness.smol_sandbox")
+    sandbox = sandbox_module.SmolSandboxBackend(
+        image=agent_sandbox_capability.image, memory_mb=agent_sandbox_capability.memory_mb
+    )
     try:
         await sandbox.get_sandbox()
         yield sandbox
@@ -113,11 +111,47 @@ async def agent_sandbox(agent_sandbox_capability: SmolSandbox) -> AsyncGenerator
 
 
 @pytest.fixture
-def agent_coding_deps(
-    agent_sandbox: SmolSandboxBackend,
+def setup_agent_deps(
     agent_streams: AgentStreamStore,
     agent_blobs: S3Client,
     agent_sandbox_capability: SmolSandbox,
-) -> CodingAgentDeps:
-    deps = get_coding_agent_deps(agent_streams, agent_blobs, agent_sandbox_capability)
-    return replace(deps, workspace=agent_sandbox)
+) -> SetupAgentDeps:
+    return SetupAgentDeps(streams=agent_streams, blobs=agent_blobs, sandbox=agent_sandbox_capability)
+
+
+@pytest.fixture
+def agent_model_resources(
+    agent_blobs: S3Client, agent_redis: RedisContainer, agent_ollama: OllamaContainer
+) -> AgentModelResources:
+    """Create network clients on the requesting loop, including the SDK harness's server loop."""
+
+    @asynccontextmanager
+    async def resources(endpoint: str | None) -> AsyncGenerator[tuple[AgentDeps, OllamaModel]]:
+        url = f"redis://{agent_redis.get_container_host_ip()}:{agent_redis.get_exposed_port(6379)}/0"
+        provider = OllamaProvider(base_url=endpoint or f"{agent_ollama.get_endpoint()}/v1", api_key="ollama")
+        try:
+            async with Redis.from_url(url, decode_responses=True) as client:
+                model = OllamaModel(
+                    OLLAMA_MODEL, provider=provider, settings=OpenAIChatModelSettings(openai_reasoning_effort="none")
+                )
+                yield AgentDeps(streams=AgentStreamStore(client), blobs=agent_blobs), model
+        finally:
+            await provider.client.close()
+
+    return resources
+
+
+@pytest.fixture
+def agent_run_resources(
+    agent_model_resources: AgentModelResources, setup_agent_deps: SetupAgentDeps, agent_sandbox: SmolSandboxBackend
+) -> AgentRunResources:
+    """Add native compute only for tests that exercise setup or command execution."""
+
+    @asynccontextmanager
+    async def resources(
+        endpoint: str | None,
+    ) -> AsyncGenerator[tuple[SetupAgentDeps, SmolSandboxBackend, OllamaModel]]:
+        async with agent_model_resources(endpoint) as (common, model):
+            yield replace(setup_agent_deps, streams=common.streams, blobs=common.blobs), agent_sandbox, model
+
+    return resources

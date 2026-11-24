@@ -9,7 +9,6 @@ from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.workspaces import CommandResult, SupportsCommands, WorkspaceBackend, WorkspaceRef
 from vercel.sandbox import SnapshotSource
 
-from app.agents.dependencies import CodingAgentDeps
 from app.config import settings
 from app.sandboxes import shell_command, validate_timeout
 
@@ -22,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class VercelSandboxBackend(WorkspaceBackend, SupportsCommands):
-    """Use a FastAPI-injected standalone SDK client for native sandbox operations."""
+    """Use an injected standalone SDK client for native sandbox operations."""
 
     def __init__(
         self,
@@ -102,13 +101,13 @@ class VercelSandboxBackend(WorkspaceBackend, SupportsCommands):
 
 
 @dataclass(kw_only=True)
-class VercelSandbox(AbstractCapability[CodingAgentDeps]):
+class VercelSandbox[AgentDepsT](AbstractCapability[AgentDepsT]):
     """Supply the injected Vercel client as a standard workspace capability."""
 
     client: SandboxClient
 
     @override
-    def get_workspace(self, ctx: RunContext[CodingAgentDeps], *, ref: WorkspaceRef | None) -> WorkspaceBackend | None:
+    def get_workspace(self, ctx: RunContext[AgentDepsT], *, ref: WorkspaceRef | None) -> WorkspaceBackend | None:
         if ref is not None and ref.provider != "vercel":
             return None
         return VercelSandboxBackend(self.client, ref=ref)

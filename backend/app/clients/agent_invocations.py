@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Protocol
 
 import restate
 
-from app.agents.runtime import run
+from app.agents.main import run
 from app.config import settings
 
 if TYPE_CHECKING:

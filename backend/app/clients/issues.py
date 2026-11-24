@@ -10,6 +10,7 @@ from sqlalchemy.orm import joinedload, selectinload
 
 from app.clients.database import CrudStore, SQLStore
 from app.entities.issues import Issue, IssueKind, IssueState
+from app.entities.repositories import Repository
 from app.exceptions import IssueNotFoundError
 
 if TYPE_CHECKING:
@@ -88,6 +89,7 @@ class SQLIssueStore(IssueStore, SQLStore[Issue]):
     @override
     async def next_number(self, repo_id: uuid.UUID) -> int:
         """Get the next issue or pull request number for a repository."""
+        await self.db.execute(select(Repository.id).where(Repository.id == repo_id).with_for_update())
         result = await self.db.execute(select(func.max(Issue.number)).where(Issue.repo_id == repo_id))
         max_number = result.scalar_one()
         return (max_number or 0) + 1

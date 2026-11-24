@@ -84,7 +84,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
     AGENTS_SANDBOX: Literal["vercel", "smol"] = "smol"
-    AGENTS_SMOL_IMAGE: str = "python:3.14.10-slim-bookworm"
+    AGENTS_SMOL_IMAGE: str = "node:22.18.0-bookworm"
     AGENTS_SMOL_CPUS: int = Field(default=2, gt=0)
     AGENTS_SMOL_MEMORY_MB: int = Field(default=2048, gt=0)
     AGENTS_SMOL_ALLOW_INTERNET_ACCESS: bool = False

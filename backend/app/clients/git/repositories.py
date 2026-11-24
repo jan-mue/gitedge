@@ -12,8 +12,11 @@ from difflib import SequenceMatcher
 from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 from dulwich.annotate import annotate_lines
+from dulwich.bundle import read_bundle
 from dulwich.diff_tree import tree_changes
+from dulwich.graph import can_fast_forward
 from dulwich.objects import S_ISGITLINK, Blob, Commit, ObjectID, Tag, Tree
+from dulwich.pack import PackData, PackInflater
 from dulwich.patch import write_object_diff, write_tree_diff
 from dulwich.refs import SYMREF, Ref, check_ref_format
 from fastapi.concurrency import run_in_threadpool
@@ -24,11 +27,13 @@ from pygments.lexers import TextLexer, get_lexer_for_filename
 from pygments.util import ClassNotFound
 
 from app.clients.git.activity import collect_git_activity
+from app.clients.git.blob_repository import BlobRepository
 from app.clients.git.diffs import enrich_diff
 from app.clients.git.http import handle_http
 from app.clients.git.refs import GitRefStore
 from app.config import settings
 from app.exceptions import (
+    ConflictError,
     InvalidInputError,
     NotFoundError,
     PayloadTooLargeError,
@@ -71,7 +76,6 @@ if TYPE_CHECKING:
 
     from app.clients.cache import AbstractCacheClient
     from app.clients.git.blob_backend import BlobBackend
-    from app.clients.git.blob_repository import BlobRepository
     from app.clients.git.storage import RepositoryStorage
     from app.clients.git.types import GitHttpRequest, GitHttpResponse
 
@@ -1409,6 +1413,63 @@ class GitClient:
         await self.storage.save(key, changes)
         self.backend.clear_repository_changes(key)
         await self.cache_client.invalidate(self._cache_group(owner, name))
+
+    async def publish_agent_bundle(
+        self, owner: str, name: str, branch: str, base: str, contents: bytes, expected: str | None
+    ) -> str:
+        """Import standard Git objects before conditionally publishing one agent branch."""
+        if not check_ref_format(Ref(f"refs/heads/{branch}".encode())):
+            raise InvalidInputError("Invalid publication branch")
+        if branch == base:
+            raise InvalidInputError("The agent branch must not replace the base branch")
+        key = repo_key(owner, name)
+        packs, refs = await self.storage.load(key)
+        repo = BlobRepository()
+        repo.load_from_storage(packs, refs)
+        try:
+
+            def import_objects() -> str:
+                with io.BytesIO(contents) as buffer, read_bundle(buffer) as bundle:
+                    reference = Ref(f"refs/heads/{branch}".encode())
+                    if set(bundle.references) != {reference}:
+                        raise InvalidInputError("Publication bundle must contain exactly the publication branch")
+                    if any(commit not in repo.object_store for commit, _message in bundle.prerequisites):
+                        raise ConflictError("The workspace base is not available in the repository")
+                    if not isinstance(bundle.pack_data, PackData):
+                        raise InvalidInputError("Publication bundle has no Git pack")
+                    objects = [
+                        (obj, None) for obj in PackInflater.for_pack_data(bundle.pack_data, repo.object_store.get_raw)
+                    ]
+                    repo.object_store.add_objects(objects)
+                    head = bundle.references[reference]
+                    if not isinstance(repo.object_store[head], Commit):
+                        raise InvalidInputError("The agent branch must point to a commit")
+                    return head.decode()
+
+            head = await run_in_threadpool(import_objects)
+            base_commit, current = await self.git_refs.branch_heads(owner, name, base, branch)
+            if base_commit is None:
+                raise ConflictError("The PR base branch does not exist")
+            if current not in (head, expected):
+                raise ConflictError("The agent branch changed outside this workspace")
+            if (
+                current
+                and current != head
+                and not await run_in_threadpool(
+                    can_fast_forward, repo, ObjectID(current.encode()), ObjectID(head.encode())
+                )
+            ):
+                raise ConflictError("The published branch must fast-forward its existing commits")
+            await self.storage.save(key, repo.get_pending_changes())
+            if current != head and not await self.git_refs.publish_branch(
+                owner, name, branch, head, expected, base, base_commit
+            ):
+                raise ConflictError("A branch changed during publication; retry from the current workspace")
+            self.backend.remove_repository(key)
+            await self.cache_client.invalidate(self._cache_group(owner, name))
+            return head
+        finally:
+            repo.object_store.close()
 
     async def create_repository(self, owner: str, name: str) -> None:
         """Create and persist a bare repository's HEAD."""

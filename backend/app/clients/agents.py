@@ -123,6 +123,13 @@ class AgentStore(SQLStore[AgentSession]):
         self.db.add(run)
         await self.db.commit()
 
+    async def start(self, run: AgentRun) -> None:
+        """Transition to running only inside the journaled start callback."""
+        if run.status in {"completed", "failed", "cancelled"}:
+            return
+        run.status = "running"
+        await self.save_run(run)
+
     async def history(self, session_id: uuid.UUID) -> list[dict]:
         """Read individual messages in turn order for model continuation."""
         messages = await self.db.scalars(

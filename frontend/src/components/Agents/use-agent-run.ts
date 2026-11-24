@@ -24,9 +24,10 @@ export const useAgentRun = (sessionId: string, run: RunPublic | undefined, histo
   const [logs, setLogs] = useState<Record<string, CommandLog>>({})
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
-  const [_retry, setRetry] = useState(0)
+  const [retry, setRetry] = useState(0)
   const runId = run?.id
   const prompt = run?.prompt
+  // biome-ignore lint/correctness/useExhaustiveDependencies(retry): explicitly restart the same subscription on reconnect
   useEffect(() => {
     if (!runId || !ready) return
     let mounted = true
@@ -95,6 +96,12 @@ export const useAgentRun = (sessionId: string, run: RunPublic | undefined, histo
       mounted = false
       client.abortRun()
     }
-  }, [runId, prompt, sessionId, ready, query])
-  return { messages, logs: Object.values(logs), busy, error, reconnect: () => setRetry((value) => value + 1) }
+  }, [runId, prompt, sessionId, ready, query, retry])
+  return {
+    messages,
+    logs: Object.values(logs),
+    busy: !!runId && busy,
+    error,
+    reconnect: () => setRetry((value) => value + 1),
+  }
 }

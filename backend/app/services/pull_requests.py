@@ -26,6 +26,8 @@ from app.services.repositories import ensure_repository
 from app.utils.markdown import render_markdown
 
 if TYPE_CHECKING:
+    import uuid
+
     from app.clients.git.merges import GitMergeClient
     from app.clients.pull_requests import PullRequestStore
     from app.clients.repositories import RepositoryStore
@@ -93,7 +95,7 @@ class PullRequestService:
         )
 
     async def create_pull_request(
-        self, owner: str, name: str, body: PullRequestCreate, current_user: User
+        self, owner: str, name: str, body: PullRequestCreate, current_user: User, *, pull_id: uuid.UUID | None = None
     ) -> PullRequestPublic:
         """Create a new pull request.
 
@@ -102,13 +104,28 @@ class PullRequestService:
             name: Repository name.
             body: Pull request creation data.
             current_user: The authenticated user.
+            pull_id: Optional stable identity for a durable tool call.
 
         Returns:
             The created pull request.
         """
         repository = await ensure_repository(self.repository_store, owner, name)
 
+        if pull_id is not None:
+            existing = await self.pull_request_store.find(pull_id)
+            if existing is not None:
+                if (
+                    existing.repo_id != repository.id
+                    or existing.author_id != current_user.id
+                    or existing.head_branch != body.head_branch
+                    or existing.base_branch != body.base_branch
+                ):
+                    raise ConflictError("PR identity belongs to a different publication")
+                existing.author = current_user
+                return self._to_public(existing, owner, name)
+
         pull_request = PullRequest(
+            **({"id": pull_id} if pull_id is not None else {}),
             repo_id=repository.id,
             number=await self.pull_request_store.next_number(repository.id),
             title=body.title,

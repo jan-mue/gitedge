@@ -81,6 +81,10 @@ class VercelBlobClient(BlobStorageClient):
         self._client = AsyncBlobClient(token=token) if token else AsyncBlobClient()
         self._access = access
 
+    async def aclose(self) -> None:
+        """Release the transport on the event loop that owns this client."""
+        await self._client.aclose()
+
     @override
     async def put(self, key: str, data: bytes) -> None:
         """Store binary data in Vercel Blob Storage."""
@@ -100,8 +104,6 @@ class VercelBlobClient(BlobStorageClient):
             result = await self._client.get(key, access=self._access, use_cache=True)
         except BlobNotFoundError:
             logger.debug("Blob not found: %s", key)
-            return None
-        if result is None:
             return None
         return result.content  # type: ignore[no-any-return]
 

@@ -6,6 +6,7 @@ exclude-newer-package.pydantic-ai-harness = false
 exclude-newer-package.pydantic-ai-slim = false
 exclude-newer-package.pydantic-graph = false
 exclude-newer-package.restate-sdk = false
+exclude-newer-package.uncalled-for = false
 workspace.members = [ "backend" ]
 
 [tool.codespell]

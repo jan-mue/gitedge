@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from ag_ui.core import CustomEvent
 from pydantic_ai_harness.shell import CommandOutputEvent, CommandStartedEvent
 
-from app.agents.coding import StableAGUIEventStream
+from app.agents.runner import StableAGUIEventStream
 
 if TYPE_CHECKING:
     from pydantic_ai.messages import CapabilityEvent

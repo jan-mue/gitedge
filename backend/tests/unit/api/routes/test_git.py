@@ -8,7 +8,7 @@ from dulwich.object_format import DEFAULT_OBJECT_FORMAT
 from dulwich.objects import Blob, Commit, Tree
 from dulwich.pack import write_pack_objects
 from dulwich.protocol import pkt_line
-from starlette.requests import Request
+from fastapi import Request
 
 from app.clients.git.blob_repository import BlobRepository
 from app.clients.git.http import create_wsgi_environ

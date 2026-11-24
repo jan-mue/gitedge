@@ -43,6 +43,7 @@ dependencies = [
     """,
     "sqlalchemy[asyncio]==2.1.8",
     "tenacity==9.2.1",
+    "uncalled-for==0.6.2",
     "upstash-redis==1.9.0",
     "uvicorn==0.54.0",
     "vercel==0.11.6",
@@ -128,17 +129,20 @@ lint.flake8-type-checking.runtime-evaluated-base-classes = [
     "sqlalchemy.orm.DeclarativeBase",
 ]
 lint.flake8-type-checking.runtime-evaluated-decorators = [
+    "app.agents.dependencies.inject",
     "fastapi.APIRouter.delete",
     "fastapi.APIRouter.get",
     "fastapi.APIRouter.patch",
     "fastapi.APIRouter.post",
     "fastapi.APIRouter.put",
+    "uncalled_for.without_dependencies",
 ]
 lint.isort.known-first-party = [ "app" ]
 lint.pydocstyle.convention = "google"
 
 [tool.deptry]
 per_rule_ignores.DEP002 = [
+    "smolmachines",     # Native VM SDK is loaded lazily only on supported hosts
     "merge3",           # Required by dulwich for three-way merge calculations
     "python-multipart", # Required to handle form data in FastAPI
     "psycopg",          # Used by SQLAlchemy as database driver
@@ -170,7 +174,8 @@ ignore_names = [
     "DEBUG",
     "ERROR",
     "NOTSET",
-    # Group: reserved Pydantic/SQLAlchemy members
+    # Group: reserved Python/Pydantic/SQLAlchemy members
+    "__signature__",
     "metadata",
     "model_config",
     # Group: Restate/PydanticAI hook interface, consumed by the SDK

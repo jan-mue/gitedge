@@ -2,37 +2,37 @@ from typing import TYPE_CHECKING
 
 import restate
 
-from app.agents.coding import run_coding_agent
-from tests.integration.agents.harness import agent_harness
+from app.agents.setup import run_setup_agent
+from tests.integration.agents.containers import RESTATE_IMAGE
 
 if TYPE_CHECKING:
-    from pydantic_ai.models.openai import OpenAIChatModel
     from pydantic_ai_harness.smol_sandbox import SmolSandboxBackend
 
-    from app.agents.dependencies import CodingAgentDeps
     from app.clients.agent_streams import AgentStreamStore
+    from tests.integration.agents.conftest import AgentRunResources
 
 
 async def test_ollama_durable_turn(
     agent_sandbox: SmolSandboxBackend,
     agent_streams: AgentStreamStore,
-    agent_model: OpenAIChatModel,
-    agent_coding_deps: CodingAgentDeps,
+    agent_run_resources: AgentRunResources,
 ) -> None:
     service = restate.Service("OllamaCodingTest")
 
     @service.handler()
     async def run(_ctx: restate.Context, prompt: str) -> str:
-        await run_coding_agent(
-            agent_coding_deps,
-            run_id="ollama-turn",
-            session_id="ollama-session",
-            prompt=prompt,
-            model=agent_model,
-        )
-        return "done"
+        async with agent_run_resources(None) as (deps, workspace, model):
+            await run_setup_agent(
+                deps, workspace=workspace, run_id="ollama-turn", session_id="ollama-session", prompt=prompt, model=model
+            )
+            return "done"
 
-    async with agent_harness(restate.app([service], protocol="request_response"), disable_retries=True) as harness:
+    async with restate.create_test_harness(
+        restate.app([service], protocol="request_response"),
+        restate_image=RESTATE_IMAGE,
+        always_replay=True,
+        disable_retries=True,
+    ) as harness:
         assert (
             await harness.client.service_call(
                 run,

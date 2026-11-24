@@ -17,3 +17,5 @@ class AgentTurnRequest(BaseModel):
     instructions: str
     history: list[dict] = Field(default_factory=list)
     workspace: WorkspaceRef
+    repository_ids: list[uuid.UUID] = Field(default_factory=list)
+    coding: bool = False

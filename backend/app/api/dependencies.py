@@ -11,15 +11,12 @@ from fastapi import BackgroundTasks, Depends, Request
 from fastapi.security import APIKeyHeader, HTTPBasic, HTTPBasicCredentials, OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
-from pydantic_ai.capabilities import AbstractCapability
 from redis.asyncio import Redis
 from redis_fastapi import get_async_redis
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from upstash_redis.asyncio import Redis as UpstashRedis
-from vercel.sandbox import SandboxClient as VercelSandboxClient
 
-from app.agents.dependencies import CodingAgentDeps
 from app.clients.activity import ActivityStore, SQLActivityStore
 from app.clients.agent_streams import AgentStreamStore
 from app.clients.authorization import AuthorizationStore, SQLAuthorizationStore
@@ -53,7 +50,6 @@ from app.config import settings
 from app.entities.users import User
 from app.exceptions import AuthenticationError, InvalidPersonalAccessTokenError, PermissionDeniedError
 from app.permissions import account_can
-from app.sandboxes.vercel import VercelSandbox
 from app.schemas.token import TokenPayload
 from app.services.activity import ActivityService
 from app.services.authorization import AuthorizationService
@@ -314,48 +310,6 @@ async def get_agent_streams_store() -> AsyncGenerator[AgentStreamStore]:
 
 
 AgentStreamsStoreDep = Annotated[AgentStreamStore, Depends(get_agent_streams_store, scope="request")]
-
-
-async def get_vercel_sandbox_client() -> AsyncGenerator[VercelSandboxClient | None]:
-    """Inject a standalone Vercel client without using a global active SDK session."""
-    if settings.AGENTS_SANDBOX != "vercel":
-        yield None
-        return
-    client = VercelSandboxClient.create()
-    try:
-        yield client
-    finally:
-        await client.aclose()
-
-
-VercelSandboxClientDep = Annotated[VercelSandboxClient | None, Depends(get_vercel_sandbox_client, scope="request")]
-
-
-def get_agent_sandbox(vercel: VercelSandboxClientDep) -> AbstractCapability[CodingAgentDeps]:
-    """Select a standard harness capability; Smol is the upstream capability as-is."""
-    if vercel is not None:
-        return VercelSandbox(client=vercel)
-    from pydantic_ai_harness.smol_sandbox import SmolSandbox  # noqa: PLC0415 - optional host virtualization
-
-    return SmolSandbox(
-        image=settings.AGENTS_SMOL_IMAGE,
-        cpus=settings.AGENTS_SMOL_CPUS,
-        memory_mb=settings.AGENTS_SMOL_MEMORY_MB,
-        allow_internet_access=settings.AGENTS_SMOL_ALLOW_INTERNET_ACCESS,
-    )
-
-
-AgentSandboxDep = Annotated[AbstractCapability[CodingAgentDeps], Depends(get_agent_sandbox)]
-
-
-def get_coding_agent_deps(
-    streams: AgentStreamsStoreDep, blobs: BlobStorageClientDep, sandbox: AgentSandboxDep
-) -> CodingAgentDeps:
-    """Construct typed PydanticAI deps from nested FastAPI dependencies."""
-    return CodingAgentDeps(streams=streams, blobs=blobs, sandbox=sandbox)
-
-
-CodingAgentDepsDep = Annotated[CodingAgentDeps, Depends(get_coding_agent_deps)]
 
 
 @cache

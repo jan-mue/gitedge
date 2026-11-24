@@ -42,6 +42,14 @@ class GitRefStore:
         checkpoint = await self.redis.get(self._checkpoint(owner, name, pull_id))
         return MergeResult(**json.loads(checkpoint)) if checkpoint else None
 
+    async def publish_branch(
+        self, owner: str, name: str, branch: str, commit: str, expected: str | None, base: str, base_commit: str
+    ) -> bool:
+        """Advance an agent branch only while its previous tip and the base still match."""
+        head_key = self._ref(owner, name, f"refs/heads/{branch}")
+        base_key = self._ref(owner, name, f"refs/heads/{base}")
+        return await self.redis.compare_and_set({head_key: expected, base_key: base_commit}, {head_key: commit})
+
     async def publish_merge(
         self,
         owner: str,

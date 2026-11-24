@@ -8,17 +8,17 @@ from restate.ext.pydantic._toolset import RestateContextRunToolSet
 from restate.ext.pydantic._utils import current_state, state_context
 from restate.ext.turnstile import Turnstile
 
+from app.agents.main import stop_workspace
 from app.agents.restate import RestateWorkspaceErrors
-from app.agents.runtime import stop_workspace
-from tests.integration.agents.harness import agent_harness
+from tests.integration.agents.containers import RESTATE_IMAGE
 
 if TYPE_CHECKING:
-    from pydantic_ai.models.openai import OpenAIChatModel
+    from pydantic_ai.models.ollama import OllamaModel
     from pydantic_ai_harness.smol_sandbox import SmolSandboxBackend
 
 
 async def test_dead_vm_fails_without_retrying_the_tool(
-    agent_sandbox: SmolSandboxBackend, agent_model: OpenAIChatModel
+    agent_sandbox: SmolSandboxBackend, agent_model: OllamaModel
 ) -> None:
     await stop_workspace(agent_sandbox)
     attempts = 0
@@ -48,6 +48,8 @@ async def test_dead_vm_fails_without_retrying_the_tool(
                 return error.message
         return "unexpected success"
 
-    async with agent_harness(restate.app([service], protocol="request_response")) as harness:
+    async with restate.create_test_harness(
+        restate.app([service], protocol="request_response"), restate_image=RESTATE_IMAGE, always_replay=True
+    ) as harness:
         assert await harness.client.service_call(run, arg="Read the deleted VM") == "WorkspaceError"
     assert attempts == 1
