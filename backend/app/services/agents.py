@@ -1,10 +1,13 @@
 """Agent workspace orchestration and repository authorization."""
 
+import os
 import uuid
 from typing import TYPE_CHECKING
 
+from app._vendor.pydantic_ai_opencode.registry import MODEL_REGISTRIES
+from app.agents.catalog import OPENCODE_SERVICES
 from app.clients.agent_invocations import AgentInvocationClient, RestateInvocationClient
-from app.config import settings
+from app.config import AGENT_NATIVE_PROVIDERS, settings
 from app.entities.agents import AgentEnvironment, AgentRun, AgentSession
 from app.exceptions import ConflictError, InvalidInputError, NotFoundError
 from app.schemas.agents import CredentialPublic, EnvironmentPublic, SessionPublic
@@ -105,10 +108,16 @@ class AgentService:
         session = await self.session(session_id, user)
         if session.archived:
             raise ConflictError("This chat is archived")
-        if (
-            body.model not in settings.AGENTS_MODELS
-            and await self.credentials.connection(user.id, body.model.partition(":")[0]) is None
-        ):
+        provider, _, name = body.model.partition(":")
+        if provider in OPENCODE_SERVICES:
+            if name not in MODEL_REGISTRIES[OPENCODE_SERVICES[provider]]:
+                raise InvalidInputError("Unknown OpenCode chat model")
+            connected = await self.credentials.connection(user.id, provider)
+            key = os.environ.get(f"GITEDGE_{provider.upper().replace('-', '_')}_API_KEY")
+            if connected is None and not key:
+                label = "OpenCode Zen" if provider == "opencode-zen" else "OpenCode Go"
+                raise InvalidInputError(f"Connect {label} in AI credentials before using this model")
+        elif body.model not in settings.AGENTS_MODELS and await self.credentials.connection(user.id, provider) is None:
             raise InvalidInputError("Model is not configured")
         turn = await self.store.request(session.id, str(body.request_id))
         if turn is None:
@@ -178,7 +187,7 @@ class AgentService:
 
     async def save_connection(self, provider: str, body: CredentialCreate, user: User) -> CredentialPublic:
         """Validate a provider and encrypt its account-owned connection."""
-        allowed = {"openai", "openai-chatgpt", "anthropic", *settings.AGENTS_OPENAI_ENDPOINTS}
+        allowed = {*AGENT_NATIVE_PROVIDERS, *settings.AGENTS_OPENAI_ENDPOINTS}
         if provider not in allowed:
             raise InvalidInputError("Provider is not configured")
         value = await self.credentials.save_secret(user.id, provider, body.label, body.secret.get_secret_value())

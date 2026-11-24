@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 from pydantic_ai.messages import ModelMessagesTypeAdapter
 from pydantic_ai.ui.ag_ui import AGUIAdapter
 
+from app.agents.catalog import available_models
 from app.api.dependencies import (
     AgentStreamsStoreDep,
     AuthorizationServiceDep,
@@ -21,7 +22,7 @@ from app.api.dependencies import (
 from app.clients.agent_credentials import AgentCredentialStore
 from app.clients.agent_repositories import AgentRepositoryClient
 from app.clients.agents import AgentStore
-from app.config import settings
+from app.config import AGENT_NATIVE_PROVIDERS, settings
 from app.schemas.agents import (
     CredentialCreate,
     CredentialPublic,
@@ -62,8 +63,8 @@ AgentServiceDep = Annotated[AgentService, Depends(service)]
 
 @router.get("/models")
 async def models(_user: CurrentUser) -> list[str]:
-    """List configured provider-qualified model identifiers."""
-    return settings.AGENTS_MODELS
+    """List configured models and the complete OpenCode chat catalogs."""
+    return available_models()
 
 
 @router.get("/environments")
@@ -184,7 +185,7 @@ async def remove_credentials(provider: str, user: CurrentUser, agents: AgentServ
 
 @router.get("/providers")
 async def providers(_user: CurrentUser) -> list[ProviderPublic]:
-    """Discover configured native and OpenAI-compatible account providers."""
+    """Discover native and configured OpenAI-compatible account providers."""
     names = {
         "openai": "OpenAI",
         "openai-chatgpt": "ChatGPT subscription",
@@ -197,7 +198,7 @@ async def providers(_user: CurrentUser) -> list[ProviderPublic]:
     }
     return [
         ProviderPublic(provider=key, label=names.get(key, key), auth="chatgpt" if key == "openai-chatgpt" else "key")
-        for key in ["openai", "openai-chatgpt", "anthropic", *settings.AGENTS_OPENAI_ENDPOINTS]
+        for key in dict.fromkeys([*AGENT_NATIVE_PROVIDERS, *settings.AGENTS_OPENAI_ENDPOINTS])
     ]
 
 

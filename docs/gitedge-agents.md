@@ -41,9 +41,33 @@ infrastructure and configuration:
   `openai-chatgpt` provider uses subscription OAuth credentials; a ChatGPT
   subscription is not an OpenAI API key.
 - `AGENTS_OPENAI_ENDPOINTS` is a server-managed JSON mapping of provider names
-  to compatible API base URLs. For OpenCode Zen or Go, configure the appropriate
-  endpoint, put its credential in `GITEDGE_<PROVIDER>_API_KEY`, and allow a model
-  with that provider prefix. Credentials never enter tool machines or events.
+  to API base URLs. OpenCode uses the vendored `pydantic-ai-opencode` 0.2.0
+  factory: Zen GPT models use Responses, Claude uses Anthropic Messages, Gemini
+  uses Google's API, and chat models use Chat Completions. Go also supports
+  Responses, Anthropic Messages, and Gemini. The registry was refreshed from the
+  official inference catalogs on 2026-11-24 (83 Zen and 31 Go chat models).
+  Credentials never enter tool machines or events.
+
+### OpenCode Zen and Go
+
+Use GitEdge's existing colon-separated provider identifiers, for example
+`opencode-zen:gpt-5.5`, `opencode-zen:claude-opus-4-7`, or
+`opencode-go:minimax-m3`. Every current OpenCode chat model appears in the
+workspace model suggestions. Save an account-owned API key using **AI credentials**
+or configure a server key before submitting a turn. Other providers' model
+suggestions remain configured through `AGENTS_MODELS`.
+
+Server credentials use `GITEDGE_OPENCODE_ZEN_API_KEY` and
+`GITEDGE_OPENCODE_GO_API_KEY`. Account-owned connections take precedence.
+GitEdge does not fall back to the OpenCode CLI auth file or `OPENCODE_API_KEY`.
+The adapter selects OpenCode's current per-wire inference URLs by default;
+`AGENTS_OPENAI_ENDPOINTS` can override the service base URL for a custom gateway.
+Durable turns send GitEdge's user agent and a stable `x-opencode-session` header
+using the conversation ID.
+
+Go endpoints require an active Go subscription, including for their free models.
+See the [inference API](https://opencode.ai/docs/console/api/inference) and
+[harness guidance](https://opencode.ai/docs/console/harnesses).
 
 The SDK app is mounted natively with `app.mount("/restate", restate_app())`.
 Pure-ASGI middleware resolves the existing FastAPI dependency graph for Restate

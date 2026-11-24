@@ -121,6 +121,16 @@ def test_tiny_agent_change_creates_a_gitedge_pull_request(
     repository_id = next(item["id"] for item in options.json() if item["owner"] == owner and item["name"] == name)
 
     page.goto(f"{app_url}/agents")
+    catalog = page.request.get(f"{api}/agents/models", headers=headers)
+    assert catalog.status == 200
+    models = catalog.json()
+    expect(page.locator("#agent-model-options option")).to_have_count(len(models))
+    assert (
+        page.locator("#agent-model-options option").evaluate_all("options => options.map(option => option.value)")
+        == models
+    )
+    assert len([model for model in models if model.startswith("opencode-zen:")]) == 83
+    assert len([model for model in models if model.startswith("opencode-go:")]) == 31
     page.get_by_role("button", name="AI credentials", exact=True).click()
     credentials = page.get_by_role("dialog", name="AI credentials")
     credentials.get_by_label("Provider", exact=True).click()

@@ -203,7 +203,7 @@ export const AgentWorkspace = () => {
   const search = useSearch({ from: "/_layout/agents" })
   const query = useQueryClient()
   const [environmentId, setEnvironmentId] = useState("")
-  const [model, setModel] = useState("")
+  const [model, setModel] = useState<string>()
   const [filter, setFilter] = useState("")
   const [environmentDialog, setEnvironmentDialog] = useState(false)
   const [editing, setEditing] = useState<EnvironmentPublic>()
@@ -215,7 +215,7 @@ export const AgentWorkspace = () => {
   const models = useQuery(agentsModelsOptions())
   const selected = sessions.data?.find((chat) => chat.id === search.session)
   const environment = envs.data?.find((env) => env.id === (selected?.environment_id || environmentId))
-  const currentModel = model || models.data?.[0] || ""
+  const currentModel = model ?? models.data?.[0] ?? ""
   const select = (session?: string) => {
     navigate({ to: "/agents", search: session ? { session } : {} })
     setMobile(false)

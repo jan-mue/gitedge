@@ -74,6 +74,9 @@ class LogLevel(StrEnum):
     NOTSET = "NOTSET"
 
 
+AGENT_NATIVE_PROVIDERS = ("openai", "openai-chatgpt", "anthropic", "opencode-zen", "opencode-go")
+
+
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
@@ -96,8 +99,6 @@ class Settings(BaseSettings):
     AGENTS_MAX_REQUESTS: int = 100
     AGENTS_SANDBOX_TIMEOUT: int = 1800
     AGENTS_OPENAI_ENDPOINTS: dict[str, str] = {
-        "opencode-zen": "https://opencode.ai/zen/v1",
-        "opencode-go": "https://opencode.ai/zen/go/v1",
         "openrouter": "https://openrouter.ai/api/v1",
         "mistral": "https://api.mistral.ai/v1",
         "vercel": "https://ai-gateway.vercel.sh/v1",

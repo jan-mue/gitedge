@@ -1920,7 +1920,7 @@ export class AgentsService {
     /**
      * Models
      *
-     * List configured provider-qualified model identifiers.
+     * List configured models and the complete OpenCode chat catalogs.
      */
     public static models<ThrowOnError extends boolean = true>(options?: Options<agentsModelsData, ThrowOnError>): RequestResult<agentsModelsResponses, unknown, ThrowOnError> {
         return (options?.client ?? client).get<agentsModelsResponses, unknown, ThrowOnError>({
@@ -2165,7 +2165,7 @@ export class AgentsService {
     /**
      * Providers
      *
-     * Discover configured native and OpenAI-compatible account providers.
+     * Discover native and configured OpenAI-compatible account providers.
      */
     public static providers<ThrowOnError extends boolean = true>(options?: Options<agentsProvidersData, ThrowOnError>): RequestResult<agentsProvidersResponses, unknown, ThrowOnError> {
         return (options?.client ?? client).get<agentsProvidersResponses, unknown, ThrowOnError>({

@@ -170,11 +170,11 @@ async def test_execution_passes_explicit_deps_and_trusted_forge_scope(
 
 @pytest.mark.parametrize("failure", [False, True])
 async def test_model_dependency_closes_model_before_credential_scope(mocker: MockerFixture, *, failure: bool) -> None:
-    request = mocker.Mock(model="ollama:real-model", user_id=uuid.uuid4())
+    request = mocker.Mock(model="ollama:real-model", user_id=uuid.uuid4(), session_id=str(uuid.uuid4()))
     model = mocker.MagicMock()
     credentials = mocker.MagicMock()
     credentials.__aenter__.return_value = model
-    mocker.patch("app.agents.dependencies.account_model", return_value=credentials)
+    account = mocker.patch("app.agents.dependencies.account_model", return_value=credentials)
 
     async def execute() -> None:
         async with get_account_model(request, mocker.Mock()) as resolved:
@@ -191,6 +191,7 @@ async def test_model_dependency_closes_model_before_credential_scope(mocker: Moc
         await execute()
     model.__aexit__.assert_awaited_once()
     credentials.__aexit__.assert_awaited_once()
+    assert account.call_args.kwargs["session_id"] == request.session_id
 
 
 async def test_inject_preserves_typed_public_signature_and_positional_calls() -> None:

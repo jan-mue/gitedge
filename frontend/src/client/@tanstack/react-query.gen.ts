@@ -2916,7 +2916,7 @@ export const agentsModelsQueryKey = (options?: Options<agentsModelsData>) => cre
 /**
  * Models
  *
- * List configured provider-qualified model identifiers.
+ * List configured models and the complete OpenCode chat catalogs.
  */
 export const agentsModelsOptions = (options?: Options<agentsModelsData>) => queryOptions<agentsModelsResponse, DefaultError, agentsModelsResponse, ReturnType<typeof agentsModelsQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {
@@ -3248,7 +3248,7 @@ export const agentsProvidersQueryKey = (options?: Options<agentsProvidersData>) 
 /**
  * Providers
  *
- * Discover configured native and OpenAI-compatible account providers.
+ * Discover native and configured OpenAI-compatible account providers.
  */
 export const agentsProvidersOptions = (options?: Options<agentsProvidersData>) => queryOptions<agentsProvidersResponse, DefaultError, agentsProvidersResponse, ReturnType<typeof agentsProvidersQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {

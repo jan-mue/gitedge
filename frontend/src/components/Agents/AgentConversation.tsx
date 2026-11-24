@@ -20,6 +20,9 @@ import type { RunPublic, SessionPublic } from "./api"
 import { type CommandLog, useAgentRun } from "./use-agent-run"
 
 const promptSchema = z.object({ prompt: z.string().trim().min(1).max(100000) })
+const isRestrictedZenModel = (model: string) =>
+  model.startsWith("opencode-zen:") && (model.endsWith("-free") || model === "opencode-zen:big-pickle")
+
 export const AgentComposer = ({
   model,
   onModelChange,
@@ -74,6 +77,11 @@ export const AgentComposer = ({
             placeholder="provider:model"
             list="agent-model-options"
           />
+          {isRestrictedZenModel(model) && (
+            <p className="text-xs text-muted-foreground">
+              Free Zen models are restricted to the OpenCode client. They cannot be used from GitEdge.
+            </p>
+          )}
         </div>
         {pending && onStop ? (
           <Button type="button" variant="outline" size="icon" aria-label="Stop agent" onClick={onStop}>

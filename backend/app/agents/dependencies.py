@@ -494,7 +494,7 @@ RunDepsDep = Annotated[SetupAgentDeps | CodingAgentDeps, Depends(get_run_deps)]
 @asynccontextmanager
 async def get_account_model(request: TurnRequestDep, factory: SessionFactoryDep) -> AsyncGenerator[Model]:
     """Resolve account credentials from the trusted turn input outside the durable journal."""
-    async with account_model(request.model, request.user_id, factory) as model, model:
+    async with account_model(request.model, request.user_id, factory, session_id=request.session_id) as model, model:
         yield model
 
 

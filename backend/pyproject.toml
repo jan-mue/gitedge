@@ -29,7 +29,7 @@ dependencies = [
     "pycasbin==2.8.0",
     "pydantic[email]==2.14.3",
     "pydantic-ai-harness[coder,smol]==0.68.0",
-    "pydantic-ai-slim[ag-ui,anthropic,mcp,openai]==2.68.0",
+    "pydantic-ai-slim[ag-ui,anthropic,google,mcp,openai]==2.68.0",
     "pydantic-settings==2.16.2",
     "pygments==2.21.0",
     "pyjwt==2.15.1",
@@ -42,7 +42,7 @@ dependencies = [
     sys_platform=='linux') or (platform_machine=='x86_64' and sys_platform=='linux')\
     """,
     "sqlalchemy[asyncio]==2.1.8",
-    "tenacity==9.2.1",
+    "tenacity==9.1.4",
     "uncalled-for==0.6.2",
     "upstash-redis==1.9.0",
     "uvicorn==0.54.0",
@@ -141,6 +141,7 @@ lint.isort.known-first-party = [ "app" ]
 lint.pydocstyle.convention = "google"
 
 [tool.deptry]
+extend_exclude = [ "app/_vendor" ]
 per_rule_ignores.DEP002 = [
     "merge3",           # Required by dulwich for three-way merge calculations
     "python-multipart", # Required to handle form data in FastAPI
@@ -152,7 +153,7 @@ known_first_party = [ "app" ]
 
 [tool.vulture]
 paths = [ "app" ]
-exclude = [ "app/schemas/" ]
+exclude = [ "app/_vendor/", "app/schemas/" ]
 ignore_names = [
     # Group: used dynamically by dulwich
     "add_thin_pack",
