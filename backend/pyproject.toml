@@ -142,7 +142,6 @@ lint.pydocstyle.convention = "google"
 
 [tool.deptry]
 per_rule_ignores.DEP002 = [
-    "smolmachines",     # Native VM SDK is loaded lazily only on supported hosts
     "merge3",           # Required by dulwich for three-way merge calculations
     "python-multipart", # Required to handle form data in FastAPI
     "psycopg",          # Used by SQLAlchemy as database driver

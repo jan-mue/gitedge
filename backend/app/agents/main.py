@@ -4,7 +4,6 @@ import json
 import logging
 import uuid
 from functools import cache, partial
-from importlib import import_module
 from pathlib import Path  # noqa: TC003 - Restate evaluates run_typed callback annotations
 from typing import TYPE_CHECKING
 
@@ -14,6 +13,8 @@ from anyio import Path as AsyncPath
 from pydantic_ai.exceptions import UnexpectedModelBehavior, UsageLimitExceeded, UserError
 from pydantic_ai.messages import ModelMessagesTypeAdapter
 from pydantic_ai.workspaces import CommandResult, Workspace, WorkspaceBackend, WorkspaceError, WorkspaceRef
+from pydantic_ai_harness.smol_sandbox import SmolSandbox, SmolSandboxBackend
+from smol import AsyncMachine, ConnectOptions
 from uncalled_for import FailedDependency, Provided
 
 from app.agents.cancellation import run_cancellable
@@ -71,19 +72,16 @@ async def workspace_backend(
     sandbox = deps.sandbox
     if isinstance(sandbox, VercelSandbox):
         return VercelSandboxBackend(sandbox.client, name=name, ref=ref, snapshot_id=snapshot_id)
-    smol_sandbox = import_module("pydantic_ai_harness.smol_sandbox")
-
-    if not isinstance(sandbox, smol_sandbox.SmolSandbox):
+    if not isinstance(sandbox, SmolSandbox):
         raise UserError("Unsupported sandbox capability")
     if ref is not None:
         return sandbox.backend(ref)
     if snapshot_id is not None:
-        smol = import_module("smol")
-        machine = await smol.AsyncMachine.restore_checkpoint(
-            snapshot_id, f"pydantic-ai-{uuid.uuid4().hex}", smol.ConnectOptions(target="local")
+        machine = await AsyncMachine.restore_checkpoint(
+            snapshot_id, f"pydantic-ai-{uuid.uuid4().hex}", ConnectOptions(target="local")
         )
-        return smol_sandbox.SmolSandboxBackend(sandbox=machine, working_dir=sandbox.working_dir, env=sandbox.env)
-    return smol_sandbox.SmolSandboxBackend(
+        return SmolSandboxBackend(sandbox=machine, working_dir=sandbox.working_dir, env=sandbox.env)
+    return SmolSandboxBackend(
         image=sandbox.image,
         cpus=sandbox.cpus,
         memory_mb=sandbox.memory_mb,
@@ -97,8 +95,7 @@ async def snapshot_workspace(backend: WorkspaceBackend, *, checkpoint_dir: Path 
     """Use provider-native Vercel snapshots and local Smol VM checkpoints."""
     if isinstance(backend, VercelSandboxBackend):
         return await backend.snapshot()
-    smol_sandbox = import_module("pydantic_ai_harness.smol_sandbox")
-    if not isinstance(backend, smol_sandbox.SmolSandboxBackend):
+    if not isinstance(backend, SmolSandboxBackend):
         raise UserError("Unsupported workspace provider")
     directory = await AsyncPath(checkpoint_dir or settings.AGENTS_SMOL_CHECKPOINT_DIR).expanduser()
     directory = await directory.resolve()
@@ -113,8 +110,7 @@ async def stop_workspace(backend: WorkspaceBackend) -> None:
     if isinstance(backend, VercelSandboxBackend):
         await backend.stop()
     elif backend.ref is not None:
-        smol_sandbox = import_module("pydantic_ai_harness.smol_sandbox")
-        await smol_sandbox.SmolSandbox().destroy(backend.ref)
+        await SmolSandbox().destroy(backend.ref)
 
 
 def failure_code(error: Exception) -> str:

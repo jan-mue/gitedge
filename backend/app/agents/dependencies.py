@@ -6,12 +6,12 @@ from collections.abc import AsyncGenerator  # noqa: TC003 - uncalled-for evaluat
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from functools import wraps
-from importlib import import_module
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import BackgroundTasks
 from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.models import Model
+from pydantic_ai_harness.smol_sandbox import SmolSandbox
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from uncalled_for import (
@@ -399,11 +399,10 @@ VercelClientDep = Annotated[SandboxClient | None, Depends(get_vercel_client)]
 
 
 def get_sandbox[AgentDepsT: AgentDeps](vercel: VercelClientDep) -> AbstractCapability[AgentDepsT]:
-    """Load the selected upstream capability without requiring local VM support on Vercel."""
+    """Select the configured upstream capability using call-scoped resources."""
     if vercel is not None:
         return VercelSandbox(client=vercel)
-    smol = import_module("pydantic_ai_harness.smol_sandbox")
-    return smol.SmolSandbox(
+    return SmolSandbox(
         image=settings.AGENTS_SMOL_IMAGE,
         cpus=settings.AGENTS_SMOL_CPUS,
         memory_mb=settings.AGENTS_SMOL_MEMORY_MB,
