@@ -65,6 +65,7 @@ export class Workspace {
 
   async hashFiles(patterns: readonly string[]): Promise<string> {
     const selected = new Set<string>()
+    const realRoot = await realpath(this.source)
     const rules = patterns.map((pattern) => {
       const exclude = pattern.startsWith("!")
       const glob = relative(this.source, inside(this.source, exclude ? pattern.slice(1) : pattern))
@@ -80,7 +81,7 @@ export class Workspace {
       for (const rule of rules) if (rule.matcher.match(path)) included = !rule.exclude
       if (!included) continue
       const absolute = inside(this.source, path)
-      inside(this.source, await realpath(absolute))
+      inside(realRoot, await realpath(absolute))
       selected.add(absolute)
     }
     if (!selected.size) return ""
