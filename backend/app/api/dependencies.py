@@ -11,11 +11,14 @@ from fastapi import BackgroundTasks, Depends, Request
 from fastapi.security import APIKeyHeader, HTTPBasic, HTTPBasicCredentials, OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
+from redis.asyncio import Redis
 from redis_fastapi import get_async_redis
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from upstash_redis.asyncio import Redis as UpstashRedis
 
 from app.clients.activity import ActivityStore, SQLActivityStore
+from app.clients.agent_streams import AgentStreamStore
 from app.clients.authorization import AuthorizationStore, SQLAuthorizationStore
 from app.clients.blob_storage import BlobStorageClient, S3Client, VercelBlobClient
 from app.clients.cache import (
@@ -69,6 +72,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from sqlalchemy.ext.asyncio import async_sessionmaker
+
 
 logger = logging.getLogger(__name__)
 
@@ -292,6 +296,20 @@ def get_blob_client() -> BlobStorageClient:
 
 
 BlobStorageClientDep = Annotated[BlobStorageClient, Depends(get_blob_client)]
+
+
+async def get_agent_streams_store() -> AsyncGenerator[AgentStreamStore]:
+    """Keep stream persistence alive through the entire Restate or SSE response."""
+    if settings.REDIS_KIND == "rest":
+        yield AgentStreamStore(UpstashRedis(url=settings.REDIS_URL, token=settings.REDIS_PASSWORD or ""))
+    else:
+        async with Redis.from_url(
+            settings.REDIS_URL, password=settings.REDIS_PASSWORD, decode_responses=True
+        ) as client:
+            yield AgentStreamStore(client)
+
+
+AgentStreamsStoreDep = Annotated[AgentStreamStore, Depends(get_agent_streams_store, scope="request")]
 
 
 @cache

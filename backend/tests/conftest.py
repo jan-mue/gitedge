@@ -5,9 +5,7 @@ import concurrent.futures
 import json
 import os
 import random
-import socket
 import string
-import sys
 import urllib.request
 import uuid
 from dataclasses import dataclass
@@ -16,28 +14,47 @@ from typing import TYPE_CHECKING, Any
 import psycopg
 import pytest
 import redis
+import restate
 from alembic.command import upgrade
 from alembic.config import Config
+from anyio.from_thread import start_blocking_portal
 from pydantic import PostgresDsn, TypeAdapter
 from testcontainers.mailpit import MailpitContainer
 from testcontainers.minio import MinioContainer
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
-from xprocess import ProcessStarter
 
 from app.clients.blob_storage import S3Client
-from app.config import settings
+from app.config import Settings, settings
 from app.constants import BACKEND_DIR
+from app.index import app
 from app.utils.security import get_password_hash
+from tests.integration.agents.containers import OLLAMA_MODEL, RESTATE_IMAGE, ollama_container
 
 if TYPE_CHECKING:
     from collections.abc import Coroutine, Generator
 
-    from xprocess import XProcess
+    from starlette.types import Receive, Scope, Send
+    from testcontainers.community.ollama import OllamaContainer
 
 
 FIRST_SUPERUSER = os.environ.get("FIRST_SUPERUSER", "admin@example.com")
 FIRST_SUPERUSER_PASSWORD = os.environ.get("FIRST_SUPERUSER_PASSWORD", "changethis_admin_password_secure")
+
+
+@pytest.fixture(scope="session")
+def agent_ollama_model() -> str:
+    """Select the real model used by the shared Ollama fixture."""
+    return OLLAMA_MODEL
+
+
+@pytest.fixture(scope="session")
+def agent_ollama(agent_ollama_model: str) -> Generator[OllamaContainer]:
+    """Start the real model server for integration and browser agent tests."""
+    with ollama_container() as container:
+        container.pull_model(agent_ollama_model)
+        assert any(model["model"] == agent_ollama_model for model in container.list_models())
+        yield container
 
 
 @pytest.fixture(scope="session")
@@ -67,7 +84,7 @@ def mailpit_smtp_port(mailpit_container: MailpitContainer) -> int:
 
 @pytest.fixture(scope="session")
 def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[dict[str, str]]:
-    """Start infrastructure containers (DB, Redis, MinIO)."""
+    """Start shared forge infrastructure."""
     with (
         PostgresContainer("postgres:18.2", driver="psycopg") as postgres,
         RedisContainer("redis:8.6.0") as redis,
@@ -83,6 +100,8 @@ def infrastructure(mailpit_smtp_host: str, mailpit_smtp_port: int) -> Generator[
         env = {
             "DATABASE_URL": db_url,
             "REDIS_URL": redis_url,
+            "RESTATE_AUTH_TOKEN": "",
+            "RESTATE_IDENTITY_PUBLIC_KEY": "",
             "BLOB_STORAGE_KIND": "s3",
             "S3_ENDPOINT": minio_endpoint,
             "S3_ACCESS_KEY": minio.access_key,
@@ -231,31 +250,36 @@ def clean_repositories(infrastructure: dict[str, str]) -> Generator[None]:
 
 
 @pytest.fixture(scope="session")
-def backend_url(infrastructure: dict[str, str], xprocess: XProcess) -> Generator[str]:
-    """Start the backend server for integration and browser tests."""
+def backend_url(infrastructure: dict[str, str]) -> Generator[str]:
+    """Serve the real backend using the SDK harness, including registered agent services."""
+    with pytest.MonkeyPatch.context() as patch:
+        for name, value in infrastructure.items():
+            patch.setenv(name, value)
+        configured = Settings()
+        for name in infrastructure.keys() & type(settings).model_fields.keys():
+            patch.setattr(settings, name, getattr(configured, name))
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        backend_port = s.getsockname()[1]
+        addresses: list[str] = []
 
-    backend_env = os.environ.copy()
-    backend_env.update(infrastructure)
-    backend_cwd = BACKEND_DIR
+        async def endpoint(scope: Scope, receive: Receive, send: Send) -> None:
+            if scope["type"] == "http":
+                if not addresses:
+                    addresses.append(f"http://127.0.0.1:{scope['server'][1]}")
+                # The SDK registers at its server root; production mounts these services at /restate.
+                if scope["path"] in {"/discover", "/health"} or scope["path"].startswith("/invoke/"):
+                    scope = {**scope, "path": f"/restate{scope['path']}", "raw_path": b"/restate" + scope["raw_path"]}
+            await app(scope, receive, send)
 
-    class BackendStarter(ProcessStarter):  # type: ignore[misc]
-        terminate_on_interrupt = True
-        pattern = "Application startup complete"
-        env = backend_env
-        args = [sys.executable, "-m", "uvicorn", "app.index:app", "--port", str(backend_port)]
-        popen_kwargs = {"cwd": backend_cwd}
-        max_read_lines = 1000
-
-    backend_base_url = f"http://127.0.0.1:{backend_port}"
-    xprocess.ensure("backend", BackendStarter, restart=True)
-
-    yield backend_base_url
-
-    xprocess.getinfo("backend").terminate()
+        with (
+            start_blocking_portal() as portal,
+            portal.wrap_async_context_manager(
+                restate.create_test_harness(endpoint, restate_image=RESTATE_IMAGE, always_replay=True)
+            ) as harness,
+        ):
+            patch.setattr(settings, "RESTATE_INGRESS_URL", harness.ingress_url)
+            patch.setenv("RESTATE_ADMIN_URL", harness.admin_api_url)
+            assert addresses, "The SDK harness did not discover the backend"
+            yield addresses[0]
 
 
 @pytest.fixture

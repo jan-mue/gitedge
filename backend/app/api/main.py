@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     activity,
+    agents,
     authorization,
     comments,
     forks,
@@ -49,3 +50,5 @@ api_router.include_router(utils.router)
 
 if settings.VERCEL_ENV == "development":
     api_router.include_router(private.router)
+
+api_router.include_router(agents.router)

@@ -28,6 +28,46 @@ export type ActivitiesPublic = {
 export type ActivityKind = 'star' | 'watch' | 'fork' | 'issue_open' | 'issue_close' | 'issue_reopen' | 'comment' | 'comment_edit' | 'reaction' | 'issue_edit' | 'pull_request_edit' | 'pull_request_open' | 'pull_request_merge' | 'pull_request_close' | 'pull_request_reopen' | 'release';
 
 /**
+ * ActivityMessage
+ *
+ * Structured progress that is not conversation content, materialised as a
+ * message so it keeps its place in the sequence. Stands alone rather than
+ * composing BaseMessage, because its content is an object rather than a
+ * string.
+ */
+export type ActivityMessage = {
+    /**
+     * Subagentrunid
+     */
+    subagentRunId?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Role
+     */
+    role?: 'activity';
+    /**
+     * Activitytype
+     */
+    activityType: string;
+    /**
+     * Content
+     */
+    content: {
+        [key: string]: unknown;
+    };
+    /**
+     * Metadata
+     */
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
+    [key: string]: unknown;
+};
+
+/**
  * ActivityOverview
  *
  * Pulse totals for the selected period.
@@ -177,6 +217,81 @@ export type ActivityTargetPreview = {
  * Types of targets an activity event can reference.
  */
 export type ActivityTargetType = 'repository' | 'issue' | 'pull_request' | 'release';
+
+/**
+ * AssistantMessage
+ *
+ * A message from the agent. Content is optional because a turn may consist
+ * only of tool calls.
+ */
+export type AssistantMessage = {
+    /**
+     * Subagentrunid
+     */
+    subagentRunId?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Role
+     */
+    role?: 'assistant';
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Encryptedvalue
+     */
+    encryptedValue?: string | null;
+    /**
+     * Metadata
+     */
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * Content
+     */
+    content?: string | null;
+    /**
+     * Toolcalls
+     */
+    toolCalls?: Array<ToolCall> | null;
+    [key: string]: unknown;
+};
+
+/**
+ * AudioPart
+ *
+ * An audio part.
+ */
+export type AudioPart = {
+    /**
+     * Type
+     */
+    type?: 'audio';
+    /**
+     * Id
+     */
+    id?: string | null;
+    /**
+     * Source
+     */
+    source: ({
+        type: 'data';
+    } & DataSource) | ({
+        type: 'url';
+    } & UrlSource) | ({
+        type: 'file';
+    } & FileSource);
+    /**
+     * Metadata
+     */
+    metadata?: unknown | null;
+    [key: string]: unknown;
+};
 
 /**
  * BlameContent
@@ -622,6 +737,94 @@ export type CreateRepositoryRequest = {
 };
 
 /**
+ * CredentialCreate
+ *
+ * A provider key or JSON OAuth credential bundle, accepted only over authenticated TLS.
+ */
+export type CredentialCreate = {
+    /**
+     * Label
+     */
+    label: string;
+};
+
+/**
+ * CredentialPublic
+ *
+ * Safe connection metadata; credentials cannot be read back by the browser.
+ */
+export type CredentialPublic = {
+    /**
+     * Provider
+     */
+    provider: string;
+    /**
+     * Label
+     */
+    label: string;
+};
+
+/**
+ * DataSource
+ *
+ * Bytes carried inline.
+ */
+export type DataSource = {
+    /**
+     * Type
+     */
+    type?: 'data';
+    /**
+     * Value
+     */
+    value: string;
+    /**
+     * Mimetype
+     */
+    mimeType: string;
+    [key: string]: unknown;
+};
+
+/**
+ * DeveloperMessage
+ *
+ * Instructions from the application developer.
+ */
+export type DeveloperMessage = {
+    /**
+     * Subagentrunid
+     */
+    subagentRunId?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Role
+     */
+    role?: 'developer';
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Encryptedvalue
+     */
+    encryptedValue?: string | null;
+    /**
+     * Metadata
+     */
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * Content
+     */
+    content: string;
+    [key: string]: unknown;
+};
+
+/**
  * DiffHunk
  *
  * A unified hunk and its split layout.
@@ -706,6 +909,113 @@ export type DiffToken = {
 };
 
 /**
+ * DocumentPart
+ *
+ * A document part.
+ */
+export type DocumentPart = {
+    /**
+     * Type
+     */
+    type?: 'document';
+    /**
+     * Id
+     */
+    id?: string | null;
+    /**
+     * Source
+     */
+    source: ({
+        type: 'data';
+    } & DataSource) | ({
+        type: 'url';
+    } & UrlSource) | ({
+        type: 'file';
+    } & FileSource);
+    /**
+     * Metadata
+     */
+    metadata?: unknown | null;
+    [key: string]: unknown;
+};
+
+/**
+ * EnvironmentCreate
+ *
+ * Create a repository collection and its setup instructions.
+ */
+export type EnvironmentCreate = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Repositories
+     */
+    repositories: Array<string>;
+    /**
+     * Setup Script
+     */
+    setup_script?: string;
+    /**
+     * Instructions
+     */
+    instructions?: string;
+};
+
+/**
+ * EnvironmentPublic
+ *
+ * Environment metadata without provider credentials.
+ */
+export type EnvironmentPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string | null;
+    /**
+     * Setup Script
+     */
+    setup_script: string;
+    /**
+     * Instructions
+     */
+    instructions: string;
+    /**
+     * Repositories
+     */
+    repositories?: Array<string>;
+};
+
+/**
+ * EnvironmentUpdate
+ *
+ * Edit setup configuration; the next setup run publishes a new base image.
+ */
+export type EnvironmentUpdate = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Setup Script
+     */
+    setup_script?: string;
+    /**
+     * Instructions
+     */
+    instructions?: string;
+};
+
+/**
  * FileContent
  *
  * File content with syntax highlighting.
@@ -760,6 +1070,35 @@ export type FileIndex = {
      * Paths
      */
     paths: Array<string>;
+};
+
+/**
+ * FileSource
+ *
+ * Bytes already at the provider, named by a handle the provider issued: an
+ * OpenAI or Anthropic file id, a Gemini file URI, a storage URL only that
+ * provider can read. No bytes travel and nothing is fetched. Only the
+ * provider that minted the handle can resolve it; a peer that cannot drops
+ * the part as it drops any part it cannot use.
+ */
+export type FileSource = {
+    /**
+     * Type
+     */
+    type?: 'file';
+    /**
+     * Value
+     */
+    value: string;
+    /**
+     * Provider
+     */
+    provider?: string | null;
+    /**
+     * Mimetype
+     */
+    mimeType?: string | null;
+    [key: string]: unknown;
 };
 
 /**
@@ -835,6 +1174,23 @@ export type ForksPublic = {
 };
 
 /**
+ * FunctionCall
+ *
+ * The name and arguments of a tool call.
+ */
+export type FunctionCall = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Arguments
+     */
+    arguments: string;
+    [key: string]: unknown;
+};
+
+/**
  * HTTPValidationError
  */
 export type HTTPValidationError = {
@@ -842,6 +1198,37 @@ export type HTTPValidationError = {
      * Detail
      */
     detail?: Array<ValidationError>;
+};
+
+/**
+ * ImagePart
+ *
+ * An image part.
+ */
+export type ImagePart = {
+    /**
+     * Type
+     */
+    type?: 'image';
+    /**
+     * Id
+     */
+    id?: string | null;
+    /**
+     * Source
+     */
+    source: ({
+        type: 'data';
+    } & DataSource) | ({
+        type: 'url';
+    } & UrlSource) | ({
+        type: 'file';
+    } & FileSource);
+    /**
+     * Metadata
+     */
+    metadata?: unknown | null;
+    [key: string]: unknown;
 };
 
 /**
@@ -1489,6 +1876,26 @@ export type ProfilePublic = {
 };
 
 /**
+ * ProviderPublic
+ *
+ * Supported account connections without endpoint secrets.
+ */
+export type ProviderPublic = {
+    /**
+     * Provider
+     */
+    provider: string;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Auth
+     */
+    auth?: 'key' | 'chatgpt';
+};
+
+/**
  * PullRequestCreate
  *
  * Request to create a new pull request.
@@ -1729,6 +2136,42 @@ export type ReadmeContent = {
      * Html
      */
     html: string;
+};
+
+/**
+ * ReasoningMessage
+ *
+ * A span of the agent's reasoning, materialised as a message. Stands alone
+ * rather than composing BaseMessage, because it carries no name.
+ */
+export type ReasoningMessage = {
+    /**
+     * Subagentrunid
+     */
+    subagentRunId?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Role
+     */
+    role?: 'reasoning';
+    /**
+     * Content
+     */
+    content: string;
+    /**
+     * Encryptedvalue
+     */
+    encryptedValue?: string | null;
+    /**
+     * Metadata
+     */
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
+    [key: string]: unknown;
 };
 
 /**
@@ -2410,6 +2853,146 @@ export type ReviewedFileUpdate = {
 };
 
 /**
+ * RunCreate
+ *
+ * Idempotent turn submission with a provider-qualified model.
+ */
+export type RunCreate = {
+    /**
+     * Request Id
+     */
+    request_id: string;
+    /**
+     * Prompt
+     */
+    prompt: string;
+    /**
+     * Model
+     */
+    model: string;
+};
+
+/**
+ * RunPublic
+ *
+ * Turn state and durable invocation reference.
+ */
+export type RunPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Session Id
+     */
+    session_id: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Invocation Id
+     */
+    invocation_id: string | null;
+    /**
+     * Error
+     */
+    error: string | null;
+    /**
+     * Prompt
+     */
+    prompt: string;
+    /**
+     * Model
+     */
+    model: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Finished At
+     */
+    finished_at: string | null;
+};
+
+/**
+ * SessionCreate
+ *
+ * Start a setup chat or fork the environment's prepared image.
+ */
+export type SessionCreate = {
+    /**
+     * Environment Id
+     */
+    environment_id: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Kind
+     */
+    kind?: 'setup' | 'coding';
+};
+
+/**
+ * SessionPublic
+ *
+ * Conversation listing entry.
+ */
+export type SessionPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Environment Id
+     */
+    environment_id: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Pinned
+     */
+    pinned?: boolean;
+    /**
+     * Archived
+     */
+    archived?: boolean;
+    /**
+     * Active Run
+     */
+    active_run?: string | null;
+};
+
+/**
+ * SessionUpdate
+ *
+ * Persistent sidebar preferences.
+ */
+export type SessionUpdate = {
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Pinned
+     */
+    pinned?: boolean | null;
+    /**
+     * Archived
+     */
+    archived?: boolean | null;
+};
+
+/**
  * StarState
  *
  * Whether the current user starred a repository, and the total count.
@@ -2439,6 +3022,45 @@ export type StargazersPublic = {
      * Count
      */
     count: number;
+};
+
+/**
+ * SystemMessage
+ *
+ * Instructions from the system.
+ */
+export type SystemMessage = {
+    /**
+     * Subagentrunid
+     */
+    subagentRunId?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Role
+     */
+    role?: 'system';
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Encryptedvalue
+     */
+    encryptedValue?: string | null;
+    /**
+     * Metadata
+     */
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * Content
+     */
+    content: string;
+    [key: string]: unknown;
 };
 
 /**
@@ -2510,6 +3132,31 @@ export type TeamPublic = {
 };
 
 /**
+ * TextPart
+ *
+ * A text part.
+ */
+export type TextPart = {
+    /**
+     * Type
+     */
+    type?: 'text';
+    /**
+     * Id
+     */
+    id?: string | null;
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Metadata
+     */
+    metadata?: unknown | null;
+    [key: string]: unknown;
+};
+
+/**
  * Token
  *
  * OAuth2 token response schema.
@@ -2551,6 +3198,80 @@ export type TokenRepositoryOption = {
  * Operations a personal access token can authorize.
  */
 export type TokenScope = 'git:read' | 'git:write' | 'repository:read' | 'repository:write' | 'repository:delete' | 'issues:write' | 'pull_requests:write' | 'pull_requests:merge' | 'comments:write' | 'reviews:write' | 'releases:write';
+
+/**
+ * ToolCall
+ *
+ * A call an assistant message made. Carries no subagent attribution of its
+ * own and inherits its containing message's, since several calls can share
+ * one parent.
+ */
+export type ToolCall = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Type
+     */
+    type?: 'function';
+    function: FunctionCall;
+    /**
+     * Encryptedvalue
+     */
+    encryptedValue?: string | null;
+    /**
+     * Metadata
+     */
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
+    [key: string]: unknown;
+};
+
+/**
+ * ToolMessage
+ *
+ * What a tool returned, as a message in the conversation. Stands alone
+ * rather than composing BaseMessage, because it carries no name.
+ */
+export type ToolMessage = {
+    /**
+     * Subagentrunid
+     */
+    subagentRunId?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Role
+     */
+    role?: 'tool';
+    /**
+     * Content
+     */
+    content: string | Array<TextPart | ImagePart | AudioPart | VideoPart | DocumentPart>;
+    /**
+     * Toolcallid
+     */
+    toolCallId: string;
+    /**
+     * Error
+     */
+    error?: string | null;
+    /**
+     * Encryptedvalue
+     */
+    encryptedValue?: string | null;
+    /**
+     * Metadata
+     */
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
+    [key: string]: unknown;
+};
 
 /**
  * TreeEntry
@@ -2618,6 +3339,27 @@ export type UpdatePassword = {
 };
 
 /**
+ * UrlSource
+ *
+ * Bytes referenced by URL, fetched by whoever needs them.
+ */
+export type UrlSource = {
+    /**
+     * Type
+     */
+    type?: 'url';
+    /**
+     * Value
+     */
+    value: string;
+    /**
+     * Mimetype
+     */
+    mimeType?: string | null;
+    [key: string]: unknown;
+};
+
+/**
  * UserCreate
  *
  * Schema for creating a new user.
@@ -2647,6 +3389,45 @@ export type UserCreate = {
      * Password
      */
     password: string;
+};
+
+/**
+ * UserMessage
+ *
+ * A message from the person using the application.
+ */
+export type UserMessage = {
+    /**
+     * Subagentrunid
+     */
+    subagentRunId?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Role
+     */
+    role?: 'user';
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Encryptedvalue
+     */
+    encryptedValue?: string | null;
+    /**
+     * Metadata
+     */
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * Content
+     */
+    content: string | Array<TextPart | ImagePart | AudioPart | VideoPart | DocumentPart>;
+    [key: string]: unknown;
 };
 
 /**
@@ -2802,6 +3583,37 @@ export type ValidationError = {
 };
 
 /**
+ * VideoPart
+ *
+ * A video part.
+ */
+export type VideoPart = {
+    /**
+     * Type
+     */
+    type?: 'video';
+    /**
+     * Id
+     */
+    id?: string | null;
+    /**
+     * Source
+     */
+    source: ({
+        type: 'data';
+    } & DataSource) | ({
+        type: 'url';
+    } & UrlSource) | ({
+        type: 'file';
+    } & FileSource);
+    /**
+     * Metadata
+     */
+    metadata?: unknown | null;
+    [key: string]: unknown;
+};
+
+/**
  * WatcherState
  *
  * Whether the current user watches a repository, and the total count.
@@ -2831,6 +3643,22 @@ export type WatchersPublic = {
      * Count
      */
     count: number;
+};
+
+/**
+ * CredentialCreate
+ *
+ * A provider key or JSON OAuth credential bundle, accepted only over authenticated TLS.
+ */
+export type CredentialCreateWritable = {
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Secret
+     */
+    secret: string;
 };
 
 export type notificationsListNotificationsData = {
@@ -7082,3 +7910,499 @@ export type privateCreateUserResponses = {
 };
 
 export type privateCreateUserResponse = privateCreateUserResponses[keyof privateCreateUserResponses];
+
+export type agentsModelsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/agents/models';
+};
+
+export type agentsModelsResponses = {
+    /**
+     * Response Agents-Models
+     *
+     * Successful Response
+     */
+    200: Array<string>;
+};
+
+export type agentsModelsResponse = agentsModelsResponses[keyof agentsModelsResponses];
+
+export type agentsEnvironmentsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/agents/environments';
+};
+
+export type agentsEnvironmentsResponses = {
+    /**
+     * Response Agents-Environments
+     *
+     * Successful Response
+     */
+    200: Array<EnvironmentPublic>;
+};
+
+export type agentsEnvironmentsResponse = agentsEnvironmentsResponses[keyof agentsEnvironmentsResponses];
+
+export type agentsCreateEnvironmentData = {
+    body: EnvironmentCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/agents/environments';
+};
+
+export type agentsCreateEnvironmentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsCreateEnvironmentError = agentsCreateEnvironmentErrors[keyof agentsCreateEnvironmentErrors];
+
+export type agentsCreateEnvironmentResponses = {
+    /**
+     * Successful Response
+     */
+    201: EnvironmentPublic;
+};
+
+export type agentsCreateEnvironmentResponse = agentsCreateEnvironmentResponses[keyof agentsCreateEnvironmentResponses];
+
+export type agentsSessionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/agents/sessions';
+};
+
+export type agentsSessionsResponses = {
+    /**
+     * Response Agents-Sessions
+     *
+     * Successful Response
+     */
+    200: Array<SessionPublic>;
+};
+
+export type agentsSessionsResponse = agentsSessionsResponses[keyof agentsSessionsResponses];
+
+export type agentsCreateSessionData = {
+    body: SessionCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/agents/sessions';
+};
+
+export type agentsCreateSessionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsCreateSessionError = agentsCreateSessionErrors[keyof agentsCreateSessionErrors];
+
+export type agentsCreateSessionResponses = {
+    /**
+     * Successful Response
+     */
+    201: SessionPublic;
+};
+
+export type agentsCreateSessionResponse = agentsCreateSessionResponses[keyof agentsCreateSessionResponses];
+
+export type agentsRunsData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/sessions/{session_id}/runs';
+};
+
+export type agentsRunsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsRunsError = agentsRunsErrors[keyof agentsRunsErrors];
+
+export type agentsRunsResponses = {
+    /**
+     * Response Agents-Runs
+     *
+     * Successful Response
+     */
+    200: Array<RunPublic>;
+};
+
+export type agentsRunsResponse = agentsRunsResponses[keyof agentsRunsResponses];
+
+export type agentsSubmitData = {
+    body: RunCreate;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/sessions/{session_id}/runs';
+};
+
+export type agentsSubmitErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsSubmitError = agentsSubmitErrors[keyof agentsSubmitErrors];
+
+export type agentsSubmitResponses = {
+    /**
+     * Successful Response
+     */
+    202: RunPublic;
+};
+
+export type agentsSubmitResponse = agentsSubmitResponses[keyof agentsSubmitResponses];
+
+export type agentsStatusData = {
+    body?: never;
+    path: {
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/runs/{run_id}';
+};
+
+export type agentsStatusErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsStatusError = agentsStatusErrors[keyof agentsStatusErrors];
+
+export type agentsStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: RunPublic;
+};
+
+export type agentsStatusResponse = agentsStatusResponses[keyof agentsStatusResponses];
+
+export type agentsEventsData = {
+    body?: never;
+    headers?: {
+        /**
+         * Last-Event-Id
+         */
+        'last-event-id'?: string;
+    };
+    path: {
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/runs/{run_id}/events';
+};
+
+export type agentsEventsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsEventsError = agentsEventsErrors[keyof agentsEventsErrors];
+
+export type agentsEventsResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type agentsNotificationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/agents/notifications';
+};
+
+export type agentsNotificationsResponses = {
+    /**
+     * Response Agents-Notifications
+     *
+     * Successful Response
+     */
+    200: Array<RunPublic>;
+};
+
+export type agentsNotificationsResponse = agentsNotificationsResponses[keyof agentsNotificationsResponses];
+
+export type agentsMessagesData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/sessions/{session_id}/messages';
+};
+
+export type agentsMessagesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsMessagesError = agentsMessagesErrors[keyof agentsMessagesErrors];
+
+export type agentsMessagesResponses = {
+    /**
+     * Response Agents-Messages
+     *
+     * Successful Response
+     */
+    200: Array<DeveloperMessage | SystemMessage | AssistantMessage | UserMessage | ToolMessage | ActivityMessage | ReasoningMessage>;
+};
+
+export type agentsMessagesResponse = agentsMessagesResponses[keyof agentsMessagesResponses];
+
+export type agentsUpdateEnvironmentData = {
+    body: EnvironmentUpdate;
+    path: {
+        /**
+         * Environment Id
+         */
+        environment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/environments/{environment_id}';
+};
+
+export type agentsUpdateEnvironmentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsUpdateEnvironmentError = agentsUpdateEnvironmentErrors[keyof agentsUpdateEnvironmentErrors];
+
+export type agentsUpdateEnvironmentResponses = {
+    /**
+     * Successful Response
+     */
+    200: EnvironmentPublic;
+};
+
+export type agentsUpdateEnvironmentResponse = agentsUpdateEnvironmentResponses[keyof agentsUpdateEnvironmentResponses];
+
+export type agentsUpdateSessionData = {
+    body: SessionUpdate;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/sessions/{session_id}';
+};
+
+export type agentsUpdateSessionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsUpdateSessionError = agentsUpdateSessionErrors[keyof agentsUpdateSessionErrors];
+
+export type agentsUpdateSessionResponses = {
+    /**
+     * Successful Response
+     */
+    200: SessionPublic;
+};
+
+export type agentsUpdateSessionResponse = agentsUpdateSessionResponses[keyof agentsUpdateSessionResponses];
+
+export type agentsReadNotificationData = {
+    body?: never;
+    path: {
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/runs/{run_id}/read';
+};
+
+export type agentsReadNotificationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsReadNotificationError = agentsReadNotificationErrors[keyof agentsReadNotificationErrors];
+
+export type agentsReadNotificationResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type agentsReadNotificationResponse = agentsReadNotificationResponses[keyof agentsReadNotificationResponses];
+
+export type agentsCredentialsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/agents/credentials';
+};
+
+export type agentsCredentialsResponses = {
+    /**
+     * Response Agents-Credentials
+     *
+     * Successful Response
+     */
+    200: Array<CredentialPublic>;
+};
+
+export type agentsCredentialsResponse = agentsCredentialsResponses[keyof agentsCredentialsResponses];
+
+export type agentsRemoveCredentialsData = {
+    body?: never;
+    path: {
+        /**
+         * Provider
+         */
+        provider: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/credentials/{provider}';
+};
+
+export type agentsRemoveCredentialsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsRemoveCredentialsError = agentsRemoveCredentialsErrors[keyof agentsRemoveCredentialsErrors];
+
+export type agentsRemoveCredentialsResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type agentsRemoveCredentialsResponse = agentsRemoveCredentialsResponses[keyof agentsRemoveCredentialsResponses];
+
+export type agentsSaveCredentialsData = {
+    body: CredentialCreateWritable;
+    path: {
+        /**
+         * Provider
+         */
+        provider: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/credentials/{provider}';
+};
+
+export type agentsSaveCredentialsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsSaveCredentialsError = agentsSaveCredentialsErrors[keyof agentsSaveCredentialsErrors];
+
+export type agentsSaveCredentialsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CredentialPublic;
+};
+
+export type agentsSaveCredentialsResponse = agentsSaveCredentialsResponses[keyof agentsSaveCredentialsResponses];
+
+export type agentsProvidersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/agents/providers';
+};
+
+export type agentsProvidersResponses = {
+    /**
+     * Response Agents-Providers
+     *
+     * Successful Response
+     */
+    200: Array<ProviderPublic>;
+};
+
+export type agentsProvidersResponse = agentsProvidersResponses[keyof agentsProvidersResponses];
+
+export type agentsCancelRunData = {
+    body?: never;
+    path: {
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agents/runs/{run_id}/cancel';
+};
+
+export type agentsCancelRunErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type agentsCancelRunError = agentsCancelRunErrors[keyof agentsCancelRunErrors];
+
+export type agentsCancelRunResponses = {
+    /**
+     * Successful Response
+     */
+    202: RunPublic;
+};
+
+export type agentsCancelRunResponse = agentsCancelRunResponses[keyof agentsCancelRunResponses];

@@ -45,7 +45,7 @@ bun install --frozen-lockfile
 Start the local services (Postgres, Redis, MinIO):
 
 ```shell
-docker compose up -d
+docker-compose up -d
 ```
 
 Apply the database migrations:

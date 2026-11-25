@@ -63,9 +63,13 @@ class AbstractRedisClient(ABC):
 class RedisClient(AbstractRedisClient):
     """Standard Redis client using redis-py."""
 
-    def __init__(self) -> None:
-        """Initialize the standard Redis client."""
-        self._client = aioredis.from_url(settings.REDIS_URL, password=settings.REDIS_PASSWORD, decode_responses=False)
+    def __init__(self, client: aioredis.Redis | None = None) -> None:
+        """Use an injected call-scoped connection, or initialize the default client."""
+        self._client = (
+            client
+            if client is not None
+            else aioredis.from_url(settings.REDIS_URL, password=settings.REDIS_PASSWORD, decode_responses=False)
+        )
 
     @override
     async def compare_and_set(self, expected: dict[str, str | None], updates: dict[str, str | None]) -> bool:
@@ -124,9 +128,11 @@ class RedisClient(AbstractRedisClient):
 class UpstashRedisClient(AbstractRedisClient):
     """Redis client for Upstash Serverless using upstash-redis."""
 
-    def __init__(self) -> None:
-        """Initialize the Upstash Redis client."""
-        self._client = Redis(url=settings.REDIS_URL or "", token=settings.REDIS_PASSWORD or "")
+    def __init__(self, client: Redis | None = None) -> None:
+        """Use an injected call-scoped transport, or initialize the default client."""
+        self._client = (
+            client if client is not None else Redis(url=settings.REDIS_URL or "", token=settings.REDIS_PASSWORD or "")
+        )
 
     @override
     async def compare_and_set(self, expected: dict[str, str | None], updates: dict[str, str | None]) -> bool:

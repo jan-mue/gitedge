@@ -5,11 +5,13 @@ import logging
 import secrets
 import warnings
 from enum import StrEnum
+from pathlib import Path
 from typing import Literal, Self
 from urllib.parse import urlsplit
 
 from pydantic import (
     EmailStr,
+    Field,
     HttpUrl,
     PostgresDsn,
     computed_field,
@@ -72,6 +74,9 @@ class LogLevel(StrEnum):
     NOTSET = "NOTSET"
 
 
+AGENT_NATIVE_PROVIDERS = ("openai", "openai-chatgpt", "anthropic", "opencode-zen", "opencode-go")
+
+
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
@@ -81,6 +86,25 @@ class Settings(BaseSettings):
         env_ignore_empty=True,
         extra="ignore",
     )
+    AGENTS_SANDBOX: Literal["vercel", "smol"] = "smol"
+    AGENTS_SMOL_IMAGE: str = "node:22.18.0-bookworm"
+    AGENTS_SMOL_CPUS: int = Field(default=2, gt=0)
+    AGENTS_SMOL_MEMORY_MB: int = Field(default=2048, gt=0)
+    AGENTS_SMOL_ALLOW_INTERNET_ACCESS: bool = False
+    AGENTS_SMOL_CHECKPOINT_DIR: Path = Path.home() / ".gitedge" / "checkpoints"
+    RESTATE_INGRESS_URL: str = "http://localhost:8080"
+    RESTATE_AUTH_TOKEN: str = ""
+    RESTATE_IDENTITY_PUBLIC_KEY: str = ""
+    AGENTS_MAX_ACTIVE_RUNS: int = 5
+    AGENTS_MAX_REQUESTS: int = 100
+    AGENTS_SANDBOX_TIMEOUT: int = 1800
+    AGENTS_OPENAI_ENDPOINTS: dict[str, str] = {
+        "openrouter": "https://openrouter.ai/api/v1",
+        "mistral": "https://api.mistral.ai/v1",
+        "vercel": "https://ai-gateway.vercel.sh/v1",
+    }
+    AGENTS_MODELS: list[str] = ["openai:gpt-4.1-mini"]
+
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str = secrets.token_urlsafe(32)
     # 60 minutes * 24 hours * 8 days = 8 days
@@ -172,6 +196,8 @@ class Settings(BaseSettings):
         for host in self.DATABASE_URL.hosts():
             self._check_default_secret("DATABASE_URL password", host["password"])
         self._check_default_secret("FIRST_SUPERUSER_PASSWORD", self.FIRST_SUPERUSER_PASSWORD)
+        if "SECRET_KEY" not in self.model_fields_set:
+            raise ValueError("Agents require a persistent SECRET_KEY for encrypted provider connections")
 
         return self
 

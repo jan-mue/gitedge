@@ -9,10 +9,13 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
+    "ag-ui-protocol==1.0.0",
     "aiobotocore==3.10.0",
     "alembic==1.20.1",
+    "anyio==4.16.0",
     "botocore==1.43.117",
     "casbin-async-sqlalchemy-adapter==1.17.0",
+    "cryptography==50.0.2",
     "dulwich==1.2.21",
     "emails==1.1.3",
     "fastapi==0.164.0",
@@ -25,14 +28,22 @@ dependencies = [
     "pwdlib[argon2,bcrypt]==0.4.2",
     "pycasbin==2.8.0",
     "pydantic[email]==2.14.3",
+    "pydantic-ai-harness[coder,smol]==0.68.0",
+    "pydantic-ai-slim[ag-ui,anthropic,google,mcp,openai]==2.68.0",
     "pydantic-settings==2.16.3",
     "pygments==2.21.0",
     "pyjwt==2.15.1",
     "python-multipart==0.0.34",
     "redis[hiredis]==8.1.0",
+    "restate-sdk[client,pydantic-ai,serde]==1.5.2",
     "sentry-sdk==2.75.0",
+    """\
+    smolmachines==1.32.4; (platform_machine=='arm64' and sys_platform=='darwin') or (platform_machine=='aarch64' and \
+    sys_platform=='linux') or (platform_machine=='x86_64' and sys_platform=='linux')\
+    """,
     "sqlalchemy[asyncio]==2.1.9",
-    "tenacity==9.2.1",
+    "tenacity==9.1.4",
+    "uncalled-for==0.6.2",
     "upstash-redis==1.9.0",
     "uvicorn==0.54.0",
     "vercel==0.11.6",
@@ -50,7 +61,8 @@ dev = [
     "pytest-playwright==0.10.0",
     "pytest-socket==0.8.1",
     "pytest-xprocess==1.0.2",
-    "testcontainers[mailpit,minio,postgres,redis]==4.15.0",
+    "restate-sdk[harness]==1.5.2",
+    "testcontainers[mailpit,minio,ollama,postgres,redis]==4.15.0",
     "types-pygments==2.21.0.20261115",
 ]
 
@@ -117,16 +129,19 @@ lint.flake8-type-checking.runtime-evaluated-base-classes = [
     "sqlalchemy.orm.DeclarativeBase",
 ]
 lint.flake8-type-checking.runtime-evaluated-decorators = [
+    "app.agents.dependencies.inject",
     "fastapi.APIRouter.delete",
     "fastapi.APIRouter.get",
     "fastapi.APIRouter.patch",
     "fastapi.APIRouter.post",
     "fastapi.APIRouter.put",
+    "uncalled_for.without_dependencies",
 ]
 lint.isort.known-first-party = [ "app" ]
 lint.pydocstyle.convention = "google"
 
 [tool.deptry]
+extend_exclude = [ "app/_vendor" ]
 per_rule_ignores.DEP002 = [
     "merge3",           # Required by dulwich for three-way merge calculations
     "python-multipart", # Required to handle form data in FastAPI
@@ -138,7 +153,7 @@ known_first_party = [ "app" ]
 
 [tool.vulture]
 paths = [ "app" ]
-exclude = [ "app/schemas/" ]
+exclude = [ "app/_vendor/", "app/schemas/" ]
 ignore_names = [
     # Group: used dynamically by dulwich
     "add_thin_pack",
@@ -159,9 +174,26 @@ ignore_names = [
     "DEBUG",
     "ERROR",
     "NOTSET",
-    # Group: reserved Pydantic/SQLAlchemy members
+    # Group: reserved Python/Pydantic/SQLAlchemy members
+    "__signature__",
     "metadata",
     "model_config",
+    # Group: Restate/PydanticAI hook interface, consumed by the SDK
+    "request_context",
+    "turnstile",
+    # Group: Agent Trace and workspace serialized fields
+    "content_hash",
+    "contributor_type",
+    "conversation_url",
+    "end_line",
+    "model_id",
+    "pinned",
+    "start_line",
+    "tool_name",
+    "tool_version",
+    "trace_id",
+    "vcs_type",
+    "version",
     # Group: RepositoryChanges TypedDict keys
     "pack_deletes",
     "pack_uploads",
@@ -209,4 +241,4 @@ report.show_missing = true
 report.sort = "-Cover"
 
 [tool.vercel]
-scripts.build = "uv run bash scripts/prestart.sh"
+scripts.build = "uv run --no-sync bash scripts/prestart.sh"

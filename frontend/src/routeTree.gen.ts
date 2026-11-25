@@ -16,6 +16,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
+import { Route as LayoutAgentsRouteImport } from './routes/_layout/agents'
 import { Route as LayoutExploreRouteImport } from './routes/_layout/explore'
 import { Route as LayoutNotificationsRouteImport } from './routes/_layout/notifications'
 import { Route as LayoutRepositoriesRouteImport } from './routes/_layout/repositories'
@@ -87,6 +88,11 @@ const LayoutIndexRoute = LayoutIndexRouteImport.update({
 const LayoutAdminRoute = LayoutAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutAgentsRoute = LayoutAgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutExploreRoute = LayoutExploreRouteImport.update({
@@ -306,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
+  '/agents': typeof LayoutAgentsRoute
   '/explore': typeof LayoutExploreRoute
   '/notifications': typeof LayoutNotificationsRoute
   '/repositories': typeof LayoutRepositoriesRoute
@@ -351,6 +358,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
+  '/agents': typeof LayoutAgentsRoute
   '/explore': typeof LayoutExploreRoute
   '/notifications': typeof LayoutNotificationsRoute
   '/repositories': typeof LayoutRepositoriesRoute
@@ -393,6 +401,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_layout/admin': typeof LayoutAdminRoute
+  '/_layout/agents': typeof LayoutAgentsRoute
   '/_layout/explore': typeof LayoutExploreRoute
   '/_layout/notifications': typeof LayoutNotificationsRoute
   '/_layout/repositories': typeof LayoutRepositoriesRoute
@@ -442,6 +451,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/admin'
+    | '/agents'
     | '/explore'
     | '/notifications'
     | '/repositories'
@@ -487,6 +497,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/admin'
+    | '/agents'
     | '/explore'
     | '/notifications'
     | '/repositories'
@@ -528,6 +539,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/_layout/admin'
+    | '/_layout/agents'
     | '/_layout/explore'
     | '/_layout/notifications'
     | '/_layout/repositories'
@@ -626,6 +638,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof LayoutAdminRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/agents': {
+      id: '/_layout/agents'
+      path: '/agents'
+      fullPath: '/agents'
+      preLoaderRoute: typeof LayoutAgentsRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/explore': {
@@ -1015,6 +1034,7 @@ const LayoutOwnerRepoSrcTagTagRouteWithChildren =
 
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
+  LayoutAgentsRoute: typeof LayoutAgentsRoute
   LayoutExploreRoute: typeof LayoutExploreRoute
   LayoutNotificationsRoute: typeof LayoutNotificationsRoute
   LayoutRepositoriesRoute: typeof LayoutRepositoriesRoute
@@ -1042,6 +1062,7 @@ interface LayoutRouteChildren {
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
+  LayoutAgentsRoute: LayoutAgentsRoute,
   LayoutExploreRoute: LayoutExploreRoute,
   LayoutNotificationsRoute: LayoutNotificationsRoute,
   LayoutRepositoriesRoute: LayoutRepositoriesRoute,
