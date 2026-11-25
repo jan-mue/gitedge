@@ -8,7 +8,7 @@ COPY packages/actions-runner packages/actions-runner
 COPY packages/actions-compiler/package.json packages/actions-compiler/package.json
 RUN bun install --frozen-lockfile --ignore-scripts --production --filter @gitedge/actions-runner && bun run --filter @gitedge/actions-runner build
 
-FROM node:24-bookworm-slim
+FROM node:24.22.3-bookworm-slim@sha256:873f586f3794f52281bd039bf02c048a0be08fde619338f9941bad1eb6b34530
 COPY --from=runner-build /usr/local/bin/bun /usr/local/bin/bun
 COPY --from=runner-build --chmod=755 /build/packages/actions-runner/dist/gitedge-launch* /usr/local/bin/
 COPY --from=runner-build /build/packages/actions-runner/dist/prepare.mjs /build/prepare.mjs
