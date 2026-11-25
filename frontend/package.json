@@ -68,7 +68,7 @@
     "@testing-library/user-event": "14.6.12",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "@vercel/config": "0.14.1",
+    "@vercel/config": "0.15.0",
     "@vercel/related-projects": "1.1.1",
     "@vitejs/plugin-react": "6.3.0",
     "@vitejs/plugin-react-swc": "4.3.3",
