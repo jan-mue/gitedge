@@ -15,7 +15,7 @@ dependencies = [
     "casbin-async-sqlalchemy-adapter==1.17.0",
     "dulwich==1.2.21",
     "emails==1.1.3",
-    "fastapi==0.164.0",
+    "fastapi==0.165.0",
     "fastapi-redis-sdk==0.9.1",
     "jinja2==3.1.6",
     "markdown-it-py[linkify]==4.3.0",
