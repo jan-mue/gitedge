@@ -28,6 +28,6 @@
     "@vitest/coverage-v8": "5.1.1",
     "jose": "6.2.18"
   },
-  "packageManager": "bun@1.4.4",
+  "packageManager": "bun@1.4.5",
   "type": "module"
 }
