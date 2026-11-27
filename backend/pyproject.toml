@@ -40,7 +40,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "coverage==7.17.3",
+    "coverage==7.17.4",
     "deptry==0.25.1",
     "httpx2==2.16.2",
     "inline-snapshot[black]==0.37.0",
