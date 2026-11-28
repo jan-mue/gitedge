@@ -13,8 +13,7 @@ from anyio import Path as AsyncPath
 from pydantic_ai.exceptions import UnexpectedModelBehavior, UsageLimitExceeded, UserError
 from pydantic_ai.messages import ModelMessagesTypeAdapter
 from pydantic_ai.workspaces import CommandResult, Workspace, WorkspaceBackend, WorkspaceError, WorkspaceRef
-from pydantic_ai_harness.smol_sandbox import SmolSandbox, SmolSandboxBackend
-from smol import AsyncMachine, ConnectOptions
+from pydantic_ai_harness.docker_sandbox import DockerSandbox, DockerSandboxBackend
 from uncalled_for import FailedDependency, Provided
 
 from app.agents.cancellation import run_cancellable
@@ -65,18 +64,37 @@ agent_turns = restate.Service(
 )
 
 
-async def workspace_backend(
-    deps: SetupAgentDeps | CodingAgentDeps, name: str, snapshot_id: str | None = None, ref: WorkspaceRef | None = None
+async def _docker_workspace[AgentDepsT](
+    sandbox: DockerSandbox[AgentDepsT], *, snapshot_id: str | None, ref: WorkspaceRef | None
 ) -> WorkspaceBackend:
-    """Build the selected provider's native workspace, without a custom lifecycle interface."""
-    sandbox = deps.sandbox
-    if isinstance(sandbox, VercelSandbox):
-        return VercelSandboxBackend(sandbox.client, name=name, ref=ref, snapshot_id=snapshot_id)
+    """Create or attach to a native Docker workspace without snapshotting."""
+    if ref is not None:
+        return sandbox.backend(ref)
+    if snapshot_id is not None:
+        return sandbox.backend(WorkspaceRef(provider="docker", id=snapshot_id))
+    if sandbox.image is None:
+        raise UserError("Docker sandbox image is not configured")
+    return DockerSandboxBackend(
+        image=sandbox.image,
+        working_dir=sandbox.working_dir,
+        env=sandbox.env,
+        allow_internet_access=sandbox.allow_internet_access,
+        docker_args=sandbox.docker_args,
+        executable=sandbox.executable,
+    )
+
+
+async def _smol_workspace(sandbox: object, *, snapshot_id: str | None, ref: WorkspaceRef | None) -> WorkspaceBackend:
+    """Create, restore, or attach to an upstream Smol workspace."""
+    from pydantic_ai_harness.smol_sandbox import SmolSandbox, SmolSandboxBackend  # noqa: PLC0415
+
     if not isinstance(sandbox, SmolSandbox):
         raise UserError("Unsupported sandbox capability")
     if ref is not None:
         return sandbox.backend(ref)
     if snapshot_id is not None:
+        from smol import AsyncMachine, ConnectOptions  # noqa: PLC0415  # ty: ignore[import-not-found]
+
         machine = await AsyncMachine.restore_checkpoint(
             snapshot_id, f"pydantic-ai-{uuid.uuid4().hex}", ConnectOptions(target="local")
         )
@@ -91,10 +109,29 @@ async def workspace_backend(
     )
 
 
+async def workspace_backend(
+    deps: SetupAgentDeps | CodingAgentDeps, name: str, snapshot_id: str | None = None, ref: WorkspaceRef | None = None
+) -> WorkspaceBackend:
+    """Build the selected provider's native workspace, without a custom lifecycle interface."""
+    sandbox = deps.sandbox
+    if isinstance(sandbox, VercelSandbox):
+        return VercelSandboxBackend(sandbox.client, name=name, ref=ref, snapshot_id=snapshot_id)
+    if isinstance(sandbox, DockerSandbox):
+        return await _docker_workspace(sandbox, snapshot_id=snapshot_id, ref=ref)
+    return await _smol_workspace(sandbox, snapshot_id=snapshot_id, ref=ref)
+
+
 async def snapshot_workspace(backend: WorkspaceBackend, *, checkpoint_dir: Path | None = None) -> str:
-    """Use provider-native Vercel snapshots and local Smol VM checkpoints."""
+    """Use provider-native Vercel snapshots, local Smol checkpoints, or Docker's running container."""
     if isinstance(backend, VercelSandboxBackend):
         return await backend.snapshot()
+    if isinstance(backend, DockerSandboxBackend):
+        await backend.working_dir()
+        if backend.ref is None:
+            raise WorkspaceError("Docker workspace did not report a container")
+        return backend.ref.id
+    from pydantic_ai_harness.smol_sandbox import SmolSandboxBackend  # noqa: PLC0415
+
     if not isinstance(backend, SmolSandboxBackend):
         raise UserError("Unsupported workspace provider")
     directory = await AsyncPath(checkpoint_dir or settings.AGENTS_SMOL_CHECKPOINT_DIR).expanduser()
@@ -106,10 +143,14 @@ async def snapshot_workspace(backend: WorkspaceBackend, *, checkpoint_dir: Path 
 
 
 async def stop_workspace(backend: WorkspaceBackend) -> None:
-    """Let each provider own cleanup; Smol deletion stays in the upstream capability."""
+    """Let each provider own cleanup; Docker keeps its container for the next turn."""
     if isinstance(backend, VercelSandboxBackend):
         await backend.stop()
+    elif isinstance(backend, DockerSandboxBackend):
+        return
     elif backend.ref is not None:
+        from pydantic_ai_harness.smol_sandbox import SmolSandbox  # noqa: PLC0415
+
         await SmolSandbox().destroy(backend.ref)
 
 

@@ -6,14 +6,14 @@ from app.agents.setup import run_setup_agent
 from tests.integration.agents.containers import RESTATE_IMAGE
 
 if TYPE_CHECKING:
-    from pydantic_ai_harness.smol_sandbox import SmolSandboxBackend
+    from pydantic_ai.workspaces import SupportsCommands
 
     from app.clients.agent_streams import AgentStreamStore
     from tests.integration.agents.conftest import AgentRunResources
 
 
 async def test_ollama_durable_turn(
-    agent_sandbox: SmolSandboxBackend,
+    agent_sandbox: SupportsCommands,
     agent_streams: AgentStreamStore,
     agent_run_resources: AgentRunResources,
 ) -> None:

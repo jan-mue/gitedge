@@ -20,7 +20,18 @@ infrastructure and configuration:
   `RESTATE_IDENTITY_PUBLIC_KEY` for Restate Cloud. Identity verification is
   mandatory outside development.
 - `AGENTS_SANDBOX=vercel` for native Vercel snapshots and deployment OIDC.
-- `AGENTS_SANDBOX=smol` (the default) for local smolvm microVMs through the upstream
+- `AGENTS_SANDBOX=docker` for local Docker containers through the upstream
+  `DockerSandbox`. This is the default on Intel Macs, where Smol's virtualization
+  is unavailable. Configure `AGENTS_DOCKER_IMAGE` (default
+  `node:22.18.0-bookworm`), `AGENTS_DOCKER_CPUS` (default 2), and
+  `AGENTS_DOCKER_MEMORY_MB` (default 2048). Networking is disabled unless
+  `AGENTS_DOCKER_ALLOW_INTERNET_ACCESS=true`. A container shares the host kernel,
+  which is a weaker boundary than a VM. For repository agents, use an image with
+  Python, Bash, Git, coreutils, findutils, and util-linux (`flock`/`setsid`), such
+  as a published build of `dev/agents/Dockerfile`. Docker keeps the container
+  running between turns instead of snapshotting it; remove leftover containers
+  with `docker ps --filter label=ai.pydantic.workspace=true`.
+- `AGENTS_SANDBOX=smol` (the default elsewhere) for local smolvm microVMs through the upstream
   `SmolSandboxBackend`. The `smol` harness extra is installed on supported
   platforms. Configure `AGENTS_SMOL_IMAGE`, `AGENTS_SMOL_CPUS` (default 2), and
   `AGENTS_SMOL_MEMORY_MB` (default 2048). Networking is disabled unless
@@ -86,10 +97,12 @@ work resumes from its journal instead of holding the old development worker open
 `get_coding_agent_deps` constructs `CodingAgentDeps` through FastAPI, with nested
 stream-store and provider-client dependencies. It is passed explicitly to
 PydanticAI with `deps_type`/`deps`. The Vercel capability and workspace adapter
-live in `app/sandboxes/vercel.py`; Smol uses upstream `SmolSandbox` and
-`SmolSandboxBackend` directly. There is no shared sandbox lifecycle hierarchy
-or custom Smol implementation. SDK clients remain open through the response and
-close at the dependency's request-scope teardown.
+live in `app/sandboxes/vercel.py`; Smol and Docker use the upstream
+`SmolSandbox`/`SmolSandboxBackend` and `DockerSandbox`/`DockerSandboxBackend`
+directly. There is no shared sandbox lifecycle hierarchy or custom provider
+implementation. Smol imports stay lazy so the application starts on hosts without
+the Smol extra. SDK clients remain open through the response and close at the
+dependency's request-scope teardown.
 
 ## Setup and snapshots
 
@@ -118,6 +131,13 @@ the captured resource/device shape rather than applying the new-VM CPU/memory
 settings. OS, architecture, CPU-feature, and runtime-format compatibility are
 checked by smolvm. There are no custom filesystem archives or baseline scripts.
 Checkpoint paths are application-owned, never accepted from untrusted input.
+
+Docker has no snapshot or fork operation. Its saved image is the running
+container's ref: after a turn, the container is left running and the ref is saved
+as the session image. Later turns attach to that same container, preserving files
+and processes without a custom snapshot mechanism. Containers created by the
+harness carry the `ai.pydantic.workspace=true` label and are not removed
+automatically, so clean them up when an environment is retired.
 
 Kubernetes agent-sandbox support is removed until upstream native snapshots
 support the required development/runtime environments.
@@ -160,8 +180,10 @@ attempts and pause for operator inspection rather than retrying indefinitely.
 Run `uv run pytest tests/unit/test_agent_shell_events.py tests/unit/test_agent_cancellation.py`
 from `backend` for command-log encoding and cooperative cancellation. Container tests
 are in `tests/integration/agents`; they require a working Docker daemon and
-sufficient disk for Restate, Ollama, Smol VMs/checkpoints, and `qwen3.5:0.8b`. Image versions are
-pinned and tracked by Renovate.
+sufficient disk for Restate, Ollama, Smol VMs/checkpoints, and `qwen3.5:0.8b`. Image
+versions are pinned and tracked by Renovate. Locally the suite runs the Docker
+workspace tests and skips Smol; in CI it runs both Docker and Smol variants, with
+Smol skipping itself when virtualization is unavailable.
 
 On macOS, Homebrew's `e2fsprogs` is keg-only. From `backend`, run native
 checkpoint tests with its tools on the process's `PATH`, without modifying the
@@ -171,11 +193,13 @@ global shell configuration:
 PATH="$(brew --prefix e2fsprogs)/sbin:$PATH" uv run pytest tests/integration/agents
 ```
 
-Agent integration tests use real Smol VMs, Redis Streams, MinIO repository
-storage, and Ollama models. Native checkpoint/fork tests also exercise Smol, and
-`tests/integration/agents/test_smol.py` checks the upstream workspace's literal
-argv, environment, binary files, exit status, and fresh filesystem reads. Smol tests skip only if
-the SDK, host virtualization, or native checkpoint prerequisites are unavailable.
+Agent integration tests use real Docker containers or Smol VMs, Redis Streams,
+MinIO repository storage, and Ollama models. Native checkpoint/fork tests exercise
+Smol, while Docker tests verify native command/file behavior and container reuse
+across turns. `tests/integration/agents/test_smol.py` checks the upstream
+workspace's literal argv, environment, binary files, exit status, and fresh
+filesystem reads. Smol tests skip only outside CI or if the SDK, host
+virtualization, or native checkpoint prerequisites are unavailable.
 Stream recovery interrupts a real model connection through a
 forwarding proxy; these tests do not use mocks, fakes, or simulated models.
 

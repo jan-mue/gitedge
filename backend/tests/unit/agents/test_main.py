@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.workspaces import WorkspaceBackend, WorkspaceError, WorkspaceRef
+from pydantic_ai_harness.docker_sandbox import DockerSandbox, DockerSandboxBackend
 from sqlalchemy.ext.asyncio import AsyncSession
 from vercel.sandbox import Sandbox, SandboxClient
 
@@ -114,8 +115,8 @@ async def test_permanent_error_records_terminal_status_despite_failed_cleanup(
 
 
 async def test_smol_snapshot_calls_native_async_checkpoint(mocker: MockerFixture, tmp_path: Path) -> None:
-    harness = pytest.importorskip("pydantic_ai_harness.smol_sandbox")
     smol = pytest.importorskip("smol")
+    harness = pytest.importorskip("pydantic_ai_harness.smol_sandbox")
     backend = mocker.create_autospec(harness.SmolSandboxBackend, instance=True)
     machine = mocker.create_autospec(smol.AsyncMachine, instance=True)
     backend.get_sandbox.return_value = machine
@@ -131,8 +132,8 @@ async def test_smol_snapshot_calls_native_async_checkpoint(mocker: MockerFixture
 
 
 async def test_smol_restore_uses_native_checkpoint_and_upstream_workspace(mocker: MockerFixture) -> None:
-    harness = pytest.importorskip("pydantic_ai_harness.smol_sandbox")
     smol = pytest.importorskip("smol")
+    harness = pytest.importorskip("pydantic_ai_harness.smol_sandbox")
     streams = mocker.create_autospec(AgentStreamStore, instance=True)
     blobs = mocker.create_autospec(BlobStorageClient, instance=True)
     capability = harness.SmolSandbox(image="python:3.14.10-slim-bookworm")
@@ -151,6 +152,7 @@ async def test_smol_restore_uses_native_checkpoint_and_upstream_workspace(mocker
 
 
 async def test_replayed_ref_does_not_restore_or_create_another_vm(mocker: MockerFixture) -> None:
+    pytest.importorskip("smol")
     harness = pytest.importorskip("pydantic_ai_harness.smol_sandbox")
     streams = mocker.create_autospec(AgentStreamStore, instance=True)
     blobs = mocker.create_autospec(BlobStorageClient, instance=True)
@@ -160,6 +162,24 @@ async def test_replayed_ref_does_not_restore_or_create_another_vm(mocker: Mocker
     backend = await workspace_backend(deps, "run-1", ref=ref)
     assert backend.ref == ref
     restore.assert_not_awaited()
+
+
+async def test_docker_workspace_attaches_to_a_running_container(mocker: MockerFixture) -> None:
+    capability = DockerSandbox(image="example/image")
+    deps = SetupAgentDeps(streams=mocker.Mock(), blobs=mocker.Mock(), sandbox=capability)
+    backend = await workspace_backend(deps, "run-1", snapshot_id="pydantic-ai-container")
+    assert isinstance(backend, DockerSandboxBackend)
+    assert backend.ref == WorkspaceRef(provider="docker", id="pydantic-ai-container")
+
+
+async def test_docker_snapshot_reuses_the_running_container(mocker: MockerFixture) -> None:
+    backend = mocker.create_autospec(DockerSandboxBackend, instance=True)
+    ref = WorkspaceRef(provider="docker", id="pydantic-ai-container")
+    backend.ref = ref
+    assert await snapshot_workspace(backend) == ref.id
+    backend.working_dir.assert_awaited_once_with()
+    await stop_workspace(backend)
+    assert backend.ref == ref
 
 
 @pytest.mark.parametrize(

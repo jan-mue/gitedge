@@ -26,14 +26,14 @@ def native_smol_checkpoints() -> ModuleType:
 
 async def test_native_checkpoint_resume_and_fork_isolation(
     native_smol_checkpoints: ModuleType,
-    agent_sandbox: SmolSandboxBackend,
-    setup_agent_deps: SetupAgentDeps,
+    smol_sandbox: SmolSandboxBackend,
+    smol_setup_agent_deps: SetupAgentDeps,
     tmp_path: Path,
 ) -> None:
     smol = native_smol_checkpoints
     snapshots: list[str] = []
     forks = []
-    first = Workspace(agent_sandbox)
+    first = Workspace(smol_sandbox)
     try:
         assert (
             await first.run(
@@ -41,11 +41,11 @@ async def test_native_checkpoint_resume_and_fork_isolation(
                 shell=True,
             )
         ).exit_code == 0
-        image = await snapshot_workspace(agent_sandbox, checkpoint_dir=tmp_path)
+        image = await snapshot_workspace(smol_sandbox, checkpoint_dir=tmp_path)
         snapshots.append(image)
-        await stop_workspace(agent_sandbox)
+        await stop_workspace(smol_sandbox)
         for _ in range(2):
-            fork = await workspace_backend(setup_agent_deps, f"fork-{uuid.uuid4()}", snapshot_id=image)
+            fork = await workspace_backend(smol_setup_agent_deps, f"fork-{uuid.uuid4()}", snapshot_id=image)
             forks.append(fork)
             result = await Workspace(fork).run(
                 "cat /usr/local/gitedge-test/value /workspace/link; stat -c %a /workspace/value", shell=True
@@ -56,7 +56,7 @@ async def test_native_checkpoint_resume_and_fork_isolation(
         snapshots.append(next_image)
         assert (await Workspace(forks[1]).run(["cat", "/workspace/value"])).stdout == "initial\n"
         await stop_workspace(forks[0])
-        forks[0] = await workspace_backend(setup_agent_deps, f"resume-{uuid.uuid4()}", snapshot_id=next_image)
+        forks[0] = await workspace_backend(smol_setup_agent_deps, f"resume-{uuid.uuid4()}", snapshot_id=next_image)
         assert (await Workspace(forks[0]).run(["cat", "/workspace/value"])).stdout == "changed\n"
         assert (await Workspace(forks[0]).run(["test", "-f", "/usr/local/gitedge-test/value"])).exit_code == 1
     finally:
@@ -68,8 +68,8 @@ async def test_native_checkpoint_resume_and_fork_isolation(
 
 async def test_native_checkpoint_preserves_a_running_process(
     native_smol_checkpoints: ModuleType,
-    agent_sandbox: SmolSandboxBackend,
-    setup_agent_deps: SetupAgentDeps,
+    smol_sandbox: SmolSandboxBackend,
+    smol_setup_agent_deps: SetupAgentDeps,
     tmp_path: Path,
 ) -> None:
     smol = native_smol_checkpoints
@@ -87,8 +87,8 @@ async def test_native_checkpoint_preserves_a_running_process(
             f"nohup setsid python3 -c {shlex.quote(program)} >/dev/null 2>&1 </dev/null & "
             "while ! test -f /workspace/ready; do sleep 0.01; done"
         )
-        await Workspace(agent_sandbox).run(["bash", "-c", launch], timeout=10)
-        ready = await Workspace(agent_sandbox).run(
+        await Workspace(smol_sandbox).run(["bash", "-c", launch], timeout=10)
+        ready = await Workspace(smol_sandbox).run(
             [
                 "python3",
                 "-c",
@@ -98,9 +98,9 @@ async def test_native_checkpoint_preserves_a_running_process(
         )
         pid = ready.stdout.strip()
         assert pid.isdigit()
-        image = await snapshot_workspace(agent_sandbox, checkpoint_dir=tmp_path)
-        await stop_workspace(agent_sandbox)
-        restored = await workspace_backend(setup_agent_deps, "process-restore", snapshot_id=image)
+        image = await snapshot_workspace(smol_sandbox, checkpoint_dir=tmp_path)
+        await stop_workspace(smol_sandbox)
+        restored = await workspace_backend(smol_setup_agent_deps, "process-restore", snapshot_id=image)
         workspace = Workspace(restored)
         assert (
             await workspace.run(["python3", "-c", "import os,sys; os.kill(int(sys.argv[1]), 0)", pid])

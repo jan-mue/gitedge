@@ -58,7 +58,7 @@ async def log_invocation_failures(admin_url: str) -> None:
 async def test_turn_status_survives_cleanup_replay(
     infrastructure: dict[str, str],
     agent_ollama: OllamaContainer,
-    agent_sandbox_capability: SmolSandbox,
+    smol_sandbox_capability: SmolSandbox,
     tmp_path: Path,
     outcome: str,
     monkeypatch: pytest.MonkeyPatch,
@@ -71,8 +71,8 @@ async def test_turn_status_survives_cleanup_replay(
     monkeypatch.setattr(settings, "AGENTS_OPENAI_ENDPOINTS", {"ollama": f"{agent_ollama.get_endpoint()}/v1"})
     monkeypatch.setattr(settings, "AGENTS_SMOL_CHECKPOINT_DIR", tmp_path)
     monkeypatch.setattr(settings, "AGENTS_SANDBOX", "smol")
-    monkeypatch.setattr(settings, "AGENTS_SMOL_IMAGE", agent_sandbox_capability.image)
-    monkeypatch.setattr(settings, "AGENTS_SMOL_MEMORY_MB", agent_sandbox_capability.memory_mb)
+    monkeypatch.setattr(settings, "AGENTS_SMOL_IMAGE", smol_sandbox_capability.image)
+    monkeypatch.setattr(settings, "AGENTS_SMOL_MEMORY_MB", smol_sandbox_capability.memory_mb)
     checkpoint = None
     try:
         async with (

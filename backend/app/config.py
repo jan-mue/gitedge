@@ -2,7 +2,9 @@
 
 import json
 import logging
+import platform
 import secrets
+import sys
 import warnings
 from enum import StrEnum
 from pathlib import Path
@@ -77,6 +79,13 @@ class LogLevel(StrEnum):
 AGENT_NATIVE_PROVIDERS = ("openai", "openai-chatgpt", "anthropic", "opencode-zen", "opencode-go")
 
 
+def default_sandbox() -> Literal["vercel", "smol", "docker"]:
+    """Use Docker where Smol's virtualization is unavailable, such as an Intel Mac."""
+    if sys.platform == "darwin" and platform.machine().lower() in {"x86_64", "i386"}:
+        return "docker"
+    return "smol"
+
+
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
@@ -86,12 +95,16 @@ class Settings(BaseSettings):
         env_ignore_empty=True,
         extra="ignore",
     )
-    AGENTS_SANDBOX: Literal["vercel", "smol"] = "smol"
+    AGENTS_SANDBOX: Literal["vercel", "smol", "docker"] = Field(default_factory=default_sandbox)
     AGENTS_SMOL_IMAGE: str = "node:22.18.0-bookworm"
     AGENTS_SMOL_CPUS: int = Field(default=2, gt=0)
     AGENTS_SMOL_MEMORY_MB: int = Field(default=2048, gt=0)
     AGENTS_SMOL_ALLOW_INTERNET_ACCESS: bool = False
     AGENTS_SMOL_CHECKPOINT_DIR: Path = Path.home() / ".gitedge" / "checkpoints"
+    AGENTS_DOCKER_IMAGE: str = "node:22.18.0-bookworm"
+    AGENTS_DOCKER_CPUS: int = Field(default=2, gt=0)
+    AGENTS_DOCKER_MEMORY_MB: int = Field(default=2048, gt=0)
+    AGENTS_DOCKER_ALLOW_INTERNET_ACCESS: bool = False
     RESTATE_INGRESS_URL: str = "http://localhost:8080"
     RESTATE_AUTH_TOKEN: str = ""
     RESTATE_IDENTITY_PUBLIC_KEY: str = ""

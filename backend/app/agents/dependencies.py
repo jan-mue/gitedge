@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Annotated
 from fastapi import BackgroundTasks
 from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.models import Model
-from pydantic_ai_harness.smol_sandbox import SmolSandbox
+from pydantic_ai_harness.docker_sandbox import DockerSandbox
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from uncalled_for import (
@@ -402,6 +402,19 @@ def get_sandbox[AgentDepsT: AgentDeps](vercel: VercelClientDep) -> AbstractCapab
     """Select the configured upstream capability using call-scoped resources."""
     if vercel is not None:
         return VercelSandbox(client=vercel)
+    if settings.AGENTS_SANDBOX == "docker":
+        return DockerSandbox(
+            image=settings.AGENTS_DOCKER_IMAGE,
+            allow_internet_access=settings.AGENTS_DOCKER_ALLOW_INTERNET_ACCESS,
+            docker_args=(
+                "--cpus",
+                str(settings.AGENTS_DOCKER_CPUS),
+                "--memory",
+                f"{settings.AGENTS_DOCKER_MEMORY_MB}m",
+            ),
+        )
+    from pydantic_ai_harness.smol_sandbox import SmolSandbox  # noqa: PLC0415
+
     return SmolSandbox(
         image=settings.AGENTS_SMOL_IMAGE,
         cpus=settings.AGENTS_SMOL_CPUS,

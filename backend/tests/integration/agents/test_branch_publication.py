@@ -13,11 +13,11 @@ from app.exceptions import ConflictError, InvalidInputError
 from tests.git import FIRST_SUPERUSER, push_repo
 
 if TYPE_CHECKING:
-    from pydantic_ai_harness.smol_sandbox import SmolSandboxBackend
+    from pydantic_ai.workspaces import WorkspaceBackend
 
 
 async def test_publication_preserves_real_git_commits_and_uncommitted_changes(
-    backend_url: str, agent_sandbox: SmolSandboxBackend
+    backend_url: str, agent_sandbox: WorkspaceBackend
 ) -> None:
     owner = FIRST_SUPERUSER.split("@")[0]
     name = "native-branch-publication"

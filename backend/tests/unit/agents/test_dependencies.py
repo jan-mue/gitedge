@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import pytest
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.workspaces import WorkspaceRef
+from pydantic_ai_harness.docker_sandbox import DockerSandbox
 from uncalled_for import Depends, FailedDependency, resolved_dependencies, without_dependencies
 from vercel.sandbox import SandboxClient
 
@@ -25,6 +26,7 @@ from app.agents.dependencies import (
     inject,
 )
 from app.agents.main import run, run_agent_turn
+from app.config import settings
 from app.sandboxes.vercel import VercelSandbox
 from app.schemas.agent_turns import AgentTurnRequest
 
@@ -39,6 +41,19 @@ def test_provider_capabilities_use_injected_clients(mocker: MockerFixture) -> No
     capability = get_sandbox(vercel)
     assert isinstance(capability, VercelSandbox)
     assert capability.client is vercel
+
+
+def test_docker_capability_uses_configured_resources(mocker: MockerFixture) -> None:
+    mocker.patch.object(settings, "AGENTS_SANDBOX", "docker")
+    mocker.patch.object(settings, "AGENTS_DOCKER_IMAGE", "example/image")
+    mocker.patch.object(settings, "AGENTS_DOCKER_CPUS", 3)
+    mocker.patch.object(settings, "AGENTS_DOCKER_MEMORY_MB", 1024)
+    mocker.patch.object(settings, "AGENTS_DOCKER_ALLOW_INTERNET_ACCESS", True)
+    capability = get_sandbox(None)
+    assert isinstance(capability, DockerSandbox)
+    assert capability.image == "example/image"
+    assert capability.allow_internet_access is True
+    assert capability.docker_args == ("--cpus", "3", "--memory", "1024m")
 
 
 async def test_explicit_deps_bypass_production_graph(mocker: MockerFixture, fake_stores: FakeStores) -> None:

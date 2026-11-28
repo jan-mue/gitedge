@@ -18,9 +18,9 @@ if TYPE_CHECKING:
 
 
 async def test_dead_vm_fails_without_retrying_the_tool(
-    agent_sandbox: SmolSandboxBackend, agent_model: OllamaModel
+    smol_sandbox: SmolSandboxBackend, agent_model: OllamaModel
 ) -> None:
-    await stop_workspace(agent_sandbox)
+    await stop_workspace(smol_sandbox)
     attempts = 0
     functions = FunctionToolset[None]()
 
@@ -28,7 +28,7 @@ async def test_dead_vm_fails_without_retrying_the_tool(
     async def read_dead_vm() -> str:
         nonlocal attempts
         attempts += 1
-        result = await agent_sandbox.run(["cat", "/workspace/missing.txt"])
+        result = await smol_sandbox.run(["cat", "/workspace/missing.txt"])
         return result.stdout
 
     toolset = RestateWorkspaceErrors[None]().get_wrapper_toolset(

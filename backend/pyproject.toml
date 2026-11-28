@@ -150,6 +150,7 @@ per_rule_ignores.DEP002 = [
     "uvicorn",          # Used by run_app_locally.py, outside the scanned app/ source
 ]
 known_first_party = [ "app" ]
+package_module_name_map.smolmachines = "smol"
 
 [tool.vulture]
 paths = [ "app" ]

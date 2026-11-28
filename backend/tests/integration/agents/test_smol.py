@@ -1,14 +1,15 @@
+from typing import TYPE_CHECKING
+
 import pytest
 from pydantic_ai.workspaces import Workspace
 
+if TYPE_CHECKING:
+    from pydantic_ai_harness.smol_sandbox import SmolSandbox
 
-async def test_native_smol_commands_and_files() -> None:
-    smol = pytest.importorskip("smol")
-    available, _code, reason = smol.local_availability()
-    if not available:
-        pytest.skip(reason or "Local virtualization is unavailable")
+
+async def test_native_smol_commands_and_files(smol_sandbox_capability: SmolSandbox) -> None:
     sandbox_module = pytest.importorskip("pydantic_ai_harness.smol_sandbox")
-    sandbox = sandbox_module.SmolSandboxBackend(image="python:3.14.10-slim-bookworm")
+    sandbox = sandbox_module.SmolSandboxBackend(image=smol_sandbox_capability.image)
     try:
         workspace = Workspace(sandbox)
         assert await workspace.working_dir() == "/workspace"
